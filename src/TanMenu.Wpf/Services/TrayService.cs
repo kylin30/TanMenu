@@ -4,13 +4,14 @@ using H.NotifyIcon;
 
 namespace TanMenu.Wpf.Services;
 
-/// <summary>System-tray icon: left-click toggles the launcher; right-click menu = 显示 / 退出.</summary>
+/// <summary>System-tray icon: left-click toggles the launcher; right-click menu = 显示 / 设置 / 退出.</summary>
 public sealed class TrayService : IDisposable
 {
     private readonly IWindowHost _host;
     private readonly Action _exit;
     private readonly Action _openSettings;
     private TaskbarIcon? _icon;
+    private System.Drawing.Icon? _gdiIcon; // keep alive so its HICON stays valid
 
     public TrayService(IWindowHost host, Action exit, Action openSettings)
     {
@@ -26,8 +27,6 @@ public sealed class TrayService : IDisposable
             ToolTipText = "TanMenu",
             NoLeftClickDelay = true,
         };
-        if (System.IO.File.Exists(icoPath))
-            _icon.Icon = new System.Drawing.Icon(icoPath);
 
         _icon.LeftClickCommand = new RelayCommand(() => _host.Toggle());
 
@@ -41,13 +40,24 @@ public sealed class TrayService : IDisposable
         menu.Items.Add(exit);
         _icon.ContextMenu = menu;
 
-        _icon.ForceCreate();
+        _icon.ForceCreate(enablesEfficiencyMode: false);
+
+        // Set the tray image by handing the core TrayIcon a real HICON. H.NotifyIcon.Wpf's
+        // IconSource (ImageSource) conversion renders BLANK in this code-behind setup, so we
+        // bypass it and call the core UpdateIcon(HICON) directly after the icon is created.
+        if (System.IO.File.Exists(icoPath))
+        {
+            _gdiIcon = new System.Drawing.Icon(icoPath, new System.Drawing.Size(32, 32));
+            _icon.TrayIcon?.UpdateIcon(_gdiIcon.Handle);
+        }
     }
 
     public void Dispose()
     {
         _icon?.Dispose();
         _icon = null;
+        _gdiIcon?.Dispose();
+        _gdiIcon = null;
     }
 }
 

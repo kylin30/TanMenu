@@ -46,7 +46,7 @@ public partial class MainWindow : Window
                 host,
                 () => ((App)Application.Current).ExitApp(),
                 () => App.Services.GetRequiredService<ISettingsLauncher>().Open());
-            App.Tray.Create(System.IO.Path.Combine(AppContext.BaseDirectory, "wwwroot", "app.ico"));
+            App.Tray.Create(System.IO.Path.Combine(AppContext.BaseDirectory, "app.ico"));
         }
         catch (Exception ex)
         {

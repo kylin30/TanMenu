@@ -34,7 +34,7 @@ public partial class SettingsWindow : Window
 
         try
         {
-            var ico = Path.Combine(AppContext.BaseDirectory, "wwwroot", "app.ico");
+            var ico = Path.Combine(AppContext.BaseDirectory, "app.ico");
             if (File.Exists(ico))
                 Icon = BitmapFrame.Create(new Uri(ico));
         }

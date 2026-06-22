@@ -23,4 +23,13 @@
   <ItemGroup>
     <ProjectReference Include="..\TanMenu.Core\TanMenu.Core.csproj" />
   </ItemGroup>
+
+  <!-- wwwroot is served to the WebView via the static-web-assets manifest but NOT copied as a
+       loose file. The tray/window icon needs a real file on disk, so copy app.ico to the output. -->
+  <Target Name="CopyAppIconToOutput" AfterTargets="Build">
+    <Copy SourceFiles="wwwroot\app.ico" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+  </Target>
+  <Target Name="CopyAppIconToPublish" AfterTargets="Publish">
+    <Copy SourceFiles="wwwroot\app.ico" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="true" />
+  </Target>
 </Project>
