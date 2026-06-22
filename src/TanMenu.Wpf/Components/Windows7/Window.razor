@@ -1,0 +1,55 @@
+﻿@using Microsoft.AspNetCore.Components
+
+<div class="window glass active" style="max-width: 100%">
+    <div class="title-bar">
+        <div class="title-bar-text">@Title</div>
+      <div class="title-bar-controls">
+        <button aria-label="Minimize"></button>
+        <button aria-label="Close" @onclick="@OnCloseClick"></button>
+      </div>
+    </div>
+    <div class="window-body has-space">
+
+        @ChildContent
+    </div>
+  </div>
+
+@code {
+    [Parameter] public string Title { get; set; } = "窗口";
+    [Parameter] public bool IsActive { get; set; } = true;
+    [Parameter] public bool Maximized { get; set; } = false;
+    [Parameter] public bool Minimized { get; set; } = false;
+    [Parameter] public bool ShowStatusBar { get; set; } = false;
+    [Parameter] public string? StatusText { get; set; }
+    [Parameter] public RenderFragment? StatusContent { get; set; }
+    [Parameter] public EventCallback OnMinimizeClick { get; set; }
+    [Parameter] public EventCallback OnMaximizeClick { get; set; }
+    [Parameter] public EventCallback OnCloseClick { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private async Task OnMinimize()
+    {
+        if (OnMinimizeClick.HasDelegate)
+        {
+            Minimized = !Minimized;
+            await OnMinimizeClick.InvokeAsync();
+        }
+    }
+
+    private async Task OnMaximize()
+    {
+        if (OnMaximizeClick.HasDelegate)
+        {
+            Maximized = !Maximized;
+            await OnMaximizeClick.InvokeAsync();
+        }
+    }
+
+    private async Task OnClose()
+    {
+        if (OnCloseClick.HasDelegate)
+        {
+            await OnCloseClick.InvokeAsync();
+        }
+    }
+}

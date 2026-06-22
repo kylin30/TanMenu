@@ -1,0 +1,51 @@
+﻿@using System.Diagnostics
+@using TanMenu.Core.Services
+@inject SoundService SoundService
+
+<button class="win31-button @(Disabled ? "disabled" : "")"
+        disabled="@Disabled"
+        @onclick="OnClickHandler"
+        @onmouseenter="OnMouseEnter"
+        style="width: 100%;">
+    @if (!string.IsNullOrEmpty(IconBase64))
+    {
+        <span class="button-icon">
+            <img src="data:image/png;base64,@IconBase64" alt="" />
+        </span>
+    }
+    @if (!string.IsNullOrEmpty(Text))
+    {
+        <span class="button-text">@Text</span>
+    }
+    @ChildContent
+</button>
+
+@code {
+    [Parameter] public string? Text { get; set; }
+    [Parameter] public string? IconBase64 { get; set; }
+    [Parameter] public bool Disabled { get; set; } = false;
+    [Parameter] public EventCallback OnClick { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public bool EnableSounds { get; set; } = true;
+
+    private async Task OnClickHandler()
+    {
+        if (!Disabled && OnClick.HasDelegate)
+        {
+            if (EnableSounds)
+            {
+                _ = SoundService.PlayClickSoundAsync();
+            }
+
+            await OnClick.InvokeAsync();
+        }
+    }
+
+    private void OnMouseEnter()
+    {
+        if (!Disabled && EnableSounds)
+        {
+            _ = SoundService.PlayHoverSoundAsync();
+        }
+    }
+}

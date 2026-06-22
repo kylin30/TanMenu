@@ -1,0 +1,141 @@
+﻿@using Microsoft.AspNetCore.Components
+
+<fieldset class="modern-retro-groupbox @(Disabled ? "disabled" : "")">
+    @if (!string.IsNullOrEmpty(Title))
+    {
+        <legend class="groupbox-title @(IsClickable ? "clickable" : "")"
+                @onclick="HandleTitleClick">
+            @if (!string.IsNullOrEmpty(IconPath))
+            {
+                <img class="title-icon" src="@IconPath" alt="" onerror="this.style.display='none'" />
+            }
+            @Title
+        </legend>
+    }
+    <div class="groupbox-content">
+        @ChildContent
+    </div>
+</fieldset>
+
+@code {
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public bool Disabled { get; set; } = false;
+    [Parameter] public EventCallback OnTitleClick { get; set; }
+    [Parameter] public Action? OnTitleClickAction { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private bool IsClickable => (OnTitleClick.HasDelegate || OnTitleClickAction != null) && !Disabled;
+    private string? IconPath => !string.IsNullOrEmpty(Title) ? $"/dir/{Title}.ico" : null;
+
+    private async Task HandleTitleClick()
+    {
+        if (IsClickable)
+        {
+            if (OnTitleClick.HasDelegate)
+            {
+                await OnTitleClick.InvokeAsync();
+            }
+            else if (OnTitleClickAction != null)
+            {
+                OnTitleClickAction.Invoke();
+            }
+        }
+    }
+}
+
+<style>
+    .modern-retro-groupbox {
+        background: #f0f0f0;
+        border: 2px solid #333;
+        border-radius: 8px;
+        margin: 8px 0;
+        padding: 0;
+        position: relative;
+        width: 100%;
+        box-sizing: border-box;
+        box-shadow: inset -3px -3px 0 #ccc, 3px 3px 0 #333;
+    }
+
+        .modern-retro-groupbox.disabled {
+            background: #d0d0d0;
+            border: 2px solid #999;
+            opacity: 0.6;
+            box-shadow: inset -2px -2px 0 #aaa, 2px 2px 0 #999;
+        }
+
+    .groupbox-title {
+        background: #f0f0f0;
+        color: #333;
+        font-size: 14px;
+        font-weight: bold;
+        padding: 4px 8px;
+        margin: 0 12px;
+        border: 2px solid #333;
+        border-radius: 6px;
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        text-transform: uppercase;
+        box-shadow: inset -2px -2px 0 #ccc, 2px 2px 0 #333;
+        transition: all 0.2s ease;
+    }
+
+        .groupbox-title.clickable {
+            cursor: pointer;
+            user-select: none;
+        }
+
+            .groupbox-title.clickable:hover {
+                background: #e0ddd6;
+                box-shadow: inset -1px -1px 0 #ccc, 1px 1px 0 #333;
+            }
+
+            .groupbox-title.clickable:active {
+                background: #007acc;
+                border: 2px solid #005599;
+                color: #ffffff;
+                box-shadow: inset 2px 2px 0 #004488, inset -2px -2px 0 #0099ff;
+            }
+
+    .title-icon {
+        width: 18px;
+        height: 18px;
+        image-rendering: pixelated;
+        image-rendering: -moz-crisp-edges;
+        image-rendering: crisp-edges;
+        flex-shrink: 0;
+    }
+
+    .modern-retro-groupbox.disabled .groupbox-title {
+        color: #999;
+        border: 2px solid #999;
+        box-shadow: inset -2px -2px 0 #aaa, 2px 2px 0 #999;
+    }
+
+        .modern-retro-groupbox.disabled .groupbox-title.clickable {
+            cursor: default;
+        }
+
+    .modern-retro-groupbox.disabled .title-icon {
+        opacity: 0.5;
+        filter: grayscale(100%);
+    }
+
+    .groupbox-content {
+        padding: 12px;
+        background: transparent;
+    }
+
+    .modern-retro-groupbox.disabled .groupbox-content {
+        opacity: 0.7;
+    }
+
+        .modern-retro-groupbox.disabled .groupbox-content * {
+            pointer-events: none;
+        }
+
+    .groupbox-title.clickable:active .title-icon {
+        filter: brightness(0) invert(1);
+    }
+</style>

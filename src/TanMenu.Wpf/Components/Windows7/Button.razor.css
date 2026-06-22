@@ -1,0 +1,15 @@
+.button-body
+{
+    font-family: "Pixelated MS Sans Serif";
+    font-size:16px;
+    padding:4px;
+    display:flex;
+    align-items:center;
+    justify-content:start;
+}
+
+    .button-body .button-icon {
+        width: 24px;
+        height: 24px;
+        margin-right:8px
+    }

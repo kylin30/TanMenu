@@ -1,0 +1,317 @@
+﻿@using Microsoft.AspNetCore.Components
+
+<div class="modern-retro-window @(Maximized ? "maximized" : "") @(Minimized ? "minimized" : "")">
+
+    <!-- 窗口标题栏 -->
+    <div class="window-titlebar @(IsActive ? "active" : "inactive")">
+        <img class="window-icon" src="/app.ico" alt="" onerror="this.style.display='none'" />
+        <span class="window-title">@Title</span>
+        <div class="window-controls">
+            @if (OnMinimizeClick.HasDelegate)
+            {
+                <button class="control-button minimize" @onclick="OnMinimize" title="最小化">
+                    <div class="minimize-icon"></div>
+                </button>
+            }
+            @if (OnMaximizeClick.HasDelegate)
+            {
+                <button class="control-button maximize" @onclick="OnMaximize" title="@(Maximized ? "还原" : "最大化")">
+                    <div class="maximize-icon @(Maximized ? "restore" : "")"></div>
+                </button>
+            }
+            @if (OnCloseClick.HasDelegate)
+            {
+                <button class="control-button close" @onclick="OnClose" title="关闭">
+                    <div class="close-icon"></div>
+                </button>
+            }
+        </div>
+    </div>
+
+    @if (!Minimized)
+    {
+        <!-- 窗口内容区域 -->
+        <div class="window-content">
+            @ChildContent
+        </div>
+
+        @if (ShowStatusBar)
+        {
+            <!-- 状态栏 -->
+            <div class="window-statusbar">
+                @if (StatusContent != null)
+                {
+                    @StatusContent
+                }
+                else
+                {
+                    <span>@StatusText</span>
+                }
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; } = "窗口";
+    [Parameter] public bool IsActive { get; set; } = true;
+    [Parameter] public bool Maximized { get; set; } = false;
+    [Parameter] public bool Minimized { get; set; } = false;
+    [Parameter] public bool ShowStatusBar { get; set; } = false;
+    [Parameter] public string? StatusText { get; set; }
+    [Parameter] public RenderFragment? StatusContent { get; set; }
+    [Parameter] public EventCallback OnMinimizeClick { get; set; }
+    [Parameter] public EventCallback OnMaximizeClick { get; set; }
+    [Parameter] public EventCallback OnCloseClick { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private async Task OnMinimize()
+    {
+        if (OnMinimizeClick.HasDelegate)
+        {
+            Minimized = !Minimized;
+            await OnMinimizeClick.InvokeAsync();
+        }
+    }
+
+    private async Task OnMaximize()
+    {
+        if (OnMaximizeClick.HasDelegate)
+        {
+            Maximized = !Maximized;
+            await OnMaximizeClick.InvokeAsync();
+        }
+    }
+
+    private async Task OnClose()
+    {
+        if (OnCloseClick.HasDelegate)
+        {
+            await OnCloseClick.InvokeAsync();
+        }
+    }
+}
+
+<style>
+    .modern-retro-window {
+        width: 100%;
+        height: 100%;
+        background: #f0f0f0;
+        font-size: 14px;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        border: 2px solid #333;
+        box-shadow: inset -3px -3px 0 #ccc, 3px 3px 0 #333;
+        transition: all 0.3s ease;
+    }
+
+        .modern-retro-window.maximized {
+            box-shadow: inset -2px -2px 0 #ccc, 2px 2px 0 #333;
+        }
+
+        .modern-retro-window.minimized {
+            height: auto !important;
+            min-height: auto;
+        }
+
+    .window-titlebar {
+        display: flex;
+        align-items: center;
+        padding: 8px 12px;
+        height: 42px;
+        border-bottom: 2px solid #333;
+        user-select: none;
+        cursor: move;
+        flex-shrink: 0;
+        font-weight: bold;
+        transition: all 0.3s ease;
+    }
+
+        .window-titlebar.active {
+            background: #007acc;
+            color: #ffffff;
+            box-shadow: inset -2px -2px 0 #0066aa, inset 2px 2px 0 #0099ff;
+        }
+
+        .window-titlebar.inactive {
+            background: #999;
+            color: #ddd;
+            box-shadow: inset -2px -2px 0 #777, inset 2px 2px 0 #bbb;
+        }
+
+    .window-icon {
+        width: 24px;
+        height: 24px;
+        margin-right: 10px;
+        image-rendering: pixelated;
+        image-rendering: -moz-crisp-edges;
+        image-rendering: crisp-edges;
+    }
+
+    .window-title {
+        flex: 1;
+        font-weight: bold;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-size: 16px;
+        text-transform: uppercase;
+    }
+
+    .window-controls {
+        display: flex;
+        gap: 4px;
+        flex-shrink: 0;
+    }
+
+    .control-button {
+        width: 24px;
+        height: 22px;
+        background: #f0f0f0;
+        color: #333;
+        border: 2px solid #333;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        box-shadow: inset -2px -2px 0 #ccc, 2px 2px 0 #333;
+        transition: all 0.2s ease;
+    }
+
+        .control-button:hover {
+            background: #e0ddd6;
+            box-shadow: inset -1px -1px 0 #ccc, 1px 1px 0 #333;
+        }
+
+        .control-button:active {
+            background: #007acc;
+            color: #ffffff;
+            box-shadow: inset 2px 2px 0 #004488, inset -2px -2px 0 #0099ff;
+        }
+
+        .control-button.close {
+            background: #ff4444;
+            color: #ffffff;
+        }
+
+            .control-button.close:hover {
+                background: #ff6666;
+            }
+
+            .control-button.close:active {
+                background: #cc0000;
+                box-shadow: inset 2px 2px 0 #880000, inset -2px -2px 0 #ff8888;
+            }
+
+    .minimize-icon {
+        width: 8px;
+        height: 2px;
+        background: currentColor;
+    }
+
+    .maximize-icon {
+        width: 8px;
+        height: 8px;
+        border: 2px solid currentColor;
+        border-bottom-width: 3px;
+        background: transparent;
+        position: relative;
+    }
+
+        .maximize-icon.restore {
+            width: 7px;
+            height: 7px;
+            border-width: 1px;
+            border-bottom-width: 2px;
+        }
+
+            .maximize-icon.restore::before {
+                content: '';
+                position: absolute;
+                top: -2px;
+                right: -2px;
+                width: 7px;
+                height: 7px;
+                border: 1px solid currentColor;
+                border-bottom-width: 2px;
+                background: #f0f0f0;
+            }
+
+    .close-icon {
+        width: 8px;
+        height: 8px;
+        position: relative;
+    }
+
+        .close-icon::before,
+        .close-icon::after {
+            content: '';
+            position: absolute;
+            width: 10px;
+            height: 2px;
+            background: currentColor;
+            top: 3px;
+            left: -1px;
+        }
+
+        .close-icon::before {
+            transform: rotate(45deg);
+        }
+
+        .close-icon::after {
+            transform: rotate(-45deg);
+        }
+
+    .window-content {
+        flex: 1;
+        padding: 12px;
+        background: #f0f0f0;
+        overflow: auto;
+        min-height: 0;
+    }
+
+    .window-statusbar {
+        height: 28px;
+        background: #f0f0f0;
+        border-top: 2px solid #333;
+        display: flex;
+        align-items: center;
+        padding: 0 12px;
+        font-size: 12px;
+        flex-shrink: 0;
+        box-shadow: inset 2px 2px 0 #ccc, inset -2px -2px 0 #e8e8e8;
+        font-weight: normal;
+    }
+
+    .window-content::-webkit-scrollbar {
+        width: 12px;
+        height: 12px;
+    }
+
+    .window-content::-webkit-scrollbar-track {
+        background: #f0f0f0;
+        border: 1px solid #333;
+        box-shadow: inset 1px 1px 0 #ccc;
+    }
+
+    .window-content::-webkit-scrollbar-thumb {
+        background: #d0d0d0;
+        border: 1px solid #333;
+        box-shadow: inset -1px -1px 0 #bbb, inset 1px 1px 0 #eee;
+    }
+
+        .window-content::-webkit-scrollbar-thumb:hover {
+            background: #c0c0c0;
+        }
+
+        .window-content::-webkit-scrollbar-thumb:active {
+            background: #007acc;
+            box-shadow: inset 1px 1px 0 #004488, inset -1px -1px 0 #0099ff;
+        }
+
+    .window-content::-webkit-scrollbar-corner {
+        background: #f0f0f0;
+    }
+</style>

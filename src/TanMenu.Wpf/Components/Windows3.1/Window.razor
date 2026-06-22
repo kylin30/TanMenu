@@ -1,0 +1,93 @@
+﻿@using Microsoft.AspNetCore.Components
+
+<div class="win31-window @(Maximized ? "maximized" : "") @(Minimized ? "minimized" : "")">
+
+    <!-- 窗口标题栏 -->
+    <div class="window-titlebar @(IsActive ? "active" : "inactive")">
+        <img class="window-icon" src="/app.ico" alt="" onerror="this.style.display='none'" />
+        <span class="window-title">@Title</span>
+        <div class="window-controls">
+            @if (OnMinimizeClick.HasDelegate)
+            {
+                <button class="control-button minimize" @onclick="OnMinimize" title="最小化">
+                    <div class="minimize-icon"></div>
+                </button>
+            }
+            @if (OnMaximizeClick.HasDelegate)
+            {
+                <button class="control-button maximize" @onclick="OnMaximize" title="@(Maximized ? "还原" : "最大化")">
+                    <div class="maximize-icon @(Maximized ? "restore" : "")"></div>
+                </button>
+            }
+            @if (OnCloseClick.HasDelegate)
+            {
+                <button class="control-button close" @onclick="OnClose" title="关闭">
+                    <div class="close-icon"></div>
+                </button>
+            }
+        </div>
+    </div>
+
+    @if (!Minimized)
+    {
+        <!-- 窗口内容区域 -->
+        <div class="window-content">
+            @ChildContent
+        </div>
+
+        @if (ShowStatusBar)
+        {
+            <!-- 状态栏 -->
+            <div class="window-statusbar">
+                @if (StatusContent != null)
+                {
+                    @StatusContent
+                }
+                else
+                {
+                    <span>@StatusText</span>
+                }
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; } = "窗口";
+    [Parameter] public bool IsActive { get; set; } = true;
+    [Parameter] public bool Maximized { get; set; } = false;
+    [Parameter] public bool Minimized { get; set; } = false;
+    [Parameter] public bool ShowStatusBar { get; set; } = false;
+    [Parameter] public string? StatusText { get; set; }
+    [Parameter] public RenderFragment? StatusContent { get; set; }
+    [Parameter] public EventCallback OnMinimizeClick { get; set; }
+    [Parameter] public EventCallback OnMaximizeClick { get; set; }
+    [Parameter] public EventCallback OnCloseClick { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private async Task OnMinimize()
+    {
+        if (OnMinimizeClick.HasDelegate)
+        {
+            Minimized = !Minimized;
+            await OnMinimizeClick.InvokeAsync();
+        }
+    }
+
+    private async Task OnMaximize()
+    {
+        if (OnMaximizeClick.HasDelegate)
+        {
+            Maximized = !Maximized;
+            await OnMaximizeClick.InvokeAsync();
+        }
+    }
+
+    private async Task OnClose()
+    {
+        if (OnCloseClick.HasDelegate)
+        {
+            await OnCloseClick.InvokeAsync();
+        }
+    }
+}

@@ -1,0 +1,100 @@
+
+.win31-groupbox {
+    /* 基础样式 - 与按钮相同的浅色调 */
+    background: #d4d0c8;
+    border: 0;
+    margin: 8px 0;
+    padding: 0;
+    position: relative;
+    width: 100%;
+    box-sizing: border-box;
+    /* Win 3.1 特有的凹陷效果 */
+    border: 1px solid #000000;
+    box-shadow:
+    /* 外层凹陷效果 (与按钮相反) */
+    -1px -1px 0 #808080, /* 左上暗边 */
+    1px 1px 0 #ffffff, /* 右下亮边 */
+    /* 内层细节 */
+    inset 1px 1px 0 #a0a0a0, inset -1px -1px 0 #f8f8f8;
+}
+
+.win31-groupbox.disabled {
+    background: #d4d0c8;
+    border: 1px solid #a0a0a0;
+    box-shadow: -1px -1px 0 #b0b0b0, 1px 1px 0 #f0f0f0, inset 1px 1px 0 #b8b8b8, inset -1px -1px 0 #e8e8e8;
+}
+
+.groupbox-title {
+    /* Win 3.1 标题样式 */
+    background: #d4d0c8;
+    color: #000000;
+    font-size: 12px;
+    font-weight: normal;
+    padding: 2px 6px;
+    margin: 0 8px;
+    border: 0;
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    /* 标题的3D效果 - 去掉上左外阴影 */
+    border: 1px solid #000000;
+    box-shadow:
+    /* 只保留右下外阴影和内阴影 */
+    1px 1px 0 #808080, inset 1px 1px 0 #f8f8f8, inset -1px -1px 0 #a0a0a0;
+}
+
+    .groupbox-title.clickable {
+        cursor: pointer;
+        user-select: none;
+    }
+
+        .groupbox-title.clickable:hover {
+            background: #e0ddd6;
+            box-shadow: 1px 1px 0 #808080, inset 1px 1px 0 #ffffff, inset -1px -1px 0 #a0a0a0;
+        }
+
+        .groupbox-title.clickable:active {
+            background: #c8c4bd;
+            box-shadow: 1px 1px 0 #ffffff, inset 1px 1px 0 #a0a0a0, inset -1px -1px 0 #f8f8f8;
+            transform: translate(1px, 1px);
+        }
+
+.title-icon {
+    width: 16px;
+    height: 16px;
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
+    flex-shrink: 0;
+}
+
+.win31-groupbox.disabled .groupbox-title {
+    color: #a0a0a0;
+    border: 1px solid #a0a0a0;
+    box-shadow: 1px 1px 0 #b0b0b0, inset 1px 1px 0 #e8e8e8, inset -1px -1px 0 #b8b8b8;
+}
+
+    .win31-groupbox.disabled .groupbox-title.clickable {
+        cursor: default;
+    }
+
+.win31-groupbox.disabled .title-icon {
+    opacity: 0.5;
+    filter: contrast(50%);
+}
+
+.groupbox-content {
+    padding: 10px;
+    background: transparent;
+}
+
+/* 确保内容元素正常显示 */
+.win31-groupbox.disabled .groupbox-content {
+    opacity: 0.7;
+}
+
+    /* 如果groupbox被禁用，内部的按钮也应该被禁用样式影响 */
+    .win31-groupbox.disabled .groupbox-content * {
+        pointer-events: none;
+    }

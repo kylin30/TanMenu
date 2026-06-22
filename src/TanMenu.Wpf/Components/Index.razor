@@ -1,0 +1,78 @@
+@using TanMenu.Wpf.Services
+@using TanMenu.Wpf.ViewModels
+@using TanMenu.Core.Services
+@using TanMenu.Core.Models
+@inject MenuService MenuService
+@inject ConfigService ConfigService
+@inject IWindowHost WindowHost
+@inject ILaunchService LaunchService
+@inject Microsoft.Extensions.Logging.ILogger<Index> Logger
+
+<div class="body">
+    <TanMenu.Wpf.Components.Windows3_1.Window OnCloseClick="@HandleClose" Title="TanMenu">
+        <div id="form-content">
+            @if (_groups.Count > 0)
+            {
+                <div class="flex items-start gap-2">
+                    @foreach (var g in _groups)
+                    {
+                        <TanMenu.Wpf.Components.Windows3_1.Groupbox Title="@g.DirectoryName"
+                            OnTitleClickAction="@(() => LaunchService.OpenFolder(g.Directory))">
+                            <div class="flex items-start gap-1">
+                                @foreach (var col in g.Items.Chunk(_cfg.General.ColButtonCount))
+                                {
+                                    <div>
+                                        @foreach (var item in col)
+                                        {
+                                            <div class="mb-1 flex-shrink-0">
+                                                <TanMenu.Wpf.Components.Windows3_1.Button
+                                                    Text="@item.Name"
+                                                    IconBase64="@item.IconBase64"
+                                                    Disabled="@item.IsDisabled"
+                                                    OnClick="@(() => AppRun(item))" />
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </TanMenu.Wpf.Components.Windows3_1.Groupbox>
+                    }
+                </div>
+            }
+            else
+            {
+                <SplashScreen/>
+            }
+        </div>
+    </TanMenu.Wpf.Components.Windows3_1.Window>
+</div>
+
+@code {
+    private List<MenuGroupVm> _groups = new();
+    private AppConfig _cfg = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _cfg = ConfigService.Config;
+        _groups = await MenuService.GetMenuAsync(_cfg.Folders);
+        Logger.LogInformation("Index loaded {Count} groups", _groups.Count);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && _groups.Count > 0)
+        {
+            await Task.Delay(100);
+            await WindowHost.ResizeToContentAndPlaceAsync();
+        }
+    }
+
+    private void AppRun(MenuItemVm item)
+    {
+        LaunchService.Launch(item.FullPath);
+        WindowHost.Hide();
+    }
+
+    // Close button hides to tray; explicit exit is via the tray menu (M4).
+    private void HandleClose() => WindowHost.Hide();
+}
