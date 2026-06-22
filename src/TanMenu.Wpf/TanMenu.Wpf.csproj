@@ -10,6 +10,10 @@
     <RootNamespace>TanMenu.Wpf</RootNamespace>
     <AssemblyName>TanMenu.Wpf</AssemblyName>
     <ApplicationIcon>wwwroot\app.ico</ApplicationIcon>
+    <Product>TanMenu</Product>
+    <Company>TanSoft</Company>
+    <Authors>TanSoft</Authors>
+    <Copyright>© TanSoft. All rights reserved.</Copyright>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Wpf" Version="10.0.71" />
