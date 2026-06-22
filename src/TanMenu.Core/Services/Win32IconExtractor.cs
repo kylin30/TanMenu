@@ -69,13 +69,7 @@ public static class Win32IconExtractor
             if (result == IntPtr.Zero) return null;
 
             hIcon = shfi.hIcon;
-            if (hIcon == IntPtr.Zero) return null;
-
-            using var icon = Icon.FromHandle(hIcon);
-            using var bitmap = icon.ToBitmap();
-            using var stream = new MemoryStream();
-            bitmap.Save(stream, ImageFormat.Png);
-            return stream.ToArray();
+            return HIconToPngBytes(hIcon);
         }
         catch
         {
@@ -85,6 +79,17 @@ public static class Win32IconExtractor
         {
             if (hIcon != IntPtr.Zero) DestroyIcon(hIcon);
         }
+    }
+
+    /// <summary>Encode an HICON (which the caller still owns and must DestroyIcon) to PNG bytes.</summary>
+    private static byte[]? HIconToPngBytes(IntPtr hIcon)
+    {
+        if (hIcon == IntPtr.Zero) return null;
+        using var icon = Icon.FromHandle(hIcon); // does not take ownership of hIcon
+        using var bitmap = icon.ToBitmap();
+        using var stream = new MemoryStream();
+        bitmap.Save(stream, ImageFormat.Png);
+        return stream.ToArray();
     }
 
     /// <summary>The Windows stock "application" icon (the generic icon shown for executables that
@@ -100,13 +105,7 @@ public static class Win32IconExtractor
             if (hr != 0) return null;
 
             hIcon = sii.hIcon;
-            if (hIcon == IntPtr.Zero) return null;
-
-            using var icon = Icon.FromHandle(hIcon);
-            using var bitmap = icon.ToBitmap();
-            using var stream = new MemoryStream();
-            bitmap.Save(stream, ImageFormat.Png);
-            return stream.ToArray();
+            return HIconToPngBytes(hIcon);
         }
         catch
         {

@@ -19,9 +19,9 @@ public sealed class MenuService
     /// Windows stock application icon, or the bundled flat-file icon if that can't be obtained.</summary>
     private readonly Lazy<string> _fallbackIcon;
 
-    /// <summary>Flat pixel "generic file" icon (48×48 PNG, base64) used when an item has no
-    /// extractable icon — i.e. invalid/broken shortcuts (IsDisabled, no IconKey) or rare
-    /// extraction failures — so every button still shows an icon.</summary>
+    /// <summary>Last-resort bundled fallback icon (flat "generic file" 48×48 PNG, base64), used only
+    /// when the Windows stock application icon (the primary no-icon fallback, see <see cref="_fallbackIcon"/>)
+    /// can't be obtained.</summary>
     private const string DefaultIconBase64 =
         "iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAAFiUAABYlAUlSJPAAAACrSURBVGhD7dM7DsMgFERRL5s1sRLWRJNUbkYkT9jv40T3StMCp+A4iIh+ptba6+70zNT0MVen56Z1PmDOeXmlCA/AGKMO4QUoQ3gCShDegHREBCAVEQVIQ3gAvi0cAcAYAKu/BPTebw3ATiuA5wBYATBWAtBPuTsAO60AngNgBcBYCUA/5e4A7LQCeA6AFQBjJQD9lJ+mj10NgNV5QfT0Xrf0oqjpvUREz+0N2/Xp7Z0GKaEAAAAASUVORK5CYII=";
 

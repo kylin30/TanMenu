@@ -347,8 +347,12 @@ public partial class SettingsWindow : Window
         if (dlg.ShowDialog() != true)
             return;
 
-        // Don't lose staged edits: apply them first so they end up in the moved data.
-        if (_dirty)
+        // If the target already has a config, switching ADOPTS that config — any unapplied staged
+        // edits are dropped (like 取消). Only when we'll MOVE the current data do we apply staged
+        // edits first, so they travel with the moved config instead of being orphaned in the old
+        // folder. (This matches DataLocation.Relocate's usedExisting test.)
+        var targetHasData = File.Exists(Path.Combine(dlg.FolderName, "config.json"));
+        if (_dirty && !targetHasData)
             await CommitAsync();
 
         bool changed;
