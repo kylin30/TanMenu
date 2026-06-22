@@ -72,6 +72,37 @@ public partial class SettingsWindow : Window
         catch { /* icon optional */ }
 
         LoadFromConfig();
+
+        // Position above the launcher once measured (SizeToContent=Height), then reveal — so the
+        // bottom-center, top-most launcher never covers the settings content.
+        Loaded += (_, _) => PositionAboveLauncher();
+    }
+
+    private void PositionAboveLauncher()
+    {
+        try
+        {
+            var wa = SystemParameters.WorkArea;
+            double w = ActualWidth, h = ActualHeight;
+            var launcher = Application.Current.Windows.OfType<MainWindow>().FirstOrDefault();
+
+            double left, top;
+            if (launcher is { ActualWidth: > 0 } && launcher.IsVisible)
+            {
+                left = launcher.Left + (launcher.Width - w) / 2; // centered over the launcher
+                top = launcher.Top - h - 12;                      // directly above it
+            }
+            else
+            {
+                left = wa.Left + (wa.Width - w) / 2;              // fallback: upper-center
+                top = wa.Top + 40;
+            }
+
+            Left = Math.Max(wa.Left, Math.Min(left, wa.Right - w));
+            Top = Math.Max(wa.Top, Math.Min(top, wa.Bottom - h));
+        }
+        catch { /* keep default position */ }
+        finally { Opacity = 1; }
     }
 
     private void LoadFromConfig()

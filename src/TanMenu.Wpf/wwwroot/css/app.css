@@ -112,6 +112,27 @@ a, .btn-link {
     margin-right: 5px;
 }
 
+/* Clickable group titles open the folder. Show a folder icon before the title that turns into
+   an OPEN folder on hover (+ pointer cursor + underline) to hint it's clickable. */
+.groupbox-title.clickable {
+    cursor: pointer;
+}
+.groupbox-title.clickable::before {
+    content: "";
+    display: inline-block;
+    width: 18px;
+    height: 15px;
+    margin-right: 5px;
+    vertical-align: -3px;
+    background: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAgCAYAAABgrToAAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAAFiUAABYlAUlSJPAAAACDSURBVFhH7ZLLCYAwEAVThp9WrMRKFLEhT4q2YQVe7cACIi/HBcHkGby8gTktu5lDnBNCxLEO1TF3hY8Ve/ZWFvDYOTXRYs/eyoICGbaxTvp/X4sO2xbA0O/t76LDtgUU+FIFsiqQVYGsCmRVIKsCWRXIqkDWx8ClLy8M/xYdtk2kcgNbFUILMeUQNgAAAABJRU5ErkJggg==") no-repeat center / contain;
+}
+.groupbox-title.clickable:hover::before {
+    background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAgCAYAAABgrToAAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAAFiUAABYlAUlSJPAAAAGQSURBVFhHY2AYBaNgFJAGNldL3d5QIfGfVAzSh24WTQDIsierbEjGIH3oZtEEjDqQEkBu+qM2xpmeQZLoITMQGOQOdLeBwagDicSjDqQUk+TAxyut/+9uVcbIafTAW+vkLxN04Nmpev8vLXb7//9eO13xrfWhv7fVK87C68AHSy3+725R+f/rRiOGAbTEP67U/N9er/Bqfb28AF4Hnpio/f/2hjAMA2iNLyx0+b+pVqYExXHoDry10Oz/3k5NDM20xh9OF4PSHuFMcrBT/f/LgxkYBtAaH51oBM4g6G4DA5gDL882/H98mjmGZlrjZ/tS/x/q1sDvQFCxsqdN9f/nc2UYBtAS/73d8n9vh8b/O4vM8TtwoIoVUGYEZUpQDOJ14EAVK7ublf8/XG6F34Gba2UHpFgBxRgo5mAZFKsD11dJGexqU8fQTGsMKlZ2t6qglL9YHbi9QeH4QBUr1+YY4Xfg+krJgKOTzT+ga6Y1hhUryI7D6sBN1dJnQIL0xpuqpTHEQHhjpeRnFAeOAgoAADyNRwcJCwO1AAAAAElFTkSuQmCC") no-repeat center / contain;
+}
+.groupbox-title.clickable:hover {
+    text-decoration: underline;
+}
+
 /* ============================================================
    Top MainMenu — mimics a native Windows menu bar.
    Theme-aware via the .theme-win98 / .theme-winxp / .theme-win7
