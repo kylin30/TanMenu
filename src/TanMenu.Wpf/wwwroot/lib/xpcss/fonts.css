@@ -1,0 +1,22 @@
+/*
+ * Local substitute for botoxparty 98.css's bundled "Pixelated MS Sans Serif" fonts.
+ * Those .woff/.woff2 files ship next to the upstream 98.css but could not be vendored here
+ * (binary assets, offline). 98.css's own @font-face therefore 404s and the 98/XP UI would
+ * fall back to Arial. This file is linked AFTER 98.css so its @font-face takes precedence,
+ * remapping the family to the already-vendored fusion-pixel font — a true pixel font that,
+ * unlike the Latin-only MS Sans Serif bitmap, also covers the app's Chinese labels.
+ */
+@font-face {
+  font-family: "Pixelated MS Sans Serif";
+  src: url("../../fonts/fusion-pixel-12px-monospaced-zh_hans.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Pixelated MS Sans Serif";
+  src: url("../../fonts/fusion-pixel-12px-monospaced-zh_hans.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}

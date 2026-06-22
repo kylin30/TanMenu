@@ -29,11 +29,12 @@
     [Parameter] public EventCallback OnCloseClick { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
+    // fonts.css is linked AFTER 98.css so its @font-face overrides 98.css's unresolved one.
     private string[] Stylesheets => Theme switch
     {
         "Win7" => new[] { "/lib/win7theme/7.css" },
-        "WinXP" => new[] { "/lib/xpcss/98.css", "/lib/xpcss/xp-luna.css" },
-        _ => new[] { "/lib/xpcss/98.css" },
+        "WinXP" => new[] { "/lib/xpcss/98.css", "/lib/xpcss/fonts.css", "/lib/xpcss/xp-luna.css" },
+        _ => new[] { "/lib/xpcss/98.css", "/lib/xpcss/fonts.css" },
     };
 
     // 7.css needs the aero "glass" class; 98/XP do not.

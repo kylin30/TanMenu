@@ -73,6 +73,15 @@ a, .btn-link {
     top: 0.5rem;
 }
 
+/* Win98 disabled launcher buttons: 98.css's only :disabled rule is a dropped Sass artifact
+   ("&:disabled"), so without this, disabled buttons keep full enabled styling under Win98.
+   (WinXP gets this from xp-luna.css; Win7 from 7.css.) */
+.theme-win98 .window-body button:disabled,
+.theme-win98 .window-body button.disabled {
+    color: grey;
+    text-shadow: 1px 1px 0 #fff;
+}
+
 /* App icon shown in the retro title bar (all themes). */
 .title-bar-icon {
     width: 16px;

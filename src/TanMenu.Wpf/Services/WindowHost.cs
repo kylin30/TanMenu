@@ -42,15 +42,16 @@ public sealed class WindowHost : IWindowHost
             return;
 
         // #form-content is inline-block (natural content size) but excludes the retro window's
-        // titlebar/borders. The outer .win31-window is width:100% (reflects the viewport, not its
-        // natural size). So measure #form-content's NATURAL size, then add the chrome around it,
-        // derived from form-content's offset inside .win31-window (titlebar+border on top/left,
-        // assumed symmetric on right/bottom). Yields the natural full-window size → no scrollbar.
+        // titlebar/borders. The outer .window (RetroWindow's root, present in all themes) is
+        // width:100% (reflects the viewport, not its natural size). So measure #form-content's
+        // NATURAL size, then add the chrome around it, derived from form-content's offset inside
+        // .window (titlebar+border on top/left, assumed symmetric on right/bottom). Yields the
+        // natural full-window size → no scrollbar.
         const string js =
             "(function(){var fc=document.querySelector('#form-content');" +
             "if(!fc)return '{\"width\":0,\"height\":0}';" +
             "var fr=fc.getBoundingClientRect();var lc=fr.left,tc=fr.top;" +
-            "var win=document.querySelector('.win31-window');" +
+            "var win=document.querySelector('.window');" +
             "if(win){var wr=win.getBoundingClientRect();lc=fr.left-wr.left;tc=fr.top-wr.top;}" +
             "return JSON.stringify({width:Math.ceil(fr.width+lc*2),height:Math.ceil(fr.height+tc+lc)});})()";
 
