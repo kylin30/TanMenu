@@ -45,7 +45,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            Serilog.Log.Error(ex, "Failed to initialize tray/hotkey");
+            Serilog.Log.Error(ex, "Failed to initialize tray");
         }
     }
 

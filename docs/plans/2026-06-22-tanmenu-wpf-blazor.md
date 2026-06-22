@@ -1,5 +1,13 @@
 # TanMenu WPF + WindowChrome + BlazorWebView Implementation Plan
 
+> ⚠️ **SUPERSEDED / HISTORICAL.** This plan captures the original M1–M5 design and is **not** the
+> current state. Later rounds changed things this doc still describes as planned — notably: the
+> **global Alt+Space hotkey was removed** (recall is tray-only; `HotkeyService` deleted); the retro
+> theme set is now **Windows 98 / XP / 7** (not Win3.1/Win7/ModernRetro) via one shared `Retro`
+> component set; the default data folder moved to **`Documents\TanMenu`**; settings is a **native
+> WPF window** (root-folder model, theme + font); and `ColButtonCount` defaults to **10**. **Treat
+> the code (and the project memory / git log) as authoritative** where they diverge from this plan.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Re-host TanMenu's existing retro Blazor UI in a native WPF shell (WindowChrome + WPF BlazorWebView) as a new standalone repo, reusing the already-tested `TanMenu.Core`, achieving original-launcher parity plus recall (tray / Alt+Space hotkey / autostart / settings), built Store-ready but shipped first as a self-contained EXE.

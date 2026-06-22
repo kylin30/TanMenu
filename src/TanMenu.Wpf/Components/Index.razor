@@ -14,7 +14,7 @@
 @inject Microsoft.Extensions.Logging.ILogger<Index> Logger
 
 <div class="body theme-@ThemeClass">
-    @if (!string.IsNullOrWhiteSpace(_cfg.General.FontFamily))
+    @if (!string.IsNullOrEmpty(SafeFont))
     {
         <style>
             .body .window,
@@ -23,7 +23,7 @@
             .body .window legend,
             .body .title-bar-text,
             .body .tm-menubar {
-                font-family: "@_cfg.General.FontFamily", sans-serif !important;
+                font-family: "@SafeFont", sans-serif !important;
             }
         </style>
     }
@@ -76,6 +76,10 @@
     private List<MenuGroupVm> _groups = new();
     private AppConfig _cfg = new();
     private string _theme = "Win98";
+
+    /// <summary>Sanitized font family — safe to inline into the &lt;style&gt; block (the stored
+    /// value is user free-text, so strip any CSS-breaking characters before rendering).</summary>
+    private string SafeFont => FontUtil.Sanitize(_cfg.General.FontFamily);
 
     protected override async Task OnInitializedAsync()
     {

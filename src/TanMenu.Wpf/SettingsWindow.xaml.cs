@@ -24,12 +24,13 @@ public partial class SettingsWindow : Window
     private const string DefaultFontLabel = "默认（主题字体）";
 
     // Suggested fonts (the combo is editable, so any installed family can also be typed).
-    // "Pixel" and "Press Start 2P" are bundled via app.css @font-face (always available).
+    // "Pixel" (fusion-pixel) is bundled via app.css @font-face and covers Chinese; the other
+    // entries are common system fonts. (Press Start 2P is omitted — it's Latin-only and would
+    // leave the app's Chinese labels in a mismatched fallback.)
     private static readonly string[] FontPresets =
     {
         DefaultFontLabel,
         "Pixel",
-        "Press Start 2P",
         "Microsoft YaHei",
         "SimSun",
         "SimHei",
@@ -122,6 +123,7 @@ public partial class SettingsWindow : Window
         var text = (FontCombo.Text ?? string.Empty).Trim();
         if (text == DefaultFontLabel)
             text = string.Empty;
+        text = FontUtil.Sanitize(text); // user free-text → strip CSS-breaking characters
         if (text == _config.Config.General.FontFamily)
             return; // no change
         _config.Config.General.FontFamily = text;

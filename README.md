@@ -2,7 +2,7 @@
 
 A retro-styled Windows desktop launcher: a borderless, content-sized popup that sits
 bottom-center above the taskbar, scans configured folders for apps / `.lnk` shortcuts,
-and launches them. Recall it any time with **Alt+Space** or the system-tray icon.
+and launches them. Recall it any time from the system-tray icon.
 
 This is the WPF host rewrite of the original WinForms+BlazorWebView TanMenu — it keeps the
 existing retro HTML/CSS UI (rendered in a `BlazorWebView`) and hosts it in a native WPF
@@ -13,7 +13,7 @@ existing retro HTML/CSS UI (rendered in a `BlazorWebView`) and hosts it in a nat
 - **`src/TanMenu.Core`** — framework-agnostic, unit-tested logic: config, folder scanning,
   `.lnk` resolution, Win32 icon extraction (→ PNG bytes), launching, sounds, AppData paths.
 - **`src/TanMenu.Wpf`** — WPF host (`WindowChrome` + `BlazorWebView`), the ported retro Blazor
-  UI, and native services (tray, global hotkey, single instance, autostart, window placement).
+  UI, and native services (tray, single instance, autostart, window placement).
 - **`tests/TanMenu.Core.Tests`** — xUnit (32 tests).
 
 Tech: .NET 10 (`net10.0-windows10.0.19041.0`, x64), WPF, `Microsoft.AspNetCore.Components.WebView.Wpf`,
@@ -21,12 +21,14 @@ Tech: .NET 10 (`net10.0-windows10.0.19041.0`, x64), WPF, `Microsoft.AspNetCore.C
 
 ## Features
 
-- Retro Win3.1-style UI (transparent `WindowChrome` window, CSS-drawn frame).
+- Retro **Windows 98 / XP / 7** themed UI (transparent `WindowChrome` window, CSS-drawn frame),
+  switchable at runtime; invalid shortcuts still get a default icon.
 - Folder scanning + `.lnk` resolution + real Win32 icon extraction.
 - Content-sized window, bottom-center above the taskbar, hide-on-blur.
-- Recall: **Alt+Space** global hotkey, system tray (left-click toggle, 显示/退出 menu), single instance.
+- Recall: system tray (left-click toggle, 显示/退出 menu), single instance.
 - Optional **autostart** (per-user registry Run entry).
-- In-app **settings** (Blazor): add/remove folders, columns per group, AutoClose/TopMost/ShowInTaskbar, autostart.
+- Native **settings** window grouped by function: root folder, theme, font, columns per group,
+  AutoClose/TopMost/ShowInTaskbar, autostart, and a relocatable data folder.
 
 ## Build & run (dev)
 
@@ -48,9 +50,10 @@ dotnet publish src\TanMenu.Wpf\TanMenu.Wpf.csproj -c Release /p:PublishProfile=w
 
 ## Data location
 
-All writable data lives under `%LOCALAPPDATA%\TanMenu`:
-- `config.json` (folders + options)
-- `cache\` (link/icon caches), `logs\` (Serilog daily logs)
+All writable data lives under `Documents\TanMenu` by default (relocatable in settings; data
+pre-dating this default is migrated from the old `%LOCALAPPDATA%\TanMenu` on first run):
+- `config.json` (root folder + options)
+- `cache\` (link/icon caches), `cache\logs\` (Serilog daily logs)
 
 Nothing is written next to the EXE (install-dir-safe; ready for MSIX). See
 [`docs/msix-readiness.md`](docs/msix-readiness.md) for the path to a Store MSIX build (deferred).
