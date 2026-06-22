@@ -41,7 +41,7 @@ public sealed class WindowHost : IWindowHost
         if (_window is null || _web?.CoreWebView2 is null)
             return;
 
-        // #form-content is inline-block (natural content size) but excludes the retro window's
+        // #form-content is width:max-content (natural content size) but excludes the retro window's
         // titlebar/borders. The outer .window (RetroWindow's root, present in all themes) is
         // width:100% (reflects the viewport, not its natural size). So measure #form-content's
         // NATURAL size, then add the chrome around it, derived from form-content's offset inside

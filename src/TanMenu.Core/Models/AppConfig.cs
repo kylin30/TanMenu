@@ -31,7 +31,7 @@ public class GeneralConfig
     public int Tolerance { get; set; } = 5;
     public int ColButtonCount { get; set; } = 10;
 
-    /// <summary>Active retro theme: "Win98" | "WinXP" | "Win7".</summary>
+    /// <summary>Active theme: "Win98" | "WinXP" | "Win7" | "Fluent2".</summary>
     public string ThemeName { get; set; } = "Win7";
 
     /// <summary>UI font family override. Empty = use the active theme's default font.</summary>

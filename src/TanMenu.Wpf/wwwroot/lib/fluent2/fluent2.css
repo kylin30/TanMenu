@@ -67,17 +67,17 @@
     transition: background-color .12s ease;
 }
 .title-bar-controls button[aria-label="Minimize"] {
-    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Cpath d='M0 5h10' stroke='%231b1b1b'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Cpath fill='none' d='M0 5h10' stroke='%231b1b1b'/%3E%3C/svg%3E");
 }
 .title-bar-controls button[aria-label="Close"] {
-    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Cpath d='M0 0l10 10M10 0L0 10' stroke='%231b1b1b'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Cpath fill='none' d='M0 0l10 10M10 0L0 10' stroke='%231b1b1b'/%3E%3C/svg%3E");
 }
 .title-bar-controls button:hover {
     background-color: rgba(0, 0, 0, 0.06);
 }
 .title-bar-controls button[aria-label="Close"]:hover {
     background-color: #c42b1c;
-    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Cpath d='M0 0l10 10M10 0L0 10' stroke='%23ffffff'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Cpath fill='none' d='M0 0l10 10M10 0L0 10' stroke='%23ffffff'/%3E%3C/svg%3E");
 }
 
 /* ---- Body ---- */
