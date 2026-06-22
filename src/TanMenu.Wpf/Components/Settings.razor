@@ -1,0 +1,106 @@
+@using TanMenu.Wpf.Services
+@using TanMenu.Core.Services
+@inject ConfigService ConfigService
+@inject IFolderPicker FolderPicker
+@inject IAutoStartService AutoStart
+
+<div class="win31-window" style="padding:12px;min-width:380px;font-family:'Segoe UI',sans-serif;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <strong style="font-size:15px;">设置</strong>
+        <button class="win31-button" style="width:auto;padding:2px 12px;" @onclick="Close">完成</button>
+    </div>
+
+    <fieldset class="win31-groupbox" style="margin-bottom:10px;">
+        <legend>文件夹</legend>
+        @if (_cfg.Folders.Count == 0)
+        {
+            <div style="color:#666;padding:4px 0;">（还没有文件夹，点下面添加）</div>
+        }
+        @foreach (var f in _cfg.Folders.ToList())
+        {
+            <div style="display:flex;align-items:center;gap:8px;padding:2px 0;">
+                <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="@f">@f</span>
+                <button class="win31-button" style="width:auto;padding:1px 10px;" @onclick="@(() => Remove(f))">删除</button>
+            </div>
+        }
+        <div style="margin-top:6px;">
+            <button class="win31-button" style="width:auto;padding:2px 12px;" @onclick="Add">添加文件夹…</button>
+        </div>
+    </fieldset>
+
+    <fieldset class="win31-groupbox">
+        <legend>选项</legend>
+        <div style="padding:2px 0;">
+            每列按钮数：
+            <input type="number" min="1" max="30" style="width:64px;"
+                   value="@_cfg.General.ColButtonCount" @onchange="OnColCountChanged" />
+        </div>
+        <label style="display:block;padding:2px 0;">
+            <input type="checkbox" checked="@_cfg.General.AutoClose" @onchange="@(e => Set(v => _cfg.General.AutoClose = v, e))" /> 失焦自动隐藏
+        </label>
+        <label style="display:block;padding:2px 0;">
+            <input type="checkbox" checked="@_cfg.General.TopMost" @onchange="@(e => Set(v => _cfg.General.TopMost = v, e))" /> 窗口置顶
+        </label>
+        <label style="display:block;padding:2px 0;">
+            <input type="checkbox" checked="@_cfg.General.ShowInTaskbar" @onchange="@(e => Set(v => _cfg.General.ShowInTaskbar = v, e))" /> 任务栏显示
+        </label>
+        <label style="display:block;padding:2px 0;">
+            <input type="checkbox" checked="@_auto" @onchange="OnAutoStartChanged" /> 开机自启
+        </label>
+        <div style="color:#666;padding:2px 0;">全局热键：Alt+Space（召回 / 隐藏）</div>
+    </fieldset>
+</div>
+
+@code {
+    [Parameter] public EventCallback OnClosed { get; set; }
+
+    private TanMenu.Core.Models.AppConfig _cfg = new();
+    private bool _auto;
+
+    protected override void OnInitialized()
+    {
+        _cfg = ConfigService.Config;
+        _auto = AutoStart.IsEnabled();
+    }
+
+    private async Task Add()
+    {
+        var p = FolderPicker.PickFolder();
+        if (!string.IsNullOrEmpty(p) && !_cfg.Folders.Contains(p))
+        {
+            _cfg.Folders.Add(p);
+            await ConfigService.SaveAsync();
+        }
+    }
+
+    private async Task Remove(string f)
+    {
+        _cfg.Folders.Remove(f);
+        await ConfigService.SaveAsync();
+    }
+
+    private async Task OnColCountChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var n))
+        {
+            _cfg.General.ColButtonCount = Math.Clamp(n, 1, 30);
+            await ConfigService.SaveAsync();
+        }
+    }
+
+    private async Task Set(Action<bool> apply, ChangeEventArgs e)
+    {
+        apply(e.Value is bool b && b);
+        await ConfigService.SaveAsync();
+    }
+
+    private async Task OnAutoStartChanged(ChangeEventArgs e)
+    {
+        _auto = e.Value is bool b && b;
+        AutoStart.SetEnabled(_auto);
+        _auto = AutoStart.IsEnabled(); // reflect actual state
+        await Task.CompletedTask;
+    }
+
+    private async Task Close() => await OnClosed.InvokeAsync();
+}

@@ -11,7 +11,15 @@
 <div class="body">
     <TanMenu.Wpf.Components.Windows3_1.Window OnCloseClick="@HandleClose" Title="TanMenu">
         <div id="form-content">
-            @if (_groups.Count > 0)
+            <div style="text-align:right;margin-bottom:2px;">
+                <button class="win31-button" style="width:auto;padding:1px 8px;"
+                        @onclick="ToggleSettings" title="设置">⚙</button>
+            </div>
+            @if (_showSettings)
+            {
+                <Settings OnClosed="@CloseSettings" />
+            }
+            else if (_groups.Count > 0)
             {
                 <div class="flex items-start gap-2">
                     @foreach (var g in _groups)
@@ -50,6 +58,7 @@
 @code {
     private List<MenuGroupVm> _groups = new();
     private AppConfig _cfg = new();
+    private bool _showSettings;
 
     protected override async Task OnInitializedAsync()
     {
@@ -60,7 +69,7 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && _groups.Count > 0)
+        if (firstRender)
         {
             await Task.Delay(100);
             await WindowHost.ResizeToContentAndPlaceAsync();
@@ -73,6 +82,24 @@
         WindowHost.Hide();
     }
 
-    // Close button hides to tray; explicit exit is via the tray menu (M4).
+    // Close button hides to tray; explicit exit is via the tray menu.
     private void HandleClose() => WindowHost.Hide();
+
+    private async Task ToggleSettings()
+    {
+        _showSettings = !_showSettings;
+        StateHasChanged();
+        await Task.Delay(60);
+        await WindowHost.ResizeToContentAndPlaceAsync();
+    }
+
+    private async Task CloseSettings()
+    {
+        _showSettings = false;
+        _cfg = ConfigService.Config;
+        _groups = await MenuService.GetMenuAsync(_cfg.Folders); // reload after edits
+        StateHasChanged();
+        await Task.Delay(60);
+        await WindowHost.ResizeToContentAndPlaceAsync();
+    }
 }
