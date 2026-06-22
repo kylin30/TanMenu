@@ -7,4 +7,8 @@ namespace TanMenu.Core.Services;
 public interface IIconProvider
 {
     byte[]? GetIconPngBytes(string path);
+
+    /// <summary>The Windows stock application icon (PNG bytes) — standard fallback when an item's
+    /// own icon can't be extracted.</summary>
+    byte[]? GetDefaultAppIconPngBytes();
 }

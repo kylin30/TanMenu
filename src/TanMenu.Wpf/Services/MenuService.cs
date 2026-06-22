@@ -15,6 +15,10 @@ public sealed class MenuService
     private readonly MenuDataService _data;
     private readonly IIconProvider _icons;
 
+    /// <summary>The standard fallback icon (base64 PNG) for items with no extractable icon — the
+    /// Windows stock application icon, or the bundled flat-file icon if that can't be obtained.</summary>
+    private readonly Lazy<string> _fallbackIcon;
+
     /// <summary>Flat pixel "generic file" icon (48×48 PNG, base64) used when an item has no
     /// extractable icon — i.e. invalid/broken shortcuts (IsDisabled, no IconKey) or rare
     /// extraction failures — so every button still shows an icon.</summary>
@@ -28,6 +32,11 @@ public sealed class MenuService
     {
         _data = data;
         _icons = icons;
+        _fallbackIcon = new Lazy<string>(() =>
+        {
+            var bytes = _icons.GetDefaultAppIconPngBytes();
+            return bytes is { Length: > 0 } ? Convert.ToBase64String(bytes) : DefaultIconBase64;
+        });
     }
 
     /// <summary>Build the built-in "常用工具" group from the configured tools (only the shown ones).</summary>
@@ -44,7 +53,7 @@ public sealed class MenuService
             var bytes = _icons.GetIconPngBytes(resolved);
             if (bytes is { Length: > 0 })
                 b64 = Convert.ToBase64String(bytes);
-            b64 ??= DefaultIconBase64;
+            b64 ??= _fallbackIcon.Value;
 
             items.Add(new MenuItemVm
             {
@@ -121,7 +130,7 @@ public sealed class MenuService
                 }
                 // Invalid shortcuts (IsDisabled → no IconKey) and any failed extraction fall back
                 // to a default icon so the button isn't iconless.
-                b64 ??= DefaultIconBase64;
+                b64 ??= _fallbackIcon.Value;
                 items.Add(new MenuItemVm
                 {
                     Name = it.Name,

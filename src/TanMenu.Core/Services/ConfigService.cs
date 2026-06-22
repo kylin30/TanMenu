@@ -38,6 +38,12 @@ public class ConfigService
         _logger.LogInformation("Config path: {ConfigPath}", _configPath);
     }
 
+    /// <summary>Deep clone of the current config — used by the settings window's edit-then-apply
+    /// workflow so changes only take effect on "应用/确定", not immediately.</summary>
+    public AppConfig CloneConfig() =>
+        JsonSerializer.Deserialize<AppConfig>(JsonSerializer.Serialize(Config, _jsonOptions), _jsonOptions)
+        ?? new AppConfig();
+
     public async Task LoadAsync()
     {
         try

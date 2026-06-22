@@ -55,6 +55,11 @@ public partial class SettingsWindow : Window
     private readonly ConfigService _config;
     private readonly IAutoStartService _autoStart;
     private readonly AppEvents _events;
+
+    // Edit-then-apply: all changes go to this working copy; nothing takes effect until 应用/确定.
+    private AppConfig _working;
+    private bool _pendingAutoStart;
+    private bool _dirty;
     private bool _loaded;
 
     public SettingsWindow()
@@ -63,6 +68,7 @@ public partial class SettingsWindow : Window
         _config = App.Services.GetRequiredService<ConfigService>();
         _autoStart = App.Services.GetRequiredService<IAutoStartService>();
         _events = App.Services.GetRequiredService<AppEvents>();
+        _working = _config.CloneConfig();
 
         try
         {
@@ -74,8 +80,8 @@ public partial class SettingsWindow : Window
 
         LoadFromConfig();
 
-        // Position above the launcher once measured (SizeToContent=Height), then reveal — so the
-        // bottom-center, top-most launcher never covers the settings content.
+        // Position above the launcher once measured, then reveal — so the bottom-center, top-most
+        // launcher never covers the settings content.
         Loaded += (_, _) => PositionAboveLauncher();
     }
 
@@ -91,11 +97,11 @@ public partial class SettingsWindow : Window
             if (launcher is { ActualWidth: > 0 } && launcher.IsVisible)
             {
                 left = launcher.Left + (launcher.ActualWidth - w) / 2; // centered over the launcher
-                top = launcher.Top - h - 12;                      // directly above it
+                top = launcher.Top - h - 12;                           // directly above it
             }
             else
             {
-                left = wa.Left + (wa.Width - w) / 2;              // fallback: upper-center
+                left = wa.Left + (wa.Width - w) / 2;                   // fallback: upper-center
                 top = wa.Top + 40;
             }
 
@@ -106,11 +112,12 @@ public partial class SettingsWindow : Window
         finally { Opacity = 1; }
     }
 
+    /// <summary>(Re)populate the controls from the working copy. Suppresses change handlers.</summary>
     private void LoadFromConfig()
     {
-        _loaded = false; // suppress change handlers while (re)populating controls
-        var g = _config.Config.General;
-        RootBox.Text = _config.Config.RootFolder;
+        _loaded = false;
+        var g = _working.General;
+        RootBox.Text = _working.RootFolder;
         DataBox.Text = DataLocation.GetDataRoot();
 
         ThemeCombo.ItemsSource = Themes.Select(t => t.Label).ToList();
@@ -128,14 +135,23 @@ public partial class SettingsWindow : Window
         AutoCloseCb.IsChecked = g.AutoClose;
         TopMostCb.IsChecked = g.TopMost;
         TaskbarCb.IsChecked = g.ShowInTaskbar;
-        AutoStartCb.IsChecked = _autoStart.IsEnabled();
+
+        _pendingAutoStart = _autoStart.IsEnabled();
+        AutoStartCb.IsChecked = _pendingAutoStart;
 
         ShowToolsCb.IsChecked = g.ShowDefaultTools;
         BuildToolCheckboxes();
 
-        ApplyWindowFont(); // render this window in the configured app font, too
+        ApplyWindowFont(); // render this window in the CURRENTLY-applied font
 
         _loaded = true;
+    }
+
+    private void SetDirty(bool dirty)
+    {
+        _dirty = dirty;
+        if (ApplyBtn != null)
+            ApplyBtn.IsEnabled = dirty;
     }
 
     // ---- Apply the configured UI font to this native WPF window ----
@@ -148,6 +164,7 @@ public partial class SettingsWindow : Window
         ["Press Start 2P"] = "Press Start 2P",
     };
 
+    // Use the live (applied) font, not the pending one — the settings window only re-fonts on Apply.
     private void ApplyWindowFont() => FontFamily = ResolveWpfFont(_config.Config.General.FontFamily);
 
     private static System.Windows.Media.FontFamily ResolveWpfFont(string? configFont)
@@ -182,12 +199,12 @@ public partial class SettingsWindow : Window
         catch { return false; }
     }
 
-    // ---- "常用工具" customization ----
+    // ---- "常用工具" customization (against the working copy) ----
 
     private void BuildToolCheckboxes()
     {
         ToolsPanel.Children.Clear();
-        foreach (var tool in _config.Config.General.DefaultTools ?? Enumerable.Empty<DefaultTool>())
+        foreach (var tool in _working.General.DefaultTools ?? Enumerable.Empty<DefaultTool>())
         {
             var cb = new CheckBox
             {
@@ -199,16 +216,16 @@ public partial class SettingsWindow : Window
             cb.Click += Tool_Changed;
             ToolsPanel.Children.Add(cb);
         }
-        ToolsPanel.IsEnabled = _config.Config.General.ShowDefaultTools;
+        ToolsPanel.IsEnabled = _working.General.ShowDefaultTools;
     }
 
     private void ShowTools_Changed(object sender, RoutedEventArgs e)
     {
         if (!_loaded)
             return;
-        _config.Config.General.ShowDefaultTools = ShowToolsCb.IsChecked == true;
-        ToolsPanel.IsEnabled = _config.Config.General.ShowDefaultTools;
-        Persist();
+        _working.General.ShowDefaultTools = ShowToolsCb.IsChecked == true;
+        ToolsPanel.IsEnabled = _working.General.ShowDefaultTools;
+        SetDirty(true);
     }
 
     private void Tool_Changed(object sender, RoutedEventArgs e)
@@ -218,28 +235,20 @@ public partial class SettingsWindow : Window
         if (sender is CheckBox { Tag: DefaultTool tool } cb)
         {
             tool.Show = cb.IsChecked == true;
-            Persist();
+            SetDirty(true);
         }
-    }
-
-    private async void Persist()
-    {
-        if (!_loaded)
-            return;
-        await _config.SaveAsync();
-        _events.RaiseSettingsChanged();
     }
 
     private void PickRoot_Click(object sender, RoutedEventArgs e)
     {
         var dlg = new OpenFolderDialog { Title = "选择主文件夹" };
-        if (!string.IsNullOrEmpty(_config.Config.RootFolder) && Directory.Exists(_config.Config.RootFolder))
-            dlg.InitialDirectory = _config.Config.RootFolder;
+        if (!string.IsNullOrEmpty(_working.RootFolder) && Directory.Exists(_working.RootFolder))
+            dlg.InitialDirectory = _working.RootFolder;
         if (dlg.ShowDialog() == true)
         {
-            _config.Config.RootFolder = dlg.FolderName;
+            _working.RootFolder = dlg.FolderName;
             RootBox.Text = dlg.FolderName;
-            Persist();
+            SetDirty(true);
         }
     }
 
@@ -247,8 +256,8 @@ public partial class SettingsWindow : Window
     {
         if (!_loaded || ThemeCombo.SelectedIndex < 0)
             return;
-        _config.Config.General.ThemeName = Themes[ThemeCombo.SelectedIndex].Key;
-        Persist();
+        _working.General.ThemeName = Themes[ThemeCombo.SelectedIndex].Key;
+        SetDirty(true);
     }
 
     private void Font_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -256,36 +265,80 @@ public partial class SettingsWindow : Window
         if (!_loaded || FontCombo.SelectedItem is not FontItem item)
             return;
         var fam = FontUtil.Sanitize(item.Family); // "" for the theme-default entry
-        if (fam == _config.Config.General.FontFamily)
+        if (fam == _working.General.FontFamily)
             return;
-        _config.Config.General.FontFamily = fam;
-        ApplyWindowFont(); // re-font this window live
-        Persist();
+        _working.General.FontFamily = fam;
+        SetDirty(true);
     }
 
     private void Col_Changed(object sender, RoutedEventArgs e)
     {
+        if (!_loaded)
+            return;
         if (int.TryParse(ColCount.Text, out var n))
         {
-            _config.Config.General.ColButtonCount = Math.Clamp(n, 1, 30);
-            ColCount.Text = _config.Config.General.ColButtonCount.ToString();
-            Persist();
+            var clamped = Math.Clamp(n, 1, 30);
+            ColCount.Text = clamped.ToString();
+            if (clamped != _working.General.ColButtonCount)
+            {
+                _working.General.ColButtonCount = clamped;
+                SetDirty(true);
+            }
+        }
+        else
+        {
+            ColCount.Text = _working.General.ColButtonCount.ToString();
         }
     }
 
     private void Opt_Changed(object sender, RoutedEventArgs e)
     {
-        var g = _config.Config.General;
+        if (!_loaded)
+            return;
+        var g = _working.General;
         g.AutoClose = AutoCloseCb.IsChecked == true;
         g.TopMost = TopMostCb.IsChecked == true;
         g.ShowInTaskbar = TaskbarCb.IsChecked == true;
-        Persist();
+        SetDirty(true);
     }
 
     private void AutoStart_Changed(object sender, RoutedEventArgs e)
     {
-        _autoStart.SetEnabled(AutoStartCb.IsChecked == true);
-        AutoStartCb.IsChecked = _autoStart.IsEnabled(); // reflect actual state
+        if (!_loaded)
+            return;
+        _pendingAutoStart = AutoStartCb.IsChecked == true;
+        SetDirty(true);
+    }
+
+    // ---- 确定 / 取消 / 应用 ----
+
+    private async void Apply_Click(object sender, RoutedEventArgs e)
+    {
+        if (_dirty)
+            await CommitAsync();
+    }
+
+    private async void Ok_Click(object sender, RoutedEventArgs e)
+    {
+        if (_dirty)
+            await CommitAsync();
+        Close();
+    }
+
+    private void Cancel_Click(object sender, RoutedEventArgs e) => Close(); // discard the working copy
+
+    /// <summary>Apply the working copy to the live config + autostart, save, and notify the launcher.</summary>
+    private async Task CommitAsync()
+    {
+        _config.Config.General = _working.General;
+        _config.Config.RootFolder = _working.RootFolder;
+        await _config.SaveAsync();
+        _autoStart.SetEnabled(_pendingAutoStart);
+        _events.RaiseSettingsChanged();
+
+        _working = _config.CloneConfig(); // re-baseline (fresh copy, not aliased to the live config)
+        LoadFromConfig();                 // rebind controls (incl. tool checkbox Tags) to the new copy
+        SetDirty(false);
     }
 
     private async void ChangeData_Click(object sender, RoutedEventArgs e)
@@ -293,6 +346,10 @@ public partial class SettingsWindow : Window
         var dlg = new OpenFolderDialog { Title = "选择数据文件夹" };
         if (dlg.ShowDialog() != true)
             return;
+
+        // Don't lose staged edits: apply them first so they end up in the moved data.
+        if (_dirty)
+            await CommitAsync();
 
         bool changed;
         bool usedExisting;
@@ -309,12 +366,13 @@ public partial class SettingsWindow : Window
         if (!changed)
             return; // same folder
 
-        // Apply immediately (no restart): re-point the live data paths, reload config from the new
-        // location, refresh this window's controls, and notify the launcher to reload + re-theme.
+        // Re-point the live data paths, reload config from the new location, rebind, and notify.
         if (App.Services.GetRequiredService<IAppDataPaths>() is MutableAppDataPaths paths)
             paths.SetRoot(dlg.FolderName);
         await _config.LoadAsync();
+        _working = _config.CloneConfig();
         LoadFromConfig();
+        SetDirty(false);
         _events.RaiseSettingsChanged();
 
         var msg = usedExisting
@@ -325,6 +383,4 @@ public partial class SettingsWindow : Window
 
     private void NumberOnly(object sender, TextCompositionEventArgs e) =>
         e.Handled = !e.Text.All(char.IsDigit);
-
-    private void Close_Click(object sender, RoutedEventArgs e) => Close();
 }

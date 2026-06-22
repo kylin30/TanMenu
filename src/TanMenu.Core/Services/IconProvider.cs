@@ -8,4 +8,6 @@ namespace TanMenu.Core.Services;
 public sealed class IconProvider : IIconProvider
 {
     public byte[]? GetIconPngBytes(string path) => Win32IconExtractor.GetIconPngBytes(path);
+
+    public byte[]? GetDefaultAppIconPngBytes() => Win32IconExtractor.GetStockAppIconPngBytes();
 }

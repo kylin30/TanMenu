@@ -164,38 +164,43 @@ a, .btn-link {
     border-bottom: none;
 }
 
-/* ---- Windows 98: navy selection highlight ---- */
+/* ---- Windows 98/2000: flat menu bar, square navy selection (classic 9x menu) ---- */
 .theme-win98 .tm-menubar {
+    background: #c0c0c0;
     border-bottom: 1px solid #808080;
     box-shadow: 0 1px 0 #ffffff;
 }
+.theme-win98 .tm-menuitem {
+    border-radius: 0;
+}
 .theme-win98 .tm-menuitem:hover {
-    background: #000080;
+    background: #000080; /* highlight color */
     color: #ffffff;
 }
 
-/* ---- Windows XP: blue highlight, slight rounding ---- */
+/* ---- Windows XP (Luna): solid blue square selection ---- */
 .theme-winxp .tm-menubar {
+    background: #ece9d8;
     border-bottom: 1px solid #aca899;
     box-shadow: 0 1px 0 #ffffff;
 }
 .theme-winxp .tm-menuitem {
-    border-radius: 3px;
+    border-radius: 0;
 }
 .theme-winxp .tm-menuitem:hover {
-    background: #2f6fd9;
+    background: #316ac5; /* XP menu highlight blue */
     color: #ffffff;
 }
 
-/* ---- Windows 7: aero highlight ---- */
+/* ---- Windows 7 (Aero): light blue gradient highlight + soft rounded border ---- */
 .theme-win7 .tm-menubar {
-    border-bottom: 1px solid rgba(0, 0, 0, 0.15);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.12);
 }
 .theme-win7 .tm-menuitem {
     border-radius: 3px;
 }
 .theme-win7 .tm-menuitem:hover {
-    background: rgba(140, 200, 255, 0.45);
-    border-color: rgba(70, 150, 225, 0.7);
-    color: #06294e;
+    background: linear-gradient(to bottom, #f5fbfe 0%, #e2f2fc 45%, #d3edfc 50%, #e6f6fe 100%);
+    border-color: #9cc9ec;
+    color: #16385c;
 }
