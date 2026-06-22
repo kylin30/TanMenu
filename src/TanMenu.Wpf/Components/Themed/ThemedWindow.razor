@@ -1,0 +1,20 @@
+@* Renders the retro window of the active theme. Same API across all three themes. *@
+@if (Theme == "Win7")
+{
+    <TanMenu.Wpf.Components.Windows7.Window Title="@Title" OnCloseClick="@OnCloseClick">@ChildContent</TanMenu.Wpf.Components.Windows7.Window>
+}
+else if (Theme == "ModernRetro")
+{
+    <TanMenu.Wpf.Components.ModernRetro.Window Title="@Title" OnCloseClick="@OnCloseClick">@ChildContent</TanMenu.Wpf.Components.ModernRetro.Window>
+}
+else
+{
+    <TanMenu.Wpf.Components.Windows3_1.Window Title="@Title" OnCloseClick="@OnCloseClick">@ChildContent</TanMenu.Wpf.Components.Windows3_1.Window>
+}
+
+@code {
+    [CascadingParameter(Name = "Theme")] public string Theme { get; set; } = "Win31";
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public EventCallback OnCloseClick { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

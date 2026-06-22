@@ -1,0 +1,45 @@
+<Window x:Class="TanMenu.Wpf.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="TanMenu 设置"
+        Width="460" Height="600"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="CanResizeWithGrip"
+        FontFamily="Segoe UI" FontSize="13" ShowInTaskbar="True">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="文件夹" FontWeight="Bold" Margin="0,0,0,6"/>
+        <ListBox Grid.Row="1" x:Name="FolderList" Margin="0,0,0,8" MinHeight="120"/>
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,16">
+            <Button Content="添加…" Click="AddFolder_Click" Padding="14,4" Margin="0,0,8,0"/>
+            <Button Content="删除选中" Click="RemoveFolder_Click" Padding="14,4"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,0,0,16" VerticalAlignment="Center">
+            <TextBlock Text="主题：" VerticalAlignment="Center" Margin="0,0,8,0"/>
+            <ComboBox x:Name="ThemeCombo" Width="180" SelectionChanged="Theme_Changed"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="4" Margin="0,0,0,16">
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,8" VerticalAlignment="Center">
+                <TextBlock Text="每列按钮数：" VerticalAlignment="Center"/>
+                <TextBox x:Name="ColCount" Width="60" PreviewTextInput="NumberOnly" LostFocus="Col_Changed"/>
+            </StackPanel>
+            <CheckBox x:Name="AutoCloseCb" Content="失焦自动隐藏" Margin="0,4" Click="Opt_Changed"/>
+            <CheckBox x:Name="TopMostCb" Content="窗口置顶" Margin="0,4" Click="Opt_Changed"/>
+            <CheckBox x:Name="TaskbarCb" Content="任务栏显示" Margin="0,4" Click="Opt_Changed"/>
+            <CheckBox x:Name="AutoStartCb" Content="开机自启" Margin="0,4" Click="AutoStart_Changed"/>
+            <TextBlock Text="全局热键：Alt+Space（召回 / 隐藏）" Foreground="Gray" Margin="0,8,0,0"/>
+        </StackPanel>
+
+        <Button Grid.Row="5" Content="关闭" Click="Close_Click" HorizontalAlignment="Right" Padding="18,5"/>
+    </Grid>
+</Window>

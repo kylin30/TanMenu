@@ -1,0 +1,20 @@
+@* Renders the retro groupbox of the active theme. *@
+@if (Theme == "Win7")
+{
+    <TanMenu.Wpf.Components.Windows7.Groupbox Title="@Title" OnTitleClickAction="@OnTitleClickAction">@ChildContent</TanMenu.Wpf.Components.Windows7.Groupbox>
+}
+else if (Theme == "ModernRetro")
+{
+    <TanMenu.Wpf.Components.ModernRetro.Groupbox Title="@Title" OnTitleClickAction="@OnTitleClickAction">@ChildContent</TanMenu.Wpf.Components.ModernRetro.Groupbox>
+}
+else
+{
+    <TanMenu.Wpf.Components.Windows3_1.Groupbox Title="@Title" OnTitleClickAction="@OnTitleClickAction">@ChildContent</TanMenu.Wpf.Components.Windows3_1.Groupbox>
+}
+
+@code {
+    [CascadingParameter(Name = "Theme")] public string Theme { get; set; } = "Win31";
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public Action? OnTitleClickAction { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

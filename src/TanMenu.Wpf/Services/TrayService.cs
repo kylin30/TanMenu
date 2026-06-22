@@ -9,12 +9,14 @@ public sealed class TrayService : IDisposable
 {
     private readonly IWindowHost _host;
     private readonly Action _exit;
+    private readonly Action _openSettings;
     private TaskbarIcon? _icon;
 
-    public TrayService(IWindowHost host, Action exit)
+    public TrayService(IWindowHost host, Action exit, Action openSettings)
     {
         _host = host;
         _exit = exit;
+        _openSettings = openSettings;
     }
 
     public void Create(string icoPath)
@@ -31,9 +33,11 @@ public sealed class TrayService : IDisposable
 
         // WPF ContextMenu with Command-wired items (WPF MenuItem.Command fires reliably).
         var show = new MenuItem { Header = "显示", Command = new RelayCommand(() => _host.ShowAndActivate()) };
+        var settings = new MenuItem { Header = "设置", Command = new RelayCommand(_openSettings) };
         var exit = new MenuItem { Header = "退出", Command = new RelayCommand(_exit) };
         var menu = new ContextMenu();
         menu.Items.Add(show);
+        menu.Items.Add(settings);
         menu.Items.Add(exit);
         _icon.ContextMenu = menu;
 

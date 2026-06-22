@@ -1,70 +1,89 @@
 @using TanMenu.Wpf.Services
 @using TanMenu.Wpf.ViewModels
+@using TanMenu.Wpf.Components.Themed
 @using TanMenu.Core.Services
 @using TanMenu.Core.Models
+@implements IDisposable
 @inject MenuService MenuService
 @inject ConfigService ConfigService
 @inject IWindowHost WindowHost
 @inject ILaunchService LaunchService
+@inject ISettingsLauncher SettingsLauncher
+@inject AppEvents Events
 @inject Microsoft.Extensions.Logging.ILogger<Index> Logger
 
 <div class="body">
-    <TanMenu.Wpf.Components.Windows3_1.Window OnCloseClick="@HandleClose" Title="TanMenu">
-        <div id="form-content">
-            <div style="text-align:right;margin-bottom:2px;">
-                <button class="win31-button" style="width:auto;padding:1px 8px;"
-                        @onclick="ToggleSettings" title="设置">⚙</button>
-            </div>
-            @if (_showSettings)
-            {
-                <Settings OnClosed="@CloseSettings" />
-            }
-            else if (_groups.Count > 0)
-            {
-                <div class="flex items-start gap-2">
-                    @foreach (var g in _groups)
-                    {
-                        <TanMenu.Wpf.Components.Windows3_1.Groupbox Title="@g.DirectoryName"
-                            OnTitleClickAction="@(() => LaunchService.OpenFolder(g.Directory))">
-                            <div class="flex items-start gap-1">
-                                @foreach (var col in g.Items.Chunk(_cfg.General.ColButtonCount))
-                                {
-                                    <div>
-                                        @foreach (var item in col)
-                                        {
-                                            <div class="mb-1 flex-shrink-0">
-                                                <TanMenu.Wpf.Components.Windows3_1.Button
-                                                    Text="@item.Name"
-                                                    IconBase64="@item.IconBase64"
-                                                    Disabled="@item.IsDisabled"
-                                                    OnClick="@(() => AppRun(item))" />
-                                            </div>
-                                        }
-                                    </div>
-                                }
-                            </div>
-                        </TanMenu.Wpf.Components.Windows3_1.Groupbox>
-                    }
+    <CascadingValue Value="@_theme" Name="Theme">
+        <ThemedWindow Title="TanMenu" OnCloseClick="@HandleClose">
+            <div id="form-content">
+                <div style="text-align:right;margin-bottom:2px;">
+                    <button style="width:auto;padding:2px 9px;cursor:pointer;font-size:13px;line-height:1;"
+                            @onclick="OpenSettings" title="设置">⚙</button>
                 </div>
-            }
-            else
-            {
-                <SplashScreen/>
-            }
-        </div>
-    </TanMenu.Wpf.Components.Windows3_1.Window>
+                @if (_groups.Count > 0)
+                {
+                    <div class="flex items-start gap-2">
+                        @foreach (var grp in _groups)
+                        {
+                            <ThemedGroupbox Title="@grp.DirectoryName"
+                                OnTitleClickAction="@(() => LaunchService.OpenFolder(grp.Directory))">
+                                <div class="flex items-start gap-1">
+                                    @foreach (var col in grp.Items.Chunk(_cfg.General.ColButtonCount))
+                                    {
+                                        <div>
+                                            @foreach (var item in col)
+                                            {
+                                                <div class="mb-1 flex-shrink-0">
+                                                    <ThemedButton Text="@item.Name"
+                                                        IconBase64="@item.IconBase64"
+                                                        Disabled="@item.IsDisabled"
+                                                        OnClick="@(() => AppRun(item))" />
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            </ThemedGroupbox>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <SplashScreen/>
+                }
+            </div>
+        </ThemedWindow>
+    </CascadingValue>
 </div>
 
 @code {
     private List<MenuGroupVm> _groups = new();
     private AppConfig _cfg = new();
-    private bool _showSettings;
+    private string _theme = "Win31";
 
     protected override async Task OnInitializedAsync()
     {
+        Events.SettingsChanged += OnSettingsChanged;
+        await ReloadAsync();
+    }
+
+    private async Task ReloadAsync()
+    {
         _cfg = ConfigService.Config;
+        _theme = string.IsNullOrEmpty(_cfg.General.ThemeName) ? "Win31" : _cfg.General.ThemeName;
         _groups = await MenuService.GetMenuAsync(_cfg.Folders);
-        Logger.LogInformation("Index loaded {Count} groups", _groups.Count);
+        Logger.LogInformation("Index loaded {Count} groups, theme {Theme}", _groups.Count, _theme);
+    }
+
+    private void OnSettingsChanged()
+    {
+        _ = InvokeAsync(async () =>
+        {
+            await ReloadAsync();
+            StateHasChanged();
+            await Task.Delay(60);
+            await WindowHost.ResizeToContentAndPlaceAsync();
+        });
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -82,24 +101,9 @@
         WindowHost.Hide();
     }
 
-    // Close button hides to tray; explicit exit is via the tray menu.
     private void HandleClose() => WindowHost.Hide();
 
-    private async Task ToggleSettings()
-    {
-        _showSettings = !_showSettings;
-        StateHasChanged();
-        await Task.Delay(60);
-        await WindowHost.ResizeToContentAndPlaceAsync();
-    }
+    private void OpenSettings() => SettingsLauncher.Open();
 
-    private async Task CloseSettings()
-    {
-        _showSettings = false;
-        _cfg = ConfigService.Config;
-        _groups = await MenuService.GetMenuAsync(_cfg.Folders); // reload after edits
-        StateHasChanged();
-        await Task.Delay(60);
-        await WindowHost.ResizeToContentAndPlaceAsync();
-    }
+    public void Dispose() => Events.SettingsChanged -= OnSettingsChanged;
 }

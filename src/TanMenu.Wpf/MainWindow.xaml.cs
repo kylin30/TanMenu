@@ -42,7 +42,10 @@ public partial class MainWindow : Window
 
             // System tray.
             var host = App.Services.GetRequiredService<IWindowHost>();
-            App.Tray = new TrayService(host, () => ((App)Application.Current).ExitApp());
+            App.Tray = new TrayService(
+                host,
+                () => ((App)Application.Current).ExitApp(),
+                () => App.Services.GetRequiredService<ISettingsLauncher>().Open());
             App.Tray.Create(System.IO.Path.Combine(AppContext.BaseDirectory, "wwwroot", "app.ico"));
         }
         catch (Exception ex)

@@ -27,4 +27,7 @@ public class GeneralConfig
     public int PositionOffset { get; set; } = 8;
     public int Tolerance { get; set; } = 5;
     public int ColButtonCount { get; set; } = 8;
+
+    /// <summary>Active retro theme: "Win31" | "Win7" | "ModernRetro".</summary>
+    public string ThemeName { get; set; } = "Win31";
 }

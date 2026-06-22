@@ -80,7 +80,8 @@ public partial class App : Application
         services.AddSingleton<WindowHost>();
         services.AddSingleton<IWindowHost>(sp => sp.GetRequiredService<WindowHost>());
         services.AddSingleton<IAutoStartService, RegistryAutoStartService>();
-        services.AddSingleton<IFolderPicker, WpfFolderPicker>();
+        services.AddSingleton<AppEvents>();
+        services.AddSingleton<ISettingsLauncher, WpfSettingsLauncher>();
 
         services.AddWpfBlazorWebView();
 #if DEBUG
