@@ -25,6 +25,6 @@ public class AppConfigTests
         Assert.Equal(8, general.PositionOffset);
         Assert.Equal(5, general.Tolerance);
         Assert.Equal(8, general.ColButtonCount);
-        Assert.Equal("Win31", general.ThemeName);
+        Assert.Equal("Win98", general.ThemeName);
     }
 }

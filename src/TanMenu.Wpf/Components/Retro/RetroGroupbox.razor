@@ -1,7 +1,7 @@
-﻿@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components
+@* Groupbox = fieldset/legend, styled by the active theme's stylesheet. *@
 
-
-<fieldset class=" @(Disabled ? "disabled" : "")">
+<fieldset class="@(Disabled ? "disabled" : "")">
     @if (!string.IsNullOrEmpty(Title))
     {
         <legend class="groupbox-title @(IsClickable ? "clickable" : "")"

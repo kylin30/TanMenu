@@ -1,23 +1,24 @@
-﻿@using System.Diagnostics
+@using System.Diagnostics
 @using TanMenu.Core.Services
 @inject SoundService SoundService
+@* Launcher button, styled by the active theme's stylesheet. Plays click/hover sounds. *@
 
 <button class="@(Disabled ? "disabled" : "")"
         disabled="@Disabled"
         @onclick="OnClickHandler"
         @onmouseenter="OnMouseEnter"
         style="width: 100%;">
-        <div class="button-body">
-    @if (!string.IsNullOrEmpty(IconBase64))
-    {
-        <span class="button-icon">
-            <img src="data:image/png;base64,@IconBase64" alt="" />
-        </span>
-    }
-    @if (!string.IsNullOrEmpty(Text))
-    {
-        <span class="button-text">@Text</span>
-    }
+    <div class="button-body">
+        @if (!string.IsNullOrEmpty(IconBase64))
+        {
+            <span class="button-icon">
+                <img src="data:image/png;base64,@IconBase64" alt="" />
+            </span>
+        }
+        @if (!string.IsNullOrEmpty(Text))
+        {
+            <span class="button-text">@Text</span>
+        }
         @ChildContent
     </div>
 </button>

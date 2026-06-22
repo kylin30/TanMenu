@@ -16,9 +16,9 @@ public partial class SettingsWindow : Window
 {
     private static readonly (string Key, string Label)[] Themes =
     {
-        ("Win31", "Windows 3.1"),
+        ("Win98", "Windows 98"),
+        ("WinXP", "Windows XP"),
         ("Win7", "Windows 7"),
-        ("ModernRetro", "Modern Retro"),
     };
 
     private readonly ConfigService _config;

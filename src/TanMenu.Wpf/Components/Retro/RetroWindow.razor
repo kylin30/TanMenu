@@ -1,0 +1,41 @@
+@using Microsoft.AspNetCore.Components
+@*
+   One window chrome for all three themes. 98.css, XP.css and 7.css share the same
+   .window/.title-bar/.title-bar-controls/.window-body API, so only the linked
+   stylesheet changes per theme. The <link>s render here (in the WebView body) so
+   exactly one theme's CSS is active at a time; switching themes swaps them.
+*@
+@foreach (var href in Stylesheets)
+{
+    <link href="@href" rel="stylesheet" @key="href" />
+}
+
+<div class="@WindowClass" style="max-width: 100%">
+    <div class="title-bar">
+        <div class="title-bar-text"><img class="title-bar-icon" src="/app.ico" alt="" />@Title</div>
+        <div class="title-bar-controls">
+            <button aria-label="Minimize"></button>
+            <button aria-label="Close" @onclick="@OnCloseClick"></button>
+        </div>
+    </div>
+    <div class="window-body has-space">
+        @ChildContent
+    </div>
+</div>
+
+@code {
+    [CascadingParameter(Name = "Theme")] public string Theme { get; set; } = "Win98";
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public EventCallback OnCloseClick { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private string[] Stylesheets => Theme switch
+    {
+        "Win7" => new[] { "/lib/win7theme/7.css" },
+        "WinXP" => new[] { "/lib/xpcss/98.css", "/lib/xpcss/xp-luna.css" },
+        _ => new[] { "/lib/xpcss/98.css" },
+    };
+
+    // 7.css needs the aero "glass" class; 98/XP do not.
+    private string WindowClass => Theme == "Win7" ? "window glass active" : "window active";
+}

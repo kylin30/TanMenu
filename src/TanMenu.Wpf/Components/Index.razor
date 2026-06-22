@@ -1,6 +1,6 @@
 @using TanMenu.Wpf.Services
 @using TanMenu.Wpf.ViewModels
-@using TanMenu.Wpf.Components.Themed
+@using TanMenu.Wpf.Components.Retro
 @using TanMenu.Core.Services
 @using TanMenu.Core.Models
 @implements IDisposable
@@ -13,42 +13,22 @@
 @inject AppEvents Events
 @inject Microsoft.Extensions.Logging.ILogger<Index> Logger
 
-<style>
-    .tm-menubar {
-        display: flex;
-        gap: 0;
-        margin: 0 0 4px 0;
-        font-size: 12px;
-        user-select: none;
-        border-bottom: 1px solid rgba(0,0,0,.25);
-    }
-    .tm-menuitem {
-        padding: 2px 10px;
-        cursor: pointer;
-        white-space: nowrap;
-    }
-    .tm-menuitem:hover {
-        background: #0a246a;
-        color: #fff;
-    }
-</style>
-
-<div class="body">
+<div class="body theme-@ThemeClass">
     <CascadingValue Value="@_theme" Name="Theme">
-        <ThemedWindow Title="TanMenu" OnCloseClick="@HandleClose">
+        <RetroWindow Title="TanMenu" OnCloseClick="@HandleClose">
             <div id="form-content">
-                <div class="tm-menubar">
-                    <span class="tm-menuitem" @onclick="OpenRoot">打开主目录</span>
-                    <span class="tm-menuitem" @onclick="OpenSettings">选项</span>
-                    <span class="tm-menuitem" @onclick="Refresh">刷新</span>
-                    <span class="tm-menuitem" @onclick="ExitApp">退出</span>
+                <div class="tm-menubar" role="menubar">
+                    <span class="tm-menuitem" role="menuitem" @onclick="OpenRoot"><u>打</u>开主目录</span>
+                    <span class="tm-menuitem" role="menuitem" @onclick="OpenSettings"><u>选</u>项</span>
+                    <span class="tm-menuitem" role="menuitem" @onclick="Refresh"><u>刷</u>新</span>
+                    <span class="tm-menuitem" role="menuitem" @onclick="ExitApp"><u>退</u>出</span>
                 </div>
                 @if (_groups.Count > 0)
                 {
                     <div class="flex items-start gap-2">
                         @foreach (var grp in _groups)
                         {
-                            <ThemedGroupbox Title="@grp.DirectoryName"
+                            <RetroGroupbox Title="@grp.DirectoryName"
                                 OnTitleClickAction="@(() => LaunchService.OpenFolder(grp.Directory))">
                                 <div class="flex items-start gap-1">
                                     @foreach (var col in grp.Items.Chunk(_cfg.General.ColButtonCount))
@@ -57,7 +37,7 @@
                                             @foreach (var item in col)
                                             {
                                                 <div class="mb-1 flex-shrink-0">
-                                                    <ThemedButton Text="@item.Name"
+                                                    <RetroButton Text="@item.Name"
                                                         IconBase64="@item.IconBase64"
                                                         Disabled="@item.IsDisabled"
                                                         OnClick="@(() => AppRun(item))" />
@@ -66,7 +46,7 @@
                                         </div>
                                     }
                                 </div>
-                            </ThemedGroupbox>
+                            </RetroGroupbox>
                         }
                     </div>
                 }
@@ -75,14 +55,14 @@
                     <SplashScreen/>
                 }
             </div>
-        </ThemedWindow>
+        </RetroWindow>
     </CascadingValue>
 </div>
 
 @code {
     private List<MenuGroupVm> _groups = new();
     private AppConfig _cfg = new();
-    private string _theme = "Win31";
+    private string _theme = "Win98";
 
     protected override async Task OnInitializedAsync()
     {
@@ -93,11 +73,27 @@
     private async Task ReloadAsync()
     {
         _cfg = ConfigService.Config;
-        _theme = string.IsNullOrEmpty(_cfg.General.ThemeName) ? "Win31" : _cfg.General.ThemeName;
+        _theme = ResolveTheme(_cfg.General.ThemeName);
         _groups = await MenuService.GetMenuFromRootAsync(_cfg.RootFolder);
         Logger.LogInformation("Index loaded {Count} groups from root '{Root}', theme {Theme}",
             _groups.Count, _cfg.RootFolder, _theme);
     }
+
+    // Map the stored theme name to a supported key; anything unknown (e.g. the removed
+    // "Win31"/"ModernRetro") falls back to the default Win98.
+    private static string ResolveTheme(string? name) => name switch
+    {
+        "WinXP" => "WinXP",
+        "Win7" => "Win7",
+        _ => "Win98",
+    };
+
+    private string ThemeClass => _theme switch
+    {
+        "WinXP" => "winxp",
+        "Win7" => "win7",
+        _ => "win98",
+    };
 
     private void OnSettingsChanged()
     {

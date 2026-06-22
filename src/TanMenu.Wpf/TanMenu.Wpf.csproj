@@ -32,4 +32,17 @@
   <Target Name="CopyAppIconToPublish" AfterTargets="Publish">
     <Copy SourceFiles="wwwroot\app.ico" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="true" />
   </Target>
+
+  <!-- SoundService reads the wavs from <exe>\wwwroot\sounds at runtime, but the Razor SDK
+       serves wwwroot only virtually (no loose files on disk). Copy the sounds out so click/
+       hover effects actually play. -->
+  <ItemGroup>
+    <TanMenuSounds Include="wwwroot\sounds\*.wav" />
+  </ItemGroup>
+  <Target Name="CopySoundsToOutput" AfterTargets="Build">
+    <Copy SourceFiles="@(TanMenuSounds)" DestinationFolder="$(OutDir)wwwroot\sounds" SkipUnchangedFiles="true" />
+  </Target>
+  <Target Name="CopySoundsToPublish" AfterTargets="Publish">
+    <Copy SourceFiles="@(TanMenuSounds)" DestinationFolder="$(PublishDir)wwwroot\sounds" SkipUnchangedFiles="true" />
+  </Target>
 </Project>

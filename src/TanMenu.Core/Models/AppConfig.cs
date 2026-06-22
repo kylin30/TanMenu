@@ -31,6 +31,6 @@ public class GeneralConfig
     public int Tolerance { get; set; } = 5;
     public int ColButtonCount { get; set; } = 8;
 
-    /// <summary>Active retro theme: "Win31" | "Win7" | "ModernRetro".</summary>
-    public string ThemeName { get; set; } = "Win31";
+    /// <summary>Active retro theme: "Win98" | "WinXP" | "Win7".</summary>
+    public string ThemeName { get; set; } = "Win98";
 }
