@@ -36,4 +36,33 @@ public class GeneralConfig
 
     /// <summary>UI font family override. Empty = use the active theme's default font.</summary>
     public string FontFamily { get; set; } = "Alibaba PuHuiTi";
+
+    /// <summary>Show the built-in "常用工具" group (common system tools) before the folder groups.</summary>
+    public bool ShowDefaultTools { get; set; } = true;
+
+    /// <summary>The tools in the built-in "常用工具" group. Each can be toggled (Show) or edited;
+    /// the list itself is customizable (add/remove entries, e.g. by editing config.json).</summary>
+    public List<DefaultTool> DefaultTools { get; set; } = DefaultTool.BuiltInDefaults();
+}
+
+/// <summary>One entry in the built-in "常用工具" group: a display name + a command to launch.</summary>
+public class DefaultTool
+{
+    public string Name { get; set; } = "";
+    /// <summary>Executable or command launched via the shell (e.g. "calc.exe", "powershell.exe").</summary>
+    public string Command { get; set; } = "";
+    /// <summary>Whether this tool is shown in the group.</summary>
+    public bool Show { get; set; } = true;
+
+    public static List<DefaultTool> BuiltInDefaults() => new()
+    {
+        new() { Name = "计算器", Command = "calc.exe" },
+        new() { Name = "命令行", Command = "cmd.exe" },
+        new() { Name = "PowerShell", Command = "powershell.exe" },
+        new() { Name = "记事本", Command = "notepad.exe" },
+        new() { Name = "任务管理器", Command = "taskmgr.exe" },
+        new() { Name = "控制面板", Command = "control.exe" },
+        new() { Name = "注册表", Command = "regedit.exe" },
+        new() { Name = "画图", Command = "mspaint.exe" },
+    };
 }

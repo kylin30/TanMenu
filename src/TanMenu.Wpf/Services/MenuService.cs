@@ -1,3 +1,5 @@
+using System.IO;
+using TanMenu.Core.Models;
 using TanMenu.Core.Services;
 using TanMenu.Wpf.ViewModels;
 
@@ -19,10 +21,68 @@ public sealed class MenuService
     private const string DefaultIconBase64 =
         "iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAAFiUAABYlAUlSJPAAAACrSURBVGhD7dM7DsMgFERRL5s1sRLWRJNUbkYkT9jv40T3StMCp+A4iIh+ptba6+70zNT0MVen56Z1PmDOeXmlCA/AGKMO4QUoQ3gCShDegHREBCAVEQVIQ3gAvi0cAcAYAKu/BPTebw3ATiuA5wBYATBWAtBPuTsAO60AngNgBcBYCUA/5e4A7LQCeA6AFQBjJQD9lJ+mj10NgNV5QfT0Xrf0oqjpvUREz+0N2/Xp7Z0GKaEAAAAASUVORK5CYII=";
 
+    /// <summary>Display name of the built-in common-tools group.</summary>
+    public const string DefaultToolsGroupName = "常用工具";
+
     public MenuService(MenuDataService data, IIconProvider icons)
     {
         _data = data;
         _icons = icons;
+    }
+
+    /// <summary>Build the built-in "常用工具" group from the configured tools (only the shown ones).</summary>
+    public MenuGroupVm BuildDefaultToolsGroup(IEnumerable<DefaultTool> tools)
+    {
+        var items = new List<MenuItemVm>();
+        foreach (var t in tools)
+        {
+            if (!t.Show || string.IsNullOrWhiteSpace(t.Command))
+                continue;
+
+            var iconPath = ResolveCommandPath(t.Command);
+            string? b64 = null;
+            var bytes = _icons.GetIconPngBytes(iconPath);
+            if (bytes is { Length: > 0 })
+                b64 = Convert.ToBase64String(bytes);
+            b64 ??= DefaultIconBase64;
+
+            items.Add(new MenuItemVm
+            {
+                Name = t.Name,
+                FullPath = t.Command, // launched via the shell (resolves aliases like calc.exe)
+                IsDirectory = false,
+                IsDisabled = false,
+                IconBase64 = b64,
+            });
+        }
+        // Directory left empty → the group title isn't a clickable "open folder".
+        return new MenuGroupVm { Directory = "", DirectoryName = DefaultToolsGroupName, Items = items };
+    }
+
+    /// <summary>Resolve a bare exe/command to a full path (System32, then PATH) for icon extraction;
+    /// returns the command unchanged if not found (the shell still resolves it at launch time).</summary>
+    private static string ResolveCommandPath(string command)
+    {
+        try
+        {
+            if (Path.IsPathRooted(command))
+                return command;
+
+            var sys = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), command);
+            if (File.Exists(sys))
+                return sys;
+
+            foreach (var dir in (Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator))
+            {
+                if (string.IsNullOrWhiteSpace(dir))
+                    continue;
+                var candidate = Path.Combine(dir, command);
+                if (File.Exists(candidate))
+                    return candidate;
+            }
+        }
+        catch { /* fall through */ }
+        return command;
     }
 
     /// <summary>Build the menu from a ROOT folder: each immediate subdirectory becomes a group.</summary>

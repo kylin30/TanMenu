@@ -7,6 +7,7 @@ using System.Windows.Media.Imaging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Win32;
 using TanMenu.Core.Infrastructure;
+using TanMenu.Core.Models;
 using TanMenu.Core.Services;
 using TanMenu.Wpf.Services;
 
@@ -129,7 +130,82 @@ public partial class SettingsWindow : Window
         TaskbarCb.IsChecked = g.ShowInTaskbar;
         AutoStartCb.IsChecked = _autoStart.IsEnabled();
 
+        ShowToolsCb.IsChecked = g.ShowDefaultTools;
+        BuildToolCheckboxes();
+
+        ApplyWindowFont(); // render this window in the configured app font, too
+
         _loaded = true;
+    }
+
+    // ---- Apply the configured UI font to this native WPF window ----
+
+    private static readonly Dictionary<string, string> IntegratedFontFaces = new(StringComparer.OrdinalIgnoreCase)
+    {
+        // CSS family name -> the TTF's internal family name (bundled under <exe>\fonts).
+        ["Alibaba PuHuiTi"] = "阿里巴巴普惠体 2.0 55 Regular",
+        ["Pixel"] = "Fusion Pixel 12px Monospaced zh",
+        ["Press Start 2P"] = "Press Start 2P",
+    };
+
+    private void ApplyWindowFont() => FontFamily = ResolveWpfFont(_config.Config.General.FontFamily);
+
+    private static System.Windows.Media.FontFamily ResolveWpfFont(string? configFont)
+    {
+        var name = string.IsNullOrWhiteSpace(configFont) ? "Alibaba PuHuiTi" : configFont.Trim();
+        try
+        {
+            if (IntegratedFontFaces.TryGetValue(name, out var face))
+            {
+                var dir = Path.Combine(AppContext.BaseDirectory, "fonts") + Path.DirectorySeparatorChar;
+                return new System.Windows.Media.FontFamily(new Uri(dir), "./#" + face);
+            }
+            return new System.Windows.Media.FontFamily(name); // installed system font
+        }
+        catch
+        {
+            return new System.Windows.Media.FontFamily("Segoe UI");
+        }
+    }
+
+    // ---- "常用工具" customization ----
+
+    private void BuildToolCheckboxes()
+    {
+        ToolsPanel.Children.Clear();
+        foreach (var tool in _config.Config.General.DefaultTools)
+        {
+            var cb = new CheckBox
+            {
+                Content = tool.Name,
+                IsChecked = tool.Show,
+                Margin = new Thickness(0, 3, 0, 3),
+                Tag = tool,
+            };
+            cb.Click += Tool_Changed;
+            ToolsPanel.Children.Add(cb);
+        }
+        ToolsPanel.IsEnabled = _config.Config.General.ShowDefaultTools;
+    }
+
+    private void ShowTools_Changed(object sender, RoutedEventArgs e)
+    {
+        if (!_loaded)
+            return;
+        _config.Config.General.ShowDefaultTools = ShowToolsCb.IsChecked == true;
+        ToolsPanel.IsEnabled = _config.Config.General.ShowDefaultTools;
+        Persist();
+    }
+
+    private void Tool_Changed(object sender, RoutedEventArgs e)
+    {
+        if (!_loaded)
+            return;
+        if (sender is CheckBox { Tag: DefaultTool tool } cb)
+        {
+            tool.Show = cb.IsChecked == true;
+            Persist();
+        }
     }
 
     private async void Persist()
@@ -169,6 +245,7 @@ public partial class SettingsWindow : Window
         if (fam == _config.Config.General.FontFamily)
             return;
         _config.Config.General.FontFamily = fam;
+        ApplyWindowFont(); // re-font this window live
         Persist();
     }
 

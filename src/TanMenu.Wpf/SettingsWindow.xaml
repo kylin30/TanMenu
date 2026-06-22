@@ -5,7 +5,7 @@
         SizeToContent="WidthAndHeight"
         WindowStartupLocation="Manual" ResizeMode="NoResize"
         Opacity="0"
-        FontFamily="Segoe UI" FontSize="13" ShowInTaskbar="True">
+        FontSize="13" ShowInTaskbar="True">
     <DockPanel Margin="16">
         <Button DockPanel.Dock="Bottom" Content="关闭" Click="Close_Click"
                 HorizontalAlignment="Right" Padding="18,5" Margin="0,12,0,0"/>
@@ -71,6 +71,16 @@
                         <Button DockPanel.Dock="Right" Content="更改…" Click="ChangeData_Click" Padding="14,4" Margin="8,0,0,0"/>
                         <TextBox x:Name="DataBox" IsReadOnly="True" VerticalContentAlignment="Center" Padding="4,3"/>
                     </DockPanel>
+                </StackPanel>
+            </GroupBox>
+
+            <!-- third column: 常用工具 (the built-in tools group, customizable) -->
+            <GroupBox Header="常用工具" Padding="10,8" Width="232" VerticalAlignment="Top" Margin="14,0,0,0">
+                <StackPanel>
+                    <CheckBox x:Name="ShowToolsCb" Content="显示“常用工具”分类" Margin="0,2,0,6" Click="ShowTools_Changed"/>
+                    <TextBlock Text="勾选要在该分类中显示的工具："
+                               Foreground="Gray" TextWrapping="Wrap" Margin="0,0,0,4"/>
+                    <StackPanel x:Name="ToolsPanel"/>
                 </StackPanel>
             </GroupBox>
 

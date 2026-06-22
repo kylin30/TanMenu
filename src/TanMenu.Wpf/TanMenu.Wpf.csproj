@@ -45,4 +45,16 @@
   <Target Name="CopySoundsToPublish" AfterTargets="Publish">
     <Copy SourceFiles="@(TanMenuSounds)" DestinationFolder="$(PublishDir)wwwroot\sounds" SkipUnchangedFiles="true" />
   </Target>
+
+  <!-- The WebView loads fonts from wwwroot virtually, but the native WPF settings window needs the
+       integrated font files on disk to render the chosen UI font. Copy the TTFs to <exe>\fonts. -->
+  <ItemGroup>
+    <TanMenuFonts Include="wwwroot\fonts\*.ttf" />
+  </ItemGroup>
+  <Target Name="CopyFontsToOutput" AfterTargets="Build">
+    <Copy SourceFiles="@(TanMenuFonts)" DestinationFolder="$(OutDir)fonts" SkipUnchangedFiles="true" />
+  </Target>
+  <Target Name="CopyFontsToPublish" AfterTargets="Publish">
+    <Copy SourceFiles="@(TanMenuFonts)" DestinationFolder="$(PublishDir)fonts" SkipUnchangedFiles="true" />
+  </Target>
 </Project>

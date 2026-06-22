@@ -41,7 +41,7 @@
                         @foreach (var grp in _groups)
                         {
                             <RetroGroupbox Title="@grp.DirectoryName"
-                                OnTitleClickAction="@(() => LaunchService.OpenFolder(grp.Directory))">
+                                OnTitleClickAction="@GetTitleAction(grp)">
                                 <div class="flex items-start gap-1">
                                     @foreach (var col in grp.Items.Chunk(_cfg.General.ColButtonCount))
                                     {
@@ -91,10 +91,24 @@
     {
         _cfg = ConfigService.Config;
         _theme = ResolveTheme(_cfg.General.ThemeName);
-        _groups = await MenuService.GetMenuFromRootAsync(_cfg.RootFolder);
+
+        var groups = new List<MenuGroupVm>();
+        if (_cfg.General.ShowDefaultTools)
+        {
+            var tools = MenuService.BuildDefaultToolsGroup(_cfg.General.DefaultTools);
+            if (tools.Items.Count > 0)
+                groups.Add(tools);
+        }
+        groups.AddRange(await MenuService.GetMenuFromRootAsync(_cfg.RootFolder));
+        _groups = groups;
+
         Logger.LogInformation("Index loaded {Count} groups from root '{Root}', theme {Theme}",
             _groups.Count, _cfg.RootFolder, _theme);
     }
+
+    // The built-in tools group has no Directory → its title isn't a clickable "open folder".
+    private Action? GetTitleAction(MenuGroupVm grp) =>
+        string.IsNullOrEmpty(grp.Directory) ? null : () => LaunchService.OpenFolder(grp.Directory);
 
     // Map the stored theme name to a supported key; anything unknown (e.g. the removed
     // "Win31"/"ModernRetro") falls back to the default Win98.
