@@ -9,16 +9,39 @@
 @inject IWindowHost WindowHost
 @inject ILaunchService LaunchService
 @inject ISettingsLauncher SettingsLauncher
+@inject IShellCommands ShellCommands
 @inject AppEvents Events
 @inject Microsoft.Extensions.Logging.ILogger<Index> Logger
+
+<style>
+    .tm-menubar {
+        display: flex;
+        gap: 0;
+        margin: 0 0 4px 0;
+        font-size: 12px;
+        user-select: none;
+        border-bottom: 1px solid rgba(0,0,0,.25);
+    }
+    .tm-menuitem {
+        padding: 2px 10px;
+        cursor: pointer;
+        white-space: nowrap;
+    }
+    .tm-menuitem:hover {
+        background: #0a246a;
+        color: #fff;
+    }
+</style>
 
 <div class="body">
     <CascadingValue Value="@_theme" Name="Theme">
         <ThemedWindow Title="TanMenu" OnCloseClick="@HandleClose">
             <div id="form-content">
-                <div style="text-align:right;margin-bottom:2px;">
-                    <button style="width:auto;padding:2px 9px;cursor:pointer;font-size:13px;line-height:1;"
-                            @onclick="OpenSettings" title="设置">⚙</button>
+                <div class="tm-menubar">
+                    <span class="tm-menuitem" @onclick="OpenRoot">打开主目录</span>
+                    <span class="tm-menuitem" @onclick="OpenSettings">选项</span>
+                    <span class="tm-menuitem" @onclick="Refresh">刷新</span>
+                    <span class="tm-menuitem" @onclick="ExitApp">退出</span>
                 </div>
                 @if (_groups.Count > 0)
                 {
@@ -105,6 +128,22 @@
     private void HandleClose() => WindowHost.Hide();
 
     private void OpenSettings() => SettingsLauncher.Open();
+
+    private void OpenRoot()
+    {
+        if (!string.IsNullOrWhiteSpace(_cfg.RootFolder))
+            LaunchService.OpenFolder(_cfg.RootFolder);
+    }
+
+    private async Task Refresh()
+    {
+        await ReloadAsync();
+        StateHasChanged();
+        await Task.Delay(60);
+        await WindowHost.ResizeToContentAndPlaceAsync();
+    }
+
+    private void ExitApp() => ShellCommands.Exit();
 
     public void Dispose() => Events.SettingsChanged -= OnSettingsChanged;
 }

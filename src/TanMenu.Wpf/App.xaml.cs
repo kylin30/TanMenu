@@ -45,9 +45,12 @@ public partial class App : Application
             return;
         }
 
-        var local = DataLocation.GetDataRoot(); // default %LOCALAPPDATA%\TanMenu, or a user-chosen folder
-        var cache = Path.Combine(local, "cache");
-        var paths = new AppDataPaths(local, cache); // 2-arg ctor = unpackaged, no WinRT
+        // One-time move of pre-existing %LOCALAPPDATA%\TanMenu data to the new Documents default.
+        DataLocation.MigrateLegacyIfNeeded();
+
+        var local = DataLocation.GetDataRoot(); // default Documents\TanMenu, or a user-chosen folder
+        // Mutable so a data-folder change in settings can re-point it live (no restart).
+        var paths = new MutableAppDataPaths(local);
         paths.EnsureCreated();
 
         Log.Logger = new LoggerConfiguration()
@@ -81,6 +84,7 @@ public partial class App : Application
         services.AddSingleton<IAutoStartService, RegistryAutoStartService>();
         services.AddSingleton<AppEvents>();
         services.AddSingleton<ISettingsLauncher, WpfSettingsLauncher>();
+        services.AddSingleton<IShellCommands, WpfShellCommands>();
 
         services.AddWpfBlazorWebView();
 #if DEBUG

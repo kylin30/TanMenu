@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Windows;
@@ -7,6 +6,7 @@ using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Win32;
+using TanMenu.Core.Infrastructure;
 using TanMenu.Core.Services;
 using TanMenu.Wpf.Services;
 
@@ -46,6 +46,7 @@ public partial class SettingsWindow : Window
 
     private void LoadFromConfig()
     {
+        _loaded = false; // suppress change handlers while (re)populating controls
         var g = _config.Config.General;
         RootBox.Text = _config.Config.RootFolder;
         DataBox.Text = DataLocation.GetDataRoot();
@@ -117,7 +118,7 @@ public partial class SettingsWindow : Window
         AutoStartCb.IsChecked = _autoStart.IsEnabled(); // reflect actual state
     }
 
-    private void ChangeData_Click(object sender, RoutedEventArgs e)
+    private async void ChangeData_Click(object sender, RoutedEventArgs e)
     {
         var dlg = new OpenFolderDialog { Title = "选择数据文件夹" };
         if (dlg.ShowDialog() != true)
@@ -138,29 +139,18 @@ public partial class SettingsWindow : Window
         if (!changed)
             return; // same folder
 
-        DataBox.Text = dlg.FolderName;
-        var msg = usedExisting
-            ? "目标文件夹已有数据，将切换使用它。"
-            : "已将当前数据移动到新文件夹。";
-        var result = MessageBox.Show(this, msg + "\n\n需要重启 TanMenu 才能生效，现在重启？",
-            "TanMenu", MessageBoxButton.YesNo, MessageBoxImage.Information);
-        if (result == MessageBoxResult.Yes)
-            Restart();
-    }
+        // Apply immediately (no restart): re-point the live data paths, reload config from the new
+        // location, refresh this window's controls, and notify the launcher to reload + re-theme.
+        if (App.Services.GetRequiredService<IAppDataPaths>() is MutableAppDataPaths paths)
+            paths.SetRoot(dlg.FolderName);
+        await _config.LoadAsync();
+        LoadFromConfig();
+        _events.RaiseSettingsChanged();
 
-    private static void Restart()
-    {
-        var exe = Environment.ProcessPath;
-        if (!string.IsNullOrEmpty(exe))
-        {
-            // Delay the relaunch so the old instance exits (releasing the single-instance mutex) first.
-            Process.Start(new ProcessStartInfo("cmd.exe", $"/c timeout /t 1 /nobreak >nul & start \"\" \"{exe}\"")
-            {
-                CreateNoWindow = true,
-                UseShellExecute = false,
-            });
-        }
-        ((App)Application.Current).ExitApp();
+        var msg = usedExisting
+            ? "已切换到目标文件夹中的现有数据。"
+            : "已将当前数据移动到新文件夹。";
+        MessageBox.Show(this, msg + "\n\n已立即生效。", "TanMenu", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
     private void NumberOnly(object sender, TextCompositionEventArgs e) =>

@@ -11,8 +11,10 @@ public class ConfigService
 {
     private readonly IAppDataPaths _paths;
     private readonly ILogger<ConfigService> _logger;
-    private readonly string _configPath;
     private readonly JsonSerializerOptions _jsonOptions;
+
+    /// <summary>Resolved fresh each access so a runtime data-folder change is picked up immediately.</summary>
+    private string _configPath => _paths.ConfigFilePath;
 
     public AppConfig Config { get; private set; }
     public bool HasValidConfig { get; private set; }
@@ -21,7 +23,6 @@ public class ConfigService
     {
         _paths = paths;
         _logger = logger;
-        _configPath = paths.ConfigFilePath;
 
         _jsonOptions = new JsonSerializerOptions
         {
