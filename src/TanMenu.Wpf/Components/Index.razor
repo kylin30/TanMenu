@@ -71,8 +71,9 @@
     {
         _cfg = ConfigService.Config;
         _theme = string.IsNullOrEmpty(_cfg.General.ThemeName) ? "Win31" : _cfg.General.ThemeName;
-        _groups = await MenuService.GetMenuAsync(_cfg.Folders);
-        Logger.LogInformation("Index loaded {Count} groups, theme {Theme}", _groups.Count, _theme);
+        _groups = await MenuService.GetMenuFromRootAsync(_cfg.RootFolder);
+        Logger.LogInformation("Index loaded {Count} groups from root '{Root}', theme {Theme}",
+            _groups.Count, _cfg.RootFolder, _theme);
     }
 
     private void OnSettingsChanged()

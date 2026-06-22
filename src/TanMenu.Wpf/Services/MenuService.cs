@@ -19,6 +19,23 @@ public sealed class MenuService
         _icons = icons;
     }
 
+    /// <summary>Build the menu from a ROOT folder: each immediate subdirectory becomes a group.</summary>
+    public Task<List<MenuGroupVm>> GetMenuFromRootAsync(string? rootFolder)
+    {
+        string[] dirs;
+        try
+        {
+            dirs = string.IsNullOrWhiteSpace(rootFolder) || !System.IO.Directory.Exists(rootFolder)
+                ? Array.Empty<string>()
+                : System.IO.Directory.GetDirectories(rootFolder);
+        }
+        catch
+        {
+            dirs = Array.Empty<string>();
+        }
+        return GetMenuAsync(dirs);
+    }
+
     public async Task<List<MenuGroupVm>> GetMenuAsync(IEnumerable<string> folders)
     {
         var contents = await _data.GetDirectoryContents(folders);

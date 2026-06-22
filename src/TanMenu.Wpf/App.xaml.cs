@@ -45,8 +45,7 @@ public partial class App : Application
             return;
         }
 
-        var local = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TanMenu");
+        var local = DataLocation.GetDataRoot(); // default %LOCALAPPDATA%\TanMenu, or a user-chosen folder
         var cache = Path.Combine(local, "cache");
         var paths = new AppDataPaths(local, cache); // 2-arg ctor = unpackaged, no WinRT
         paths.EnsureCreated();

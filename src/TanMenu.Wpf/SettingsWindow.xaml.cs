@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Windows;
@@ -46,7 +47,8 @@ public partial class SettingsWindow : Window
     private void LoadFromConfig()
     {
         var g = _config.Config.General;
-        RefreshFolders();
+        RootBox.Text = _config.Config.RootFolder;
+        DataBox.Text = DataLocation.GetDataRoot();
 
         ThemeCombo.ItemsSource = Themes.Select(t => t.Label).ToList();
         var idx = Array.FindIndex(Themes, t => t.Key == g.ThemeName);
@@ -61,12 +63,6 @@ public partial class SettingsWindow : Window
         _loaded = true;
     }
 
-    private void RefreshFolders()
-    {
-        FolderList.ItemsSource = null;
-        FolderList.ItemsSource = _config.Config.Folders.ToList();
-    }
-
     private async void Persist()
     {
         if (!_loaded)
@@ -75,23 +71,15 @@ public partial class SettingsWindow : Window
         _events.RaiseSettingsChanged();
     }
 
-    private void AddFolder_Click(object sender, RoutedEventArgs e)
+    private void PickRoot_Click(object sender, RoutedEventArgs e)
     {
-        var dlg = new OpenFolderDialog { Title = "选择文件夹" };
-        if (dlg.ShowDialog() == true && !_config.Config.Folders.Contains(dlg.FolderName))
+        var dlg = new OpenFolderDialog { Title = "选择主文件夹" };
+        if (!string.IsNullOrEmpty(_config.Config.RootFolder) && Directory.Exists(_config.Config.RootFolder))
+            dlg.InitialDirectory = _config.Config.RootFolder;
+        if (dlg.ShowDialog() == true)
         {
-            _config.Config.Folders.Add(dlg.FolderName);
-            RefreshFolders();
-            Persist();
-        }
-    }
-
-    private void RemoveFolder_Click(object sender, RoutedEventArgs e)
-    {
-        if (FolderList.SelectedItem is string f)
-        {
-            _config.Config.Folders.Remove(f);
-            RefreshFolders();
+            _config.Config.RootFolder = dlg.FolderName;
+            RootBox.Text = dlg.FolderName;
             Persist();
         }
     }
@@ -127,6 +115,52 @@ public partial class SettingsWindow : Window
     {
         _autoStart.SetEnabled(AutoStartCb.IsChecked == true);
         AutoStartCb.IsChecked = _autoStart.IsEnabled(); // reflect actual state
+    }
+
+    private void ChangeData_Click(object sender, RoutedEventArgs e)
+    {
+        var dlg = new OpenFolderDialog { Title = "选择数据文件夹" };
+        if (dlg.ShowDialog() != true)
+            return;
+
+        bool changed;
+        bool usedExisting;
+        try
+        {
+            changed = DataLocation.Relocate(dlg.FolderName, out usedExisting);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, "更改数据文件夹失败：" + ex.Message, "TanMenu", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        if (!changed)
+            return; // same folder
+
+        DataBox.Text = dlg.FolderName;
+        var msg = usedExisting
+            ? "目标文件夹已有数据，将切换使用它。"
+            : "已将当前数据移动到新文件夹。";
+        var result = MessageBox.Show(this, msg + "\n\n需要重启 TanMenu 才能生效，现在重启？",
+            "TanMenu", MessageBoxButton.YesNo, MessageBoxImage.Information);
+        if (result == MessageBoxResult.Yes)
+            Restart();
+    }
+
+    private static void Restart()
+    {
+        var exe = Environment.ProcessPath;
+        if (!string.IsNullOrEmpty(exe))
+        {
+            // Delay the relaunch so the old instance exits (releasing the single-instance mutex) first.
+            Process.Start(new ProcessStartInfo("cmd.exe", $"/c timeout /t 1 /nobreak >nul & start \"\" \"{exe}\"")
+            {
+                CreateNoWindow = true,
+                UseShellExecute = false,
+            });
+        }
+        ((App)Application.Current).ExitApp();
     }
 
     private void NumberOnly(object sender, TextCompositionEventArgs e) =>

@@ -6,8 +6,11 @@ public class AppConfig
     public GeneralConfig General { get; set; } = new();
 
     // Defaults are intentionally EMPTY — no hardcoded personal paths.
-    // First-run UX (folder picker / guidance) is added in a later milestone.
     public List<string> Folders { get; set; } = new();
+
+    /// <summary>Root folder whose immediate subdirectories become the launcher groups
+    /// (e.g. set to the Desktop → each folder on the desktop becomes a group).</summary>
+    public string RootFolder { get; set; } = "";
 }
 
 public class WindowConfig
