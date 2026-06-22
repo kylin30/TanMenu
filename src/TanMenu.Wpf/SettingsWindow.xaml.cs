@@ -89,7 +89,7 @@ public partial class SettingsWindow : Window
             double left, top;
             if (launcher is { ActualWidth: > 0 } && launcher.IsVisible)
             {
-                left = launcher.Left + (launcher.Width - w) / 2; // centered over the launcher
+                left = launcher.Left + (launcher.ActualWidth - w) / 2; // centered over the launcher
                 top = launcher.Top - h - 12;                      // directly above it
             }
             else
