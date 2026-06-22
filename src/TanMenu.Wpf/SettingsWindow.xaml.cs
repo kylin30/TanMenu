@@ -144,7 +144,7 @@ public partial class SettingsWindow : Window
     {
         // CSS family name -> the TTF's internal family name (bundled under <exe>\fonts).
         ["Alibaba PuHuiTi"] = "阿里巴巴普惠体 2.0 55 Regular",
-        ["Pixel"] = "Fusion Pixel 12px Monospaced zh",
+        ["Pixel"] = "Fusion Pixel 12px Monospaced zh_hans",
         ["Press Start 2P"] = "Press Start 2P",
     };
 
@@ -158,7 +158,10 @@ public partial class SettingsWindow : Window
             if (IntegratedFontFaces.TryGetValue(name, out var face))
             {
                 var dir = Path.Combine(AppContext.BaseDirectory, "fonts") + Path.DirectorySeparatorChar;
-                return new System.Windows.Media.FontFamily(new Uri(dir), "./#" + face);
+                var ff = new System.Windows.Media.FontFamily(new Uri(dir), "./#" + face);
+                // A wrong face name or a missing fonts dir does NOT throw — it silently falls back to
+                // a global default. Verify the face actually resolves; otherwise use Segoe UI.
+                return FontResolves(ff) ? ff : new System.Windows.Media.FontFamily("Segoe UI");
             }
             return new System.Windows.Media.FontFamily(name); // installed system font
         }
@@ -168,12 +171,23 @@ public partial class SettingsWindow : Window
         }
     }
 
+    private static bool FontResolves(System.Windows.Media.FontFamily ff)
+    {
+        try
+        {
+            var tf = new System.Windows.Media.Typeface(ff, System.Windows.FontStyles.Normal,
+                System.Windows.FontWeights.Normal, System.Windows.FontStretches.Normal);
+            return tf.TryGetGlyphTypeface(out _);
+        }
+        catch { return false; }
+    }
+
     // ---- "常用工具" customization ----
 
     private void BuildToolCheckboxes()
     {
         ToolsPanel.Children.Clear();
-        foreach (var tool in _config.Config.General.DefaultTools)
+        foreach (var tool in _config.Config.General.DefaultTools ?? Enumerable.Empty<DefaultTool>())
         {
             var cb = new CheckBox
             {

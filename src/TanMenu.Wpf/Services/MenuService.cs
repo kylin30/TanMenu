@@ -31,17 +31,17 @@ public sealed class MenuService
     }
 
     /// <summary>Build the built-in "常用工具" group from the configured tools (only the shown ones).</summary>
-    public MenuGroupVm BuildDefaultToolsGroup(IEnumerable<DefaultTool> tools)
+    public MenuGroupVm BuildDefaultToolsGroup(IEnumerable<DefaultTool>? tools)
     {
         var items = new List<MenuItemVm>();
-        foreach (var t in tools)
+        foreach (var t in tools ?? Array.Empty<DefaultTool>())
         {
             if (!t.Show || string.IsNullOrWhiteSpace(t.Command))
                 continue;
 
-            var iconPath = ResolveCommandPath(t.Command);
+            var resolved = ResolveCommandPath(t.Command);
             string? b64 = null;
-            var bytes = _icons.GetIconPngBytes(iconPath);
+            var bytes = _icons.GetIconPngBytes(resolved);
             if (bytes is { Length: > 0 })
                 b64 = Convert.ToBase64String(bytes);
             b64 ??= DefaultIconBase64;
@@ -49,7 +49,8 @@ public sealed class MenuService
             items.Add(new MenuItemVm
             {
                 Name = t.Name,
-                FullPath = t.Command, // launched via the shell (resolves aliases like calc.exe)
+                // Prefer the resolved full path; the shell still resolves a bare command otherwise.
+                FullPath = File.Exists(resolved) ? resolved : t.Command,
                 IsDirectory = false,
                 IsDisabled = false,
                 IconBase64 = b64,
@@ -59,8 +60,8 @@ public sealed class MenuService
         return new MenuGroupVm { Directory = "", DirectoryName = DefaultToolsGroupName, Items = items };
     }
 
-    /// <summary>Resolve a bare exe/command to a full path (System32, then PATH) for icon extraction;
-    /// returns the command unchanged if not found (the shell still resolves it at launch time).</summary>
+    /// <summary>Resolve a bare exe/command to a full path (System32, then PATH); returns the command
+    /// unchanged if not found (LaunchService then lets the shell resolve it via App Paths/PATH).</summary>
     private static string ResolveCommandPath(string command)
     {
         try
