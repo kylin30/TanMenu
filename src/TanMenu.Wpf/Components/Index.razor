@@ -76,8 +76,9 @@
     private AppConfig _cfg = new();
     private string _theme = "Win98";
 
-    /// <summary>Sanitized font family — safe to inline into the &lt;style&gt; block (the stored
-    /// value is user free-text, so strip any CSS-breaking characters before rendering).</summary>
+    /// <summary>Sanitized font family — safe to inline into the &lt;style&gt; block. The value comes
+    /// from the settings font list (or a hand-edited config), so CSS-breaking characters are
+    /// stripped as a defensive measure before rendering.</summary>
     private string SafeFont => FontUtil.Sanitize(_cfg.General.FontFamily);
 
     protected override async Task OnInitializedAsync()

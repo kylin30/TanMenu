@@ -2,12 +2,14 @@ using System.Linq;
 
 namespace TanMenu.Wpf.Services;
 
-/// <summary>Helpers for the user-chosen UI font.</summary>
+/// <summary>Helpers for the configured UI font.</summary>
 public static class FontUtil
 {
     /// <summary>
-    /// Sanitize a user-entered font-family name so it is safe to inline into a CSS
-    /// <c>&lt;style&gt;</c> block. Keeps only letters (incl. CJK), digits, spaces, hyphen and
+    /// Sanitize a configured font-family name so it is safe to inline into a CSS
+    /// <c>&lt;style&gt;</c> block. The settings dropdown is a closed list (built-in + enumerated
+    /// system families), so this is a defensive guard — chiefly against a hand-edited config —
+    /// before the value is inlined. Keeps only letters (incl. CJK), digits, spaces, hyphen and
     /// underscore, dropping CSS-significant characters (<c>" ; { } &lt; &gt; \ ( )</c> etc.) that
     /// could otherwise break or hijack the stylesheet. Returns "" for blank input.
     /// </summary>
