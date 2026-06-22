@@ -25,7 +25,7 @@ public class AppConfigTests
         Assert.Equal(8, general.PositionOffset);
         Assert.Equal(5, general.Tolerance);
         Assert.Equal(10, general.ColButtonCount);
-        Assert.Equal("Win98", general.ThemeName);
-        Assert.Equal("", general.FontFamily);
+        Assert.Equal("Win7", general.ThemeName);
+        Assert.Equal("Alibaba PuHuiTi", general.FontFamily);
     }
 }

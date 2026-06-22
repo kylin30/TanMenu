@@ -32,8 +32,8 @@ public class GeneralConfig
     public int ColButtonCount { get; set; } = 10;
 
     /// <summary>Active retro theme: "Win98" | "WinXP" | "Win7".</summary>
-    public string ThemeName { get; set; } = "Win98";
+    public string ThemeName { get; set; } = "Win7";
 
     /// <summary>UI font family override. Empty = use the active theme's default font.</summary>
-    public string FontFamily { get; set; } = "";
+    public string FontFamily { get; set; } = "Alibaba PuHuiTi";
 }

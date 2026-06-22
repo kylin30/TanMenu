@@ -22,21 +22,34 @@ public partial class SettingsWindow : Window
     };
 
     private const string DefaultFontLabel = "默认（主题字体）";
+    private const string GroupBuiltIn = "内置字体";
+    private const string GroupSystem = "系统字体";
 
-    // Suggested fonts (the combo is editable, so any installed family can also be typed).
-    // "Pixel" (fusion-pixel) is bundled via app.css @font-face and covers Chinese; the other
-    // entries are common system fonts. (Press Start 2P is omitted — it's Latin-only and would
-    // leave the app's Chinese labels in a mismatched fallback.)
-    private static readonly string[] FontPresets =
+    /// <summary>One entry in the font dropdown. <see cref="Family"/> is the CSS value ("" = the
+    /// theme's own font); <see cref="Group"/> drives the 内置字体 / 系统字体 grouping.</summary>
+    private sealed record FontItem(string Name, string Family, string Group);
+
+    /// <summary>App-bundled fonts first (default sentinel + the three @font-face families), then
+    /// every installed system font family, sorted.</summary>
+    private static List<FontItem> BuildFontItems()
     {
-        DefaultFontLabel,
-        "Pixel",
-        "Microsoft YaHei",
-        "SimSun",
-        "SimHei",
-        "Segoe UI",
-        "Tahoma",
-    };
+        var items = new List<FontItem>
+        {
+            new(DefaultFontLabel, "", GroupBuiltIn),
+            new("阿里巴巴普惠体", "Alibaba PuHuiTi", GroupBuiltIn),
+            new("Fusion Pixel 像素", "Pixel", GroupBuiltIn),
+            new("Press Start 2P", "Press Start 2P", GroupBuiltIn),
+        };
+        foreach (var fam in System.Windows.Media.Fonts.SystemFontFamilies
+                     .Select(f => f.Source)
+                     .Where(s => !string.IsNullOrWhiteSpace(s))
+                     .Distinct()
+                     .OrderBy(s => s, StringComparer.CurrentCultureIgnoreCase))
+        {
+            items.Add(new FontItem(fam, fam, GroupSystem));
+        }
+        return items;
+    }
 
     private readonly ConfigService _config;
     private readonly IAutoStartService _autoStart;
@@ -72,8 +85,12 @@ public partial class SettingsWindow : Window
         var idx = Array.FindIndex(Themes, t => t.Key == g.ThemeName);
         ThemeCombo.SelectedIndex = idx < 0 ? 0 : idx;
 
-        FontCombo.ItemsSource = FontPresets;
-        FontCombo.Text = string.IsNullOrWhiteSpace(g.FontFamily) ? DefaultFontLabel : g.FontFamily;
+        var fontItems = BuildFontItems();
+        var fontView = new System.Windows.Data.ListCollectionView(fontItems);
+        fontView.GroupDescriptions.Add(new System.Windows.Data.PropertyGroupDescription(nameof(FontItem.Group)));
+        FontCombo.ItemsSource = fontView;
+        FontCombo.SelectedItem = fontItems.FirstOrDefault(i =>
+            string.Equals(i.Family, g.FontFamily ?? string.Empty, StringComparison.OrdinalIgnoreCase));
 
         ColCount.Text = g.ColButtonCount.ToString();
         AutoCloseCb.IsChecked = g.AutoClose;
@@ -113,20 +130,14 @@ public partial class SettingsWindow : Window
         Persist();
     }
 
-    private void Font_SelectionChanged(object sender, SelectionChangedEventArgs e) => ApplyFont();
-    private void Font_LostFocus(object sender, RoutedEventArgs e) => ApplyFont();
-
-    private void ApplyFont()
+    private void Font_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (!_loaded)
+        if (!_loaded || FontCombo.SelectedItem is not FontItem item)
             return;
-        var text = (FontCombo.Text ?? string.Empty).Trim();
-        if (text == DefaultFontLabel)
-            text = string.Empty;
-        text = FontUtil.Sanitize(text); // user free-text → strip CSS-breaking characters
-        if (text == _config.Config.General.FontFamily)
-            return; // no change
-        _config.Config.General.FontFamily = text;
+        var fam = FontUtil.Sanitize(item.Family); // "" for the theme-default entry
+        if (fam == _config.Config.General.FontFamily)
+            return;
+        _config.Config.General.FontFamily = fam;
         Persist();
     }
 

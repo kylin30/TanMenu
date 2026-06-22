@@ -14,6 +14,22 @@
     font-display: swap;
 }
 
+@font-face {
+    font-family: 'Alibaba PuHuiTi';
+    src: url('../fonts/AlibabaPuHuiTi-Regular.ttf') format('truetype');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Alibaba PuHuiTi';
+    src: url('../fonts/AlibabaPuHuiTi-Bold.ttf') format('truetype');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+
 html, body {
     margin: 0;
     padding: 0;

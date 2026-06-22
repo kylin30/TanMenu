@@ -17,12 +17,11 @@
     @if (!string.IsNullOrEmpty(SafeFont))
     {
         <style>
+            /* Cover every element in the window — the launcher buttons' text lives in
+               .button-body, which declares its own font-family, so a parent-only override
+               wouldn't reach it. */
             .body .window,
-            .body .window button,
-            .body .window input,
-            .body .window legend,
-            .body .title-bar-text,
-            .body .tm-menubar {
+            .body .window * {
                 font-family: "@SafeFont", sans-serif !important;
             }
         </style>
