@@ -31,14 +31,14 @@ Tech: .NET 10 (`net10.0-windows10.0.19041.0`, x64), WPF, `Microsoft.AspNetCore.C
 ## Build & run (dev)
 
 ```powershell
-dotnet build src\TanMenu.Wpf\TanMenu.Wpf.csproj -c Debug -p:Platform=x64
+dotnet build src\TanMenu.Wpf\TanMenu.Wpf.csproj -c Debug
 dotnet run --project src\TanMenu.Wpf\TanMenu.Wpf.csproj -c Debug
 ```
 
 ## Publish (share as a self-contained EXE)
 
 ```powershell
-dotnet publish src\TanMenu.Wpf\TanMenu.Wpf.csproj -c Release -p:Platform=x64 /p:PublishProfile=win-x64
+dotnet publish src\TanMenu.Wpf\TanMenu.Wpf.csproj -c Release /p:PublishProfile=win-x64
 # output: src\TanMenu.Wpf\bin\publish\win-x64\TanMenu.Wpf.exe
 ```
 
