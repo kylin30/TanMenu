@@ -9,9 +9,13 @@
   box-shadow: none;
   border: 3px solid #0058e6;
   border-top: none;
-  border-radius: 0 0 7px 7px;
+  /* round the top corners too so the blue frame + title bar form one rounded
+     cap; clip the title bar to the frame so it spans edge-to-edge (no beige
+     gap on the sides). padding:0 — the body insets itself via .window-body. */
+  border-radius: 8px 8px 7px 7px;
   background: #ece9d8;
-  padding: 0 3px 3px 3px;
+  padding: 0;
+  overflow: hidden;
   -webkit-font-smoothing: none;
 }
 
