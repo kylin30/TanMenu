@@ -20,6 +20,7 @@ public partial class SettingsWindow : Window
         ("Win98", "Windows 98"),
         ("WinXP", "Windows XP"),
         ("Win7", "Windows 7"),
+        ("Fluent2", "Fluent 2"),
     };
 
     private const string DefaultFontLabel = "默认（主题字体）";

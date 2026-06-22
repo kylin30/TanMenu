@@ -1,0 +1,153 @@
+/*
+ * Fluent 2 (Windows 11) theme for TanMenu — styles the SAME markup API the retro themes use
+ * (.window / .title-bar / .title-bar-controls / .window-body / button / fieldset+legend) in the
+ * modern Fluent Design look: light Mica-ish surface, rounded corners, clean caption buttons,
+ * subtle card group boxes and Fluent push buttons. Self-contained (like 7.css).
+ *
+ * Fluent tokens used: window #f3f3f3, card #ffffff, stroke #e5e5e5, text #1b1b1b / #5d5d5d,
+ * accent #005fb8, control corner radius 4–8px.
+ */
+
+.window {
+    box-sizing: border-box;
+    background: #f3f3f3;
+    color: #1b1b1b;
+    border: 1px solid #e1e1e1;
+    border-radius: 8px;
+    overflow: hidden;
+    font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, "Microsoft YaHei UI", sans-serif;
+    font-size: 13px;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* ---- Title bar ---- */
+.window > .title-bar {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    height: 36px;
+    padding: 0 0 0 12px;
+    background: transparent;
+    color: #1b1b1b;
+}
+.title-bar-text {
+    display: inline-flex;
+    align-items: center;
+    font-size: 13px;
+    font-weight: 600;
+    color: #1b1b1b;
+    white-space: nowrap;
+    overflow: hidden;
+}
+.title-bar-icon {
+    width: 16px;
+    height: 16px;
+    margin-right: 8px;
+    flex: 0 0 auto;
+}
+.title-bar-controls {
+    display: flex;
+    flex-direction: row;
+    height: 100%;
+    flex: 0 0 auto;
+}
+.title-bar-controls button {
+    width: 44px;
+    height: 36px;
+    min-width: 0;
+    padding: 0;
+    margin: 0;
+    border: none;
+    border-radius: 0;
+    background-color: transparent;
+    background-repeat: no-repeat;
+    background-position: center;
+    cursor: default;
+    transition: background-color .12s ease;
+}
+.title-bar-controls button[aria-label="Minimize"] {
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Cpath d='M0 5h10' stroke='%231b1b1b'/%3E%3C/svg%3E");
+}
+.title-bar-controls button[aria-label="Close"] {
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Cpath d='M0 0l10 10M10 0L0 10' stroke='%231b1b1b'/%3E%3C/svg%3E");
+}
+.title-bar-controls button:hover {
+    background-color: rgba(0, 0, 0, 0.06);
+}
+.title-bar-controls button[aria-label="Close"]:hover {
+    background-color: #c42b1c;
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Cpath d='M0 0l10 10M10 0L0 10' stroke='%23ffffff'/%3E%3C/svg%3E");
+}
+
+/* ---- Body ---- */
+.window-body {
+    background: transparent;
+    color: #1b1b1b;
+    margin: 0;
+    padding: 12px;
+}
+
+/* ---- Group boxes as Fluent cards ---- */
+fieldset {
+    background: #ffffff;
+    border: 1px solid #e5e5e5;
+    border-radius: 8px;
+    padding: 10px 12px 12px;
+    margin: 0;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+legend {
+    padding: 0 4px;
+    background: transparent;
+    color: #1b1b1b;
+    font-weight: 600;
+}
+
+/* ---- Launcher push buttons (Fluent) ---- */
+.window-body button {
+    box-sizing: border-box;
+    background: #fbfbfb;
+    color: #1b1b1b;
+    border: 1px solid #d7d7d7;
+    border-bottom-color: #cfcfcf;
+    border-radius: 6px;
+    padding: 2px 4px;
+    min-width: 0;
+    text-align: left;
+    cursor: default;
+    transition: background-color .1s ease, border-color .1s ease;
+}
+.window-body button:hover {
+    background: #f2f2f2;
+    border-color: #c8c8c8;
+}
+.window-body button:active {
+    background: #ededed;
+    border-color: #c8c8c8;
+}
+.window-body button:disabled,
+.window-body button.disabled {
+    background: #f5f5f5;
+    color: #a3a3a3;
+    border-color: #e6e6e6;
+}
+
+/* ---- Form controls (settings-style, if ever used in the body) ---- */
+.window-body input,
+.window-body select,
+.window-body textarea {
+    background: #ffffff;
+    color: #1b1b1b;
+    border: 1px solid #d7d7d7;
+    border-bottom: 2px solid #8a8a8a;
+    border-radius: 4px;
+    padding: 3px 8px;
+    font-family: inherit;
+}
+.window-body input:focus,
+.window-body select:focus,
+.window-body textarea:focus {
+    outline: none;
+    border-bottom-color: #005fb8;
+}

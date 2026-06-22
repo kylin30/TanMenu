@@ -32,6 +32,7 @@
     // fonts.css is linked AFTER 98.css so its @font-face overrides 98.css's unresolved one.
     private string[] Stylesheets => Theme switch
     {
+        "Fluent2" => new[] { "/lib/fluent2/fluent2.css" },
         "Win7" => new[] { "/lib/win7theme/7.css" },
         "WinXP" => new[] { "/lib/xpcss/98.css", "/lib/xpcss/fonts.css", "/lib/xpcss/xp-luna.css" },
         _ => new[] { "/lib/xpcss/98.css", "/lib/xpcss/fonts.css" },

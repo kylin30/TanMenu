@@ -204,3 +204,16 @@ a, .btn-link {
     border-color: #9cc9ec;
     color: #16385c;
 }
+
+/* ---- Fluent 2 (Windows 11): subtle rounded hover ---- */
+.theme-fluent2 .tm-menubar {
+    border-bottom: 1px solid #e5e5e5;
+    margin-bottom: 7px;
+}
+.theme-fluent2 .tm-menuitem {
+    border-radius: 4px;
+    color: #1b1b1b;
+}
+.theme-fluent2 .tm-menuitem:hover {
+    background: rgba(0, 0, 0, 0.06);
+}
