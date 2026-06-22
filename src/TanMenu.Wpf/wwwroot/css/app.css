@@ -142,26 +142,22 @@ a, .btn-link {
     display: flex;
     width: 100%;
     align-items: stretch;
-    font-size: 12px;
+    gap: 2px;
+    font-size: 13px;
     line-height: 1;
     user-select: none;
-    margin: 0 0 5px 0;
-    padding: 1px 0;
+    margin: 0 0 7px 0;
+    padding: 0;
     box-sizing: border-box;
 }
 
 .tm-menuitem {
-    padding: 3px 9px 4px 9px;
+    padding: 5px 11px;
     cursor: default;
     white-space: nowrap;
     border: 1px solid transparent;
     color: inherit;
-}
-
-/* Access-key underline (the first character), Windows-style. */
-.tm-menuitem u {
-    text-decoration: underline;
-    border-bottom: none;
+    transition: background-color .08s ease, border-color .08s ease, color .08s ease;
 }
 
 /* ---- Windows 98/2000: flat menu bar, square navy selection (classic 9x menu) ---- */

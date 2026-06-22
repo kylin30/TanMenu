@@ -30,10 +30,10 @@
         <RetroWindow Title="TanMenu" OnCloseClick="@HandleClose">
             <div id="form-content">
                 <div class="tm-menubar" role="menubar">
-                    <span class="tm-menuitem" role="menuitem" @onclick="OpenRoot"><u>打</u>开主目录</span>
-                    <span class="tm-menuitem" role="menuitem" @onclick="OpenSettings"><u>选</u>项</span>
-                    <span class="tm-menuitem" role="menuitem" @onclick="Refresh"><u>刷</u>新</span>
-                    <span class="tm-menuitem" role="menuitem" @onclick="ExitApp"><u>退</u>出</span>
+                    <span class="tm-menuitem" role="menuitem" @onclick="OpenRoot">打开主目录</span>
+                    <span class="tm-menuitem" role="menuitem" @onclick="OpenSettings">选项</span>
+                    <span class="tm-menuitem" role="menuitem" @onclick="Refresh">刷新</span>
+                    <span class="tm-menuitem" role="menuitem" @onclick="ExitApp">退出</span>
                 </div>
                 @if (_groups.Count > 0)
                 {
