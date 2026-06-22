@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Interop;
 using Microsoft.Extensions.DependencyInjection;
 using TanMenu.Wpf.Services;
 
@@ -11,6 +12,7 @@ public partial class MainWindow : Window
         InitializeComponent();
         WebView.Services = App.Services;
         Loaded += OnLoaded;
+        SourceInitialized += OnSourceInitialized;
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
@@ -20,11 +22,47 @@ public partial class MainWindow : Window
         if (web is null)
             return;
 
-        // KEY for the borderless transparent shell: make the WebView2 surface transparent
-        // so the CSS-drawn retro window shows through the AllowsTransparency window.
+        // KEY for the borderless transparent shell: transparent WebView2 surface so the
+        // CSS-drawn retro window shows through the AllowsTransparency window.
         web.DefaultBackgroundColor = System.Drawing.Color.Transparent;
-
-        // Give the WindowHost this window + WebView2 so it can measure/place and hide-on-blur.
         ((WindowHost)App.Services.GetRequiredService<IWindowHost>()).Attach(this, web);
+    }
+
+    private void OnSourceInitialized(object? sender, EventArgs e)
+    {
+        try
+        {
+            var hwnd = new WindowInteropHelper(this).Handle;
+            HwndSource.FromHwnd(hwnd)?.AddHook(WndProc);
+
+            // Global hotkey Alt+Space.
+            App.Hotkey = new HotkeyService();
+            if (!App.Hotkey.Register(hwnd))
+                Serilog.Log.Warning("Global hotkey Alt+Space registration failed (already in use?)");
+
+            // System tray.
+            var host = App.Services.GetRequiredService<IWindowHost>();
+            App.Tray = new TrayService(host, () => ((App)Application.Current).ExitApp());
+            App.Tray.Create(System.IO.Path.Combine(AppContext.BaseDirectory, "wwwroot", "app.ico"));
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Error(ex, "Failed to initialize tray/hotkey");
+        }
+    }
+
+    private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (msg == App.WmShowFirstInstance)
+        {
+            App.Services.GetRequiredService<IWindowHost>().ShowAndActivate();
+            handled = true;
+        }
+        else if (msg == HotkeyService.WmHotkey && App.Hotkey is not null && App.Hotkey.IsOurHotkey(wParam))
+        {
+            App.Services.GetRequiredService<IWindowHost>().Toggle();
+            handled = true;
+        }
+        return IntPtr.Zero;
     }
 }

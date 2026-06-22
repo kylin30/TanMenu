@@ -1,4 +1,6 @@
 using System.IO;
+using System.Runtime.InteropServices;
+using System.Threading;
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -12,10 +14,36 @@ namespace TanMenu.Wpf;
 public partial class App : Application
 {
     public static IServiceProvider Services { get; private set; } = null!;
+    public static TrayService? Tray { get; set; }
+    public static HotkeyService? Hotkey { get; set; }
+
+    /// <summary>Custom message a second instance posts to resurface the first.</summary>
+    public const int WmShowFirstInstance = 0x8000 + 1;
+
+    private Mutex? _mutex;
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr FindWindow(string? lpClassName, string? lpWindowName);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
 
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        // Single instance: if already running, signal the existing window and exit.
+        // Use a WPF-app-specific name so we don't collide with the original WinForms TanMenu
+        // (which uses the mutex/window name "TanMenu").
+        _mutex = new Mutex(true, "TanMenuWpf", out var createdNew);
+        if (!createdNew)
+        {
+            var existing = FindWindow(null, "TanMenuWpf");
+            if (existing != IntPtr.Zero)
+                SendMessage(existing, WmShowFirstInstance, IntPtr.Zero, IntPtr.Zero);
+            Shutdown();
+            return;
+        }
 
         var local = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TanMenu");
@@ -29,6 +57,12 @@ public partial class App : Application
             .WriteTo.File(Path.Combine(paths.LogsFolder, "log-.txt"),
                 rollingInterval: RollingInterval.Day)
             .CreateLogger();
+
+        DispatcherUnhandledException += (_, args) =>
+        {
+            Log.Error(args.Exception, "Unhandled dispatcher exception");
+            args.Handled = true;
+        };
 
         var services = new ServiceCollection();
         services.AddLogging(b => b.AddSerilog(dispose: true));
@@ -60,5 +94,13 @@ public partial class App : Application
             .Initialize(Path.Combine(AppContext.BaseDirectory, "wwwroot", "sounds"));
 
         new MainWindow().Show();
+    }
+
+    public void ExitApp()
+    {
+        Tray?.Dispose();
+        Hotkey?.Dispose();
+        try { _mutex?.ReleaseMutex(); } catch { /* ignore */ }
+        Shutdown();
     }
 }
