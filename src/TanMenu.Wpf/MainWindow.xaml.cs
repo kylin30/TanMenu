@@ -35,11 +35,6 @@ public partial class MainWindow : Window
             var hwnd = new WindowInteropHelper(this).Handle;
             HwndSource.FromHwnd(hwnd)?.AddHook(WndProc);
 
-            // Global hotkey Alt+Space.
-            App.Hotkey = new HotkeyService();
-            if (!App.Hotkey.Register(hwnd))
-                Serilog.Log.Warning("Global hotkey Alt+Space registration failed (already in use?)");
-
             // System tray.
             var host = App.Services.GetRequiredService<IWindowHost>();
             App.Tray = new TrayService(
@@ -59,11 +54,6 @@ public partial class MainWindow : Window
         if (msg == App.WmShowFirstInstance)
         {
             App.Services.GetRequiredService<IWindowHost>().ShowAndActivate();
-            handled = true;
-        }
-        else if (msg == HotkeyService.WmHotkey && App.Hotkey is not null && App.Hotkey.IsOurHotkey(wParam))
-        {
-            App.Services.GetRequiredService<IWindowHost>().Toggle();
             handled = true;
         }
         return IntPtr.Zero;

@@ -21,6 +21,22 @@ public partial class SettingsWindow : Window
         ("Win7", "Windows 7"),
     };
 
+    private const string DefaultFontLabel = "默认（主题字体）";
+
+    // Suggested fonts (the combo is editable, so any installed family can also be typed).
+    // "Pixel" and "Press Start 2P" are bundled via app.css @font-face (always available).
+    private static readonly string[] FontPresets =
+    {
+        DefaultFontLabel,
+        "Pixel",
+        "Press Start 2P",
+        "Microsoft YaHei",
+        "SimSun",
+        "SimHei",
+        "Segoe UI",
+        "Tahoma",
+    };
+
     private readonly ConfigService _config;
     private readonly IAutoStartService _autoStart;
     private readonly AppEvents _events;
@@ -54,6 +70,9 @@ public partial class SettingsWindow : Window
         ThemeCombo.ItemsSource = Themes.Select(t => t.Label).ToList();
         var idx = Array.FindIndex(Themes, t => t.Key == g.ThemeName);
         ThemeCombo.SelectedIndex = idx < 0 ? 0 : idx;
+
+        FontCombo.ItemsSource = FontPresets;
+        FontCombo.Text = string.IsNullOrWhiteSpace(g.FontFamily) ? DefaultFontLabel : g.FontFamily;
 
         ColCount.Text = g.ColButtonCount.ToString();
         AutoCloseCb.IsChecked = g.AutoClose;
@@ -90,6 +109,22 @@ public partial class SettingsWindow : Window
         if (!_loaded || ThemeCombo.SelectedIndex < 0)
             return;
         _config.Config.General.ThemeName = Themes[ThemeCombo.SelectedIndex].Key;
+        Persist();
+    }
+
+    private void Font_SelectionChanged(object sender, SelectionChangedEventArgs e) => ApplyFont();
+    private void Font_LostFocus(object sender, RoutedEventArgs e) => ApplyFont();
+
+    private void ApplyFont()
+    {
+        if (!_loaded)
+            return;
+        var text = (FontCombo.Text ?? string.Empty).Trim();
+        if (text == DefaultFontLabel)
+            text = string.Empty;
+        if (text == _config.Config.General.FontFamily)
+            return; // no change
+        _config.Config.General.FontFamily = text;
         Persist();
     }
 

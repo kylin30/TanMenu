@@ -29,8 +29,11 @@ public class GeneralConfig
     public bool ShowInTaskbar { get; set; } = false;
     public int PositionOffset { get; set; } = 8;
     public int Tolerance { get; set; } = 5;
-    public int ColButtonCount { get; set; } = 8;
+    public int ColButtonCount { get; set; } = 10;
 
     /// <summary>Active retro theme: "Win98" | "WinXP" | "Win7".</summary>
     public string ThemeName { get; set; } = "Win98";
+
+    /// <summary>UI font family override. Empty = use the active theme's default font.</summary>
+    public string FontFamily { get; set; } = "";
 }

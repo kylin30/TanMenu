@@ -15,7 +15,6 @@ public partial class App : Application
 {
     public static IServiceProvider Services { get; private set; } = null!;
     public static TrayService? Tray { get; set; }
-    public static HotkeyService? Hotkey { get; set; }
 
     /// <summary>Custom message a second instance posts to resurface the first.</summary>
     public const int WmShowFirstInstance = 0x8000 + 1;
@@ -105,7 +104,6 @@ public partial class App : Application
     public void ExitApp()
     {
         Tray?.Dispose();
-        Hotkey?.Dispose();
         try { _mutex?.ReleaseMutex(); } catch { /* ignore */ }
         Shutdown();
     }

@@ -14,6 +14,19 @@
 @inject Microsoft.Extensions.Logging.ILogger<Index> Logger
 
 <div class="body theme-@ThemeClass">
+    @if (!string.IsNullOrWhiteSpace(_cfg.General.FontFamily))
+    {
+        <style>
+            .body .window,
+            .body .window button,
+            .body .window input,
+            .body .window legend,
+            .body .title-bar-text,
+            .body .tm-menubar {
+                font-family: "@_cfg.General.FontFamily", sans-serif !important;
+            }
+        </style>
+    }
     <CascadingValue Value="@_theme" Name="Theme">
         <RetroWindow Title="TanMenu" OnCloseClick="@HandleClose">
             <div id="form-content">
