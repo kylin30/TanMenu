@@ -33,6 +33,7 @@
                     <span class="tm-menuitem" role="menuitem" @onclick="OpenRoot">打开主目录</span>
                     <span class="tm-menuitem" role="menuitem" @onclick="OpenSettings">选项</span>
                     <span class="tm-menuitem" role="menuitem" @onclick="Refresh">刷新</span>
+                    <span class="tm-menuitem" role="menuitem" @onclick="ShowAbout">关于</span>
                     <span class="tm-menuitem" role="menuitem" @onclick="ExitApp">退出</span>
                 </div>
                 @if (_groups.Count > 0)
@@ -69,12 +70,27 @@
             </div>
         </RetroWindow>
     </CascadingValue>
+
+    @* "关于" overlay: shows the startup splash on demand; click anywhere to dismiss.
+       The splash is position:fixed/full-window, so a click on it bubbles to this
+       wrapper's handler. ShowLoading=false swaps the launch spinner for a dismiss hint. *@
+    @if (_showAbout)
+    {
+        <div class="about-overlay" @onclick="CloseAbout">
+            <SplashScreen ShowLoading="false" Version="@AppVersion" />
+        </div>
+    }
 </div>
 
 @code {
     private List<MenuGroupVm> _groups = new();
     private AppConfig _cfg = new();
     private string _theme = "Win98";
+    private bool _showAbout;
+
+    /// <summary>Version shown in the About/splash footer — the assembly version (3 parts).</summary>
+    private static readonly string AppVersion =
+        System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "1.0.0";
 
     /// <summary>Sanitized font family — safe to inline into the &lt;style&gt; block. The value comes
     /// from the settings font list (or a hand-edited config), so CSS-breaking characters are
@@ -171,6 +187,10 @@
         await Task.Delay(60);
         await WindowHost.ResizeToContentAndPlaceAsync();
     }
+
+    private void ShowAbout() => _showAbout = true;
+
+    private void CloseAbout() => _showAbout = false;
 
     private void ExitApp() => ShellCommands.Exit();
 

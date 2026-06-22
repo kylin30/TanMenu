@@ -3,26 +3,33 @@
 <div class="splash-screen">
     <div class="splash-container">
         <div class="logo">
-            <img src="wwwroot/app.ico" alt="TanMenu" onerror="@($"this.style.display='none'; this.parentNode.innerHTML='<div style=\\'color:#0078d4;font-size:24px;font-weight:bold;\\'>TM</div>'")" />
+            <img src="/app.ico" alt="TanMenu" onerror="@($"this.style.display='none'; this.parentNode.innerHTML='<div style=\\'color:#0078d4;font-size:24px;font-weight:bold;\\'>TM</div>'")" />
         </div>
         <h1 class="app-name">TanMenu</h1>
         <div class="developer-info">by TanSoft</div>
 
-        <div class="loading-section">
-            <div class="spinner-container">
-                <div class="spinner"></div>
+        @if (ShowLoading)
+        {
+            <div class="loading-section">
+                <div class="spinner-container">
+                    <div class="spinner"></div>
+                </div>
+                <div class="loading-dots">
+                    <span class="dot">●</span>
+                    <span class="dot">●</span>
+                    <span class="dot">●</span>
+                </div>
             </div>
-            <div class="loading-dots">
-                <span class="dot">●</span>
-                <span class="dot">●</span>
-                <span class="dot">●</span>
-            </div>
-        </div>
-    </div>
+        }
+        else
+        {
+            <div class="about-hint">点击任意处关闭</div>
+        }
 
-    <div class="footer-info">
-        <div class="version-info">TanMenu v@Version</div>
-        <div class="copyright">© @DateTime.Now.Year TanSoft. All rights reserved.</div>
+        <div class="footer-info">
+            <div class="version-info">TanMenu v@(Version)</div>
+            <div class="copyright">© @DateTime.Now.Year TanSoft. All rights reserved.</div>
+        </div>
     </div>
 </div>
 
@@ -30,6 +37,10 @@
     [Parameter] public string Version { get; set; } = "1.0.0";
     [Parameter] public EventCallback OnLoadingComplete { get; set; }
     [Parameter] public bool IsVisible { get; set; } = true;
+
+    /// <summary>When false (e.g. shown as the "关于/About" overlay), hide the launch-time
+    /// loading spinner/dots and show a "click to dismiss" hint instead.</summary>
+    [Parameter] public bool ShowLoading { get; set; } = true;
 }
 
 <style>
@@ -55,48 +66,55 @@
     .splash-container {
         text-align: center;
         max-width: 400px;
-        padding: 40px;
+        padding: 20px 24px;
     }
 
     .logo {
-        width: 80px;
-        height: 80px;
+        width: 60px;
+        height: 60px;
         background: white;
         border-radius: 12px;
-        margin: 0 auto 30px;
+        margin: 0 auto 14px;
         display: flex;
         align-items: center;
         justify-content: center;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
         overflow: hidden;
     }
 
         .logo img {
-            width: 60px;
-            height: 60px;
+            width: 46px;
+            height: 46px;
             object-fit: contain;
         }
 
     .app-name {
-        font-size: 32px;
+        font-size: 28px;
         font-weight: 300;
-        margin-bottom: 8px;
+        margin-bottom: 4px;
         letter-spacing: 1px;
     }
 
     .developer-info {
         font-size: 14px;
-        opacity: 0.8;
-        margin-bottom: 50px;
+        opacity: 0.85;
+        margin-bottom: 16px;
         font-weight: 300;
     }
 
     .loading-section {
-        margin-bottom: 20px;
+        margin-bottom: 14px;
+    }
+
+    .about-hint {
+        font-size: 13px;
+        opacity: 0.7;
+        letter-spacing: 1px;
+        margin-bottom: 14px;
     }
 
     .spinner-container {
-        margin: 0 auto 30px;
+        margin: 0 auto 12px;
         width: 40px;
         height: 40px;
     }
@@ -127,18 +145,17 @@
             animation-delay: 0.4s;
         }
 
+    /* In-flow (not absolute) so it can't overlap the content — this app's window
+       is content-sized, not full-screen, so the splash must fit any height. */
     .footer-info {
-        position: absolute;
-        bottom: 30px;
-        left: 50%;
-        transform: translateX(-50%);
+        margin-top: 6px;
         text-align: center;
     }
 
     .version-info {
         font-size: 12px;
         opacity: 0.6;
-        margin-bottom: 5px;
+        margin-bottom: 4px;
     }
 
     .copyright {
