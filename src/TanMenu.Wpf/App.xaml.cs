@@ -99,12 +99,34 @@ public partial class App : Application
         Services.GetRequiredService<SoundService>()
             .Initialize(Path.Combine(AppContext.BaseDirectory, "wwwroot", "sounds"));
 
+        // Fail fast with a clear message if the WebView2 Evergreen runtime is missing — otherwise a
+        // clean machine just shows a blank transparent window with no explanation.
+        try
+        {
+            Microsoft.Web.WebView2.Core.CoreWebView2Environment.GetAvailableBrowserVersionString();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "WebView2 runtime not found");
+            MessageBox.Show(
+                "运行 TanMenu 需要 Microsoft Edge WebView2 运行时。\n\n请从下面的地址下载安装后重试：\nhttps://developer.microsoft.com/microsoft-edge/webview2/",
+                "缺少 WebView2 运行时", MessageBoxButton.OK, MessageBoxImage.Error);
+            Shutdown();
+            return;
+        }
+
+        // Warn the user if a global-hotkey (re)bind fails (occupied/invalid) instead of only logging.
+        Services.GetRequiredService<GlobalHotkeyService>().RegistrationFailed += combo =>
+            MessageBox.Show($"全局热键「{combo}」注册失败，可能已被其它程序占用。\n请在设置里改用其它组合键。",
+                "TanMenu", MessageBoxButton.OK, MessageBoxImage.Warning);
+
         new MainWindow().Show();
     }
 
     public void ExitApp()
     {
         Tray?.Dispose();
+        (Services as IDisposable)?.Dispose(); // disposes singletons (unregisters the global hotkey, etc.)
         try { _mutex?.ReleaseMutex(); } catch { /* ignore */ }
         Shutdown();
     }

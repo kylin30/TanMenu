@@ -8,11 +8,12 @@ using TanMenu.Core.Infrastructure;
 
 namespace TanMenu.Core.Services;
 
-public sealed class ShortcutResolver : IShortcutResolver
+public sealed class ShortcutResolver : IShortcutResolver, IDisposable
 {
     private readonly ConcurrentDictionary<string, CacheEntry> _cache = new();
     private readonly string _cacheFile;
     private readonly object _fileLock = new();
+    private readonly System.Threading.Timer _saveTimer;
 
     private long _totalRequests;
     private long _cacheHits;
@@ -32,6 +33,7 @@ public sealed class ShortcutResolver : IShortcutResolver
     public ShortcutResolver(IAppDataPaths paths)
     {
         _cacheFile = paths.LinkCacheFilePath;
+        _saveTimer = new System.Threading.Timer(_ => SaveToDisk());
         LoadCache();
     }
 
@@ -96,7 +98,7 @@ public sealed class ShortcutResolver : IShortcutResolver
                 FileHash = fileHash
             };
 
-            SaveCacheAsync();
+            ScheduleSave();
         }
         catch
         {
@@ -108,9 +110,9 @@ public sealed class ShortcutResolver : IShortcutResolver
     {
         try
         {
-            using var md5 = MD5.Create();
+            using var sha = SHA256.Create();
             using var stream = File.OpenRead(filePath);
-            return Convert.ToHexString(md5.ComputeHash(stream));
+            return Convert.ToHexString(sha.ComputeHash(stream));
         }
         catch
         {
@@ -118,23 +120,70 @@ public sealed class ShortcutResolver : IShortcutResolver
         }
     }
 
+    // Resolve via IShellLink/IPersistFile rather than the WScript.Shell ProgID — WSH is blocked by
+    // policy in many hardened/managed environments and isn't available in an MSIX sandbox, where the
+    // old path silently returned null for EVERY .lnk. IShellLink works in those environments.
     private static string? ResolveShortcutActual(string shortcutPath)
     {
+        IShellLinkW? link = null;
         try
         {
-            var shellType = Type.GetTypeFromProgID("WScript.Shell");
-            if (shellType == null) return null;
-
-            dynamic shell = Activator.CreateInstance(shellType)!;
-            var shortcut = shell.CreateShortcut(shortcutPath);
-            string targetPath = shortcut.TargetPath;
-
-            return !string.IsNullOrEmpty(targetPath) ? ConvertToLongPath(targetPath) : null;
+            link = (IShellLinkW)new ShellLink();
+            ((IPersistFile)link).Load(shortcutPath, 0);
+            // Don't call Resolve() — it can pop UI / hit the network for dead links; read the stored path.
+            var sb = new StringBuilder(1024);
+            link.GetPath(sb, sb.Capacity, IntPtr.Zero, 0);
+            var target = sb.ToString();
+            return string.IsNullOrEmpty(target) ? null : ConvertToLongPath(target);
         }
         catch
         {
             return null;
         }
+        finally
+        {
+            if (link != null)
+                Marshal.ReleaseComObject(link);
+        }
+    }
+
+    [ComImport, Guid("00021401-0000-0000-C000-000000000046")]
+    private class ShellLink { }
+
+    [ComImport, Guid("000214F9-0000-0000-C000-000000000046"),
+     InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IShellLinkW
+    {
+        void GetPath([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder pszFile, int cch, IntPtr pfd, uint fFlags);
+        void GetIDList(out IntPtr ppidl);
+        void SetIDList(IntPtr pidl);
+        void GetDescription([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder pszName, int cch);
+        void SetDescription([MarshalAs(UnmanagedType.LPWStr)] string pszName);
+        void GetWorkingDirectory([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder pszDir, int cch);
+        void SetWorkingDirectory([MarshalAs(UnmanagedType.LPWStr)] string pszDir);
+        void GetArguments([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder pszArgs, int cch);
+        void SetArguments([MarshalAs(UnmanagedType.LPWStr)] string pszArgs);
+        void GetHotkey(out short pwHotkey);
+        void SetHotkey(short wHotkey);
+        void GetShowCmd(out int piShowCmd);
+        void SetShowCmd(int iShowCmd);
+        void GetIconLocation([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder pszIconPath, int cch, out int piIcon);
+        void SetIconLocation([MarshalAs(UnmanagedType.LPWStr)] string pszIconPath, int iIcon);
+        void SetRelativePath([MarshalAs(UnmanagedType.LPWStr)] string pszPathRel, uint dwReserved);
+        void Resolve(IntPtr hwnd, uint fFlags);
+        void SetPath([MarshalAs(UnmanagedType.LPWStr)] string pszFile);
+    }
+
+    [ComImport, Guid("0000010b-0000-0000-C000-000000000046"),
+     InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IPersistFile
+    {
+        void GetClassID(out Guid pClassID);
+        [PreserveSig] int IsDirty();
+        void Load([MarshalAs(UnmanagedType.LPWStr)] string pszFileName, uint dwMode);
+        void Save([MarshalAs(UnmanagedType.LPWStr)] string pszFileName, [MarshalAs(UnmanagedType.Bool)] bool fRemember);
+        void SaveCompleted([MarshalAs(UnmanagedType.LPWStr)] string pszFileName);
+        void GetCurFile([MarshalAs(UnmanagedType.LPWStr)] out string ppszFileName);
     }
 
     private static string ConvertToLongPath(string shortPath)
@@ -183,26 +232,32 @@ public sealed class ShortcutResolver : IShortcutResolver
         }
     }
 
-    private void SaveCacheAsync()
+    // Coalesce cache writes: a burst of cache misses (a cold scan of N shortcuts) schedules a single
+    // trailing write instead of N full-file serializations of a growing dictionary.
+    private void ScheduleSave() => _saveTimer.Change(800, System.Threading.Timeout.Infinite);
+
+    private void SaveToDisk()
     {
-        var snapshot = _cache.ToDictionary(x => x.Key, x => x.Value);
-        var cacheFile = _cacheFile;
-        Task.Run(() =>
+        lock (_fileLock)
         {
-            lock (_fileLock)
+            try
             {
-                try
-                {
-                    Directory.CreateDirectory(Path.GetDirectoryName(cacheFile)!);
-                    var json = JsonSerializer.Serialize(snapshot, new JsonSerializerOptions { WriteIndented = false });
-                    File.WriteAllText(cacheFile, json, Encoding.UTF8);
-                }
-                catch
-                {
-                    // ignore cache save errors
-                }
+                var snapshot = _cache.ToDictionary(x => x.Key, x => x.Value);
+                Directory.CreateDirectory(Path.GetDirectoryName(_cacheFile)!);
+                var json = JsonSerializer.Serialize(snapshot, new JsonSerializerOptions { WriteIndented = false });
+                File.WriteAllText(_cacheFile, json, Encoding.UTF8);
             }
-        });
+            catch
+            {
+                // ignore cache save errors
+            }
+        }
+    }
+
+    public void Dispose()
+    {
+        _saveTimer.Dispose();
+        SaveToDisk(); // flush the final cache state synchronously on shutdown
     }
 
     public void ClearCache()

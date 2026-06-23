@@ -14,7 +14,7 @@
     <div class="title-bar">
         <div class="title-bar-text"><img class="title-bar-icon" src="/app.ico" alt="" />@Title</div>
         <div class="title-bar-controls">
-            <button aria-label="Minimize"></button>
+            <button aria-label="Minimize" @onclick="@OnMinimizeClick"></button>
             <button aria-label="Close" @onclick="@OnCloseClick"></button>
         </div>
     </div>
@@ -27,6 +27,7 @@
     [CascadingParameter(Name = "Theme")] public string Theme { get; set; } = "Win98";
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public EventCallback OnCloseClick { get; set; }
+    [Parameter] public EventCallback OnMinimizeClick { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
     // fonts.css is linked AFTER 98.css so its @font-face overrides 98.css's unresolved one.

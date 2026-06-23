@@ -21,6 +21,11 @@ public sealed class GlobalHotkeyService : IDisposable
 
     private IntPtr _hwnd;
     private bool _registered;
+    private string? _currentCombo; // last combo successfully registered (restored on a failed rebind)
+
+    /// <summary>Raised (with the offending combo) when a requested hotkey can't be registered, e.g.
+    /// it's already owned by another app — so the settings UI can warn the user.</summary>
+    public event Action<string>? RegistrationFailed;
 
     public GlobalHotkeyService(ConfigService config, IWindowHost host, AppEvents events,
         ILogger<GlobalHotkeyService> logger)
@@ -42,29 +47,44 @@ public sealed class GlobalHotkeyService : IDisposable
     /// <summary>(Re)register the hotkey from the current config; safe to call repeatedly.</summary>
     public void Apply()
     {
-        Unregister();
         if (_hwnd == IntPtr.Zero)
             return;
 
         var g = _config.Config.General;
-        if (!g.GlobalHotkeyEnabled || string.IsNullOrWhiteSpace(g.GlobalHotkey))
-            return;
+        var want = g.GlobalHotkeyEnabled && !string.IsNullOrWhiteSpace(g.GlobalHotkey);
 
-        if (!HotkeyParser.TryParse(g.GlobalHotkey, out var mods, out var vk))
+        Unregister();
+        if (!want)
         {
-            _logger.LogWarning("无法解析全局热键: {Hotkey}", g.GlobalHotkey);
+            _currentCombo = null;
             return;
         }
 
+        if (TryRegister(g.GlobalHotkey))
+        {
+            _currentCombo = g.GlobalHotkey;
+            _logger.LogInformation("已注册全局热键: {Hotkey}", g.GlobalHotkey);
+            return;
+        }
+
+        // Occupied/invalid — restore the previously-working hotkey instead of silently dropping it,
+        // and surface the failure so the user isn't left with no hotkey and only a log line.
+        _logger.LogWarning("注册全局热键失败(可能已被占用或无效): {Hotkey}", g.GlobalHotkey);
+        if (_currentCombo != null)
+            TryRegister(_currentCombo);
+        RegistrationFailed?.Invoke(g.GlobalHotkey);
+    }
+
+    private bool TryRegister(string combo)
+    {
+        if (!HotkeyParser.TryParse(combo, out var mods, out var vk))
+            return false;
         if (RegisterHotKey(_hwnd, HotkeyId, mods | HotkeyParser.MOD_NOREPEAT, vk))
         {
             _registered = true;
-            _logger.LogInformation("已注册全局热键: {Hotkey}", g.GlobalHotkey);
+            return true;
         }
-        else
-        {
-            _logger.LogWarning("注册全局热键失败(可能已被其它程序占用): {Hotkey}", g.GlobalHotkey);
-        }
+        return false;
     }
 
     /// <summary>Call from the window's WndProc — toggles the launcher if it's our hotkey message.</summary>

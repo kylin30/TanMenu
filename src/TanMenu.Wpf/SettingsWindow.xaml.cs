@@ -23,6 +23,13 @@ public partial class SettingsWindow : Window
         ("Windows11", "Windows 11"),
     };
 
+    private static readonly (string Key, string Label)[] ButtonSizes =
+    {
+        ("Small", "小"),
+        ("Medium", "中"),
+        ("Large", "大"),
+    };
+
     private const string DefaultFontLabel = "默认（主题字体）";
     private const string GroupBuiltIn = "内置字体";
     private const string GroupSystem = "系统字体";
@@ -133,6 +140,11 @@ public partial class SettingsWindow : Window
             string.Equals(i.Family, g.FontFamily ?? string.Empty, StringComparison.OrdinalIgnoreCase));
 
         ColCount.Text = g.ColButtonCount.ToString();
+
+        SizeCombo.ItemsSource = ButtonSizes.Select(s => s.Label).ToList();
+        var sizeIdx = Array.FindIndex(ButtonSizes, s => s.Key == g.ButtonSize);
+        SizeCombo.SelectedIndex = sizeIdx < 0 ? 1 : sizeIdx; // default = 中 (Medium)
+
         AutoCloseCb.IsChecked = g.AutoClose;
         TopMostCb.IsChecked = g.TopMost;
         TaskbarCb.IsChecked = g.ShowInTaskbar;
@@ -211,9 +223,12 @@ public partial class SettingsWindow : Window
         ToolsPanel.Children.Clear();
         foreach (var tool in _working.General.DefaultTools ?? Enumerable.Empty<DefaultTool>())
         {
+            // Show the launch command (not just the name) so a tampered/roamed config that repoints
+            // an innocuous-looking tool to an arbitrary command is visible before the user enables it.
             var cb = new CheckBox
             {
-                Content = tool.Name,
+                Content = $"{tool.Name}   （{tool.Command}）",
+                ToolTip = $"启动命令：{tool.Command}",
                 IsChecked = tool.Show,
                 Margin = new Thickness(0, 3, 0, 3),
                 Tag = tool,
@@ -273,6 +288,14 @@ public partial class SettingsWindow : Window
         if (fam == _working.General.FontFamily)
             return;
         _working.General.FontFamily = fam;
+        SetDirty(true);
+    }
+
+    private void Size_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (!_loaded || SizeCombo.SelectedIndex < 0)
+            return;
+        _working.General.ButtonSize = ButtonSizes[SizeCombo.SelectedIndex].Key;
         SetDirty(true);
     }
 

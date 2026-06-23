@@ -43,6 +43,10 @@
                         <TextBlock Text="每列按钮数：" Width="90" VerticalAlignment="Center"/>
                         <TextBox x:Name="ColCount" Width="60" PreviewTextInput="NumberOnly" LostFocus="Col_Changed"/>
                     </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,6" VerticalAlignment="Center">
+                        <TextBlock Text="按钮大小：" Width="90" VerticalAlignment="Center"/>
+                        <ComboBox x:Name="SizeCombo" Width="220" SelectionChanged="Size_Changed"/>
+                    </StackPanel>
                 </StackPanel>
             </TabItem>
 

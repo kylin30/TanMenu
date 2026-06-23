@@ -36,6 +36,9 @@ public class GeneralConfig
     /// Empty = fall back to the active theme's own stylesheet font.</summary>
     public string FontFamily { get; set; } = "Alibaba PuHuiTi";
 
+    /// <summary>Launcher button size: "Small" | "Medium" | "Large". Default Medium.</summary>
+    public string ButtonSize { get; set; } = "Medium";
+
     /// <summary>Show the built-in "常用工具" group (common system tools) before the folder groups.</summary>
     public bool ShowDefaultTools { get; set; } = true;
 

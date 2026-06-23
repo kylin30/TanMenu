@@ -1,6 +1,6 @@
 using System.Linq;
 
-namespace TanMenu.Wpf.Services;
+namespace TanMenu.Core.Services;
 
 /// <summary>Helpers for the configured UI font.</summary>
 public static class FontUtil

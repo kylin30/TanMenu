@@ -58,7 +58,10 @@ public sealed class WindowHost : IWindowHost
             "var fr=fc.getBoundingClientRect();var lc=fr.left,tc=fr.top;" +
             "var win=document.querySelector('.window');" +
             "if(win){var wr=win.getBoundingClientRect();lc=fr.left-wr.left;tc=fr.top-wr.top;}" +
-            "return JSON.stringify({width:Math.ceil(fr.width+lc*2),height:Math.ceil(fr.height+tc+lc)});})()";
+            // Use scrollHeight (natural content height) so #form-content's max-height/overflow-y
+            // (which lets oversized menus scroll) doesn't cap the measured size — the window still
+            // grows to fit content, and only scrolls once clamped to the work area.
+            "return JSON.stringify({width:Math.ceil(fr.width+lc*2),height:Math.ceil(fc.scrollHeight+tc+lc)});})()";
 
         var raw = await _web.CoreWebView2.ExecuteScriptAsync(js);
         // ExecuteScriptAsync returns the JS string result JSON-encoded → unwrap twice.
@@ -90,7 +93,17 @@ public sealed class WindowHost : IWindowHost
         if (_window is null)
             return;
         _window.Show();
-        _ = ResizeToContentAndPlaceAsync();
+        _ = RevealSequenceAsync();
+    }
+
+    private async Task RevealSequenceAsync()
+    {
+        if (_window is null)
+            return;
+        // Size + place the window BEFORE revealing it, so a cold start never flashes an unsized
+        // transparent rectangle at screen top-left (the window starts at Opacity=0).
+        await ResizeToContentAndPlaceAsync();
+        _window.Opacity = 1;
         _window.Activate();
         var h = new WindowInteropHelper(_window).Handle;
         if (h != IntPtr.Zero)

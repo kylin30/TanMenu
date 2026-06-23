@@ -7,6 +7,8 @@ namespace TanMenu.Wpf;
 
 public partial class MainWindow : Window
 {
+    private GlobalHotkeyService? _hotkeys;
+
     public MainWindow()
     {
         InitializeComponent();
@@ -26,6 +28,18 @@ public partial class MainWindow : Window
         // CSS-drawn retro window shows through the AllowsTransparency window.
         web.DefaultBackgroundColor = System.Drawing.Color.Transparent;
         ((WindowHost)App.Services.GetRequiredService<IWindowHost>()).Attach(this, web);
+
+        // Harden the WebView in Release: no browser accelerator keys (Ctrl+R/F5 reload, Ctrl+P, …)
+        // and no default context menu (right-click inspect/save-as) on the trusted local UI.
+        web.CoreWebView2InitializationCompleted += (_, args) =>
+        {
+            if (!args.IsSuccess || web.CoreWebView2 is null)
+                return;
+#if !DEBUG
+            web.CoreWebView2.Settings.AreBrowserAcceleratorKeysEnabled = false;
+            web.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
+#endif
+        };
     }
 
     private void OnSourceInitialized(object? sender, EventArgs e)
@@ -36,7 +50,8 @@ public partial class MainWindow : Window
             HwndSource.FromHwnd(hwnd)?.AddHook(WndProc);
 
             // Global hotkey (configurable, off by default) — registers on this window handle.
-            App.Services.GetRequiredService<GlobalHotkeyService>().Attach(hwnd);
+            _hotkeys = App.Services.GetRequiredService<GlobalHotkeyService>();
+            _hotkeys.Attach(hwnd);
 
             // System tray.
             var host = App.Services.GetRequiredService<IWindowHost>();
@@ -54,7 +69,7 @@ public partial class MainWindow : Window
 
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
-        if (App.Services.GetRequiredService<GlobalHotkeyService>().ProcessMessage(msg, wParam))
+        if (_hotkeys?.ProcessMessage(msg, wParam) == true)
         {
             handled = true;
             return IntPtr.Zero;

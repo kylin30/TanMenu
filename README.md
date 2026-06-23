@@ -14,7 +14,7 @@ existing retro HTML/CSS UI (rendered in a `BlazorWebView`) and hosts it in a nat
   `.lnk` resolution, Win32 icon extraction (→ PNG bytes), launching, sounds, AppData paths.
 - **`src/TanMenu.Wpf`** — WPF host (`WindowChrome` + `BlazorWebView`), the ported retro Blazor
   UI, and native services (tray, single instance, autostart, window placement).
-- **`tests/TanMenu.Core.Tests`** — xUnit (32 tests).
+- **`tests/TanMenu.Core.Tests`** — xUnit (37 tests).
 
 Tech: .NET 10 (`net10.0-windows10.0.19041.0`, x64), WPF, `Microsoft.AspNetCore.Components.WebView.Wpf`,
 `H.NotifyIcon.Wpf`, Serilog, System.Text.Json.

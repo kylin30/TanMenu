@@ -14,7 +14,7 @@
 @inject AppEvents Events
 @inject Microsoft.Extensions.Logging.ILogger<Index> Logger
 
-<div class="body theme-@ThemeClass">
+<div class="body theme-@ThemeClass size-@SizeClass">
     @if (!string.IsNullOrEmpty(SafeFont))
     {
         <style>
@@ -28,7 +28,7 @@
         </style>
     }
     <CascadingValue Value="@_theme" Name="Theme">
-        <RetroWindow Title="TanMenu" OnCloseClick="@HandleClose">
+        <RetroWindow Title="TanMenu" OnCloseClick="@HandleClose" OnMinimizeClick="@HandleClose">
             <div id="form-content">
                 <div class="tm-menubar" role="menubar">
                     <span class="tm-menuitem" role="menuitem" @onclick="OpenRoot">打开主目录</span>
@@ -50,7 +50,7 @@
                             <RetroGroupbox Title="@grp.DirectoryName"
                                 OnTitleClickAction="@GetTitleAction(grp)">
                                 <div class="flex items-start gap-1">
-                                    @foreach (var col in grp.Items.Chunk(_cfg.General.ColButtonCount))
+                                    @foreach (var col in grp.Items.Chunk(Math.Max(1, _cfg.General.ColButtonCount)))
                                     {
                                         <div>
                                             @foreach (var item in col)
@@ -71,7 +71,14 @@
                 }
                 else
                 {
-                    <SplashScreen/>
+                    <div class="tm-empty">
+                        <div class="tm-empty-title">还没有任何快捷方式</div>
+                        <div>在「选项 → 文件夹」里设置主文件夹，或开启「常用工具」分类。</div>
+                        <div class="tm-empty-actions">
+                            <button @onclick="OpenSettings">打开选项…</button>
+                            <button @onclick="Refresh">刷新</button>
+                        </div>
+                    </div>
                 }
             </div>
         </RetroWindow>
@@ -223,6 +230,13 @@
         "Win7" => "win7",
         "Windows11" => "win11",
         _ => "win98",
+    };
+
+    private string SizeClass => _cfg.General.ButtonSize switch
+    {
+        "Small" => "small",
+        "Large" => "large",
+        _ => "medium",
     };
 
     private void OnSettingsChanged()

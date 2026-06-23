@@ -4,18 +4,22 @@ This phase ships a **self-contained EXE** (see README). The code is structured t
 full-trust MSIX for the Microsoft Store later **without architectural changes**. When ready:
 
 ## What's already MSIX-ready
-- **Writable data** goes through `TanMenu.Core.Infrastructure.IAppDataPaths`. The unpackaged build
-  uses the 2-arg `AppDataPaths(localFolder, localCacheFolder)` → `%LOCALAPPDATA%\TanMenu`. The
-  parameterless `AppDataPaths()` ctor already detects package identity
-  (`PackageRuntime.HasPackageIdentity`) and uses `Windows.Storage.ApplicationData` automatically
-  when packaged — so a packaged build just switches which ctor `App` calls.
-- **No hardcoded paths**, nothing written next to the EXE.
+- **Writable data** goes through `TanMenu.Core.Infrastructure.IAppDataPaths`. The running app
+  (`App.OnStartup`) uses **`MutableAppDataPaths`** over `DataLocation.GetDataRoot()` — the default is
+  **`Documents\TanMenu`** (an HKCU pointer records a user-chosen folder; a legacy
+  `%LOCALAPPDATA%\TanMenu` is migrated once on first run). A parameterless `AppDataPaths()` ctor and
+  `PackageRuntime.HasPackageIdentity` exist for the packaged path but are **not yet wired into
+  startup** — see step 3.
+- **No hardcoded personal paths**, nothing written next to the EXE.
 - TFM is `net10.0-windows10.0.19041.0` (WinRT projection available for `StartupTask`/`ApplicationData`).
 
 ## Steps to package (when desired)
 1. Wrap with a single-project MSIX (or a `.wapproj` Windows Application Packaging Project) referencing `TanMenu.Wpf`.
 2. Declare `runFullTrust` (rescap). Full-trust = direct `System.IO`, no `broadFileSystemAccess`.
-3. Switch `App.OnStartup` to the parameterless `new AppDataPaths()` so data flows to `ApplicationData`.
+3. Route the data root through `PackageRuntime`: when packaged, build the writable paths from
+   `Windows.Storage.ApplicationData`. Do NOT just swap to the parameterless `new AppDataPaths()` —
+   `App` currently uses `MutableAppDataPaths`/`DataLocation` (Documents\TanMenu + HKCU pointer + live
+   data-folder relocation), and a blind swap would drop that relocation feature.
 4. Replace `RegistryAutoStartService` with a `windows.startupTask`-backed `IAutoStartService`
    (manifest `<desktop:Extension Category="windows.startupTask" .../>`, `Windows.ApplicationModel.StartupTask`).
    The `IAutoStartService` interface already isolates this swap.

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.IO;
 using TanMenu.Core.Models;
 using TanMenu.Core.Services;
@@ -39,6 +40,36 @@ public sealed class MenuService
         });
     }
 
+    // Cache extracted icons by path so repeat reloads (Refresh / settings change) don't re-run
+    // SHGetFileInfo + GDI+ encode + base64 for unchanged files; invalidated by last-write-time + size.
+    private readonly ConcurrentDictionary<string, (DateTime Mtime, long Size, string B64)> _iconCache =
+        new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Base64 PNG for an icon path, served from cache when the underlying file is unchanged;
+    /// falls back to the stock icon for empty/unextractable keys.</summary>
+    private string IconBase64For(string? iconKey)
+    {
+        if (string.IsNullOrEmpty(iconKey))
+            return _fallbackIcon.Value;
+
+        DateTime mtime = default;
+        long size = 0;
+        try
+        {
+            var fi = new FileInfo(iconKey);
+            if (fi.Exists) { mtime = fi.LastWriteTimeUtc; size = fi.Length; }
+        }
+        catch { /* unreadable path → treat as a static key (folders, bare commands) */ }
+
+        if (_iconCache.TryGetValue(iconKey, out var hit) && hit.Mtime == mtime && hit.Size == size)
+            return hit.B64;
+
+        var bytes = _icons.GetIconPngBytes(iconKey);
+        var b64 = bytes is { Length: > 0 } ? Convert.ToBase64String(bytes) : _fallbackIcon.Value;
+        _iconCache[iconKey] = (mtime, size, b64);
+        return b64;
+    }
+
     /// <summary>Build the built-in "常用工具" group from the configured tools (only the shown ones).</summary>
     public MenuGroupVm BuildDefaultToolsGroup(IEnumerable<DefaultTool>? tools)
     {
@@ -49,12 +80,6 @@ public sealed class MenuService
                 continue;
 
             var resolved = ResolveCommandPath(t.Command);
-            string? b64 = null;
-            var bytes = _icons.GetIconPngBytes(resolved);
-            if (bytes is { Length: > 0 })
-                b64 = Convert.ToBase64String(bytes);
-            b64 ??= _fallbackIcon.Value;
-
             items.Add(new MenuItemVm
             {
                 Name = t.Name,
@@ -62,7 +87,7 @@ public sealed class MenuService
                 FullPath = File.Exists(resolved) ? resolved : t.Command,
                 IsDirectory = false,
                 IsDisabled = false,
-                IconBase64 = b64,
+                IconBase64 = IconBase64For(resolved),
             });
         }
         // Directory left empty → the group title isn't a clickable "open folder".
@@ -112,42 +137,39 @@ public sealed class MenuService
         return GetMenuAsync(dirs);
     }
 
-    public async Task<List<MenuGroupVm>> GetMenuAsync(IEnumerable<string> folders)
+    public Task<List<MenuGroupVm>> GetMenuAsync(IEnumerable<string> folders)
     {
-        var contents = await _data.GetDirectoryContents(folders);
-        var groups = new List<MenuGroupVm>(contents.Count);
-        foreach (var c in contents)
+        var list = folders as IReadOnlyList<string> ?? folders.ToList();
+        // Run the folder scan + .lnk resolution + icon extraction OFF the UI thread; Blazor marshals
+        // the awaited result back to the UI sync context for the StateHasChanged.
+        return Task.Run(async () =>
         {
-            var items = new List<MenuItemVm>(c.Items.Count);
-            foreach (var it in c.Items)
+            var contents = await _data.GetDirectoryContents(list);
+            var groups = new List<MenuGroupVm>(contents.Count);
+            foreach (var c in contents)
             {
-                string? b64 = null;
-                if (!string.IsNullOrEmpty(it.IconKey))
+                var items = new List<MenuItemVm>(c.Items.Count);
+                foreach (var it in c.Items)
                 {
-                    var bytes = _icons.GetIconPngBytes(it.IconKey);
-                    if (bytes is { Length: > 0 })
-                        b64 = Convert.ToBase64String(bytes);
+                    items.Add(new MenuItemVm
+                    {
+                        Name = it.Name,
+                        FullPath = it.FullPath,
+                        TargetPath = it.TargetPath,
+                        IsDirectory = it.IsDirectory,
+                        IsDisabled = it.IsDisabled,
+                        // Invalid shortcuts (no IconKey) and failed extraction fall back to the stock icon.
+                        IconBase64 = IconBase64For(it.IconKey),
+                    });
                 }
-                // Invalid shortcuts (IsDisabled → no IconKey) and any failed extraction fall back
-                // to a default icon so the button isn't iconless.
-                b64 ??= _fallbackIcon.Value;
-                items.Add(new MenuItemVm
+                groups.Add(new MenuGroupVm
                 {
-                    Name = it.Name,
-                    FullPath = it.FullPath,
-                    TargetPath = it.TargetPath,
-                    IsDirectory = it.IsDirectory,
-                    IsDisabled = it.IsDisabled,
-                    IconBase64 = b64,
+                    Directory = c.Directory,
+                    DirectoryName = c.DirectoryName,
+                    Items = items,
                 });
             }
-            groups.Add(new MenuGroupVm
-            {
-                Directory = c.Directory,
-                DirectoryName = c.DirectoryName,
-                Items = items,
-            });
-        }
-        return groups;
+            return groups;
+        });
     }
 }

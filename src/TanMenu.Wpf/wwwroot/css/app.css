@@ -212,19 +212,35 @@ a, .btn-link {
     background: rgba(0, 0, 0, 0.06);
 }
 
-/* The UI font is the uniform configured font (default 阿里巴巴普惠体) across ALL themes — applied
-   window-wide by Index.razor's font-family override. Only the button TEXT SIZE varies per
-   Windows version below. */
-.theme-win98 .window-body button { font-size: 11px; }
-.theme-winxp .window-body button { font-size: 11px; }
-.theme-win7 .window-body button { font-size: 12px; }
-.theme-win11 .window-body button { font-size: 14px; }
+/* ============================================================
+   Launcher button SIZE (大/中/小) — driven by the size-* class on the .body wrapper. Sets CSS
+   variables consumed by RetroButton.razor.css (text + icon) and the button's vertical padding
+   (height). Uniform UI font (阿里巴巴普惠体) is applied window-wide by Index.razor's override.
+   ============================================================ */
+.body.size-small  { --btn-font: 13px; --btn-pad: 3px; --btn-icon: 20px; }
+.body.size-medium { --btn-font: 14px; --btn-pad: 5px; --btn-icon: 24px; }
+.body.size-large  { --btn-font: 16px; --btn-pad: 7px; --btn-icon: 30px; }
 
-/* A bit more height on the launcher buttons — add vertical padding to the button itself
-   (themes give it little/no vertical padding), overriding each theme's button padding. */
-.window-body button {
-    padding-top: 7px !important;
-    padding-bottom: 7px !important;
+.body.size-small  .window-body button { padding-top: 3px !important; padding-bottom: 3px !important; }
+.body.size-medium .window-body button { padding-top: 6px !important; padding-bottom: 6px !important; }
+.body.size-large  .window-body button { padding-top: 9px !important; padding-bottom: 9px !important; }
+
+/* Empty / unconfigured-root state: an actionable prompt instead of a forever-spinning splash. */
+.tm-empty {
+    padding: 28px 22px;
+    text-align: center;
+    color: #444;
+    font-size: 14px;
+    line-height: 1.7;
+}
+.tm-empty .tm-empty-title { font-weight: bold; margin-bottom: 6px; }
+.tm-empty .tm-empty-actions { margin-top: 12px; display: flex; gap: 8px; justify-content: center; }
+
+/* Scroll, don't clip, when the menu is taller than the work area. */
+#form-content {
+    max-height: calc(100vh - 8px);
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 /* Search/filter box — sits under the menu bar; type to filter shortcuts. */

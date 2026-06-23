@@ -1,15 +1,19 @@
+/* Sizes come from CSS variables set per "button size" setting on the .body wrapper
+   (--btn-font / --btn-pad / --btn-icon), so the 大/中/小 setting scales these without
+   fighting scoped-CSS specificity. Defaults match the medium size. */
 .button-body
 {
     font-family: "Pixelated MS Sans Serif", Arial;
-    font-size: 16px;
-    padding: 4px;
+    font-size: var(--btn-font, 14px);
+    padding: var(--btn-pad, 5px);
     display: flex;
     align-items: center;
     justify-content: start;
 }
 
     .button-body .button-icon {
-        width: 24px;
-        height: 24px;
+        width: var(--btn-icon, 24px);
+        height: var(--btn-icon, 24px);
         margin-right: 8px;
+        flex: 0 0 auto;
     }

@@ -10,6 +10,7 @@
         ShowInTaskbar="False"
         SizeToContent="Manual"
         Width="600" Height="400"
+        Opacity="0"
         WindowStartupLocation="Manual">
     <WindowChrome.WindowChrome>
         <WindowChrome CaptionHeight="0" GlassFrameThickness="0" ResizeBorderThickness="0" CornerRadius="0"/>
