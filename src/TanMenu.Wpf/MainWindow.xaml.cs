@@ -35,6 +35,9 @@ public partial class MainWindow : Window
             var hwnd = new WindowInteropHelper(this).Handle;
             HwndSource.FromHwnd(hwnd)?.AddHook(WndProc);
 
+            // Global hotkey (configurable, off by default) — registers on this window handle.
+            App.Services.GetRequiredService<GlobalHotkeyService>().Attach(hwnd);
+
             // System tray.
             var host = App.Services.GetRequiredService<IWindowHost>();
             App.Tray = new TrayService(
@@ -51,6 +54,12 @@ public partial class MainWindow : Window
 
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
+        if (App.Services.GetRequiredService<GlobalHotkeyService>().ProcessMessage(msg, wParam))
+        {
+            handled = true;
+            return IntPtr.Zero;
+        }
+
         if (msg == App.WmShowFirstInstance)
         {
             App.Services.GetRequiredService<IWindowHost>().ShowAndActivate();

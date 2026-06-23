@@ -19,11 +19,16 @@ public sealed class WindowHost : IWindowHost
     private const int MinHeightDip = 100;
 
     private readonly ConfigService _config;
+    private readonly AppEvents _events;
     private Window? _window;
     private WebView2CompositionControl? _web;
     private bool _suppressHide;
 
-    public WindowHost(ConfigService config) => _config = config;
+    public WindowHost(ConfigService config, AppEvents events)
+    {
+        _config = config;
+        _events = events;
+    }
 
     public void Attach(Window window, WebView2CompositionControl web)
     {
@@ -90,6 +95,7 @@ public sealed class WindowHost : IWindowHost
         var h = new WindowInteropHelper(_window).Handle;
         if (h != IntPtr.Zero)
             SetForegroundWindow(h);
+        _events.RaiseLauncherShown(); // let the launcher clear + focus the search box
     }
 
     public void Toggle()

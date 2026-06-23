@@ -3,6 +3,7 @@
 @using TanMenu.Wpf.Components.Retro
 @using TanMenu.Core.Services
 @using TanMenu.Core.Models
+@using Microsoft.AspNetCore.Components.Web
 @implements IDisposable
 @inject MenuService MenuService
 @inject ConfigService ConfigService
@@ -38,30 +39,44 @@
                 </div>
                 @if (_groups.Count > 0)
                 {
-                    <div class="flex items-start gap-2">
-                        @foreach (var grp in _groups)
-                        {
-                            <RetroGroupbox Title="@grp.DirectoryName"
-                                OnTitleClickAction="@GetTitleAction(grp)">
-                                <div class="flex items-start gap-1">
-                                    @foreach (var col in grp.Items.Chunk(_cfg.General.ColButtonCount))
-                                    {
-                                        <div>
-                                            @foreach (var item in col)
-                                            {
-                                                <div class="mb-1 flex-shrink-0">
-                                                    <RetroButton Text="@item.Name"
-                                                        IconBase64="@item.IconBase64"
-                                                        Disabled="@item.IsDisabled"
-                                                        OnClick="@(() => AppRun(item))" />
-                                                </div>
-                                            }
-                                        </div>
-                                    }
-                                </div>
-                            </RetroGroupbox>
-                        }
+                    <div class="tm-search">
+                        <input class="tm-search-input" type="text" @ref="_searchRef"
+                               placeholder="搜索快捷方式…" value="@_filter"
+                               @oninput="OnFilterInput" @onkeydown="OnSearchKeyDown" />
                     </div>
+
+                    var visible = VisibleGroups();
+                    if (visible.Count > 0)
+                    {
+                        <div class="flex items-start gap-2">
+                            @foreach (var grp in visible)
+                            {
+                                <RetroGroupbox Title="@grp.DirectoryName"
+                                    OnTitleClickAction="@GetTitleAction(grp)">
+                                    <div class="flex items-start gap-1">
+                                        @foreach (var col in grp.Items.Chunk(_cfg.General.ColButtonCount))
+                                        {
+                                            <div>
+                                                @foreach (var item in col)
+                                                {
+                                                    <div class="mb-1 flex-shrink-0">
+                                                        <RetroButton Text="@item.Name"
+                                                            IconBase64="@item.IconBase64"
+                                                            Disabled="@item.IsDisabled"
+                                                            OnClick="@(() => AppRun(item))" />
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                </RetroGroupbox>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="tm-noresults">没有匹配「@_filter」的项</div>
+                    }
                 }
                 else
                 {
@@ -97,6 +112,12 @@
     private string? _launchError;
     private int _toastVersion;
 
+    // Search/filter state.
+    private string _filter = "";
+    private ElementReference _searchRef;
+    private bool _rendered;
+    private int _filterVersion;
+
     /// <summary>Version shown in the About/splash footer — the assembly version (3 parts).</summary>
     private static readonly string AppVersion =
         System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "1.0.0";
@@ -109,7 +130,91 @@
     protected override async Task OnInitializedAsync()
     {
         Events.SettingsChanged += OnSettingsChanged;
+        Events.LauncherShown += OnLauncherShown;
         await ReloadAsync();
+    }
+
+    /// <summary>The groups to render: all of them, or only items whose name matches the filter
+    /// (empty groups dropped). Case-insensitive substring match.</summary>
+    private List<MenuGroupVm> VisibleGroups()
+    {
+        if (string.IsNullOrWhiteSpace(_filter))
+            return _groups;
+
+        var f = _filter.Trim();
+        var result = new List<MenuGroupVm>();
+        foreach (var g in _groups)
+        {
+            var items = g.Items
+                .Where(i => i.Name.Contains(f, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            if (items.Count > 0)
+                result.Add(new MenuGroupVm { Directory = g.Directory, DirectoryName = g.DirectoryName, Items = items });
+        }
+        return result;
+    }
+
+    private async Task OnFilterInput(ChangeEventArgs e)
+    {
+        _filter = e.Value?.ToString() ?? "";
+        var version = ++_filterVersion;
+        StateHasChanged();
+        // Debounce: only refit the window once typing pauses, so it doesn't thrash on every keystroke.
+        await Task.Delay(140);
+        if (version == _filterVersion)
+            await WindowHost.ResizeToContentAndPlaceAsync();
+    }
+
+    private void OnSearchKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            // Launch the first matching (enabled) item — type-and-Enter.
+            var first = VisibleGroups().SelectMany(g => g.Items).FirstOrDefault(i => !i.IsDisabled);
+            if (first != null)
+                AppRun(first);
+        }
+        else if (e.Key == "Escape")
+        {
+            // First Esc clears the filter; a second one (empty filter) hides the launcher.
+            if (!string.IsNullOrEmpty(_filter))
+            {
+                _filter = "";
+                StateHasChanged();
+                _ = ResizeSoon();
+            }
+            else
+            {
+                WindowHost.Hide();
+            }
+        }
+    }
+
+    // Cleared + focused each time the launcher is summoned, so you can type-to-filter immediately.
+    private void OnLauncherShown()
+    {
+        _ = InvokeAsync(async () =>
+        {
+            _filter = "";
+            StateHasChanged();
+            await Task.Delay(40);
+            await FocusSearchAsync();
+            await WindowHost.ResizeToContentAndPlaceAsync();
+        });
+    }
+
+    private async Task FocusSearchAsync()
+    {
+        if (!_rendered)
+            return;
+        try { await _searchRef.FocusAsync(); }
+        catch { /* search box not present (e.g. splash/empty state) */ }
+    }
+
+    private async Task ResizeSoon()
+    {
+        await Task.Delay(60);
+        await WindowHost.ResizeToContentAndPlaceAsync();
     }
 
     private async Task ReloadAsync()
@@ -168,8 +273,10 @@
     {
         if (firstRender)
         {
+            _rendered = true;
             await Task.Delay(100);
             await WindowHost.ResizeToContentAndPlaceAsync();
+            await FocusSearchAsync();
         }
     }
 
@@ -230,5 +337,9 @@
 
     private void ExitApp() => ShellCommands.Exit();
 
-    public void Dispose() => Events.SettingsChanged -= OnSettingsChanged;
+    public void Dispose()
+    {
+        Events.SettingsChanged -= OnSettingsChanged;
+        Events.LauncherShown -= OnLauncherShown;
+    }
 }

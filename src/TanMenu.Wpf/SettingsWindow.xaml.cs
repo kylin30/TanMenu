@@ -140,6 +140,10 @@ public partial class SettingsWindow : Window
         _pendingAutoStart = _autoStart.IsEnabled();
         AutoStartCb.IsChecked = _pendingAutoStart;
 
+        HotkeyEnabledCb.IsChecked = g.GlobalHotkeyEnabled;
+        HotkeyBox.Text = string.IsNullOrWhiteSpace(g.GlobalHotkey) ? "(无)" : g.GlobalHotkey;
+        UpdateHotkeyEnabledState();
+
         ShowToolsCb.IsChecked = g.ShowDefaultTools;
         BuildToolCheckboxes();
 
@@ -308,6 +312,42 @@ public partial class SettingsWindow : Window
         if (!_loaded)
             return;
         _pendingAutoStart = AutoStartCb.IsChecked == true;
+        SetDirty(true);
+    }
+
+    // ---- Global hotkey (capture combo into the working copy) ----
+
+    private void UpdateHotkeyEnabledState() => HotkeyBox.IsEnabled = HotkeyEnabledCb.IsChecked == true;
+
+    private void Hotkey_Changed(object sender, RoutedEventArgs e)
+    {
+        if (!_loaded)
+            return;
+        _working.General.GlobalHotkeyEnabled = HotkeyEnabledCb.IsChecked == true;
+        UpdateHotkeyEnabledState();
+        SetDirty(true);
+    }
+
+    private void Hotkey_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (!_loaded)
+            return;
+        e.Handled = true; // capture the combo; never type into the read-only box
+        var key = e.Key == Key.System ? e.SystemKey : e.Key;
+        var combo = HotkeyParser.FromKeyEvent(key, Keyboard.Modifiers);
+        if (combo == null)
+            return; // still composing (modifier-only) or no modifier held — keep waiting
+        _working.General.GlobalHotkey = combo;
+        HotkeyBox.Text = combo;
+        SetDirty(true);
+    }
+
+    private void HotkeyClear_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_loaded)
+            return;
+        _working.General.GlobalHotkey = "";
+        HotkeyBox.Text = "(无)";
         SetDirty(true);
     }
 

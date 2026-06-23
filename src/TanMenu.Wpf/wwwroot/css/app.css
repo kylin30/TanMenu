@@ -212,6 +212,34 @@ a, .btn-link {
     background: rgba(0, 0, 0, 0.06);
 }
 
+/* Search/filter box — sits under the menu bar; type to filter shortcuts. */
+.tm-search {
+    margin: 0 0 7px 0;
+}
+.tm-search-input {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 200px;
+    padding: 4px 8px;
+    font-size: 13px;
+    color: #000;
+    background: #fff;
+    border: 1px solid #888;
+    border-radius: 3px;
+    outline: none;
+}
+.tm-search-input:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+}
+.tm-noresults {
+    padding: 18px 8px;
+    color: #888;
+    font-size: 13px;
+    text-align: center;
+    white-space: nowrap;
+}
+
 /* Transient error toast (e.g. a launch failed). Fixed so it never resizes the window. */
 .tm-toast {
     position: fixed;

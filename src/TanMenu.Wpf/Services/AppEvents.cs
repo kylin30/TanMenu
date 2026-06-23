@@ -10,4 +10,10 @@ public sealed class AppEvents
     public event Action? SettingsChanged;
 
     public void RaiseSettingsChanged() => SettingsChanged?.Invoke();
+
+    /// <summary>Raised when the launcher window is summoned/shown, so the UI can clear and focus
+    /// the search box for immediate type-to-filter.</summary>
+    public event Action? LauncherShown;
+
+    public void RaiseLauncherShown() => LauncherShown?.Invoke();
 }

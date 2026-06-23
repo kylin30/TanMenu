@@ -17,6 +17,15 @@ public class GeneralConfig
     public bool AutoClose { get; set; } = true;
     public bool TopMost { get; set; } = true;
     public bool ShowInTaskbar { get; set; } = false;
+
+    /// <summary>Enable a configurable global hotkey that toggles (summons/hides) the launcher.
+    /// Default OFF — the user opts in and sets their own combo.</summary>
+    public bool GlobalHotkeyEnabled { get; set; } = false;
+
+    /// <summary>The global hotkey combo, e.g. "Ctrl+Alt+Space". Empty = none. Only registered
+    /// when <see cref="GlobalHotkeyEnabled"/> is true.</summary>
+    public string GlobalHotkey { get; set; } = "";
+
     public int PositionOffset { get; set; } = 8;
     public int ColButtonCount { get; set; } = 10;
 
