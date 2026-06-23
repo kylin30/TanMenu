@@ -73,9 +73,9 @@ public sealed class WindowHost : IWindowHost
         _window.Top = Math.Max(wa.Top, wa.Bottom - h - _config.Config.General.PositionOffset);
         _window.Topmost = _config.Config.General.TopMost;
         _window.ShowInTaskbar = _config.Config.General.ShowInTaskbar;
-
-        _config.UpdateWindowConfig(w, h, (int)_window.Left, (int)_window.Top);
-        await _config.SaveAsync();
+        // Note: placement is recomputed from content on every show, so it is intentionally NOT
+        // persisted — writing config.json here on every show/refresh was pure churn (the saved
+        // Window.* values were never read back).
     }
 
     public void Hide() => _window?.Hide();

@@ -59,15 +59,16 @@ public class ConfigService
                     {
                         Config = loadedConfig;
                         HasValidConfig = true;
-                        _logger.LogInformation(
-                            "Config loaded: window {Width}x{Height} at ({X}, {Y}), {FolderCount} folders",
-                            Config.Window.Width, Config.Window.Height, Config.Window.X, Config.Window.Y,
-                            Config.Folders.Count);
+                        _logger.LogInformation("Config loaded: {FolderCount} folders, root '{Root}'",
+                            Config.Folders.Count, Config.RootFolder);
                         return;
                     }
                 }
 
-                _logger.LogWarning("Config file was empty/invalid; using defaults");
+                // File existed but was empty/whitespace/null-deserialized — back it up BEFORE
+                // overwriting with defaults so the user's setup is never silently discarded.
+                _logger.LogWarning("Config file was empty/invalid; backing up and using defaults");
+                BackupCorruptedConfig();
             }
             else
             {
@@ -95,53 +96,26 @@ public class ConfigService
         try
         {
             _paths.EnsureCreated();
-            Config.Window.LastModified = DateTime.Now;
 
             var jsonContent = JsonSerializer.Serialize(Config, _jsonOptions);
-            await File.WriteAllTextAsync(_configPath, jsonContent);
-            HasValidConfig = true;
 
-            _logger.LogInformation("Config saved: window {Width}x{Height} at ({X}, {Y})",
-                Config.Window.Width, Config.Window.Height, Config.Window.X, Config.Window.Y);
+            // Atomic write: serialize to a temp file in the same folder, then swap it into place,
+            // so a crash mid-write can never leave a truncated/empty config.json behind.
+            var tempPath = _configPath + ".tmp";
+            await File.WriteAllTextAsync(tempPath, jsonContent);
+            if (File.Exists(_configPath))
+                File.Replace(tempPath, _configPath, destinationBackupFileName: null);
+            else
+                File.Move(tempPath, _configPath);
+
+            HasValidConfig = true;
+            _logger.LogInformation("Config saved ({FolderCount} folders)", Config.Folders.Count);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to save config");
             throw;
         }
-    }
-
-    public void UpdateWindowConfig(int width, int height, int x, int y)
-    {
-        Config.Window.Width = width;
-        Config.Window.Height = height;
-        Config.Window.X = x;
-        Config.Window.Y = y;
-        Config.Window.LastModified = DateTime.Now;
-
-        _logger.LogInformation("Window config updated -> ({Width}, {Height}, {X}, {Y})", width, height, x, y);
-    }
-
-    public bool ShouldUpdateWindow(int currentWidth, int currentHeight, int currentX, int currentY)
-    {
-        var tolerance = Config.General.Tolerance;
-
-        var widthDiff = Math.Abs(Config.Window.Width - currentWidth);
-        var heightDiff = Math.Abs(Config.Window.Height - currentHeight);
-        var xDiff = Math.Abs(Config.Window.X - currentX);
-        var yDiff = Math.Abs(Config.Window.Y - currentY);
-
-        var totalDiff = widthDiff + heightDiff + xDiff + yDiff;
-        var shouldUpdate = totalDiff > tolerance;
-
-        if (shouldUpdate)
-        {
-            _logger.LogInformation(
-                "Window change detected - total diff {TotalDiff}px (tolerance {Tolerance}px)",
-                totalDiff, tolerance);
-        }
-
-        return shouldUpdate;
     }
 
     private async Task HandleCorruptedConfig()

@@ -211,3 +211,26 @@ a, .btn-link {
 .theme-fluent2 .tm-menuitem:hover {
     background: rgba(0, 0, 0, 0.06);
 }
+
+/* Transient error toast (e.g. a launch failed). Fixed so it never resizes the window. */
+.tm-toast {
+    position: fixed;
+    left: 50%;
+    bottom: 16px;
+    transform: translateX(-50%);
+    max-width: 92%;
+    padding: 8px 16px;
+    border-radius: 6px;
+    background: rgba(196, 43, 28, 0.96);
+    color: #fff;
+    font-family: "Segoe UI", Tahoma, sans-serif;
+    font-size: 13px;
+    line-height: 1.3;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+    z-index: 9998;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    user-select: none;
+}

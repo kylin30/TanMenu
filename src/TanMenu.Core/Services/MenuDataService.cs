@@ -1,4 +1,5 @@
 using System.IO;
+using Microsoft.Extensions.Logging;
 using TanMenu.Core.Models;
 
 namespace TanMenu.Core.Services;
@@ -6,10 +7,12 @@ namespace TanMenu.Core.Services;
 public class MenuDataService
 {
     private readonly IShortcutResolver _shortcutResolver;
+    private readonly ILogger<MenuDataService> _logger;
 
-    public MenuDataService(IShortcutResolver shortcutResolver)
+    public MenuDataService(IShortcutResolver shortcutResolver, ILogger<MenuDataService> logger)
     {
         _shortcutResolver = shortcutResolver;
+        _logger = logger;
     }
 
     public Task<List<DirectoryContents>> GetDirectoryContents(IEnumerable<string> directories)
@@ -31,48 +34,76 @@ public class MenuDataService
         try
         {
             if (!Directory.Exists(directory))
-                return null;
-
-            var content = new DirectoryContents
             {
-                Directory = directory,
-                DirectoryName = Path.GetFileName(directory) ?? string.Empty,
-                Items = new List<DirectoryItem>()
-            };
-
-            content.Items.AddRange(GetFiles(directory));
-            content.Items.AddRange(GetDirectories(directory));
-
-            return content;
+                _logger.LogWarning("分类目录不存在或不可访问，跳过: {Directory}", directory);
+                return null;
+            }
         }
-        catch
+        catch (Exception ex)
         {
+            // Directory.Exists itself can throw on e.g. an offline UNC path.
+            _logger.LogWarning(ex, "检查分类目录失败，跳过: {Directory}", directory);
             return null;
         }
+
+        // GetFiles/GetDirectories are individually resilient (below), so one failing step or
+        // item no longer discards the whole group — we return whatever DID enumerate.
+        var content = new DirectoryContents
+        {
+            Directory = directory,
+            DirectoryName = Path.GetFileName(directory) ?? string.Empty,
+            Items = new List<DirectoryItem>()
+        };
+        content.Items.AddRange(GetFiles(directory));
+        content.Items.AddRange(GetDirectories(directory));
+        return content;
     }
 
     private IEnumerable<DirectoryItem> GetFiles(string directory)
     {
-        foreach (var file in Directory.GetFiles(directory))
+        string[] files;
+        try
         {
-            var item = new DirectoryItem
-            {
-                Name = Path.GetFileName(file),
-                FullPath = file,
-                IsDirectory = false
-            };
+            files = Directory.GetFiles(directory);
+        }
+        catch (Exception ex)
+        {
+            // Permission denied / offline share on the group folder → no files, but the group
+            // (and its subfolders) still render. Logged so it's diagnosable.
+            _logger.LogWarning(ex, "枚举文件失败: {Directory}", directory);
+            yield break;
+        }
 
-            if (Path.GetExtension(file).Equals(".lnk", StringComparison.OrdinalIgnoreCase))
+        foreach (var file in files)
+        {
+            DirectoryItem? item = null;
+            try
             {
-                item.Name = CleanShortcutName(item.Name);
-                ProcessShortcut(item);
+                item = new DirectoryItem
+                {
+                    Name = Path.GetFileName(file),
+                    FullPath = file,
+                    IsDirectory = false
+                };
+
+                if (Path.GetExtension(file).Equals(".lnk", StringComparison.OrdinalIgnoreCase))
+                {
+                    item.Name = CleanShortcutName(item.Name);
+                    ProcessShortcut(item);
+                }
+                else
+                {
+                    item.IconKey = file;
+                }
             }
-            else
+            catch (Exception ex)
             {
-                item.IconKey = file;
+                _logger.LogWarning(ex, "处理文件项失败，跳过: {File}", file);
+                item = null;
             }
 
-            yield return item;
+            if (item != null)
+                yield return item;
         }
     }
 
@@ -113,13 +144,26 @@ public class MenuDataService
 
     private IEnumerable<DirectoryItem> GetDirectories(string directory)
     {
-        return Directory.GetDirectories(directory)
-            .Select(d => new DirectoryItem
+        string[] dirs;
+        try
+        {
+            dirs = Directory.GetDirectories(directory);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "枚举子目录失败: {Directory}", directory);
+            yield break;
+        }
+
+        foreach (var d in dirs)
+        {
+            yield return new DirectoryItem
             {
                 Name = Path.GetFileName(d) ?? string.Empty,
                 FullPath = d,
                 IsDirectory = true,
                 IconKey = d
-            });
+            };
+        }
     }
 }

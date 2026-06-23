@@ -80,6 +80,13 @@
             <SplashScreen ShowLoading="false" Version="@AppVersion" />
         </div>
     }
+
+    @* Transient error toast (e.g. a launch failed). Fixed-position so it never resizes the
+       window; click to dismiss, otherwise it auto-clears after a few seconds. *@
+    @if (!string.IsNullOrEmpty(_launchError))
+    {
+        <div class="tm-toast" @onclick="@(() => _launchError = null)">@_launchError</div>
+    }
 </div>
 
 @code {
@@ -87,6 +94,8 @@
     private AppConfig _cfg = new();
     private string _theme = "Win98";
     private bool _showAbout;
+    private string? _launchError;
+    private int _toastVersion;
 
     /// <summary>Version shown in the About/splash footer — the assembly version (3 parts).</summary>
     private static readonly string AppVersion =
@@ -166,8 +175,35 @@
 
     private void AppRun(MenuItemVm item)
     {
-        LaunchService.Launch(item.FullPath);
-        WindowHost.Hide();
+        if (LaunchService.Launch(item.FullPath))
+        {
+            Logger.LogInformation("Launched {Path}", item.FullPath);
+            WindowHost.Hide();
+        }
+        else
+        {
+            // Don't hide on failure — keep the window up and tell the user, instead of the menu
+            // silently vanishing when a target was deleted/moved or has no associated program.
+            Logger.LogWarning("Launch failed for {Path}", item.FullPath);
+            ShowLaunchError($"无法启动：{item.Name}");
+        }
+    }
+
+    /// <summary>Show a transient error toast; auto-clears after a few seconds (latest wins).</summary>
+    private void ShowLaunchError(string message)
+    {
+        _launchError = message;
+        var version = ++_toastVersion;
+        StateHasChanged();
+        _ = InvokeAsync(async () =>
+        {
+            await Task.Delay(4000);
+            if (_toastVersion == version)
+            {
+                _launchError = null;
+                StateHasChanged();
+            }
+        });
     }
 
     private void HandleClose() => WindowHost.Hide();

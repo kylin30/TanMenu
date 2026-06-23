@@ -47,15 +47,22 @@ public class ConfigServiceTests
     }
 
     [Fact]
-    public void ShouldUpdateWindow_RespectsTolerance()
+    public async Task LoadAsync_EmptyOrWhitespaceConfig_BacksUpBeforeResetting()
     {
         var paths = NewPaths(out var root);
         try
         {
+            // Simulate a crash-truncated config file (existing but effectively empty).
+            await File.WriteAllTextAsync(paths.ConfigFilePath, "   ");
+
             var svc = new ConfigService(paths, NullLogger<ConfigService>.Instance);
-            svc.UpdateWindowConfig(800, 600, 100, 100); // Tolerance default 5
-            Assert.False(svc.ShouldUpdateWindow(802, 600, 100, 100)); // diff 2 <= 5
-            Assert.True(svc.ShouldUpdateWindow(820, 600, 100, 100));  // diff 20 > 5
+            await svc.LoadAsync();
+
+            // The empty file must be backed up before being replaced with defaults, so the
+            // user's prior setup is never silently discarded.
+            var dir = Path.GetDirectoryName(paths.ConfigFilePath)!;
+            var backups = Directory.GetFiles(dir, Path.GetFileName(paths.ConfigFilePath) + ".backup.*");
+            Assert.NotEmpty(backups);
         }
         finally
         {

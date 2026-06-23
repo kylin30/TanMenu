@@ -1,6 +1,7 @@
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging.Abstractions;
 using TanMenu.Core.Services;
 using Xunit;
 
@@ -38,7 +39,7 @@ public class MenuDataServiceTests
             var filePath = Path.Combine(root, "readme.txt");
             await File.WriteAllTextAsync(filePath, "hi");
 
-            var svc = new MenuDataService(new FakeShortcutResolver());
+            var svc = new MenuDataService(new FakeShortcutResolver(), NullLogger<MenuDataService>.Instance);
             var result = await svc.GetDirectoryContents(new[] { root });
 
             Assert.Single(result);
@@ -63,7 +64,7 @@ public class MenuDataServiceTests
     [Fact]
     public async Task GetDirectoryContents_SkipsMissingDirectory()
     {
-        var svc = new MenuDataService(new FakeShortcutResolver());
+        var svc = new MenuDataService(new FakeShortcutResolver(), NullLogger<MenuDataService>.Instance);
         var result = await svc.GetDirectoryContents(new[] { @"C:\definitely\not\here" });
         Assert.Empty(result);
     }

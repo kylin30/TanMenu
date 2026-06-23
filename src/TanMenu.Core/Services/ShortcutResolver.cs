@@ -142,8 +142,21 @@ public sealed class ShortcutResolver : IShortcutResolver
         try
         {
             var buffer = new StringBuilder(260);
-            var result = GetLongPathName(shortPath, buffer, 260);
-            return result > 0 ? buffer.ToString() : shortPath;
+            var result = GetLongPathName(shortPath, buffer, (uint)buffer.Capacity);
+            if (result == 0)
+                return shortPath; // API failed (e.g. path doesn't exist) — keep the original
+
+            // When the long path needs more room than the buffer, GetLongPathName returns the
+            // REQUIRED size (incl. null) WITHOUT writing the buffer. Re-allocate and retry, else
+            // we'd cache an empty/garbage string and permanently disable the item.
+            if (result > buffer.Capacity)
+            {
+                buffer = new StringBuilder((int)result);
+                result = GetLongPathName(shortPath, buffer, (uint)buffer.Capacity);
+                if (result == 0 || result > buffer.Capacity)
+                    return shortPath;
+            }
+            return buffer.ToString();
         }
         catch
         {
