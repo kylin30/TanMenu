@@ -25,7 +25,7 @@ public class AppConfigTests
         Assert.Equal(8, general.PositionOffset);
         Assert.Equal(10, general.ColButtonCount);
         Assert.Equal("Win7", general.ThemeName);
-        Assert.Equal("Alibaba PuHuiTi", general.FontFamily);
+        Assert.Equal("", general.FontFamily); // empty = each theme's native Windows-version font
         Assert.True(general.ShowDefaultTools);
         Assert.NotEmpty(general.DefaultTools);
     }

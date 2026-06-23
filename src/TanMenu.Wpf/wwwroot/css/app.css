@@ -201,16 +201,45 @@ a, .btn-link {
 }
 
 /* ---- Fluent 2 (Windows 11): subtle rounded hover ---- */
-.theme-fluent2 .tm-menubar {
+.theme-win11 .tm-menubar {
     margin-bottom: 7px;
 }
-.theme-fluent2 .tm-menuitem {
+.theme-win11 .tm-menuitem {
     border-radius: 4px;
     color: #1b1b1b;
 }
-.theme-fluent2 .tm-menuitem:hover {
+.theme-win11 .tm-menuitem:hover {
     background: rgba(0, 0, 0, 0.06);
 }
+
+/* ============================================================
+   Per-theme NATIVE font — each theme uses the default UI font of its Windows version.
+   Applies when the user keeps the theme-default font (config FontFamily empty); a user-chosen
+   font overrides the family via Index.razor's !important block. Button text size is set per
+   version and is independent of the font choice. CJK fallbacks match each era's Chinese font.
+   ============================================================ */
+.theme-win98 .window,
+.theme-win98 .window * {
+    font-family: "Pixelated MS Sans Serif", "MS Sans Serif", SimSun, sans-serif;
+}
+.theme-winxp .window,
+.theme-winxp .window * {
+    font-family: Tahoma, "Microsoft Sans Serif", SimSun, sans-serif;
+}
+.theme-win7 .window,
+.theme-win7 .window * {
+    font-family: "Segoe UI", "Microsoft YaHei", Tahoma, sans-serif;
+}
+.theme-win11 .window,
+.theme-win11 .window * {
+    font-family: "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+}
+
+/* Button text size per Windows version. */
+.theme-win98 .window-body button { font-size: 11px; }
+.theme-winxp .window-body button { font-size: 11px; }
+.theme-win7 .window-body button { font-size: 12px; }
+.theme-win11 .window-body button { font-size: 14px; }
 
 /* Search/filter box — sits under the menu bar; type to filter shortcuts. */
 .tm-search {

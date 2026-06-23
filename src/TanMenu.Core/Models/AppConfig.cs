@@ -29,11 +29,12 @@ public class GeneralConfig
     public int PositionOffset { get; set; } = 8;
     public int ColButtonCount { get; set; } = 10;
 
-    /// <summary>Active theme: "Win98" | "WinXP" | "Win7" | "Fluent2".</summary>
+    /// <summary>Active theme: "Win98" | "WinXP" | "Win7" | "Windows11".</summary>
     public string ThemeName { get; set; } = "Win7";
 
-    /// <summary>UI font family override. Empty = use the active theme's default font.</summary>
-    public string FontFamily { get; set; } = "Alibaba PuHuiTi";
+    /// <summary>UI font family override. Empty = use the active theme's NATIVE font (each theme
+    /// defaults to the font of its corresponding Windows version).</summary>
+    public string FontFamily { get; set; } = "";
 
     /// <summary>Show the built-in "常用工具" group (common system tools) before the folder groups.</summary>
     public bool ShowDefaultTools { get; set; } = true;
