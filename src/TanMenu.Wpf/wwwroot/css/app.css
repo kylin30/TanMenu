@@ -220,10 +220,11 @@ a, .btn-link {
 .theme-win7 .window-body button { font-size: 12px; }
 .theme-win11 .window-body button { font-size: 14px; }
 
-/* A bit more height on the launcher buttons. */
-.window .button-body {
-    padding-top: 4px;
-    padding-bottom: 4px;
+/* A bit more height on the launcher buttons — add vertical padding to the button itself
+   (themes give it little/no vertical padding), overriding each theme's button padding. */
+.window-body button {
+    padding-top: 7px !important;
+    padding-bottom: 7px !important;
 }
 
 /* Search/filter box — sits under the menu bar; type to filter shortcuts. */
