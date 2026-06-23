@@ -232,12 +232,16 @@ a, .btn-link {
     border-color: #3b82f6;
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
 }
-.tm-noresults {
-    padding: 18px 8px;
-    color: #888;
-    font-size: 13px;
-    text-align: center;
-    white-space: nowrap;
+/* While filtering, items never hide/reflow — matches are highlighted, non-matches fade out. */
+.tm-item {
+    border-radius: 4px;
+    transition: opacity .12s ease, box-shadow .12s ease;
+}
+.tm-dim {
+    opacity: 0.32;
+}
+.tm-hit {
+    box-shadow: 0 0 0 2px #f5b301, 0 0 8px 1px rgba(245, 179, 1, 0.55);
 }
 
 /* Transient error toast (e.g. a launch failed). Fixed so it never resizes the window. */
