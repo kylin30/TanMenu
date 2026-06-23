@@ -95,6 +95,7 @@ public sealed class WindowHost : IWindowHost
         var h = new WindowInteropHelper(_window).Handle;
         if (h != IntPtr.Zero)
             SetForegroundWindow(h);
+        _web?.Focus(); // give the WebView2 keyboard focus so the search box is typeable
         _events.RaiseLauncherShown(); // let the launcher clear + focus the search box
     }
 

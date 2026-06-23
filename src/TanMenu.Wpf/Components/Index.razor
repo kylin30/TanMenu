@@ -242,8 +242,10 @@
         {
             _rendered = true;
             await Task.Delay(100);
-            await WindowHost.ResizeToContentAndPlaceAsync();
-            await FocusSearchAsync();
+            // Route startup through the same path as a hotkey/tray summon: it resizes/places the
+            // window, gives the WebView2 keyboard focus, and raises LauncherShown (which focuses
+            // the search box) — so the box is typeable immediately without a click.
+            WindowHost.ShowAndActivate();
         }
     }
 
