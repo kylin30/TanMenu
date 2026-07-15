@@ -81,7 +81,12 @@ jobs:
           $zips = @(Get-ChildItem 'dist/velopack' -Filter '*-Portable.zip' -File)
           $checksums = @(Get-ChildItem 'dist/velopack' -Filter '*-Portable.zip.sha256' -File)
           $feeds = @(Get-ChildItem 'dist/velopack' -Filter 'releases.win.json' -File)
-          $packages = @(Get-ChildItem 'dist/velopack' -Filter '*-full.nupkg' -File)
+          # DownloadPrevious intentionally leaves the preceding full package in the output folder
+          # so Velopack can build the delta. Validate the package for THIS release instead of
+          # rejecting the expected previous-version package.
+          [xml]$props = Get-Content 'Directory.Build.props' -Raw
+          $version = [string]$props.Project.PropertyGroup.Version
+          $packages = @(Get-ChildItem 'dist/velopack' -Filter "TanMenu-$version-full.nupkg" -File)
           $installers = @(Get-ChildItem 'dist/velopack' -Filter '*-Setup.exe' -File)
           if ($zips.Count -ne 1 -or $checksums.Count -ne 1 -or $feeds.Count -ne 1 -or
               $packages.Count -ne 1 -or $installers.Count -ne 0) {
