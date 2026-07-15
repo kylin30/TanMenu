@@ -20,6 +20,7 @@ public class AppConfigTests
         var general = new GeneralConfig();
 
         Assert.True(general.AutoClose);
+        Assert.Equal("Auto", general.Language);
         Assert.True(general.TopMost);
         Assert.False(general.ShowInTaskbar);
         Assert.Equal(8, general.PositionOffset);

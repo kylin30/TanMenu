@@ -5,7 +5,7 @@
     @if (!string.IsNullOrEmpty(Title))
     {
         <legend class="groupbox-title @(IsClickable ? "clickable" : "")"
-                title="@(IsClickable ? "打开文件夹" : null)"
+                title="@(IsClickable ? TitleTooltip : null)"
                 @onclick="HandleTitleClick">
             @Title
         </legend>
@@ -15,6 +15,7 @@
 
 @code {
     [Parameter] public string? Title { get; set; }
+    [Parameter] public string? TitleTooltip { get; set; }
     [Parameter] public bool Disabled { get; set; } = false;
     [Parameter] public EventCallback OnTitleClick { get; set; }
     [Parameter] public Action? OnTitleClickAction { get; set; }

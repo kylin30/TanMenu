@@ -22,16 +22,17 @@ bld/
 AppPackages/
 BundleArtifacts/
 AppLayout*/
+dist/
 *.appx
 *.appxbundle
 *.msix
 *.appxupload
-*.msix
 *.msixbundle
 GeneratedArtifacts/
 _pkginfo.txt
 *.pfx
 *.cer
+*.zip
 
 ## NuGet
 *.nupkg

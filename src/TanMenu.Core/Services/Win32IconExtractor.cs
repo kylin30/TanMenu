@@ -51,6 +51,13 @@ public static class Win32IconExtractor
         public string szTypeName;
     }
 
+    // SHGetFileInfo and the GDI HICON→Bitmap step (Icon.FromHandle/ToBitmap) touch shared shell/GDI
+    // handle state and are not safe to run concurrently, so they stay under this one process-wide lock.
+    // The managed Bitmap→PNG encode does NOT race that state — it works on an already-detached Bitmap —
+    // so it is deliberately done OUTSIDE the lock (see EncodePng), shrinking the critical section so a
+    // caller never blocks others through the encode. (The xUnit suite disables parallelization too.)
+    private static readonly object _extractLock = new();
+
     public static byte[]? GetIconPngBytes(string path)
     {
         if (string.IsNullOrEmpty(path)) return null;
@@ -59,37 +66,14 @@ public static class Win32IconExtractor
         var isFile = File.Exists(path);
         if (!isDirectory && !isFile) return null;
 
-        IntPtr hIcon = IntPtr.Zero;
-        try
+        var bmp = ExtractBitmap(() =>
         {
             var shfi = new SHFILEINFO();
             var result = SHGetFileInfo(path, FILE_ATTRIBUTE_NORMAL, ref shfi,
                 (uint)Marshal.SizeOf<SHFILEINFO>(), SHGFI_ICON | SHGFI_SMALLICON);
-
-            if (result == IntPtr.Zero) return null;
-
-            hIcon = shfi.hIcon;
-            return HIconToPngBytes(hIcon);
-        }
-        catch
-        {
-            return null;
-        }
-        finally
-        {
-            if (hIcon != IntPtr.Zero) DestroyIcon(hIcon);
-        }
-    }
-
-    /// <summary>Encode an HICON (which the caller still owns and must DestroyIcon) to PNG bytes.</summary>
-    private static byte[]? HIconToPngBytes(IntPtr hIcon)
-    {
-        if (hIcon == IntPtr.Zero) return null;
-        using var icon = Icon.FromHandle(hIcon); // does not take ownership of hIcon
-        using var bitmap = icon.ToBitmap();
-        using var stream = new MemoryStream();
-        bitmap.Save(stream, ImageFormat.Png);
-        return stream.ToArray();
+            return result == IntPtr.Zero ? IntPtr.Zero : shfi.hIcon;
+        });
+        return EncodePng(bmp);
     }
 
     /// <summary>The Windows stock "application" icon (the generic icon shown for executables that
@@ -97,23 +81,58 @@ public static class Win32IconExtractor
     /// can't be extracted (broken shortcuts, alias-stub exes like the Store mspaint).</summary>
     public static byte[]? GetStockAppIconPngBytes()
     {
-        IntPtr hIcon = IntPtr.Zero;
-        try
+        var bmp = ExtractBitmap(() =>
         {
             var sii = new SHSTOCKICONINFO { cbSize = (uint)Marshal.SizeOf<SHSTOCKICONINFO>() };
             var hr = SHGetStockIconInfo(SIID_APPLICATION, SHGSI_ICON | SHGSI_LARGEICON, ref sii);
-            if (hr != 0) return null;
+            return hr != 0 ? IntPtr.Zero : sii.hIcon;
+        });
+        return EncodePng(bmp);
+    }
 
-            hIcon = sii.hIcon;
-            return HIconToPngBytes(hIcon);
+    /// <summary>Run the HICON-producing shell call and the GDI HICON→Bitmap conversion under the
+    /// extract lock (both touch shared shell/GDI state), always DestroyIcon, and return a detached
+    /// managed <see cref="Bitmap"/> that the caller can encode without the lock. Null on any failure.</summary>
+    private static Bitmap? ExtractBitmap(Func<IntPtr> getHicon)
+    {
+        lock (_extractLock)
+        {
+            IntPtr hIcon = IntPtr.Zero;
+            try
+            {
+                hIcon = getHicon();
+                if (hIcon == IntPtr.Zero) return null;
+                using var icon = Icon.FromHandle(hIcon); // does not take ownership of hIcon
+                return icon.ToBitmap();                  // detached managed copy; safe to use after DestroyIcon
+            }
+            catch
+            {
+                return null;
+            }
+            finally
+            {
+                if (hIcon != IntPtr.Zero) DestroyIcon(hIcon);
+            }
+        }
+    }
+
+    /// <summary>Encode a detached Bitmap to PNG bytes. Runs OUTSIDE <see cref="_extractLock"/>: it
+    /// touches no shared shell/HICON state, so different icons' encodes need not serialize.</summary>
+    private static byte[]? EncodePng(Bitmap? bmp)
+    {
+        if (bmp is null) return null;
+        try
+        {
+            using (bmp)
+            using (var stream = new MemoryStream())
+            {
+                bmp.Save(stream, ImageFormat.Png);
+                return stream.ToArray();
+            }
         }
         catch
         {
             return null;
-        }
-        finally
-        {
-            if (hIcon != IntPtr.Zero) DestroyIcon(hIcon);
         }
     }
 }

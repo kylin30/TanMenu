@@ -2,7 +2,14 @@ name: CI
 
 on:
   push:
+    # Store release tags run the stricter build/test/package pipeline in store-release.yml.
+    # Keeping this workflow branch-only avoids doing the same Release build twice.
+    branches:
+      - '**'
   pull_request:
+
+permissions:
+  contents: read
 
 jobs:
   build-test:

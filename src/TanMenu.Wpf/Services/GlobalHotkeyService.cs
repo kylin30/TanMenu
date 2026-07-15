@@ -22,6 +22,8 @@ public sealed class GlobalHotkeyService : IDisposable
     private IntPtr _hwnd;
     private bool _registered;
     private string? _currentCombo; // last combo successfully registered (restored on a failed rebind)
+    private string? _appliedCombo; // last DESIRED combo Apply acted on (success or fail) — skips redundant re-apply
+    private bool _appliedOnce;     // ensure the very first Apply runs even when the desired state is "disabled"
 
     /// <summary>Raised (with the offending combo) when a requested hotkey can't be registered, e.g.
     /// it's already owned by another app — so the settings UI can warn the user.</summary>
@@ -52,6 +54,24 @@ public sealed class GlobalHotkeyService : IDisposable
 
         var g = _config.Config.General;
         var want = g.GlobalHotkeyEnabled && !string.IsNullOrWhiteSpace(g.GlobalHotkey);
+        var wantCombo = want ? g.GlobalHotkey : null;
+
+        // Did the USER actually change the desired hotkey since the last Apply? SettingsChanged also fires
+        // for actions that usually DON'T touch the hotkey (清理缓存 / 更改数据文件夹 / menu rebuild — and
+        // 恢复, UNLESS the restored config carries a different hotkey, in which case treating it as a real
+        // change here is correct). Only a real change should surface a "注册失败" warning, so a background
+        // re-attempt on an unchanged combo doesn't re-spam it.
+        var comboChanged = !_appliedOnce || wantCombo != _appliedCombo;
+        _appliedOnce = true;
+        _appliedCombo = wantCombo;
+
+        // Skip work only when we're ALREADY in the desired end-state: the wanted combo is actually
+        // registered (or we want none and hold none). Gating on the REGISTERED combo (_currentCombo), not
+        // merely the desired one, means a combo that FAILED earlier (occupied at startup) keeps getting
+        // retried on later events — so when the occupying app frees it, the next SettingsChanged
+        // re-acquires it instead of leaving the hotkey permanently dead until the combo is changed.
+        if (!comboChanged && wantCombo == _currentCombo)
+            return;
 
         Unregister();
         if (!want)
@@ -67,12 +87,15 @@ public sealed class GlobalHotkeyService : IDisposable
             return;
         }
 
-        // Occupied/invalid — restore the previously-working hotkey instead of silently dropping it,
-        // and surface the failure so the user isn't left with no hotkey and only a log line.
+        // Occupied/invalid — restore the previously-working hotkey (if any) instead of silently dropping
+        // it. We deliberately do NOT modify or persist config here: a transient conflict at startup must
+        // never permanently disable a working hotkey, and persisting config is the settings flow's job.
         _logger.LogWarning("注册全局热键失败(可能已被占用或无效): {Hotkey}", g.GlobalHotkey);
         if (_currentCombo != null)
             TryRegister(_currentCombo);
-        RegistrationFailed?.Invoke(g.GlobalHotkey);
+        // Warn only on a user-initiated change — not on a silent background retry of an unchanged combo.
+        if (comboChanged)
+            RegistrationFailed?.Invoke(g.GlobalHotkey);
     }
 
     private bool TryRegister(string combo)

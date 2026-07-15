@@ -1,4 +1,5 @@
 using Microsoft.Win32;
+using TanMenu.Core.Infrastructure;
 
 namespace TanMenu.Wpf.Services;
 
@@ -35,5 +36,51 @@ public sealed class RegistryAutoStartService : IAutoStartService
             key!.SetValue(ValueName, $"\"{ExePath}\"");
         else
             key!.DeleteValue(ValueName, throwOnMissingValue: false);
+    }
+}
+
+/// <summary>Packaged/MSIX autostart via the manifest-declared windows.startupTask extension.</summary>
+public sealed class StartupTaskAutoStartService : IAutoStartService
+{
+    public const string TaskId = "TanMenuStartupTask";
+
+    public bool IsEnabled()
+    {
+        if (!PackageRuntime.HasPackageIdentity)
+            return false;
+
+        try
+        {
+            var task = Windows.ApplicationModel.StartupTask.GetAsync(TaskId).AsTask().GetAwaiter().GetResult();
+            return task.State == Windows.ApplicationModel.StartupTaskState.Enabled;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public void SetEnabled(bool enabled)
+    {
+        if (!PackageRuntime.HasPackageIdentity)
+            return;
+
+        try
+        {
+            var task = Windows.ApplicationModel.StartupTask.GetAsync(TaskId).AsTask().GetAwaiter().GetResult();
+            if (enabled)
+            {
+                if (task.State != Windows.ApplicationModel.StartupTaskState.Enabled)
+                    task.RequestEnableAsync().AsTask().GetAwaiter().GetResult();
+            }
+            else if (task.State == Windows.ApplicationModel.StartupTaskState.Enabled)
+            {
+                task.Disable();
+            }
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "Failed to update packaged startup task {TaskId}", TaskId);
+        }
     }
 }

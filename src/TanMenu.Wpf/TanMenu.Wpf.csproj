@@ -15,6 +15,7 @@
     <Authors>TanSoft</Authors>
     <Copyright>© TanSoft. All rights reserved.</Copyright>
     <AssemblyTitle>TanMenu</AssemblyTitle>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Wpf" Version="10.0.71" />
@@ -61,5 +62,17 @@
   </Target>
   <Target Name="CopyFontsToPublish" AfterTargets="Publish">
     <Copy SourceFiles="@(TanMenuFonts)" DestinationFolder="$(PublishDir)fonts" SkipUnchangedFiles="true" />
+  </Target>
+
+  <!-- Bundled icons for Store-app alias tools (e.g. mspaint.exe), whose 0-byte execution-alias stub
+       has no embedded icon. MenuService reads these from <exe>\wwwroot\tool-icons at runtime. -->
+  <ItemGroup>
+    <TanMenuToolIcons Include="wwwroot\tool-icons\*.png" />
+  </ItemGroup>
+  <Target Name="CopyToolIconsToOutput" AfterTargets="Build">
+    <Copy SourceFiles="@(TanMenuToolIcons)" DestinationFolder="$(OutDir)wwwroot\tool-icons" SkipUnchangedFiles="true" />
+  </Target>
+  <Target Name="CopyToolIconsToPublish" AfterTargets="Publish">
+    <Copy SourceFiles="@(TanMenuToolIcons)" DestinationFolder="$(PublishDir)wwwroot\tool-icons" SkipUnchangedFiles="true" />
   </Target>
 </Project>

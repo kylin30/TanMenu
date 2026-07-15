@@ -4,6 +4,7 @@
 @using TanMenu.Core.Services
 @using TanMenu.Core.Models
 @using Microsoft.AspNetCore.Components.Web
+@using Microsoft.JSInterop
 @implements IDisposable
 @inject MenuService MenuService
 @inject ConfigService ConfigService
@@ -12,6 +13,7 @@
 @inject ISettingsLauncher SettingsLauncher
 @inject IShellCommands ShellCommands
 @inject AppEvents Events
+@inject Microsoft.JSInterop.IJSRuntime JS
 @inject Microsoft.Extensions.Logging.ILogger<Index> Logger
 
 <div class="body theme-@ThemeClass size-@SizeClass">
@@ -31,52 +33,63 @@
         <RetroWindow Title="TanMenu" OnCloseClick="@HandleClose" OnMinimizeClick="@HandleClose">
             <div id="form-content">
                 <div class="tm-menubar" role="menubar">
-                    <span class="tm-menuitem" role="menuitem" @onclick="OpenRoot">打开主目录</span>
-                    <span class="tm-menuitem" role="menuitem" @onclick="OpenSettings">选项</span>
-                    <span class="tm-menuitem" role="menuitem" @onclick="Refresh">刷新</span>
-                    <span class="tm-menuitem" role="menuitem" @onclick="ShowAbout">关于</span>
-                    <span class="tm-menuitem" role="menuitem" @onclick="ExitApp">退出</span>
+                    <span class="tm-menuitem" role="menuitem" @onclick="OpenRoot">@L("MenuOpenRoot")</span>
+                    <span class="tm-menuitem" role="menuitem" @onclick="OpenSettings">@L("MenuOptions")</span>
+                    <span class="tm-menuitem" role="menuitem" @onclick="Refresh">@L("MenuRefresh")</span>
+                    <span class="tm-menuitem" role="menuitem" @onclick="ShowAbout">@L("MenuAbout")</span>
+                    <span class="tm-menuitem" role="menuitem" @onclick="ExitApp">@L("MenuExit")</span>
+                    @* Search box lives at the top-right: in the menu-bar row, pushed to the far end. *@
+                    @if (_groups.Count > 0)
+                    {
+                        <input class="tm-search-input" type="text" @ref="_searchRef"
+                               placeholder="@L("SearchPlaceholder")" value="@_filter"
+                               @oninput="OnFilterInput" @onkeydown="OnSearchKeyDown" />
+                    }
                 </div>
                 @if (_groups.Count > 0)
                 {
-                    <div class="tm-search">
-                        <input class="tm-search-input" type="text" @ref="_searchRef"
-                               placeholder="搜索快捷方式…" value="@_filter"
-                               @oninput="OnFilterInput" @onkeydown="OnSearchKeyDown" />
-                    </div>
-                    <div class="flex items-start gap-2">
+                    <div class="tm-groups">
                         @foreach (var grp in _groups)
                         {
-                            <RetroGroupbox Title="@grp.DirectoryName"
-                                OnTitleClickAction="@GetTitleAction(grp)">
-                                <div class="flex items-start gap-1">
-                                    @foreach (var col in grp.Items.Chunk(Math.Max(1, _cfg.General.ColButtonCount)))
-                                    {
-                                        <div>
-                                            @foreach (var item in col)
-                                            {
-                                                <div class="tm-item mb-1 flex-shrink-0 @ItemClass(item)">
-                                                    <RetroButton Text="@item.Name"
-                                                        IconBase64="@item.IconBase64"
-                                                        Disabled="@item.IsDisabled"
-                                                        OnClick="@(() => AppRun(item))" />
-                                                </div>
-                                            }
-                                        </div>
-                                    }
-                                </div>
-                            </RetroGroupbox>
+                            <div class="tm-group">
+                                <RetroGroupbox Title="@grp.DirectoryName"
+                                    TitleTooltip="@L("OpenFolderTooltip")"
+                                    OnTitleClickAction="@GetTitleAction(grp)">
+                                    <div class="tm-group-columns">
+                                        @foreach (var col in grp.Items.Chunk(Math.Max(1, _cfg.General.ColButtonCount)))
+                                        {
+                                            <div class="tm-group-column">
+                                                @foreach (var item in col)
+                                                {
+                                                    <div class="tm-item mb-1 flex-shrink-0 @ItemClass(item)">
+                                                        <RetroButton Text="@item.Name"
+                                                            IconBase64="@item.IconBase64"
+                                                            Disabled="@item.IsDisabled"
+                                                            OnClick="@(() => AppRun(item))" />
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                </RetroGroupbox>
+                            </div>
                         }
                     </div>
+                }
+                else if (!_loadedOnce)
+                {
+                    @* Still loading (the menu build runs on a background thread): show the splash, not
+                       the "no shortcuts" prompt, so a slow cold start doesn't flash a misleading message. *@
+                    <SplashScreen Version="@AppVersion" Language="@_cfg.General.Language" />
                 }
                 else
                 {
                     <div class="tm-empty">
-                        <div class="tm-empty-title">还没有任何快捷方式</div>
-                        <div>在「选项 → 文件夹」里设置主文件夹，或开启「常用工具」分类。</div>
+                        <div class="tm-empty-title">@L("EmptyTitle")</div>
+                        <div>@L("EmptyHelp")</div>
                         <div class="tm-empty-actions">
-                            <button @onclick="OpenSettings">打开选项…</button>
-                            <button @onclick="Refresh">刷新</button>
+                            <button @onclick="OpenSettings">@L("OpenOptions")</button>
+                            <button @onclick="Refresh">@L("MenuRefresh")</button>
                         </div>
                     </div>
                 }
@@ -90,7 +103,7 @@
     @if (_showAbout)
     {
         <div class="about-overlay" @onclick="CloseAbout">
-            <SplashScreen ShowLoading="false" Version="@AppVersion" />
+            <SplashScreen ShowLoading="false" Version="@AppVersion" Language="@_cfg.General.Language" />
         </div>
     }
 
@@ -112,8 +125,16 @@
 
     // Search/filter state.
     private string _filter = "";
+    private string _filterTrimmed = "";  // _filter pre-trimmed once per change so ItemClass/FirstMatch don't Trim per item
     private ElementReference _searchRef;
-    private bool _rendered;
+    private bool _loadedOnce;     // first build finished → distinguishes "loading" from "empty"
+    private bool _pendingFocus;   // focus the search box on the next render where it actually exists
+    private bool _revealed;       // window has been revealed once (after the real structure first rendered)
+    private bool _firstShownHandled; // skip the redundant rescan on the first summon (startup just built it)
+    private int? _menuFingerprint;   // last build's folder/tools fingerprint; null = none yet (forces a build)
+    private int _iconFillEpoch;      // bumped per build so a superseded async icon-fill is ignored
+
+    private string L(string key, params object?[] args) => AppLanguage.Format(key, _cfg.General.Language, args);
 
     /// <summary>Version shown in the About/splash footer — the assembly version (3 parts).</summary>
     private static readonly string AppVersion =
@@ -128,30 +149,45 @@
     {
         Events.SettingsChanged += OnSettingsChanged;
         Events.LauncherShown += OnLauncherShown;
-        await ReloadAsync();
+        try
+        {
+            await ReloadAsync(force: true);
+        }
+        catch (Exception ex)
+        {
+            // Never hang on the splash: show the empty state and allow the reveal to proceed.
+            Logger.LogError(ex, "Initial menu build failed");
+            _loadedOnce = true;
+        }
     }
 
     /// <summary>Per-item CSS class while filtering: name matches are highlighted, non-matches faded.
     /// All items stay rendered (the grid never reflows) — only emphasis changes.</summary>
     private string ItemClass(MenuItemVm item)
     {
-        if (string.IsNullOrWhiteSpace(_filter))
+        if (_filterTrimmed.Length == 0)
             return "";
-        return item.Name.Contains(_filter.Trim(), StringComparison.OrdinalIgnoreCase) ? "tm-hit" : "tm-dim";
+        return item.Name.Contains(_filterTrimmed, StringComparison.OrdinalIgnoreCase) ? "tm-hit" : "tm-dim";
     }
 
     /// <summary>The first enabled item whose name matches the filter (for type-and-Enter).</summary>
     private MenuItemVm? FirstMatch()
     {
-        if (string.IsNullOrWhiteSpace(_filter))
+        if (_filterTrimmed.Length == 0)
             return null;
-        var f = _filter.Trim();
         return _groups.SelectMany(g => g.Items)
-            .FirstOrDefault(i => !i.IsDisabled && i.Name.Contains(f, StringComparison.OrdinalIgnoreCase));
+            .FirstOrDefault(i => !i.IsDisabled && i.Name.Contains(_filterTrimmed, StringComparison.OrdinalIgnoreCase));
+    }
+
+    // Keep _filter and its trimmed form in sync — the trim is computed once here, not per rendered item.
+    private void SetFilter(string value)
+    {
+        _filter = value;
+        _filterTrimmed = value.Trim();
     }
 
     // Filtering only changes emphasis (highlight/fade), not layout — so no window resize is needed.
-    private void OnFilterInput(ChangeEventArgs e) => _filter = e.Value?.ToString() ?? "";
+    private void OnFilterInput(ChangeEventArgs e) => SetFilter(e.Value?.ToString() ?? "");
 
     private void OnSearchKeyDown(KeyboardEventArgs e)
     {
@@ -165,7 +201,7 @@
         {
             // First Esc clears the filter; a second one (empty filter) hides the launcher.
             if (!string.IsNullOrEmpty(_filter))
-                _filter = "";
+                SetFilter("");
             else
                 WindowHost.Hide();
         }
@@ -176,38 +212,128 @@
     {
         _ = InvokeAsync(async () =>
         {
-            _filter = "";
-            StateHasChanged();
-            await Task.Delay(40);
-            await FocusSearchAsync();
+            try
+            {
+                SetFilter("");
+                // Defer the actual focus to OnAfterRenderAsync: on a cold start the menu (and thus the
+                // search box, which lives inside the "_groups.Count > 0" branch) may still be loading on
+                // a background thread, so focus once the box is actually rendered rather than racing it.
+                _pendingFocus = true;
+                StateHasChanged(); // show the cached menu — cleared + focused — instantly
+
+                // Startup just built the menu, so skip the redundant rescan on the very first summon —
+                // but ONLY if that build actually succeeded (_menuFingerprint set). If startup FAILED
+                // (the build threw → fingerprint still null, groups empty), fall through to rebuild now so
+                // a transient startup fault doesn't strand the empty "no shortcuts" state until a 2nd summon.
+                if (!_firstShownHandled)
+                {
+                    _firstShownHandled = true;
+                    if (_menuFingerprint != null)
+                        return;
+                }
+
+                // Pick up shortcuts added/removed/renamed in the watched folders since the last build.
+                // The fingerprint gate makes this nearly free when nothing changed (one directory
+                // enumeration + a last-write-time stat per group folder, on the STA worker). Only when
+                // it actually changed do we re-render + re-fit the window (the costly WebView measure).
+                var changed = await ReloadAsync(force: false);
+                if (changed)
+                {
+                    StateHasChanged();
+                    await WaitForLayoutAsync();
+                    await ResizeWithRetryAsync();
+                }
+            }
+            catch (Exception ex) { Logger.LogError(ex, "Reload on launcher shown failed"); }
         });
     }
 
     private async Task FocusSearchAsync()
     {
-        if (!_rendered)
-            return;
+        // Only ever called from OnAfterRenderAsync (post-render), so the search box is rendered if it exists.
         try { await _searchRef.FocusAsync(); }
         catch { /* search box not present (e.g. splash/empty state) */ }
     }
 
-    private async Task ReloadAsync()
+    /// <summary>(Re)build the menu. <paramref name="force"/> rebuilds unconditionally (startup, settings,
+    /// manual refresh); otherwise the build is skipped when the folder/tools fingerprint is unchanged.
+    /// Returns true when the groups were actually rebuilt. Always refreshes <c>_cfg</c> and the window's
+    /// ContentVersion so a settings-only change (theme/size/columns) still re-renders + re-measures.</summary>
+    private async Task<bool> ReloadAsync(bool force)
     {
         _cfg = ConfigService.Config;
         _theme = ResolveTheme(_cfg.General.ThemeName);
 
-        var groups = new List<MenuGroupVm>();
-        if (_cfg.General.ShowDefaultTools)
+        var result = await MenuService.BuildMenuAsync(_cfg.RootFolder, _cfg.General, force ? null : _menuFingerprint);
+        if (result.Changed)
         {
-            var tools = MenuService.BuildDefaultToolsGroup(_cfg.General.DefaultTools);
-            if (tools.Items.Count > 0)
-                groups.Add(tools);
+            _groups = result.Groups;
+            _menuFingerprint = result.Fingerprint;
+            _loadedOnce = true;
+            StartIconFill(result.Pending);
+            Logger.LogInformation("Index built {Count} groups from root '{Root}', theme {Theme}, {Pending} icons pending",
+                _groups.Count, _cfg.RootFolder, _theme, result.Pending.Count);
         }
-        groups.AddRange(await MenuService.GetMenuFromRootAsync(_cfg.RootFolder));
-        _groups = groups;
 
-        Logger.LogInformation("Index loaded {Count} groups from root '{Root}', theme {Theme}",
-            _groups.Count, _cfg.RootFolder, _theme);
+        // ContentVersion gates the reveal-time RE-MEASURE: it must change whenever the rendered SIZE
+        // could change — content (fingerprint) OR a size-affecting render setting (button size, columns,
+        // theme, font). Updated even when the groups were unchanged, so a settings-only change (e.g.
+        // larger buttons) still forces a fresh measurement instead of reusing a stale cached size.
+        WindowHost.ContentVersion = HashCode.Combine(_menuFingerprint ?? 0,
+            _cfg.General.ButtonSize, _cfg.General.ColButtonCount, _cfg.General.ThemeName, _cfg.General.FontFamily,
+            _cfg.General.Language);
+
+        return result.Changed;
+    }
+
+    /// <summary>Kick off the async icon-fill for a build's uncached icons: the STA worker extracts them
+    /// and we marshal each batch back to replace the placeholder. Icon slots are fixed-size, so this
+    /// never reflows the layout (no resize needed). An epoch guards against a superseded build's fill.</summary>
+    private void StartIconFill(IReadOnlyList<MenuService.PendingIcon> pending)
+    {
+        var epoch = ++_iconFillEpoch;
+        if (pending.Count == 0)
+            return;
+        // Observe BOTH tasks so neither surfaces as an UnobservedTaskException on shutdown: the inner
+        // marshaled InvokeAsync (renderer torn down mid-fill) AND the outer ExtractIconsAsync (a re-queued
+        // STA job faults if its enqueue races CompleteAdding during Dispose).
+        _ = MenuService.ExtractIconsAsync(pending, batch =>
+        {
+            _ = InvokeAsync(() =>
+            {
+                if (epoch != _iconFillEpoch)
+                    return; // a newer rebuild superseded this fill
+                foreach (var (item, b64) in batch)
+                    item.IconBase64 = b64;
+                StateHasChanged();
+            }).ContinueWith(static t => { _ = t.Exception; },
+                CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
+        }, () => epoch != _iconFillEpoch).ContinueWith(static t => { _ = t.Exception; },
+            CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
+    }
+
+    /// <summary>Size+place the window, retrying once if the WebView measurement failed or was degenerate
+    /// (ResizeToContentAndPlaceAsync returned false). Without the retry, a content/settings change while
+    /// the window is visible could keep the stale size until the next full hide+show summon.</summary>
+    private async Task ResizeWithRetryAsync()
+    {
+        if (!await WindowHost.ResizeToContentAndPlaceAsync())
+        {
+            await Task.Delay(60);
+            await WindowHost.ResizeToContentAndPlaceAsync();
+        }
+    }
+
+    /// <summary>Wait for the WebView's real layout signal (fonts applied + two animation frames) before
+    /// revealing/sizing, instead of a blind delay. Caps at 800ms so a missing/failed script can never
+    /// block the reveal.</summary>
+    private async Task WaitForLayoutAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("tmWaitForLayout").AsTask().WaitAsync(TimeSpan.FromMilliseconds(800));
+        }
+        catch { /* JS not ready / timed out → reveal anyway */ }
     }
 
     // The built-in tools group has no Directory → its title isn't a clickable "open folder".
@@ -215,51 +341,79 @@
         string.IsNullOrEmpty(grp.Directory) ? null : () => LaunchService.OpenFolder(grp.Directory);
 
     // Map the stored theme name to a supported key; anything unknown (e.g. the removed
-    // "Win31"/"ModernRetro") falls back to the default Win98.
-    private static string ResolveTheme(string? name) => name switch
+    // "Win98"/"Win31"/"Win2000"/"ModernRetro", or the legacy "Fluent2" already normalized to "Windows11"
+    // in ConfigService.LoadAsync) falls back to the default Win7.
+    private static string ResolveTheme(string? name)
     {
-        "WinXP" => "WinXP",
-        "Win7" => "Win7",
-        "Windows11" or "Fluent2" => "Windows11", // "Fluent2" = legacy key, kept for old configs
-        _ => "Win98",
-    };
+        // A user theme ("user:<name>") passes through unchanged — RetroWindow injects its CSS.
+        if (ThemeService.IsUserTheme(name)) return name!;
+        return name switch
+        {
+            "WinXP" => "WinXP",
+            "Win7" => "Win7",
+            "Windows11" => "Windows11",
+            _ => "Win7",
+        };
+    }
 
     private string ThemeClass => _theme switch
     {
         "WinXP" => "winxp",
         "Win7" => "win7",
         "Windows11" => "win11",
-        _ => "win98",
+        _ when ThemeService.IsUserTheme(_theme) => "user", // .body.theme-user: app.css adds no tweaks
+        _ => "win7",
     };
 
     private string SizeClass => _cfg.General.ButtonSize switch
     {
-        "Small" => "small",
         "Large" => "large",
-        _ => "medium",
+        "Medium" => "medium",
+        _ => "small", // "Small" + anything unrecognized → the default (small)
     };
 
     private void OnSettingsChanged()
     {
         _ = InvokeAsync(async () =>
         {
-            await ReloadAsync();
-            StateHasChanged();
-            await Task.Delay(60);
-            await WindowHost.ResizeToContentAndPlaceAsync();
+            try
+            {
+                // force:false — picks up the new config and rebuilds the groups only if the folders or
+                // tools actually changed; a theme/size/column-only change skips the folder rescan but
+                // still re-renders and re-measures (ContentVersion changes).
+                await ReloadAsync(force: false);
+                StateHasChanged();
+                await WaitForLayoutAsync();
+                await ResizeWithRetryAsync();
+            }
+            catch (Exception ex)
+            {
+                // Fire-and-forget (the returned Task is discarded), so a throw here would otherwise be
+                // an unobserved exception. Log and keep the UI alive at its current state.
+                Logger.LogError(ex, "Reload after settings change failed");
+            }
         });
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        // Reveal once the real menu structure has rendered (not the loading splash): OnInitializedAsync
+        // awaits the build, so the first render is the splash (_loadedOnce=false) and a later render is
+        // the structure (_loadedOnce=true). Wait for an actual WebView layout signal, then size + show.
+        if (!_revealed && _loadedOnce)
         {
-            _rendered = true;
-            await Task.Delay(100);
-            // Route startup through the same path as a hotkey/tray summon: it resizes/places the
-            // window, gives the WebView2 keyboard focus, and raises LauncherShown (which focuses
-            // the search box) — so the box is typeable immediately without a click.
+            _revealed = true;
+            await WaitForLayoutAsync();
             WindowHost.ShowAndActivate();
+        }
+
+        // Focus the search box on the first render where it actually exists. It lives inside the
+        // "_groups.Count > 0" branch, so on a cold start it isn't rendered until the menu load
+        // completes — focusing here covers that race instead of losing focus to a swallowed throw.
+        if (_pendingFocus && _groups.Count > 0)
+        {
+            _pendingFocus = false;
+            await FocusSearchAsync();
         }
     }
 
@@ -275,7 +429,7 @@
             // Don't hide on failure — keep the window up and tell the user, instead of the menu
             // silently vanishing when a target was deleted/moved or has no associated program.
             Logger.LogWarning("Launch failed for {Path}", item.FullPath);
-            ShowLaunchError($"无法启动：{item.Name}");
+            ShowLaunchError(L("LaunchFailed", item.Name));
         }
     }
 
@@ -287,12 +441,16 @@
         StateHasChanged();
         _ = InvokeAsync(async () =>
         {
-            await Task.Delay(4000);
-            if (_toastVersion == version)
+            try
             {
-                _launchError = null;
-                StateHasChanged();
+                await Task.Delay(4000);
+                if (_toastVersion == version)
+                {
+                    _launchError = null;
+                    StateHasChanged();
+                }
             }
+            catch (Exception ex) { Logger.LogError(ex, "Toast auto-clear failed"); }
         });
     }
 
@@ -308,10 +466,18 @@
 
     private async Task Refresh()
     {
-        await ReloadAsync();
-        StateHasChanged();
-        await Task.Delay(60);
-        await WindowHost.ResizeToContentAndPlaceAsync();
+        try
+        {
+            await ReloadAsync(force: true); // user explicitly asked to rescan
+            StateHasChanged();
+            await WaitForLayoutAsync();
+            await ResizeWithRetryAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Refresh failed");
+            ShowLaunchError(L("RefreshFailed"));
+        }
     }
 
     private void ShowAbout() => _showAbout = true;

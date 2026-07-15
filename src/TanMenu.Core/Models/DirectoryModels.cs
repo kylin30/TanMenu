@@ -15,6 +15,12 @@ public class DirectoryItem
     /// to an ImageSource via IIconProvider; Core does not produce bitmaps.
     /// </summary>
     public string? IconKey { get; set; }
+
+    /// <summary>Last-write-time (UTC) and size of the <see cref="IconKey"/> file, captured during the
+    /// directory scan so the icon cache can be validated without an extra per-item FileInfo stat. Left
+    /// zero for static keys (folders, unresolved items) — they cache under a stable (default, 0) key.</summary>
+    public DateTime IconMtime { get; set; }
+    public long IconSize { get; set; }
 }
 
 public class DirectoryContents

@@ -1,6 +1,7 @@
 using System.Windows.Controls;
 using System.Windows.Input;
 using H.NotifyIcon;
+using TanMenu.Core.Services;
 
 namespace TanMenu.Wpf.Services;
 
@@ -10,14 +11,22 @@ public sealed class TrayService : IDisposable
     private readonly IWindowHost _host;
     private readonly Action _exit;
     private readonly Action _openSettings;
+    private readonly ConfigService _config;
+    private readonly AppEvents _events;
     private TaskbarIcon? _icon;
     private System.Drawing.Icon? _gdiIcon; // keep alive so its HICON stays valid
+    private MenuItem? _showItem;
+    private MenuItem? _settingsItem;
+    private MenuItem? _exitItem;
 
-    public TrayService(IWindowHost host, Action exit, Action openSettings)
+    public TrayService(IWindowHost host, Action exit, Action openSettings, ConfigService config, AppEvents events)
     {
         _host = host;
         _exit = exit;
         _openSettings = openSettings;
+        _config = config;
+        _events = events;
+        _events.SettingsChanged += ApplyMenuText;
     }
 
     public void Create(string icoPath)
@@ -31,13 +40,14 @@ public sealed class TrayService : IDisposable
         _icon.LeftClickCommand = new RelayCommand(() => _host.Toggle());
 
         // WPF ContextMenu with Command-wired items (WPF MenuItem.Command fires reliably).
-        var show = new MenuItem { Header = "显示", Command = new RelayCommand(() => _host.ShowAndActivate()) };
-        var settings = new MenuItem { Header = "设置", Command = new RelayCommand(_openSettings) };
-        var exit = new MenuItem { Header = "退出", Command = new RelayCommand(_exit) };
+        _showItem = new MenuItem { Command = new RelayCommand(() => _host.ShowAndActivate()) };
+        _settingsItem = new MenuItem { Command = new RelayCommand(_openSettings) };
+        _exitItem = new MenuItem { Command = new RelayCommand(_exit) };
+        ApplyMenuText();
         var menu = new ContextMenu();
-        menu.Items.Add(show);
-        menu.Items.Add(settings);
-        menu.Items.Add(exit);
+        menu.Items.Add(_showItem);
+        menu.Items.Add(_settingsItem);
+        menu.Items.Add(_exitItem);
         _icon.ContextMenu = menu;
 
         _icon.ForceCreate(enablesEfficiencyMode: false);
@@ -47,13 +57,35 @@ public sealed class TrayService : IDisposable
         // bypass it and call the core UpdateIcon(HICON) directly after the icon is created.
         if (System.IO.File.Exists(icoPath))
         {
-            _gdiIcon = new System.Drawing.Icon(icoPath, new System.Drawing.Size(32, 32));
-            _icon.TrayIcon?.UpdateIcon(_gdiIcon.Handle);
+            try
+            {
+                _gdiIcon = new System.Drawing.Icon(icoPath, new System.Drawing.Size(32, 32));
+                _icon.TrayIcon?.UpdateIcon(_gdiIcon.Handle);
+            }
+            catch (Exception ex)
+            {
+                // A corrupt/locked .ico must not take down the whole tray — the tray icon is the
+                // primary way to re-summon a hidden launcher. Leave a blank icon; the menu still works.
+                Serilog.Log.Warning(ex, "Failed to set tray icon from {Path}", icoPath);
+            }
         }
+    }
+
+    private void ApplyMenuText()
+    {
+        try
+        {
+            var language = _config.Config.General.Language;
+            if (_showItem != null) _showItem.Header = AppLanguage.Text("TrayShow", language);
+            if (_settingsItem != null) _settingsItem.Header = AppLanguage.Text("TraySettings", language);
+            if (_exitItem != null) _exitItem.Header = AppLanguage.Text("TrayExit", language);
+        }
+        catch { /* best effort; tray text is non-critical */ }
     }
 
     public void Dispose()
     {
+        _events.SettingsChanged -= ApplyMenuText;
         _icon?.Dispose();
         _icon = null;
         _gdiIcon?.Dispose();
@@ -66,7 +98,11 @@ public sealed class RelayCommand : ICommand
 {
     private readonly Action _execute;
     public RelayCommand(Action execute) => _execute = execute;
-    public event EventHandler? CanExecuteChanged;
+    public event EventHandler? CanExecuteChanged
+    {
+        add { }
+        remove { }
+    }
     public bool CanExecute(object? parameter) => true;
     public void Execute(object? parameter) => _execute();
 }

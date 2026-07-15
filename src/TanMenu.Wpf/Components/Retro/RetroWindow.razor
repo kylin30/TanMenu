@@ -1,18 +1,30 @@
 @using Microsoft.AspNetCore.Components
+@using TanMenu.Wpf.Services
+@inject ThemeService ThemeSvc
 @*
    One window chrome for all themes. 98.css, XP.css, 7.css and fluent2.css share the same
    .window/.title-bar/.title-bar-controls/.window-body API, so only the linked
    stylesheet changes per theme. The <link>s render here (in the WebView body) so
    exactly one theme's CSS is active at a time; switching themes swaps them.
 *@
-@foreach (var href in Stylesheets)
+@{ var userCss = UserCss; }
+@if (userCss is not null)
 {
-    <link href="@href" rel="stylesheet" @key="href" />
+    @* User theme: wwwroot is served virtually, so a runtime <link> to the external .css can't be
+       reached — inject the file's text inline instead. MarkupString keeps CSS combinators (e.g. >). *@
+    <style>@((MarkupString)userCss)</style>
+}
+else
+{
+    @foreach (var href in Stylesheets)
+    {
+        <link href="@href" rel="stylesheet" @key="href" />
+    }
 }
 
 <div class="@WindowClass" style="max-width: 100%">
     <div class="title-bar">
-        <div class="title-bar-text"><img class="title-bar-icon" src="/app.ico" alt="" />@Title</div>
+        <div class="title-bar-text"><img class="title-bar-icon" src="/app-tile.png" alt="" />@Title</div>
         <div class="title-bar-controls">
             <button aria-label="Minimize" @onclick="@OnMinimizeClick"></button>
             <button aria-label="Close" @onclick="@OnCloseClick"></button>
@@ -24,11 +36,15 @@
 </div>
 
 @code {
-    [CascadingParameter(Name = "Theme")] public string Theme { get; set; } = "Win98";
+    [CascadingParameter(Name = "Theme")] public string Theme { get; set; } = "Win7";
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public EventCallback OnCloseClick { get; set; }
     [Parameter] public EventCallback OnMinimizeClick { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    // A user theme ("user:<name>") injects its CSS file's text inline; null for a built-in theme (or a
+    // user theme whose file went missing) -> fall through to the Stylesheets <link>s below.
+    private string? UserCss => ThemeService.IsUserTheme(Theme) ? ThemeSvc.GetCss(Theme) : null;
 
     // fonts.css is linked AFTER 98.css so its @font-face overrides 98.css's unresolved one.
     private string[] Stylesheets => Theme switch
@@ -36,9 +52,9 @@
         "Windows11" => new[] { "/lib/fluent2/fluent2.css" },
         "Win7" => new[] { "/lib/win7theme/7.css" },
         "WinXP" => new[] { "/lib/xpcss/98.css", "/lib/xpcss/fonts.css", "/lib/xpcss/xp-luna.css" },
-        _ => new[] { "/lib/xpcss/98.css", "/lib/xpcss/fonts.css" },
+        _ => new[] { "/lib/win7theme/7.css" }, // default = Windows 7
     };
 
-    // 7.css needs the aero "glass" class; 98/XP do not.
+    // 7.css needs the aero "glass" class; XP uses plain "window active".
     private string WindowClass => Theme == "Win7" ? "window glass active" : "window active";
 }

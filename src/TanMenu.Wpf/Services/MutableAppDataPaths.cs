@@ -11,7 +11,9 @@ namespace TanMenu.Wpf.Services;
 /// </summary>
 public sealed class MutableAppDataPaths : IAppDataPaths
 {
-    private string _root;
+    // volatile: read on the ShortcutResolver save-timer's ThreadPool thread (via the LinkCacheFilePath
+    // computed property) while SetRoot writes it on the UI thread — the barrier prevents a stale read.
+    private volatile string _root;
 
     public MutableAppDataPaths(string root)
     {

@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using System.IO;
 using System.Runtime.InteropServices;
-using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using TanMenu.Core.Infrastructure;
@@ -11,7 +10,11 @@ namespace TanMenu.Core.Services;
 public sealed class ShortcutResolver : IShortcutResolver, IDisposable
 {
     private readonly ConcurrentDictionary<string, CacheEntry> _cache = new();
-    private readonly string _cacheFile;
+    private readonly IAppDataPaths _paths;
+    // Resolved fresh each access (a computed property, like ConfigService._configPath) so a runtime
+    // data-folder relocation (MutableAppDataPaths.SetRoot) is picked up immediately — otherwise the
+    // cache would keep reading/writing/deleting linkCache.json at the OLD root after a move.
+    private string _cacheFile => _paths.LinkCacheFilePath;
     private readonly object _fileLock = new();
     private readonly System.Threading.Timer _saveTimer;
 
@@ -27,12 +30,11 @@ public sealed class ShortcutResolver : IShortcutResolver, IDisposable
         public string? TargetPath { get; set; }
         public DateTime LastModified { get; set; }
         public long FileSize { get; set; }
-        public string FileHash { get; set; } = string.Empty;
     }
 
     public ShortcutResolver(IAppDataPaths paths)
     {
-        _cacheFile = paths.LinkCacheFilePath;
+        _paths = paths;
         _saveTimer = new System.Threading.Timer(_ => SaveToDisk());
         LoadCache();
     }
@@ -46,10 +48,14 @@ public sealed class ShortcutResolver : IShortcutResolver, IDisposable
 
         var key = shortcutPath.ToLowerInvariant();
 
-        if (IsCacheValid(shortcutPath, key))
+        // Capture the entry by value via TryGetValue, then validate it — so a concurrent ClearCache()
+        // (_cache.Clear() on the UI thread, now reachable via the 清理缓存 button while the STA build
+        // thread is resolving shortcuts) can't make a follow-up _cache[key] indexer throw
+        // KeyNotFoundException between the validity check and the read.
+        if (_cache.TryGetValue(key, out var cached) && IsStillValid(cached, shortcutPath))
         {
             lock (_statsLock) { _cacheHits++; }
-            return _cache[key].TargetPath;
+            return cached.TargetPath;
         }
 
         var targetPath = ResolveShortcutActual(shortcutPath);
@@ -57,25 +63,15 @@ public sealed class ShortcutResolver : IShortcutResolver, IDisposable
         return targetPath;
     }
 
-    private bool IsCacheValid(string shortcutPath, string key)
+    private static bool IsStillValid(CacheEntry cached, string shortcutPath)
     {
-        if (!_cache.TryGetValue(key, out var cached))
-            return false;
-
         try
         {
             var fileInfo = new FileInfo(shortcutPath);
-            if (cached.LastModified != fileInfo.LastWriteTime || cached.FileSize != fileInfo.Length)
-                return false;
-
-            if (fileInfo.Length < 102400 && !string.IsNullOrEmpty(cached.FileHash))
-            {
-                var currentHash = CalculateFileHash(shortcutPath);
-                if (currentHash != cached.FileHash)
-                    return false;
-            }
-
-            return true;
+            // Trust last-write-time + size as the validator. A .lnk whose content changes virtually
+            // always changes its size or mtime, so re-reading + SHA256-hashing every file on every
+            // cache hit was pure hot-path cost (a cold scan re-resolves on any real change anyway).
+            return cached.LastModified == fileInfo.LastWriteTime && cached.FileSize == fileInfo.Length;
         }
         catch
         {
@@ -88,14 +84,12 @@ public sealed class ShortcutResolver : IShortcutResolver, IDisposable
         try
         {
             var fileInfo = new FileInfo(shortcutPath);
-            var fileHash = fileInfo.Length < 102400 ? CalculateFileHash(shortcutPath) : string.Empty;
 
             _cache[key] = new CacheEntry
             {
                 TargetPath = targetPath,
                 LastModified = fileInfo.LastWriteTime,
                 FileSize = fileInfo.Length,
-                FileHash = fileHash
             };
 
             ScheduleSave();
@@ -103,20 +97,6 @@ public sealed class ShortcutResolver : IShortcutResolver, IDisposable
         catch
         {
             // ignore cache update errors
-        }
-    }
-
-    private static string CalculateFileHash(string filePath)
-    {
-        try
-        {
-            using var sha = SHA256.Create();
-            using var stream = File.OpenRead(filePath);
-            return Convert.ToHexString(sha.ComputeHash(stream));
-        }
-        catch
-        {
-            return string.Empty;
         }
     }
 
@@ -262,6 +242,11 @@ public sealed class ShortcutResolver : IShortcutResolver, IDisposable
 
     public void ClearCache()
     {
+        // Disarm the trailing-save timer so a NOT-YET-FIRED ScheduleSave (armed by a resolve just before
+        // this clear) won't recreate the just-deleted cache file. This can't stop a callback the timer has
+        // ALREADY dispatched — that one may briefly rewrite the file — but it's self-healing: the
+        // following RaiseSettingsChanged rebuild re-resolves and re-saves the cache ~1s later anyway.
+        _saveTimer.Change(System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
         _cache.Clear();
         lock (_fileLock)
         {

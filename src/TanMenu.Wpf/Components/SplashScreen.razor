@@ -1,5 +1,7 @@
 ﻿@* SplashScreen.razor *@
 
+@using TanMenu.Core.Services
+
 <div class="splash-screen">
     <div class="splash-container">
         <div class="logo">
@@ -23,7 +25,7 @@
         }
         else
         {
-            <div class="about-hint">点击任意处关闭</div>
+            <div class="about-hint">@AppLanguage.Text("ClickToDismiss", Language)</div>
         }
 
         <div class="footer-info">
@@ -37,6 +39,7 @@
     [Parameter] public string Version { get; set; } = "1.0.0";
     [Parameter] public EventCallback OnLoadingComplete { get; set; }
     [Parameter] public bool IsVisible { get; set; } = true;
+    [Parameter] public string? Language { get; set; }
 
     /// <summary>When false (e.g. shown as the "关于/About" overlay), hide the launch-time
     /// loading spinner/dots and show a "click to dismiss" hint instead.</summary>

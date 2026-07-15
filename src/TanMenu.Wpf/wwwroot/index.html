@@ -15,11 +15,28 @@
     <div id="app"/>
 
     <div data-nosnippet id="blazor-error-ui">
-        发生了一个未处理的错误。
-        <a class="reload" href="">重新加载</a>
+        发生了一个未处理的错误。 / An unhandled error has occurred.
+        <a class="reload" href="">重新加载 / Reload</a>
         <a class="dismiss">🗙</a>
     </div>
     <script src="_framework/blazor.webview.js"></script>
+    <script>
+        // Resolve once the rendered DOM has actually been laid out (fonts applied + two animation
+        // frames) so the WPF host can reveal/size the window off a real layout signal instead of a
+        // blind timer. A safety timeout guarantees it always resolves even if font loading stalls.
+        window.tmWaitForLayout = function () {
+            return new Promise(function (resolve) {
+                var done = false;
+                var finish = function () { if (!done) { done = true; resolve(); } };
+                var twoFrames = function () {
+                    requestAnimationFrame(function () { requestAnimationFrame(finish); });
+                };
+                var fonts = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
+                fonts.then(twoFrames, twoFrames);
+                setTimeout(finish, 600);
+            });
+        };
+    </script>
 </body>
 
 </html>

@@ -58,7 +58,9 @@ public partial class MainWindow : Window
             App.Tray = new TrayService(
                 host,
                 () => ((App)Application.Current).ExitApp(),
-                () => App.Services.GetRequiredService<ISettingsLauncher>().Open());
+                () => App.Services.GetRequiredService<ISettingsLauncher>().Open(),
+                App.Services.GetRequiredService<TanMenu.Core.Services.ConfigService>(),
+                App.Services.GetRequiredService<AppEvents>());
             App.Tray.Create(System.IO.Path.Combine(AppContext.BaseDirectory, "app.ico"));
         }
         catch (Exception ex)

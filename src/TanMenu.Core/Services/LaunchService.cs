@@ -12,8 +12,8 @@ public sealed class LaunchService : ILaunchService
             if (string.IsNullOrWhiteSpace(path))
                 return false;
 
-            // Note: no File.Exists guard here — UseShellExecute resolves bare commands / aliases
-            // via App Paths + PATH (e.g. "calc.exe", "powershell.exe"), not just on-disk paths.
+            // Note: no File.Exists guard here: UseShellExecute resolves bare commands and aliases
+            // via App Paths + PATH, not just on-disk paths.
             // A truly unlaunchable value throws and is handled below.
             var startInfo = new ProcessStartInfo
             {

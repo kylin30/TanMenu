@@ -8,7 +8,9 @@ public sealed class MenuItemVm
     public string? TargetPath { get; init; }
     public bool IsDirectory { get; init; }
     public bool IsDisabled { get; init; }
-    public string? IconBase64 { get; init; } // RAW base64 (Button.razor prepends data:image/png;base64,)
+    // RAW base64 (Button.razor prepends data:image/png;base64,). Mutable so the async icon-fill pass
+    // can replace the placeholder fallback with the real icon once the structure has rendered.
+    public string? IconBase64 { get; set; }
 }
 
 /// <summary>A folder group of launcher items.</summary>

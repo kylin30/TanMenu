@@ -40,7 +40,7 @@ public class MenuDataServiceTests
             await File.WriteAllTextAsync(filePath, "hi");
 
             var svc = new MenuDataService(new FakeShortcutResolver(), NullLogger<MenuDataService>.Instance);
-            var result = await svc.GetDirectoryContents(new[] { root });
+            var result = svc.GetDirectoryContents(new[] { root });
 
             Assert.Single(result);
             var contents = result[0];
@@ -62,10 +62,10 @@ public class MenuDataServiceTests
     }
 
     [Fact]
-    public async Task GetDirectoryContents_SkipsMissingDirectory()
+    public void GetDirectoryContents_SkipsMissingDirectory()
     {
         var svc = new MenuDataService(new FakeShortcutResolver(), NullLogger<MenuDataService>.Instance);
-        var result = await svc.GetDirectoryContents(new[] { @"C:\definitely\not\here" });
+        var result = svc.GetDirectoryContents(new[] { @"C:\definitely\not\here" });
         Assert.Empty(result);
     }
 }

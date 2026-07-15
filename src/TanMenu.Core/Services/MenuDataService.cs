@@ -15,7 +15,11 @@ public class MenuDataService
         _logger = logger;
     }
 
-    public Task<List<DirectoryContents>> GetDirectoryContents(IEnumerable<string> directories)
+    // Synchronous: the whole body is synchronous shell/filesystem work and the caller already runs it
+    // on a dedicated STA thread. The old Task wrapper was pure ceremony (a completed Task allocated then
+    // synchronously unwrapped) and a latent trap — an await added inside would have hopped off the STA
+    // apartment mid-shell-COM.
+    public List<DirectoryContents> GetDirectoryContents(IEnumerable<string> directories)
     {
         var result = new List<DirectoryContents>();
 
@@ -26,7 +30,7 @@ public class MenuDataService
                 result.Add(content);
         }
 
-        return Task.FromResult(result);
+        return result;
     }
 
     private DirectoryContents? GetDirectoryContent(string directory)
@@ -61,10 +65,12 @@ public class MenuDataService
 
     private IEnumerable<DirectoryItem> GetFiles(string directory)
     {
-        string[] files;
+        FileInfo[] files;
         try
         {
-            files = Directory.GetFiles(directory);
+            // Enumerate as FileInfo so each item's last-write-time + size come FREE from the directory
+            // read — no extra per-file stat later in the icon layer to validate the cache.
+            files = new DirectoryInfo(directory).GetFiles();
         }
         catch (Exception ex)
         {
@@ -74,14 +80,15 @@ public class MenuDataService
             yield break;
         }
 
-        foreach (var file in files)
+        foreach (var fi in files)
         {
             DirectoryItem? item = null;
             try
             {
+                var file = fi.FullName;
                 item = new DirectoryItem
                 {
-                    Name = Path.GetFileName(file),
+                    Name = fi.Name,
                     FullPath = file,
                     IsDirectory = false
                 };
@@ -94,11 +101,13 @@ public class MenuDataService
                 else
                 {
                     item.IconKey = file;
+                    item.IconMtime = fi.LastWriteTimeUtc; // reuse the enumeration's metadata
+                    item.IconSize = fi.Length;
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "处理文件项失败，跳过: {File}", file);
+                _logger.LogWarning(ex, "处理文件项失败，跳过: {File}", fi.FullName);
                 item = null;
             }
 
@@ -131,15 +140,26 @@ public class MenuDataService
 
         item.TargetPath = targetPath;
 
-        var targetExists = File.Exists(targetPath) || Directory.Exists(targetPath);
-        if (!targetExists)
+        // Stat the target ONCE here: a file target yields the icon key + (mtime,size) for the cache
+        // validator; a folder target is a static icon key. This replaces the old File.Exists(target)
+        // probe followed by a second FileInfo(target) in the icon layer (the per-.lnk double stat).
+        try
         {
-            item.IsDisabled = true;
+            var fi = new FileInfo(targetPath);
+            if (fi.Exists)
+            {
+                item.IconKey = targetPath;
+                item.IconMtime = fi.LastWriteTimeUtc;
+                item.IconSize = fi.Length;
+                return;
+            }
         }
+        catch { /* fall through to the directory check */ }
+
+        if (Directory.Exists(targetPath))
+            item.IconKey = targetPath; // folder target → static icon key (mtime/size left 0)
         else
-        {
-            item.IconKey = targetPath;
-        }
+            item.IsDisabled = true;    // target gone → disabled, no icon key
     }
 
     private IEnumerable<DirectoryItem> GetDirectories(string directory)
@@ -162,7 +182,7 @@ public class MenuDataService
                 Name = Path.GetFileName(d) ?? string.Empty,
                 FullPath = d,
                 IsDirectory = true,
-                IconKey = d
+                IconKey = d // folder icon is static → caches under a stable (default, 0) key
             };
         }
     }

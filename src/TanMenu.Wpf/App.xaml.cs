@@ -31,6 +31,22 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
+        // Last-resort safety nets, wired FIRST so no later startup step can fault silently. The
+        // dispatcher handler catches UI-thread throws; the other two catch background-thread and
+        // fire-and-forget (discarded-Task) faults that DispatcherUnhandledException never sees.
+        DispatcherUnhandledException += (_, args) =>
+        {
+            TryLogFatal(args.Exception, "Unhandled dispatcher exception");
+            args.Handled = true; // keep the app alive through a transient runtime UI glitch
+        };
+        AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+            TryLogFatal(args.ExceptionObject as Exception, "AppDomain unhandled exception");
+        TaskScheduler.UnobservedTaskException += (_, args) =>
+        {
+            TryLogFatal(args.Exception, "Unobserved task exception");
+            args.SetObserved();
+        };
+
         // Single instance: if already running, signal the existing window and exit.
         // Use a WPF-app-specific name so we don't collide with the original WinForms TanMenu
         // (which uses the mutex/window name "TanMenu").
@@ -44,26 +60,37 @@ public partial class App : Application
             return;
         }
 
-        // One-time move of pre-existing %LOCALAPPDATA%\TanMenu data to the new Documents default.
-        DataLocation.MigrateLegacyIfNeeded();
-
-        var local = DataLocation.GetDataRoot(); // default Documents\TanMenu, or a user-chosen folder
-        // Mutable so a data-folder change in settings can re-point it live (no restart).
-        var paths = new MutableAppDataPaths(local);
-        paths.EnsureCreated();
-
-        Log.Logger = new LoggerConfiguration()
-            .MinimumLevel.Information()
-            .WriteTo.Console()
-            .WriteTo.File(Path.Combine(paths.LogsFolder, "log-.txt"),
-                rollingInterval: RollingInterval.Day)
-            .CreateLogger();
-
-        DispatcherUnhandledException += (_, args) =>
+        // All remaining init is fragile (disk, registry, DI, native runtimes). Any unhandled failure
+        // must surface a clear message and exit CLEANLY (release mutex, dispose services) — never a
+        // silent pre-UI crash, and never a window-less/tray-less zombie that still holds the mutex.
+        try
         {
-            Log.Error(args.Exception, "Unhandled dispatcher exception");
-            args.Handled = true;
-        };
+            await StartupAsync();
+        }
+        catch (Exception ex)
+        {
+            TryLogFatal(ex, "Startup failed");
+            MessageBox.Show(AppLanguage.Format("StartupFailed", null, ex.Message), "TanMenu",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+            ExitApp();
+        }
+    }
+
+    /// <summary>The fragile part of startup (data paths, logging, DI, config, native runtimes, the
+    /// main window). Wrapped by <see cref="OnStartup"/>'s try/catch so any failure becomes a message +
+    /// clean exit rather than a silent crash.</summary>
+    private async Task StartupAsync()
+    {
+        // Unpackaged builds keep the user-relocatable Documents\TanMenu data root. Packaged/MSIX
+        // builds must use package-local ApplicationData instead of HKCU/Documents relocation.
+        if (!PackageRuntime.HasPackageIdentity)
+            DataLocation.MigrateLegacyIfNeeded();
+
+        // Mutable so a data-folder change in settings can re-point it live (no restart). Falls back to
+        // %LOCALAPPDATA% if the resolved root can't be created; logging degrades to console-only if its
+        // folder isn't writable — so neither a bad data folder nor a locked log can crash startup.
+        var paths = CreateDataPaths();
+        ConfigureLogging(paths);
 
         var services = new ServiceCollection();
         services.AddLogging(b => b.AddSerilog(dispose: true));
@@ -80,11 +107,15 @@ public partial class App : Application
         services.AddSingleton<MenuService>();
         services.AddSingleton<WindowHost>();
         services.AddSingleton<IWindowHost>(sp => sp.GetRequiredService<WindowHost>());
-        services.AddSingleton<IAutoStartService, RegistryAutoStartService>();
+        services.AddSingleton<IAutoStartService>(_ =>
+            PackageRuntime.HasPackageIdentity
+                ? new StartupTaskAutoStartService()
+                : new RegistryAutoStartService());
         services.AddSingleton<GlobalHotkeyService>();
         services.AddSingleton<AppEvents>();
         services.AddSingleton<ISettingsLauncher, WpfSettingsLauncher>();
         services.AddSingleton<IShellCommands, WpfShellCommands>();
+        services.AddSingleton<ThemeService>();
 
         services.AddWpfBlazorWebView();
 #if DEBUG
@@ -98,29 +129,101 @@ public partial class App : Application
         await Services.GetRequiredService<ConfigService>().LoadAsync();
         Services.GetRequiredService<SoundService>()
             .Initialize(Path.Combine(AppContext.BaseDirectory, "wwwroot", "sounds"));
+        // Create the user-themes folder + seed README/template on first run so the feature is
+        // discoverable (the settings 主题文件夹 button opens it; user .css files appear in the dropdown).
+        Services.GetRequiredService<ThemeService>().EnsureSeeded();
 
         // Fail fast with a clear message if the WebView2 Evergreen runtime is missing — otherwise a
-        // clean machine just shows a blank transparent window with no explanation.
+        // clean machine just shows a blank transparent window with no explanation. Probe OFF the UI
+        // thread: GetAvailableBrowserVersionString is a synchronous shell/registry/filesystem lookup
+        // that can take tens-to-hundreds of ms on a cold or AV-scanned disk, and running it inline
+        // would freeze the dispatcher right before the main window is created.
+        bool webView2Ok;
         try
         {
-            Microsoft.Web.WebView2.Core.CoreWebView2Environment.GetAvailableBrowserVersionString();
+            var version = await Task.Run(() =>
+                Microsoft.Web.WebView2.Core.CoreWebView2Environment.GetAvailableBrowserVersionString());
+            webView2Ok = !string.IsNullOrEmpty(version);
         }
         catch (Exception ex)
         {
             Log.Error(ex, "WebView2 runtime not found");
+            webView2Ok = false;
+        }
+        if (!webView2Ok)
+        {
+            var language = Services.GetRequiredService<ConfigService>().Config.General.Language;
             MessageBox.Show(
-                "运行 TanMenu 需要 Microsoft Edge WebView2 运行时。\n\n请从下面的地址下载安装后重试：\nhttps://developer.microsoft.com/microsoft-edge/webview2/",
-                "缺少 WebView2 运行时", MessageBoxButton.OK, MessageBoxImage.Error);
+                AppLanguage.Text("WebView2Missing", language),
+                AppLanguage.Text("WebView2Title", language), MessageBoxButton.OK, MessageBoxImage.Error);
             Shutdown();
             return;
         }
 
         // Warn the user if a global-hotkey (re)bind fails (occupied/invalid) instead of only logging.
+        // Marshal onto the dispatcher asynchronously: the first Apply() runs synchronously inside
+        // MainWindow.OnSourceInitialized, and a modal MessageBox there would pump a nested message loop
+        // mid-window-init (before the tray is created). BeginInvoke defers it until init finishes.
         Services.GetRequiredService<GlobalHotkeyService>().RegistrationFailed += combo =>
-            MessageBox.Show($"全局热键「{combo}」注册失败，可能已被其它程序占用。\n请在设置里改用其它组合键。",
-                "TanMenu", MessageBoxButton.OK, MessageBoxImage.Warning);
+            Dispatcher.BeginInvoke(() =>
+                MessageBox.Show(AppLanguage.Format("HotkeyRegistrationFailed",
+                        Services.GetRequiredService<ConfigService>().Config.General.Language, combo),
+                    "TanMenu", MessageBoxButton.OK, MessageBoxImage.Warning));
 
         new MainWindow().Show();
+    }
+
+    /// <summary>Resolve the writable data root and ensure its folders exist, falling back to the
+    /// always-local <c>%LOCALAPPDATA%\TanMenu</c> if the resolved root (e.g. an offline redirected
+    /// Documents, or a read-only/full volume) can't be created.</summary>
+    private static IAppDataPaths CreateDataPaths()
+    {
+        if (PackageRuntime.HasPackageIdentity)
+        {
+            var packagedPaths = new AppDataPaths();
+            packagedPaths.EnsureCreated();
+            return packagedPaths;
+        }
+
+        var root = DataLocation.GetDataRoot(); // default Documents\TanMenu, or a user-chosen folder
+        try
+        {
+            return new MutableAppDataPaths(root); // ctor ensures the folders exist
+        }
+        catch (Exception)
+        {
+            // If this also throws, StartupAsync's caller surfaces a message and exits cleanly.
+            return new MutableAppDataPaths(DataLocation.LocalAppDataRoot);
+        }
+    }
+
+    /// <summary>Configure Serilog, degrading to console-only if the log folder/file can't be opened
+    /// (locked by AV, read-only ACL, disk full) so logging can never crash startup.</summary>
+    private static void ConfigureLogging(IAppDataPaths paths)
+    {
+        try
+        {
+            Log.Logger = new LoggerConfiguration()
+                .MinimumLevel.Information()
+                .WriteTo.Console()
+                .WriteTo.File(Path.Combine(paths.LogsFolder, "log-.txt"),
+                    rollingInterval: RollingInterval.Day)
+                .CreateLogger();
+        }
+        catch (Exception)
+        {
+            Log.Logger = new LoggerConfiguration()
+                .MinimumLevel.Information()
+                .WriteTo.Console()
+                .CreateLogger();
+        }
+    }
+
+    /// <summary>Log an exception without ever throwing (used from the global handlers, where logging
+    /// may not be configured yet — Serilog's default sink is a safe no-op).</summary>
+    private static void TryLogFatal(Exception? ex, string message)
+    {
+        try { Log.Error(ex, message); } catch { /* logging must never throw */ }
     }
 
     public void ExitApp()
