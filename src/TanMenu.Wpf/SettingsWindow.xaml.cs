@@ -66,6 +66,7 @@ public partial class SettingsWindow : Window
     private readonly IAppDataPaths _paths;
     private readonly ThemeService _themeService;
     private readonly IAppUpdateService _updates;
+    private readonly TaskbarPinService _taskbarPin;
     private readonly bool _isPackaged;
     private readonly bool _isPortable;
 
@@ -74,6 +75,7 @@ public partial class SettingsWindow : Window
     private bool _pendingAutoStart;
     private bool _dirty;
     private bool _loaded;
+    private TaskbarPinState _taskbarPinState = new(TaskbarPinStatus.Available);
 
     private string UiLanguage => _working?.General.Language ?? _config.Config.General.Language;
     private string L(string key, params object?[] args) => AppLanguage.Format(key, UiLanguage, args);
@@ -90,6 +92,7 @@ public partial class SettingsWindow : Window
         _paths = App.Services.GetRequiredService<IAppDataPaths>();
         _themeService = App.Services.GetRequiredService<ThemeService>();
         _updates = App.Services.GetRequiredService<IAppUpdateService>();
+        _taskbarPin = App.Services.GetRequiredService<TaskbarPinService>();
         _isPackaged = PackageRuntime.HasPackageIdentity;
         _isPortable = App.IsPortable;
         _themeService.EnsureSeeded();
@@ -111,7 +114,11 @@ public partial class SettingsWindow : Window
 
         // Position above the launcher once measured, then reveal — so the bottom-center, top-most
         // launcher never covers the settings content.
-        Loaded += (_, _) => PositionAboveLauncher();
+        Loaded += async (_, _) =>
+        {
+            PositionAboveLauncher();
+            await RefreshTaskbarPinStateAsync();
+        };
     }
 
     private void PositionAboveLauncher()
@@ -176,7 +183,6 @@ public partial class SettingsWindow : Window
 
         AutoCloseCb.IsChecked = g.AutoClose;
         TopMostCb.IsChecked = g.TopMost;
-        TaskbarCb.IsChecked = g.ShowInTaskbar;
 
         _pendingAutoStart = !_isPortable && _autoStart.IsEnabled();
         AutoStartCb.IsChecked = _pendingAutoStart;
@@ -213,7 +219,7 @@ public partial class SettingsWindow : Window
         ButtonSizeLabel.Text = L("ButtonSize");
         AutoCloseCb.Content = L("AutoClose");
         TopMostCb.Content = L("TopMost");
-        TaskbarCb.Content = L("ShowInTaskbar");
+        ApplyTaskbarPinState(_taskbarPinState);
         AutoStartCb.Content = L("AutoStart");
         HotkeyEnabledCb.Content = L("EnableHotkey");
         HotkeyLabel.Text = L("Hotkey");
@@ -533,8 +539,68 @@ public partial class SettingsWindow : Window
         var g = _working.General;
         g.AutoClose = AutoCloseCb.IsChecked == true;
         g.TopMost = TopMostCb.IsChecked == true;
-        g.ShowInTaskbar = TaskbarCb.IsChecked == true;
         SetDirty(true);
+    }
+
+    private async void PinTaskbar_Click(object sender, RoutedEventArgs e)
+    {
+        PinTaskbarBtn.IsEnabled = false;
+        PinTaskbarStatusText.Text = L("PinToTaskbarWorking");
+
+        if (_taskbarPinState.Status is TaskbarPinStatus.Unsupported or TaskbarPinStatus.NotAllowed or
+            TaskbarPinStatus.Failed)
+        {
+            OpenManualTaskbarPinLocation(_taskbarPinState);
+            return;
+        }
+
+        var state = await _taskbarPin.RequestPinAsync();
+        if (state.Status is TaskbarPinStatus.Unsupported or TaskbarPinStatus.NotAllowed or
+            TaskbarPinStatus.Failed)
+        {
+            OpenManualTaskbarPinLocation(state);
+            return;
+        }
+
+        ApplyTaskbarPinState(state);
+    }
+
+    private void OpenManualTaskbarPinLocation(TaskbarPinState state)
+    {
+        ApplyTaskbarPinState(state);
+        if (_taskbarPin.OpenManualPinLocation())
+        {
+            PinTaskbarStatusText.Text = L("PinToTaskbarManualOpened");
+            return;
+        }
+
+        PinTaskbarStatusText.Text = L("PinToTaskbarManualOpenFailed");
+        Err(L("PinToTaskbarManualOpenFailed"));
+    }
+
+    private async Task RefreshTaskbarPinStateAsync()
+    {
+        PinTaskbarBtn.IsEnabled = false;
+        ApplyTaskbarPinState(await _taskbarPin.GetStateAsync());
+    }
+
+    private void ApplyTaskbarPinState(TaskbarPinState state)
+    {
+        _taskbarPinState = state;
+        PinTaskbarBtn.IsEnabled = state.Status is not TaskbarPinStatus.Pinned;
+        PinTaskbarBtn.Content = state.Status is TaskbarPinStatus.Pinned
+            ? L("PinnedToTaskbar")
+            : state.Status is TaskbarPinStatus.Available
+                ? L("PinToTaskbar")
+                : L("PinToTaskbarManual");
+        PinTaskbarStatusText.Text = state.Status switch
+        {
+            TaskbarPinStatus.Pinned => L("PinnedToTaskbarHelp"),
+            TaskbarPinStatus.NotAllowed => L("PinToTaskbarNotAllowed"),
+            TaskbarPinStatus.Unsupported => L("PinToTaskbarUnsupported"),
+            TaskbarPinStatus.Failed => L("PinToTaskbarFailed", state.Error ?? L("UnknownError")),
+            _ => L("PinToTaskbarHelp"),
+        };
     }
 
     private void AutoStart_Changed(object sender, RoutedEventArgs e)

@@ -21,6 +21,9 @@ public class GeneralConfig
 
     public bool AutoClose { get; set; } = true;
     public bool TopMost { get; set; } = true;
+    /// <summary>Legacy 0.9.x setting retained only so old config files deserialize cleanly.
+    /// The launcher popup no longer creates a transient taskbar button; users pin the stable
+    /// application shortcut instead.</summary>
     public bool ShowInTaskbar { get; set; } = false;
 
     /// <summary>Enable a configurable global hotkey that toggles (summons/hides) the launcher.

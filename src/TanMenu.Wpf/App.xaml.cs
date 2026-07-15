@@ -24,6 +24,7 @@ public partial class App : Application
     public const int WmShowFirstInstance = 0x8000 + 1;
 
     private Mutex? _mutex;
+    private bool _taskbarPinPromptActive;
 
     [STAThread]
     public static void Main(string[] args)
@@ -36,6 +37,11 @@ public partial class App : Application
                 .SetArgs(args)
                 .SetAutoApplyOnStartup(false)
                 .Run();
+
+            // Give the unpackaged process the same stable identity as its Start-menu shortcut.
+            // This must happen before WPF creates a window so Explorer groups the running app with
+            // the permanent taskbar pin instead of producing a second, transient icon.
+            TaskbarPinService.InitializeProcessIdentity();
         }
 
         var app = new App();
@@ -145,6 +151,9 @@ public partial class App : Application
                 : PackageRuntime.HasPackageIdentity
                 ? new StartupTaskAutoStartService()
                 : new RegistryAutoStartService());
+        services.AddSingleton(_ => new TaskbarPinService(
+            PackageRuntime.HasPackageIdentity,
+            TaskbarPinService.ResolveLauncherPath));
         services.AddSingleton<GlobalHotkeyService>();
         services.AddSingleton<AppEvents>();
         services.AddSingleton<ISettingsLauncher, WpfSettingsLauncher>();
@@ -210,8 +219,97 @@ public partial class App : Application
                         Services.GetRequiredService<ConfigService>().Config.General.Language, combo),
                     "TanMenu", MessageBoxButton.OK, MessageBoxImage.Warning));
 
+        // Taskbar recall is the primary product workflow. Check after EVERY reveal (startup, tray,
+        // hotkey, or second-instance activation), once the real window is foreground; TaskbarManager
+        // rejects requests from background UI.
+        Services.GetRequiredService<AppEvents>().LauncherShown += PromptForTaskbarPinAfterReveal;
         new MainWindow().Show();
         _ = CheckForUpdatesAfterStartupAsync();
+    }
+
+    private void PromptForTaskbarPinAfterReveal()
+    {
+        if (_taskbarPinPromptActive)
+            return;
+
+        _taskbarPinPromptActive = true;
+        Dispatcher.BeginInvoke(async () =>
+        {
+            try
+            {
+                await PromptForTaskbarPinAsync();
+            }
+            finally
+            {
+                // A declined/failed request is checked again the next time the launcher is shown.
+                // This guard only prevents overlapping prompts during one reveal operation.
+                _taskbarPinPromptActive = false;
+            }
+        });
+    }
+
+    private async Task PromptForTaskbarPinAsync()
+    {
+        var pin = Services.GetRequiredService<TaskbarPinService>();
+        var state = await pin.GetStateAsync();
+        if (state.Status == TaskbarPinStatus.Pinned)
+            return;
+
+        var config = Services.GetRequiredService<ConfigService>();
+        var language = config.Config.General.Language;
+        var host = Services.GetRequiredService<IWindowHost>();
+        var owner = Windows.OfType<MainWindow>().FirstOrDefault();
+
+        // The owned prompt and the following Windows confirmation temporarily move focus away from
+        // the popup. Keep it alive until the whole pin flow completes, then restore normal blur-hide.
+        host.SuppressHide(true);
+        try
+        {
+            var choice = owner is null
+                ? MessageBox.Show(
+                    AppLanguage.Text("TaskbarPinRequiredPrompt", language),
+                    AppLanguage.Text("TaskbarPinRequiredTitle", language),
+                    MessageBoxButton.OKCancel, MessageBoxImage.Information)
+                : MessageBox.Show(owner,
+                    AppLanguage.Text("TaskbarPinRequiredPrompt", language),
+                    AppLanguage.Text("TaskbarPinRequiredTitle", language),
+                    MessageBoxButton.OKCancel, MessageBoxImage.Information);
+
+            if (choice != MessageBoxResult.OK)
+                return; // Ask again the next time the launcher is shown because this is the primary entry.
+
+            // Windows 10 often cannot expose the consent-based TaskbarManager flow to an unpackaged
+            // desktop app. In that case, show the app's Start entry and let the user use Explorer's
+            // supported right-click command. Never mutate the protected taskbar pin store directly.
+            if (state.Status is TaskbarPinStatus.Unsupported or TaskbarPinStatus.NotAllowed or
+                TaskbarPinStatus.Failed)
+            {
+                ShowManualPinLocation(pin, owner, language);
+                return;
+            }
+
+            state = await pin.RequestPinAsync();
+            if (state.Status is TaskbarPinStatus.Pinned or TaskbarPinStatus.Available)
+                return; // Available here means the user declined the Windows confirmation.
+
+            ShowManualPinLocation(pin, owner, language);
+        }
+        finally
+        {
+            host.SuppressHide(false);
+        }
+    }
+
+    private static void ShowManualPinLocation(TaskbarPinService pin, Window? owner, string? language)
+    {
+        if (pin.OpenManualPinLocation())
+            return;
+
+        var message = AppLanguage.Text("PinToTaskbarManualOpenFailed", language);
+        if (owner is null)
+            MessageBox.Show(message, "TanMenu", MessageBoxButton.OK, MessageBoxImage.Warning);
+        else
+            MessageBox.Show(owner, message, "TanMenu", MessageBoxButton.OK, MessageBoxImage.Warning);
     }
 
     private static async Task CheckForUpdatesAfterStartupAsync()

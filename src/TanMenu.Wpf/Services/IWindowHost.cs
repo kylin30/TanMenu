@@ -3,8 +3,8 @@ namespace TanMenu.Wpf.Services;
 /// <summary>Abstraction over the launcher window: content-size + placement, show/hide/toggle.</summary>
 public interface IWindowHost
 {
-    /// <summary>Measure the rendered #form-content and size+place the window bottom-center. Returns true
-    /// if sized+placed; false if the measurement failed or was degenerate (not cached → next call re-measures).</summary>
+    /// <summary>Request the browser's current ResizeObserver-reported theme-root size and place the
+    /// window bottom-center. Returns false only when no valid browser report is available yet.</summary>
     Task<bool> ResizeToContentAndPlaceAsync();
 
     void Hide();
@@ -14,7 +14,7 @@ public interface IWindowHost
     /// <summary>Temporarily suppress hide-on-blur (e.g. while a modal folder picker is open).</summary>
     void SuppressHide(bool on);
 
-    /// <summary>Fingerprint of the currently-built menu content. The launcher sets it after each
-    /// rebuild; reveal-time placement skips re-measuring the WebView while this is unchanged.</summary>
+    /// <summary>Fingerprint of the currently-built menu content, used for fit diagnostics. Actual
+    /// sizing is driven by the browser's rendered root rather than this version.</summary>
     int ContentVersion { get; set; }
 }

@@ -16,7 +16,7 @@
 @inject Microsoft.JSInterop.IJSRuntime JS
 @inject Microsoft.Extensions.Logging.ILogger<Index> Logger
 
-<div class="body theme-@ThemeClass size-@SizeClass">
+<div id="launcher-size-root" class="body theme-@ThemeClass size-@SizeClass">
     @if (!string.IsNullOrEmpty(SafeFont))
     {
         <style>

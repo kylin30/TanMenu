@@ -37,11 +37,32 @@ html, body {
     height: 100%;
     background-color: transparent;
     font-family: "Pixelated MS Sans Serif", Arial;
+    overflow: hidden;
 }
 
 #app {
     height:100%;
     width:100%;
+}
+
+/* Browser-owned natural-size root. ResizeObserver reports this rendered border box directly to WPF,
+   so each built-in/user theme contributes its real titlebar, border, body spacing, and font metrics.
+   The transparent gutter keeps decorative edges away from the WebView's hard clip boundary. */
+#launcher-size-root {
+    display: inline-block;
+    box-sizing: border-box;
+    width: max-content;
+    height: max-content;
+    padding: 4px 10px;
+}
+
+/* Shrink-wrap the actual theme window instead of tying it to the current WebView viewport. This
+   breaks the resize feedback loop: changing the native viewport never changes the reported natural
+   DOM size, while changing content/theme does. */
+#launcher-size-root > .window {
+    box-sizing: border-box;
+    width: max-content;
+    max-width: none;
 }
 
 h1:focus {
@@ -252,50 +273,53 @@ a, .btn-link {
 .tm-empty .tm-empty-title { font-weight: bold; margin-bottom: 6px; }
 .tm-empty .tm-empty-actions { margin-top: 12px; display: flex; gap: 8px; justify-content: center; }
 
-/* Scroll, don't clip, when the menu is larger than the available work area. */
+/* The WPF shell measures this natural, horizontal layout and then resizes the native window to it.
+   Do not constrain it to the initial 600px WebView viewport: doing so wraps columns vertically before
+   measurement and pins the launcher to a tall, narrow shape. If it is larger than the monitor, the
+   host uniformly zooms the full WebView to fit; hidden overflow prevents stray browser scrollbars. */
 #form-content {
     box-sizing: border-box;
-    max-width: calc(100vw - 8px);
-    max-height: calc(100vh - 8px);
-    overflow: auto;
+    max-width: none;
+    overflow: hidden;
     overscroll-behavior: contain;
-    scrollbar-gutter: stable;
 }
 
 .tm-groups {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     align-items: flex-start;
     gap: 8px;
-    max-width: 100%;
+    width: max-content;
+    max-width: none;
     min-width: 0;
 }
 
 .tm-group {
-    flex: 1 1 420px;
-    min-width: min(100%, 260px);
-    max-width: 100%;
+    flex: 0 0 auto;
+    min-width: 0;
+    max-width: none;
 }
 
 .tm-group > fieldset {
     box-sizing: border-box;
-    max-width: 100%;
+    max-width: none;
     min-width: 0;
 }
 
 .tm-group-columns {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     align-items: flex-start;
     gap: 4px;
-    max-width: 100%;
+    width: max-content;
+    max-width: none;
     min-width: 0;
 }
 
 .tm-group-column {
-    flex: 1 1 190px;
+    flex: 0 0 auto;
     min-width: 160px;
-    max-width: 100%;
+    max-width: none;
 }
 
 /* Search/filter box — pinned to the right end of the menu bar; type to filter shortcuts. Border,
@@ -311,21 +335,6 @@ a, .btn-link {
     background: #fff;
 }
 
-@media (max-width: 640px) {
-    .tm-menubar {
-        flex-wrap: wrap;
-    }
-
-    .tm-search-input {
-        flex-basis: 100%;
-        width: 100%;
-        margin-left: 0;
-    }
-
-    .tm-group {
-        flex-basis: 100%;
-    }
-}
 /* Modern focus ring ONLY for the non-retro themes. Win7/Win11 draw focus via border-color, so the ring
    augments them. Win98/XP draw their sunken 3D field border entirely via box-shadow (98.css), and
    box-shadow does not stack across rules — a winning ring would REPLACE that bevel — so those themes are

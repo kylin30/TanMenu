@@ -12,7 +12,7 @@
 
 <body>
 
-    <div id="app"/>
+    <div id="app"></div>
 
     <div data-nosnippet id="blazor-error-ui">
         发生了一个未处理的错误。 / An unhandled error has occurred.
@@ -21,13 +21,81 @@
     </div>
     <script src="_framework/blazor.webview.js"></script>
     <script>
+        // The browser owns the launcher's natural size. Observe the actual rendered theme root and
+        // report its border box to WPF whenever content, theme CSS, fonts, or settings change.
+        (function () {
+            var observedRoot = null;
+            var sizeObserver = null;
+            var scheduled = false;
+            var lastSize = "";
+
+            window.tmReportLauncherSize = function (force) {
+                var root = document.getElementById("launcher-size-root");
+                if (!root || !window.chrome || !window.chrome.webview)
+                    return false;
+
+                var rect = root.getBoundingClientRect();
+                var width = Math.ceil(Math.max(rect.width, root.scrollWidth));
+                var height = Math.ceil(Math.max(rect.height, root.scrollHeight));
+                if (width <= 0 || height <= 0)
+                    return false;
+
+                var key = width + "x" + height;
+                if (force || key !== lastSize) {
+                    lastSize = key;
+                    window.chrome.webview.postMessage(JSON.stringify({
+                        type: "tanmenu-size",
+                        width: width,
+                        height: height
+                    }));
+                }
+                return true;
+            };
+
+            var scheduleReport = function () {
+                if (scheduled) return;
+                scheduled = true;
+                requestAnimationFrame(function () {
+                    scheduled = false;
+                    window.tmReportLauncherSize(false);
+                });
+            };
+
+            var connect = function () {
+                var root = document.getElementById("launcher-size-root");
+                if (!root || root === observedRoot)
+                    return;
+                if (sizeObserver)
+                    sizeObserver.disconnect();
+                observedRoot = root;
+                sizeObserver = new ResizeObserver(scheduleReport);
+                sizeObserver.observe(root);
+                scheduleReport();
+            };
+
+            var app = document.getElementById("app");
+            if (app)
+                new MutationObserver(connect).observe(app, { childList: true });
+            window.addEventListener("load", connect);
+            requestAnimationFrame(connect);
+            if (document.fonts && document.fonts.ready)
+                document.fonts.ready.then(function () { connect(); scheduleReport(); });
+        })();
+
         // Resolve once the rendered DOM has actually been laid out (fonts applied + two animation
         // frames) so the WPF host can reveal/size the window off a real layout signal instead of a
         // blind timer. A safety timeout guarantees it always resolves even if font loading stalls.
         window.tmWaitForLayout = function () {
             return new Promise(function (resolve) {
                 var done = false;
-                var finish = function () { if (!done) { done = true; resolve(); } };
+                var finish = function () {
+                    if (!done) {
+                        done = true;
+                        if (window.tmReportLauncherSize)
+                            window.tmReportLauncherSize(true);
+                        resolve();
+                    }
+                };
                 var twoFrames = function () {
                     requestAnimationFrame(function () { requestAnimationFrame(finish); });
                 };
