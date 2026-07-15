@@ -41,7 +41,7 @@ $outputDir = Resolve-RepoPath $OutputRoot
 Reset-BuildDirectory $publishDir $publishRoot
 Write-Host "Publishing TanMenu portable edition ($Configuration)..."
 dotnet publish (Resolve-RepoPath "src\TanMenu.Wpf\TanMenu.Wpf.csproj") `
-    -c $Configuration -p:Platform=x64 /p:PublishProfile=win-x64 --no-restore
+    -c $Configuration -p:Platform=x64 /p:PublishProfile=win-x64
 if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed with exit code $LASTEXITCODE." }
 
 Reset-BuildDirectory $stageDir $buildRoot
