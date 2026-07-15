@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Interop;
 using Microsoft.Extensions.DependencyInjection;
+using TanMenu.Core.Infrastructure;
 using TanMenu.Wpf.Services;
 
 namespace TanMenu.Wpf;
@@ -12,6 +13,14 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        if (App.IsPortable)
+        {
+            // BlazorWebView creates WebView2 after this constructor. Redirect its browser profile
+            // before creation so cookies, GPU cache, and IndexedDB stay inside the portable Data
+            // folder instead of leaking into the user's LocalAppData profile.
+            WebView.BlazorWebViewInitializing += (_, args) =>
+                args.UserDataFolder = PortableRuntime.GetWebView2DataFolder();
+        }
         WebView.Services = App.Services;
         Loaded += OnLoaded;
         SourceInitialized += OnSourceInitialized;

@@ -149,42 +149,12 @@ Before each Store update, bump `Directory.Build.props`:
 
 MSIX versions are emitted as four-part versions, for example `0.9.1.0`.
 
-## 6. Automated Store updates
+## 6. Update policy
 
-`.github/workflows/store-release.yml` publishes subsequent package updates through GitHub Actions.
-It intentionally separates package creation from Store submission:
+Store updates remain deliberately manual: build the MSIX with `scripts\package-msix.ps1`, optionally
+run WACK, and upload the package in Partner Center. No Microsoft Entra application or CI publishing
+credentials are required.
 
-1. A pushed `v*` tag starts a clean Windows build.
-2. The workflow requires the tag to exactly match `Directory.Build.props` (for example,
-   `Version` `0.9.2` must use tag `v0.9.2`).
-3. Restore, Release build, tests, and MSIX packaging must all pass.
-4. The MSIX is retained as a private GitHub Actions artifact for 14 days.
-5. The `production` GitHub Environment gates the submission job. Configure required reviewers on
-   that Environment so approval happens before Partner Center credentials are made available.
-6. After approval, Microsoft Store Developer CLI uploads the MSIX and commits the submission for
-   Store certification.
-
-Create a GitHub Environment named `production`, restrict its deployment tags to `v*`, enable the
-desired required reviewer, and add these Environment secrets:
-
-```text
-AZURE_AD_TENANT_ID
-AZURE_AD_APPLICATION_CLIENT_ID
-AZURE_AD_APPLICATION_SECRET
-SELLER_ID
-```
-
-The Entra application must be associated with Partner Center and have the **Manager** role. Do not
-commit any of these credential values to the repository. `STORE_PRODUCT_ID` is non-secret and is
-declared in the workflow as `9N1G9796LV6G`.
-
-For every update, choose a version higher than the package version already published in Partner
-Center, change `Directory.Build.props`, commit the release-ready source, then push the matching tag:
-
-```powershell
-git tag v0.9.2
-git push origin v0.9.2
-```
-
-Do not reuse or move a published version tag. If a build fails before submission, fix the source,
-increase the version again, and create a new tag so the source-to-package mapping remains immutable.
+Git version tags are reserved for the separate portable ZIP workflow documented in
+`docs/portable-release.md`; pushing a `v*` tag creates a GitHub Release but does not submit anything
+to Microsoft Store.

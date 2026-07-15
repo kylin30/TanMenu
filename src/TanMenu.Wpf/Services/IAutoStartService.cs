@@ -39,6 +39,17 @@ public sealed class RegistryAutoStartService : IAutoStartService
     }
 }
 
+/// <summary>
+/// Portable distributions intentionally never create or remove a Run-key value. Moving or deleting
+/// the extracted folder must be sufficient to remove the application without leaving app-owned
+/// startup state behind.
+/// </summary>
+public sealed class PortableAutoStartService : IAutoStartService
+{
+    public bool IsEnabled() => false;
+    public void SetEnabled(bool enabled) { }
+}
+
 /// <summary>Packaged/MSIX autostart via the manifest-declared windows.startupTask extension.</summary>
 public sealed class StartupTaskAutoStartService : IAutoStartService
 {

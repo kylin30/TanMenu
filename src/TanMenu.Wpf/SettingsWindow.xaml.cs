@@ -65,6 +65,7 @@ public partial class SettingsWindow : Window
     private readonly IAppDataPaths _paths;
     private readonly ThemeService _themeService;
     private readonly bool _isPackaged;
+    private readonly bool _isPortable;
 
     // Edit-then-apply: all changes go to this working copy; nothing takes effect until 应用/确定.
     private AppConfig _working;
@@ -87,6 +88,7 @@ public partial class SettingsWindow : Window
         _paths = App.Services.GetRequiredService<IAppDataPaths>();
         _themeService = App.Services.GetRequiredService<ThemeService>();
         _isPackaged = PackageRuntime.HasPackageIdentity;
+        _isPortable = App.IsPortable;
         _themeService.EnsureSeeded();
         _themes = BuiltInThemes.Concat(_themeService.List()).ToArray();
         _working = _config.CloneConfig();
@@ -170,7 +172,7 @@ public partial class SettingsWindow : Window
         TopMostCb.IsChecked = g.TopMost;
         TaskbarCb.IsChecked = g.ShowInTaskbar;
 
-        _pendingAutoStart = _autoStart.IsEnabled();
+        _pendingAutoStart = !_isPortable && _autoStart.IsEnabled();
         AutoStartCb.IsChecked = _pendingAutoStart;
 
         HotkeyEnabledCb.IsChecked = g.GlobalHotkeyEnabled;
@@ -458,7 +460,7 @@ public partial class SettingsWindow : Window
 
     private void AutoStart_Changed(object sender, RoutedEventArgs e)
     {
-        if (!_loaded)
+        if (!_loaded || _isPortable)
             return;
         _pendingAutoStart = AutoStartCb.IsChecked == true;
         SetDirty(true);
@@ -466,6 +468,17 @@ public partial class SettingsWindow : Window
 
     private void ConfigureDataLocationControls()
     {
+        AutoStartCb.IsEnabled = !_isPortable;
+        AutoStartCb.ToolTip = _isPortable ? L("AutoStartPortableHelp") : null;
+
+        if (_isPortable)
+        {
+            DataHelpText.Text = L("DataFolderPortableHelp");
+            ChangeDataBtn.IsEnabled = false;
+            ResetDataBtn.IsEnabled = false;
+            return;
+        }
+
         if (!_isPackaged)
             return;
 
@@ -562,6 +575,12 @@ public partial class SettingsWindow : Window
 
     private async void ChangeData_Click(object sender, RoutedEventArgs e)
     {
+        if (_isPortable)
+        {
+            Info(L("PortableDataCannotChange"));
+            return;
+        }
+
         if (_isPackaged)
         {
             Info(L("PackagedDataCannotChange"));
@@ -576,6 +595,12 @@ public partial class SettingsWindow : Window
 
     private async void ResetData_Click(object sender, RoutedEventArgs e)
     {
+        if (_isPortable)
+        {
+            Info(L("PortableDataCannotChange"));
+            return;
+        }
+
         if (_isPackaged)
         {
             Info(L("PackagedDataCannotReset"));
@@ -759,9 +784,13 @@ public partial class SettingsWindow : Window
         try
         {
             var root = _paths.LocalFolder; // the LIVE data root (survives a startup LocalAppData fallback)
-            var isDefault = !_isPackaged && DataLocation.IsDefaultLocation(root);
-            ResetDataBtn.IsEnabled = !_isPackaged && !isDefault;
-            var kind = _isPackaged ? L("DataKindApp") : isDefault ? L("DataKindDefault") : L("DataKindCustom");
+            var isDefault = !_isPackaged && !_isPortable && DataLocation.IsDefaultLocation(root);
+            ResetDataBtn.IsEnabled = !_isPackaged && !_isPortable && !isDefault;
+            var kind = _isPortable
+                ? L("DataKindPortable")
+                : _isPackaged
+                    ? L("DataKindApp")
+                    : isDefault ? L("DataKindDefault") : L("DataKindCustom");
             DataInfoText.Text = L("CurrentDataPending", kind);
             var bytes = await Task.Run(() => DataLocation.GetFolderSizeCached(root));
             DataInfoText.Text = L("CurrentDataSize", kind, FormatSize(bytes));

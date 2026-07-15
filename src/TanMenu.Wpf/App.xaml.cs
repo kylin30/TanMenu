@@ -15,6 +15,7 @@ public partial class App : Application
 {
     public static IServiceProvider Services { get; private set; } = null!;
     public static TrayService? Tray { get; set; }
+    public static bool IsPortable { get; private set; }
 
     /// <summary>Custom message a second instance posts to resurface the first.</summary>
     public const int WmShowFirstInstance = 0x8000 + 1;
@@ -81,9 +82,11 @@ public partial class App : Application
     /// clean exit rather than a silent crash.</summary>
     private async Task StartupAsync()
     {
+        IsPortable = !PackageRuntime.HasPackageIdentity && PortableRuntime.IsEnabled();
+
         // Unpackaged builds keep the user-relocatable Documents\TanMenu data root. Packaged/MSIX
-        // builds must use package-local ApplicationData instead of HKCU/Documents relocation.
-        if (!PackageRuntime.HasPackageIdentity)
+        // builds use package-local ApplicationData; portable builds keep everything beside the EXE.
+        if (!PackageRuntime.HasPackageIdentity && !IsPortable)
             DataLocation.MigrateLegacyIfNeeded();
 
         // Mutable so a data-folder change in settings can re-point it live (no restart). Falls back to
@@ -108,7 +111,9 @@ public partial class App : Application
         services.AddSingleton<WindowHost>();
         services.AddSingleton<IWindowHost>(sp => sp.GetRequiredService<WindowHost>());
         services.AddSingleton<IAutoStartService>(_ =>
-            PackageRuntime.HasPackageIdentity
+            IsPortable
+                ? new PortableAutoStartService()
+                : PackageRuntime.HasPackageIdentity
                 ? new StartupTaskAutoStartService()
                 : new RegistryAutoStartService());
         services.AddSingleton<GlobalHotkeyService>();
@@ -184,6 +189,9 @@ public partial class App : Application
             packagedPaths.EnsureCreated();
             return packagedPaths;
         }
+
+        if (IsPortable)
+            return new MutableAppDataPaths(PortableRuntime.GetDataRoot());
 
         var root = DataLocation.GetDataRoot(); // default Documents\TanMenu, or a user-chosen folder
         try

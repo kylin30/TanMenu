@@ -1,0 +1,94 @@
+name: GitHub Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: github-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  portable-release:
+    name: Build portable ZIP and publish release
+    runs-on: windows-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Validate tag and product version
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          [xml]$props = Get-Content 'Directory.Build.props' -Raw
+          $version = [string]$props.Project.PropertyGroup.Version
+          $tag = '${{ github.ref_name }}'
+
+          if ($version -notmatch '^\d+\.\d+\.\d+(?:\.\d+)?$') {
+            throw "Directory.Build.props Version '$version' is not a three- or four-part numeric version."
+          }
+          if ($tag -cne "v$version") {
+            throw "Release tag '$tag' must exactly match Directory.Build.props Version '$version' (expected 'v$version')."
+          }
+
+          Write-Host "Validated portable release $tag."
+
+      - name: Restore
+        run: dotnet restore TanMenu.slnx
+
+      - name: Build
+        run: dotnet build TanMenu.slnx -c Release --no-restore
+
+      - name: Test
+        run: dotnet test tests/TanMenu.Core.Tests/TanMenu.Core.Tests.csproj -c Release --no-build
+
+      - name: Build portable ZIP
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & ./scripts/package-portable.ps1
+          if ($LASTEXITCODE -ne 0) {
+            throw "Portable packaging failed with exit code $LASTEXITCODE."
+          }
+
+          $zips = @(Get-ChildItem 'dist/portable' -Filter '*.zip' -File)
+          $checksums = @(Get-ChildItem 'dist/portable' -Filter '*.sha256' -File)
+          if ($zips.Count -ne 1 -or $checksums.Count -ne 1) {
+            throw "Expected one ZIP and one checksum, found $($zips.Count) ZIP(s) and $($checksums.Count) checksum(s)."
+          }
+
+      - name: Create GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $assets = @(
+            Get-ChildItem 'dist/portable' -File |
+              Where-Object { $_.Extension -in '.zip', '.sha256' } |
+              Sort-Object Name |
+              Select-Object -ExpandProperty FullName
+          )
+          if ($assets.Count -ne 2) {
+            throw "Expected exactly two release assets, found $($assets.Count)."
+          }
+
+          gh release create '${{ github.ref_name }}' @assets `
+            --repo '${{ github.repository }}' `
+            --verify-tag `
+            --title "TanMenu ${{ github.ref_name }}" `
+            --generate-notes
+          if ($LASTEXITCODE -ne 0) {
+            throw "GitHub Release creation failed with exit code $LASTEXITCODE."
+          }
