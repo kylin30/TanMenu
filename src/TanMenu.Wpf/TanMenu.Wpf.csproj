@@ -16,7 +16,13 @@
     <Copyright>© TanSoft. All rights reserved.</Copyright>
     <AssemblyTitle>TanMenu</AssemblyTitle>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <StartupObject>TanMenu.Wpf.App</StartupObject>
   </PropertyGroup>
+  <ItemGroup>
+    <!-- App.xaml is a Page so our explicit Main can initialize Velopack before WPF starts. -->
+    <ApplicationDefinition Remove="App.xaml" />
+    <Page Include="App.xaml" />
+  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Wpf" Version="10.0.71" />
     <PackageReference Include="H.NotifyIcon.Wpf" Version="2.3.2" />
@@ -25,6 +31,7 @@
     <PackageReference Include="Serilog.Extensions.Logging" Version="9.0.1" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
+    <PackageReference Include="Velopack" Version="$(VelopackVersion)" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\TanMenu.Core\TanMenu.Core.csproj" />

@@ -8,6 +8,8 @@ using Serilog;
 using TanMenu.Core.Infrastructure;
 using TanMenu.Core.Services;
 using TanMenu.Wpf.Services;
+using Velopack;
+using Velopack.Locators;
 
 namespace TanMenu.Wpf;
 
@@ -16,11 +18,30 @@ public partial class App : Application
     public static IServiceProvider Services { get; private set; } = null!;
     public static TrayService? Tray { get; set; }
     public static bool IsPortable { get; private set; }
+    public static string PortableDataRoot { get; private set; } = AppContext.BaseDirectory;
 
     /// <summary>Custom message a second instance posts to resurface the first.</summary>
     public const int WmShowFirstInstance = 0x8000 + 1;
 
     private Mutex? _mutex;
+
+    [STAThread]
+    public static void Main(string[] args)
+    {
+        // Velopack command-line hooks must run before WPF, DI, logging, or any application files
+        // are opened. Microsoft Store/MSIX builds remain entirely Store-managed.
+        if (!PackageRuntime.HasPackageIdentity)
+        {
+            VelopackApp.Build()
+                .SetArgs(args)
+                .SetAutoApplyOnStartup(false)
+                .Run();
+        }
+
+        var app = new App();
+        app.InitializeComponent();
+        app.Run();
+    }
 
     [DllImport("user32.dll")]
     private static extern IntPtr FindWindow(string? lpClassName, string? lpWindowName);
@@ -82,10 +103,18 @@ public partial class App : Application
     /// clean exit rather than a silent crash.</summary>
     private async Task StartupAsync()
     {
-        IsPortable = !PackageRuntime.HasPackageIdentity && PortableRuntime.IsEnabled();
+        IsPortable = !PackageRuntime.HasPackageIdentity &&
+                     (PortableRuntime.IsEnabled() || VelopackLocator.Current.IsPortable);
+        PortableDataRoot = IsPortable && VelopackLocator.Current.IsPortable
+            ? VelopackLocator.Current.RootAppDir ?? AppContext.BaseDirectory
+            : AppContext.BaseDirectory;
+
+        if (IsPortable && VelopackLocator.Current.IsPortable)
+            PortableRuntime.MigrateLegacyDataIfNeeded(AppContext.BaseDirectory, PortableDataRoot);
 
         // Unpackaged builds keep the user-relocatable Documents\TanMenu data root. Packaged/MSIX
-        // builds use package-local ApplicationData; portable builds keep everything beside the EXE.
+        // builds use package-local ApplicationData; portable builds use a stable root outside the
+        // replaceable Velopack content directory.
         if (!PackageRuntime.HasPackageIdentity && !IsPortable)
             DataLocation.MigrateLegacyIfNeeded();
 
@@ -121,6 +150,12 @@ public partial class App : Application
         services.AddSingleton<ISettingsLauncher, WpfSettingsLauncher>();
         services.AddSingleton<IShellCommands, WpfShellCommands>();
         services.AddSingleton<ThemeService>();
+        services.AddSingleton<IAppUpdateService>(_ =>
+            PackageRuntime.HasPackageIdentity
+                ? new FixedAppUpdateService(AppUpdateStatus.StoreManaged)
+                : IsPortable && VelopackLocator.Current.IsPortable
+                    ? new VelopackAppUpdateService()
+                    : new FixedAppUpdateService(AppUpdateStatus.Disabled));
 
         services.AddWpfBlazorWebView();
 #if DEBUG
@@ -176,6 +211,37 @@ public partial class App : Application
                     "TanMenu", MessageBoxButton.OK, MessageBoxImage.Warning));
 
         new MainWindow().Show();
+        _ = CheckForUpdatesAfterStartupAsync();
+    }
+
+    private static async Task CheckForUpdatesAfterStartupAsync()
+    {
+        try
+        {
+            // Keep startup responsive; the portable build checks and downloads quietly once the UI
+            // is ready. Installation still waits for an explicit restart from Settings.
+            await Task.Delay(TimeSpan.FromSeconds(3));
+            var updater = Services.GetRequiredService<IAppUpdateService>();
+            await updater.CheckForUpdatesAsync();
+            if (updater.State.Status == AppUpdateStatus.Available)
+                await updater.DownloadUpdateAsync();
+
+            if (updater.State.Status == AppUpdateStatus.ReadyToRestart)
+            {
+                var language = Services.GetRequiredService<ConfigService>().Config.General.Language;
+                var restart = MessageBox.Show(
+                    AppLanguage.Format("UpdateRestartPrompt", language, updater.State.Version ?? ""),
+                    AppLanguage.Text("UpdateTitle", language),
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Information);
+                if (restart == MessageBoxResult.Yes)
+                    updater.ApplyAndRestart();
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Background update check failed");
+        }
     }
 
     /// <summary>Resolve the writable data root and ensure its folders exist, falling back to the
@@ -191,7 +257,7 @@ public partial class App : Application
         }
 
         if (IsPortable)
-            return new MutableAppDataPaths(PortableRuntime.GetDataRoot());
+            return new MutableAppDataPaths(PortableRuntime.GetDataRoot(PortableDataRoot));
 
         var root = DataLocation.GetDataRoot(); // default Documents\TanMenu, or a user-chosen folder
         try

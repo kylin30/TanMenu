@@ -1,5 +1,6 @@
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -64,6 +65,7 @@ public partial class SettingsWindow : Window
     private readonly MenuService _menu;
     private readonly IAppDataPaths _paths;
     private readonly ThemeService _themeService;
+    private readonly IAppUpdateService _updates;
     private readonly bool _isPackaged;
     private readonly bool _isPortable;
 
@@ -87,6 +89,7 @@ public partial class SettingsWindow : Window
         _menu = App.Services.GetRequiredService<MenuService>();
         _paths = App.Services.GetRequiredService<IAppDataPaths>();
         _themeService = App.Services.GetRequiredService<ThemeService>();
+        _updates = App.Services.GetRequiredService<IAppUpdateService>();
         _isPackaged = PackageRuntime.HasPackageIdentity;
         _isPortable = App.IsPortable;
         _themeService.EnsureSeeded();
@@ -102,6 +105,9 @@ public partial class SettingsWindow : Window
         catch { /* icon optional */ }
 
         LoadFromConfig();
+
+        _updates.StateChanged += Updates_StateChanged;
+        Closed += (_, _) => _updates.StateChanged -= Updates_StateChanged;
 
         // Position above the launcher once measured, then reveal — so the bottom-center, top-most
         // launcher never covers the settings content.
@@ -197,6 +203,7 @@ public partial class SettingsWindow : Window
         BehaviorTab.Header = L("Behavior");
         FoldersTab.Header = L("Folders");
         ToolsTab.Header = L("CommonTools");
+        UpdatesTab.Header = L("Updates");
         LanguageLabel.Text = L("Language");
         ThemeLabel.Text = L("Theme");
         ThemeFolderBtn.Content = L("ThemeFolder");
@@ -227,6 +234,78 @@ public partial class SettingsWindow : Window
         RestoreBtn.Content = L("Restore");
         ShowToolsCb.Content = L("ShowCommonTools");
         ToolsHintText.Text = L("CommonToolsHint");
+        CurrentVersionText.Text = L("CurrentVersion", GetCurrentVersion());
+        UpdateHelpText.Text = _updates.State.Status switch
+        {
+            AppUpdateStatus.StoreManaged => L("UpdateStoreManaged"),
+            AppUpdateStatus.Disabled => L("UpdateUnavailable"),
+            _ => L("UpdatePortableHelp"),
+        };
+        RenderUpdateState();
+    }
+
+    private static string GetCurrentVersion() =>
+        Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "0.0.0";
+
+    private void Updates_StateChanged(object? sender, EventArgs e)
+    {
+        if (!Dispatcher.CheckAccess())
+        {
+            Dispatcher.BeginInvoke(RenderUpdateState);
+            return;
+        }
+
+        RenderUpdateState();
+    }
+
+    private void RenderUpdateState()
+    {
+        if (UpdateStatusText is null)
+            return;
+
+        var state = _updates.State;
+        UpdateStatusText.Text = state.Status switch
+        {
+            AppUpdateStatus.StoreManaged => L("UpdateStoreManagedStatus"),
+            AppUpdateStatus.Disabled => L("UpdateDisabledStatus"),
+            AppUpdateStatus.Checking => L("UpdateChecking"),
+            AppUpdateStatus.UpToDate => L("UpdateUpToDate"),
+            AppUpdateStatus.Available => L("UpdateAvailable", state.Version ?? ""),
+            AppUpdateStatus.Downloading => L("UpdateDownloading", state.Version ?? "", state.Progress),
+            AppUpdateStatus.ReadyToRestart => L("UpdateReady", state.Version ?? ""),
+            AppUpdateStatus.Failed => L("UpdateFailed", state.Error ?? L("UnknownError")),
+            _ => L("UpdateIdle"),
+        };
+
+        UpdateProgress.Visibility = state.Status == AppUpdateStatus.Downloading
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        UpdateProgress.Value = state.Progress;
+
+        CheckUpdateBtn.Content = L("CheckForUpdates");
+        CheckUpdateBtn.IsEnabled = state.Status is AppUpdateStatus.Idle
+            or AppUpdateStatus.UpToDate
+            or AppUpdateStatus.Available
+            or AppUpdateStatus.Failed;
+
+        UpdateActionBtn.Visibility = state.Status is AppUpdateStatus.Available
+            or AppUpdateStatus.ReadyToRestart
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        UpdateActionBtn.Content = state.Status == AppUpdateStatus.ReadyToRestart
+            ? L("RestartToUpdate")
+            : L("DownloadUpdate");
+    }
+
+    private async void CheckUpdate_Click(object sender, RoutedEventArgs e) =>
+        await _updates.CheckForUpdatesAsync();
+
+    private async void UpdateAction_Click(object sender, RoutedEventArgs e)
+    {
+        if (_updates.State.Status == AppUpdateStatus.ReadyToRestart)
+            _updates.ApplyAndRestart();
+        else if (_updates.State.Status == AppUpdateStatus.Available)
+            await _updates.DownloadUpdateAsync();
     }
 
     private string SizeLabel(string key) => key switch

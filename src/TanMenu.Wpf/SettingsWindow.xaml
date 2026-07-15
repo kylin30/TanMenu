@@ -119,6 +119,22 @@
                 </StackPanel>
             </TabItem>
 
+            <TabItem x:Name="UpdatesTab" Header="更新">
+                <StackPanel Margin="14">
+                    <TextBlock x:Name="CurrentVersionText" Text="当前版本：" FontWeight="Bold" Margin="0,6,0,8"/>
+                    <TextBlock x:Name="UpdateHelpText" Foreground="Gray" TextWrapping="Wrap" Margin="0,0,0,16"/>
+                    <TextBlock x:Name="UpdateStatusText" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                    <ProgressBar x:Name="UpdateProgress" Height="8" Minimum="0" Maximum="100"
+                                 Visibility="Collapsed" Margin="0,0,0,14"/>
+                    <StackPanel Orientation="Horizontal">
+                        <Button x:Name="CheckUpdateBtn" Content="检查更新" Click="CheckUpdate_Click"
+                                Padding="14,5" Margin="0,0,8,0"/>
+                        <Button x:Name="UpdateActionBtn" Content="下载更新" Click="UpdateAction_Click"
+                                Padding="14,5" Visibility="Collapsed"/>
+                    </StackPanel>
+                </StackPanel>
+            </TabItem>
+
         </TabControl>
     </DockPanel>
 </Window>

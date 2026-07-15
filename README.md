@@ -55,16 +55,18 @@ Build the no-install, self-contained portable edition:
 ```powershell
 dotnet restore TanMenu.slnx
 powershell -ExecutionPolicy Bypass -File scripts\package-portable.ps1
-# output: dist\portable\TanMenu_<version>_win-x64_portable.zip
+# output: dist\velopack\TanMenu-win-Portable.zip
 ```
 
-The ZIP includes `portable.flag`. While that marker is present, TanMenu keeps config, themes,
-caches, logs, and WebView2 browser data under the adjacent `Data` folder. It does not read or write
-the data-location or Windows-startup registry values. Extract it to a writable folder and delete the
-whole folder to uninstall it.
+The ZIP includes `portable.flag`. TanMenu keeps config, themes, caches, logs, and WebView2 browser
+data under the stable `Data` folder at the portable root, outside Velopack's replaceable application
+content. It checks GitHub Releases automatically, downloads an available update, and waits for the
+user to confirm the restart in Settings. Extract it to a writable folder and delete the whole folder
+to uninstall it.
 
 Pushing a tag that exactly matches `Directory.Build.props` (for example `v0.9.2`) runs the GitHub
-Release workflow, builds and tests the app, then publishes the portable ZIP and its SHA-256 file.
+Release workflow, builds and tests the app, then publishes the portable ZIP, its SHA-256 file, and
+the Velopack update feed/assets.
 Microsoft Store packages continue to be built locally and uploaded to Partner Center manually.
 
 ## Data location
@@ -74,7 +76,7 @@ settings; data predating this default is migrated from `%LOCALAPPDATA%\TanMenu` 
 - `config.json` (root folder + options)
 - `cache\` (link/icon caches), `cache\logs\` (Serilog daily logs)
 
-The portable ZIP instead keeps the same files, plus WebView2 user data, under `<app>\Data`. Store
+The portable ZIP instead keeps the same files, plus WebView2 user data, under `<portable-root>\Data`. Store
 MSIX builds use Windows-managed application data. See [`docs/store-release.md`](docs/store-release.md)
 and [`docs/portable-release.md`](docs/portable-release.md) for release details.
 

@@ -28,6 +28,31 @@ public static class PortableRuntime
     public static string GetWebView2DataFolder(string appBaseDirectory) =>
         Path.Combine(GetDataRoot(appBaseDirectory), WebView2FolderName);
 
+    /// <summary>
+    /// Moves data created beside an older portable executable to the stable Velopack application
+    /// root. Velopack replaces its <c>current</c> content directory during updates, while the root
+    /// directory survives. Existing destination data always wins so a stale copy is never merged
+    /// over a newer profile.
+    /// </summary>
+    public static bool MigrateLegacyDataIfNeeded(string legacyAppBaseDirectory, string stableAppRoot)
+    {
+        var source = GetDataRoot(legacyAppBaseDirectory);
+        var destination = GetDataRoot(stableAppRoot);
+
+        if (string.Equals(source.TrimEnd(Path.DirectorySeparatorChar),
+                destination.TrimEnd(Path.DirectorySeparatorChar),
+                StringComparison.OrdinalIgnoreCase) ||
+            !Directory.Exists(source) ||
+            Directory.Exists(destination))
+        {
+            return false;
+        }
+
+        Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+        Directory.Move(source, destination);
+        return true;
+    }
+
     private static string ValidateBaseDirectory(string appBaseDirectory)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(appBaseDirectory);

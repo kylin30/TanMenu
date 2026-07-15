@@ -19,7 +19,7 @@ public partial class MainWindow : Window
             // before creation so cookies, GPU cache, and IndexedDB stay inside the portable Data
             // folder instead of leaking into the user's LocalAppData profile.
             WebView.BlazorWebViewInitializing += (_, args) =>
-                args.UserDataFolder = PortableRuntime.GetWebView2DataFolder();
+                args.UserDataFolder = PortableRuntime.GetWebView2DataFolder(App.PortableDataRoot);
         }
         WebView.Services = App.Services;
         Loaded += OnLoaded;
