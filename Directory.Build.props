@@ -3,7 +3,7 @@
     <!-- One source of truth for the product version (Core + Wpf stay in lockstep). Bump this for
          each release so update-diffing / crash correlation / Store submissions have a real version
          instead of the default 1.0.0.0. -->
-    <Version>0.9.3</Version>
+    <Version>0.9.4</Version>
     <!-- Keep the application SDK and vpk CLI on the same release. -->
     <VelopackVersion>1.2.0</VelopackVersion>
 
