@@ -21,6 +21,7 @@ public partial class SettingsWindow : Window
         ("WinXP", "Windows XP"),
         ("Win7", "Windows 7"),
         ("Windows11", "Windows 11"),
+        ("Pixel", "Windows 2000"),
     };
 
     // Built-in themes + any user .css themes discovered under <data>\themes (populated in the ctor).
@@ -435,7 +436,30 @@ public partial class SettingsWindow : Window
         if (!_loaded || ThemeCombo.SelectedIndex < 0)
             return;
         _working.General.ThemeName = _themes[ThemeCombo.SelectedIndex].Key;
+        // The Windows 2000 theme is paired with Verdana: set it on selection so it looks right out of
+        // the box (the uniform font override would otherwise keep the previous font). Chinese labels
+        // fall through Verdana to the system CJK font. Only sets it when not already chosen, so it
+        // never fights a later manual font pick.
+        if (string.Equals(_working.General.ThemeName, "Pixel", StringComparison.Ordinal))
+            PairThemeFont("Verdana");
         SetDirty(true);
+    }
+
+    /// <summary>Set the working font family and reflect it in the font dropdown. Selecting the combo item
+    /// re-enters Font_SelectionChanged, which no-ops because FontFamily already matches — no feedback loop.</summary>
+    private void PairThemeFont(string family)
+    {
+        if (string.Equals(_working.General.FontFamily, family, StringComparison.OrdinalIgnoreCase))
+            return;
+        _working.General.FontFamily = family;
+        foreach (var obj in FontCombo.Items)
+        {
+            if (obj is FontItem fi && string.Equals(fi.Family, family, StringComparison.OrdinalIgnoreCase))
+            {
+                FontCombo.SelectedItem = fi;
+                break;
+            }
+        }
     }
 
     private void Language_Changed(object sender, SelectionChangedEventArgs e)

@@ -352,6 +352,7 @@
             "WinXP" => "WinXP",
             "Win7" => "Win7",
             "Windows11" => "Windows11",
+            "Pixel" => "Pixel",
             _ => "Win7",
         };
     }
@@ -361,6 +362,7 @@
         "WinXP" => "winxp",
         "Win7" => "win7",
         "Windows11" => "win11",
+        "Pixel" => "pixel",
         _ when ThemeService.IsUserTheme(_theme) => "user", // .body.theme-user: app.css adds no tweaks
         _ => "win7",
     };

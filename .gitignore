@@ -50,6 +50,9 @@ coverage*.json
 coverage*.xml
 TestResults/
 
+## Superpowers brainstorming (visual companion mockups)
+.superpowers/
+
 ## Misc OS / editor
 Thumbs.db
 ehthumbs.db

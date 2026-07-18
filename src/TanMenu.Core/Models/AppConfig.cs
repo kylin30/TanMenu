@@ -37,7 +37,7 @@ public class GeneralConfig
     public int PositionOffset { get; set; } = 8;
     public int ColButtonCount { get; set; } = 10;
 
-    /// <summary>Active theme: "WinXP" | "Win7" | "Windows11".</summary>
+    /// <summary>Active theme: "WinXP" | "Win7" | "Windows11" | "Pixel".</summary>
     public string ThemeName { get; set; } = "Win7";
 
     /// <summary>UI font family — applied UNIFORMLY across all themes (default 阿里巴巴普惠体).

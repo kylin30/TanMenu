@@ -1,0 +1,149 @@
+/* ============================================================================
+   TanMenu "像素 / Pixel" theme — a faithful Windows 2000 "Windows Standard" window.
+   Classic thin 3D grey bevels (NO black borders), warm 3D-object grey #D4D0C8 face,
+   the navy→steel-blue active-caption gradient, navy #0A246A selection, white sunken
+   fields — the exact 98/2000 chrome conventions. The UI font is Verdana (a clean web-era
+   sans-serif; Chinese labels fall through to the system CJK font), applied window-wide by
+   Index.razor (SettingsWindow pairs this theme with Verdana on selection). NO rounded
+   corners, NO drop shadows.
+
+   Bevel ramp (Win2000 3D): highlight #FFFFFF, light #DFDFDF, shadow #808080,
+   dark-shadow #0A0A0A. All edges are these insets — never a solid black border. ==== */
+
+:root {
+    --w2k-face: #d4d0c8;
+    --w2k-raise:  inset -1px -1px #0a0a0a, inset 1px 1px #ffffff, inset -2px -2px #808080, inset 2px 2px #dfdfdf;
+    --w2k-press:  inset -1px -1px #ffffff, inset 1px 1px #0a0a0a, inset -2px -2px #dfdfdf, inset 2px 2px #808080;
+    --w2k-window: inset -1px -1px #0a0a0a, inset 1px 1px #dfdfdf, inset -2px -2px #808080, inset 2px 2px #ffffff;
+    --w2k-sunken: inset -1px -1px #ffffff, inset 1px 1px #808080, inset -2px -2px #dfdfdf, inset 2px 2px #0a0a0a;
+    --w2k-etched: inset -1px -1px #ffffff, inset 1px 1px #0a0a0a, inset -2px -2px #808080, inset 2px 2px #dfdfdf;
+}
+
+/* Backstop: remap the family RetroButton.razor.css pins to the bundled pixel TTF (like
+   xpcss/fonts.css) so launch-button labels stay pixel even when the user picks the default font. */
+@font-face {
+    font-family: 'Pixelated MS Sans Serif';
+    src: url('/fonts/fusion-pixel-12px-monospaced-zh_hans.ttf') format('truetype');
+    font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+    font-family: 'Pixelated MS Sans Serif';
+    src: url('/fonts/fusion-pixel-12px-monospaced-zh_hans.ttf') format('truetype');
+    font-weight: 700; font-style: normal; font-display: swap;
+}
+
+/* Hard edges + crisp raster everywhere. */
+.window, .window * { border-radius: 0; }
+.window img, .title-bar-icon, .button-icon img { image-rendering: pixelated; }
+
+/* ---- window: warm-grey raised 3D frame (3px grey border via padding + bevel, no black outline) ---- */
+.window {
+    background: var(--w2k-face);
+    color: #000000;
+    border: none;
+    box-shadow: var(--w2k-window);
+    padding: 3px;
+    font-family: Verdana, "Microsoft YaHei", "Pixelated MS Sans Serif", sans-serif;
+    font-size: 13px;
+}
+
+/* ---- title bar: Win2000 active-caption gradient (navy → steel blue), white bold text ---- */
+.title-bar {
+    background: linear-gradient(to right, #0a246a 0%, #1c5fbe 55%, #3f86d4 100%);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 2px 2px 2px 4px;
+}
+.title-bar-text { color: #ffffff; font-weight: 700; font-size: 12px; line-height: 1; margin-right: 12px; }
+
+/* caption controls: small 16x14 grey buttons with a thin 3D bevel; glyphs painted as background
+   images (buttons render empty). Min = low bar, Close = pixel X (the 98.css glyphs). */
+.title-bar-controls { display: flex; align-items: center; }
+.title-bar-controls button {
+    min-width: 16px; min-height: 14px; width: 16px; height: 14px; padding: 0;
+    background: var(--w2k-face);
+    border: none;
+    box-shadow: var(--w2k-raise);
+    background-repeat: no-repeat;
+}
+.title-bar-controls button:active { box-shadow: var(--w2k-press); }
+.title-bar-controls button[aria-label="Minimize"] {
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg width='6' height='2' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='%23000' d='M0 0h6v2H0z'/%3E%3C/svg%3E");
+    background-position: bottom 3px left 4px;
+}
+.title-bar-controls button[aria-label="Close"] {
+    margin-left: 2px;
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg width='8' height='7' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill-rule='evenodd' clip-rule='evenodd' d='M0 0h2v1h1v1h2V1h1V0h2v1H7v1H6v1H5v1h1v1h1v1h1v1H6V6H5V5H3v1H2v1H0V6h1V5h1V4h1V3H2V2H1V1H0V0z' fill='%23000'/%3E%3C/svg%3E");
+    background-position: top 3px left 4px;
+}
+/* Maximize: rendered DISABLED (window can't maximize) → greyed, embossed glyph (grey over a white
+   1px-offset shadow), classic Win2000 disabled-caption look. Keep the raised bevel (no dimming). */
+.title-bar-controls button[aria-label="Maximize"] {
+    background-image:
+        url("data:image/svg+xml;charset=utf-8,%3Csvg width='9' height='9' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill-rule='evenodd' clip-rule='evenodd' d='M9 0H0v9h9V0zM8 2H1v6h7V2z' fill='%23808080'/%3E%3C/svg%3E"),
+        url("data:image/svg+xml;charset=utf-8,%3Csvg width='9' height='9' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill-rule='evenodd' clip-rule='evenodd' d='M9 0H0v9h9V0zM8 2H1v6h7V2z' fill='%23ffffff'/%3E%3C/svg%3E");
+    background-position: top 2px left 3px, top 3px left 4px;
+}
+.title-bar-controls button:disabled { opacity: 1; }
+
+/* ---- content area (warm grey). Top padding 0 so the menu bar sits flush under the title. ---- */
+.window-body, .window-body.has-space { background: var(--w2k-face); margin: 0; padding: 3px 8px 8px; }
+
+/* ---- search box: plain white sunken client-edge well, no focus ring ---- */
+input[type="text"], input[type="search"], .tm-search-input {
+    background-color: #ffffff;
+    color: #000000;
+    border: none;
+    box-shadow: var(--w2k-sunken);
+    padding: 3px 6px;
+}
+input:focus, .tm-search-input:focus { outline: none; }
+input::placeholder { color: #808080; }
+
+/* ---- group box (fieldset): classic etched frame + plain text legend on the frame (no tab) ---- */
+fieldset {
+    border: none;
+    margin: 0;
+    padding: 12px 9px 9px;
+    background: var(--w2k-face);
+    box-shadow: var(--w2k-etched);
+}
+legend {
+    background: var(--w2k-face);
+    color: #000000;
+    padding: 0 4px;
+    font-size: 13px;
+}
+.groupbox-title.clickable::before { display: none; }
+
+/* ---- launch buttons: classic raised 3D-grey command button; inverted (pressed-in) on active ---- */
+.window-body button {
+    background: var(--w2k-face);
+    color: #000000;
+    border: none;
+    box-shadow: var(--w2k-raise);
+    min-width: 75px;
+    min-height: 28px;
+    /* vertical padding is forced by app.css (--btn-vpad !important); set only the horizontal here */
+    padding-left: 12px;
+    padding-right: 12px;
+    cursor: pointer;
+}
+/* hover: a subtle lift — lighten the 3D face (classic hot-track). */
+.window-body button:not(:disabled):hover { background: #e6e3dc; }
+.window-body button:not(:disabled):active,
+.window-body button:not(:disabled).active {
+    box-shadow: var(--w2k-press);
+}
+.window-body button:not(:disabled):active .button-body { transform: translate(1px, 1px); }
+
+/* disabled launch button (invalid shortcut → default icon): greyed embossed classic look */
+.window-body button:disabled,
+.window-body button.disabled {
+    color: #808080;
+    text-shadow: 1px 1px 0 #ffffff;
+    box-shadow: var(--w2k-raise);
+    cursor: default;
+}

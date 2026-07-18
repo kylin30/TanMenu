@@ -233,6 +233,29 @@ a, .btn-link {
     background: rgba(0, 0, 0, 0.06);
 }
 
+/* ---- 像素 (Pixel / FC): a slightly larger flat menu bar with a hard black separator, square
+   coin-yellow selection. The bar sits at the top of pixel.css's white .window-body (0 top padding);
+   the first item is pulled left to sit on the content column so it lines up with the group boxes,
+   and the search box's margin-left:auto keeps its right edge on that same column. ---- */
+.theme-pixel .tm-menubar {
+    margin: 1px 0 8px 0;
+    padding: 0 0 4px 0;
+    font-size: 13px;
+    /* etched separator under the menu bar (classic 9x/2000: a shadow line with a highlight below) */
+    border-bottom: 1px solid #808080;
+    box-shadow: 0 1px 0 #ffffff;
+}
+.theme-pixel .tm-menuitem {
+    border-radius: 0;
+    padding: 3px 9px;
+    color: #000000;
+}
+.theme-pixel .tm-menuitem:hover {
+    background: #0a246a; /* Win2000 classic menu/selection navy */
+    color: #ffffff;
+}
+.theme-pixel .tm-item { border-radius: 0; }
+
 /* ============================================================
    Launcher button SIZE (大/中/小) — driven by the size-* class on the .body wrapper. Sets CSS
    variables consumed by RetroButton.razor.css (text + icon) and the button's vertical padding

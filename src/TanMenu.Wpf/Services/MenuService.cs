@@ -252,6 +252,7 @@ public sealed class MenuService : IDisposable
             }
 
             var contents = _data.GetDirectoryContents(SafeGetDirectories(rootFolder));
+            var folderGroups = new List<MenuGroupVm>();
             foreach (var c in contents)
             {
                 var items = new List<MenuItemVm>(c.Items.Count);
@@ -268,8 +269,14 @@ public sealed class MenuService : IDisposable
                     AssignIcon(vm, it.IconKey, it.IconMtime, it.IconSize, pending, usedKeys);
                     items.Add(vm);
                 }
-                groups.Add(new MenuGroupVm { Directory = c.Directory, DirectoryName = c.DirectoryName, Items = items });
+                folderGroups.Add(new MenuGroupVm { Directory = c.Directory, DirectoryName = c.DirectoryName, Items = items });
             }
+
+            // Categories (folder groups) sorted by display name — culture-aware so Chinese folder names
+            // order the way the OS file explorer would. The built-in 常用工具 group (added above) stays first.
+            folderGroups.Sort((a, b) =>
+                string.Compare(a.DirectoryName, b.DirectoryName, StringComparison.CurrentCultureIgnoreCase));
+            groups.AddRange(folderGroups);
 
             // Evict icon-cache entries the current menu no longer references (deleted/renamed shortcuts
             // and their targets), so a long tray session over a churning desktop doesn't grow _iconCache

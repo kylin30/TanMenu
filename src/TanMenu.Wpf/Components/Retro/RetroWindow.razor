@@ -27,6 +27,13 @@ else
         <div class="title-bar-text"><img class="title-bar-icon" src="/app-tile.png" alt="" />@Title</div>
         <div class="title-bar-controls">
             <button aria-label="Minimize" @onclick="@OnMinimizeClick"></button>
+            @if (Theme == "Pixel")
+            {
+                @* Win2000 shows all three caption buttons. The launcher can't maximize, so this renders a
+                   DISABLED (greyed) Maximize between Minimize and Close — exactly what Windows shows for a
+                   fixed-size window — to complete the authentic 3-button caption. Pixel theme only. *@
+                <button aria-label="Maximize" disabled tabindex="-1"></button>
+            }
             <button aria-label="Close" @onclick="@OnCloseClick"></button>
         </div>
     </div>
@@ -52,6 +59,7 @@ else
         "Windows11" => new[] { "/lib/fluent2/fluent2.css" },
         "Win7" => new[] { "/lib/win7theme/7.css" },
         "WinXP" => new[] { "/lib/xpcss/98.css", "/lib/xpcss/fonts.css", "/lib/xpcss/xp-luna.css" },
+        "Pixel" => new[] { "/lib/pixel/pixel.css" },
         _ => new[] { "/lib/win7theme/7.css" }, // default = Windows 7
     };
 
