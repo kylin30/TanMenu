@@ -1,20 +1,17 @@
-## TanMenu 0.9.3
+## TanMenu 0.9.5
 
-- 主界面恢复为横向分组布局，并根据各主题的真实渲染内容自动调整可视区域；不再出现纵向/横向滚动条或右侧边框被截断。
-- 超出主显示器工作区时会等比缩放完整菜单，同时保持单行布局。
-- 多显示器环境下，每次显示主界面都会重新锁定到主显示器底部中央；不同 DPI、不同屏幕排列下也不会漂移到副屏。
-- 新增永久固定到任务栏流程：未固定时每次显示都会提示，Windows 支持时使用系统确认；Windows 10 不支持应用内固定时会打开开始菜单快捷方式供手动固定。
-- 固定后的任务栏入口使用稳定应用标识和绿色版根目录启动器，自动更新后仍然有效。
+- 加快长时间闲置后的任务栏呼出：第二实例会更早通知已运行窗口，主界面复用上次尺寸立即显示，不再等待 WebView2 重新测量。
+- 新增持久化图标缓存。首次提取后写入数据目录，后续冷启动直接复用；目标文件变化时会自动失效并刷新。
+- 更新改为完全由用户确认：后台仅检查新版本，主界面显示更新提示；点击确认后才下载，下载完成后再次确认才重启安装。
+- GitHub 标签发版现在同时保留 Microsoft Store MSIX 与 SHA-256 校验文件，供后续手动提交 Partner Center。
 
-> 已安装 0.9.2 的绿色版可直接在应用内更新。从 0.9.1 或更早版本升级时，请手动下载 ZIP，退出 TanMenu 后解压到原目录并保留 `Data` 文件夹。
+> 首次运行 0.9.5 时会生成图标缓存；从下一次冷启动开始即可直接命中。
 
 ---
 
-- Restored the horizontal grouped launcher and made its native viewport follow each theme's actual rendered content, eliminating scrollbars and clipped right borders.
-- Oversized launchers now scale uniformly to remain fully visible while preserving the single-row layout.
-- Every reveal is locked to the bottom center of the primary display, including mixed-DPI and irregular multi-monitor layouts.
-- Added permanent taskbar pinning with a Windows confirmation when supported and a Windows 10 manual Start-shortcut fallback.
-- The pinned entry uses a stable app identity and portable-root launcher, so it survives in-place updates.
+- Made taskbar recall faster after long idle periods: a second instance now signals the running window earlier, and the launcher reuses its last measured size instead of waiting for WebView2.
+- Added a persistent icon cache. Icons are stored after the first extraction, reused on later cold starts, and invalidated automatically when target files change.
+- Made updates fully user-controlled: background startup work only checks for a new version, the launcher shows a notice, and download/restart each require explicit confirmation.
+- Tag releases now retain a Microsoft Store MSIX and SHA-256 checksum for manual Partner Center submission.
 
-Portable 0.9.2 users can update in the app. When upgrading from 0.9.1 or earlier, download the ZIP
-manually, exit TanMenu, extract it into the existing directory, and keep the `Data` folder.
+The first 0.9.5 run creates the icon cache; subsequent cold starts can use it immediately.

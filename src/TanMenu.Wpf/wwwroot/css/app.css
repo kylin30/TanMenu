@@ -358,6 +358,67 @@ a, .btn-link {
     background: #fff;
 }
 
+/* User-controlled update banner. Startup checks only publish state; this is the sole launcher path
+   that begins a download, after a native confirmation. A fixed minimum width prevents progress-text
+   changes from making the popup jitter while downloading. */
+.body .window-body button.tm-update-notice {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 360px;
+    margin: 0 0 8px 0;
+    padding: 7px 10px !important;
+    border: 1px solid #b98200 !important;
+    border-radius: 4px;
+    background: linear-gradient(#fff6c9, #f4d978) !important;
+    color: #3b2a00 !important;
+    font-size: 13px;
+    line-height: 1.25;
+    text-align: left;
+    cursor: pointer;
+}
+.body .window-body button.tm-update-notice:hover:not(:disabled) {
+    background: linear-gradient(#fffbe6, #f7e49d) !important;
+}
+.body .window-body button.tm-update-notice.downloading {
+    border-color: #6b9dcc !important;
+    background: linear-gradient(#edf7ff, #cde8fb) !important;
+    color: #163b5c !important;
+    cursor: wait;
+    opacity: 1;
+}
+.body .window-body button.tm-update-notice.ready {
+    border-color: #4e9654 !important;
+    background: linear-gradient(#eefbea, #cdebc7) !important;
+    color: #17451b !important;
+}
+.tm-update-symbol {
+    flex: 0 0 auto;
+    font-size: 16px;
+    font-weight: bold;
+}
+.tm-update-text {
+    flex: 1 1 auto;
+    min-width: 0;
+    white-space: nowrap;
+}
+.tm-update-progress {
+    position: relative;
+    flex: 0 0 84px;
+    height: 7px;
+    overflow: hidden;
+    border: 1px solid #6b9dcc;
+    background: #fff;
+}
+.tm-update-progress > span {
+    display: block;
+    height: 100%;
+    background: #2f87c8;
+    transition: width .15s linear;
+}
+
 /* Modern focus ring ONLY for the non-retro themes. Win7/Win11 draw focus via border-color, so the ring
    augments them. Win98/XP draw their sunken 3D field border entirely via box-shadow (98.css), and
    box-shadow does not stack across rules — a winning ring would REPLACE that bevel — so those themes are

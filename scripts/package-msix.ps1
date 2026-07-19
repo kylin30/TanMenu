@@ -76,6 +76,7 @@ $version = Get-Version4
 Write-Host "Publishing TanMenu.Wpf ($Configuration)..."
 dotnet publish (Resolve-RepoPath "src\TanMenu.Wpf\TanMenu.Wpf.csproj") `
     -c $Configuration -p:Platform=x64 /p:PublishProfile=win-x64 --no-restore
+if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed with exit code $LASTEXITCODE." }
 
 if (Test-Path $stageDir) { Remove-Item -LiteralPath $stageDir -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $stageDir | Out-Null
@@ -111,6 +112,17 @@ if (Test-Path $msix) { Remove-Item -LiteralPath $msix -Force }
 
 Write-Host "Packing MSIX..."
 & $makeappx pack /d $stageDir /p $msix /o
+if ($LASTEXITCODE -ne 0 -or !(Test-Path -LiteralPath $msix)) {
+    throw "makeappx failed to create the Store package (exit code $LASTEXITCODE): $msix"
+}
+
+$hash = (Get-FileHash -LiteralPath $msix -Algorithm SHA256).Hash.ToLowerInvariant()
+$shaPath = "$msix.sha256"
+[System.IO.File]::WriteAllText(
+    $shaPath,
+    "$hash  $(Split-Path $msix -Leaf)`n",
+    [System.Text.UTF8Encoding]::new($false))
 
 Write-Host "Created $msix"
-Get-Item $msix
+Write-Host "SHA256 $hash"
+Get-Item $msix, $shaPath

@@ -1,8 +1,8 @@
 # TanMenu portable GitHub release
 
 The portable edition is a self-contained, no-install Windows x64 ZIP. It is separate from the Store
-MSIX: Store updates are packaged locally and uploaded manually, while a version tag publishes the
-portable ZIP and Velopack update feed to GitHub Releases automatically.
+MSIX: a version tag publishes the portable ZIP and Velopack update feed to GitHub Releases and also
+retains a Store submission package as an Actions artifact. Store submission remains manual.
 
 ## Portable runtime policy
 
@@ -26,9 +26,10 @@ a writable folder; running directly from the ZIP or placing it under a read-only
 Keep the extracted folder at a stable path after pinning. To remove the portable edition completely,
 unpin TanMenu, remove the `TanMenu` Start-menu shortcut, and then delete the extracted folder.
 
-The portable build checks GitHub Releases after startup, downloads an available update in the
-background, and waits for the user to confirm restart in Settings. The Store/MSIX build does not use
-Velopack and remains managed by Microsoft Store.
+The portable build checks GitHub Releases after startup and shows an available version in the main
+launcher. It does not download automatically: the user clicks the notice and confirms before the
+download starts, then explicitly confirms the restart. The Store/MSIX build does not use Velopack
+and remains managed by Microsoft Store.
 
 The application is self-contained for .NET 10 and targets Windows 10 version 2004 (build 19041) or
 later on x64. It still requires Microsoft Edge WebView2 Evergreen Runtime, which is normally present

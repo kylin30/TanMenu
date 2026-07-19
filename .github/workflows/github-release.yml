@@ -114,3 +114,62 @@ jobs:
           gh release upload '${{ github.ref_name }}' $checksum.FullName `
             --repo '${{ github.repository }}' `
             --clobber
+
+  store-package:
+    name: Build Microsoft Store package
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Validate tag and product version
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          [xml]$props = Get-Content 'Directory.Build.props' -Raw
+          $version = [string]$props.Project.PropertyGroup.Version
+          $tag = '${{ github.ref_name }}'
+
+          if ($version -notmatch '^\d+\.\d+\.\d+$') {
+            throw "Directory.Build.props Version '$version' is not a three-part numeric version."
+          }
+          if ($tag -cne "v$version") {
+            throw "Store package tag '$tag' must match product version '$version'."
+          }
+
+      - name: Restore
+        run: dotnet restore TanMenu.slnx
+
+      - name: Build Microsoft Store MSIX
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & ./scripts/package-msix.ps1 -OutputRoot 'dist/store'
+          if ($LASTEXITCODE -ne 0) {
+            throw "Store packaging failed with exit code $LASTEXITCODE."
+          }
+
+          [xml]$props = Get-Content 'Directory.Build.props' -Raw
+          $version4 = "$([string]$props.Project.PropertyGroup.Version).0"
+          $packages = @(Get-ChildItem 'dist/store' -Filter "TanMenu_${version4}_x64.msix" -File)
+          $checksums = @(Get-ChildItem 'dist/store' -Filter "TanMenu_${version4}_x64.msix.sha256" -File)
+          if ($packages.Count -ne 1 -or $checksums.Count -ne 1) {
+            throw "Unexpected Store output: MSIX=$($packages.Count), checksum=$($checksums.Count)."
+          }
+
+      - name: Retain Store submission package
+        uses: actions/upload-artifact@v4
+        with:
+          name: TanMenu-${{ github.ref_name }}-Microsoft-Store
+          path: |
+            dist/store/*.msix
+            dist/store/*.msix.sha256
+          if-no-files-found: error
+          retention-days: 90

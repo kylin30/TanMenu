@@ -64,8 +64,8 @@ powershell -ExecutionPolicy Bypass -File scripts\package-portable.ps1
 
 The ZIP includes `portable.flag`. TanMenu keeps config, themes, caches, logs, and WebView2 browser
 data under the stable `Data` folder at the portable root, outside Velopack's replaceable application
-content. It checks GitHub Releases automatically, downloads an available update, and waits for the
-user to confirm the restart in Settings. Extract it to a writable folder and delete the whole folder
+content. It checks GitHub Releases automatically and shows an available version in the launcher;
+downloading and restarting happen only after user confirmation. Extract it to a writable folder
 to uninstall it. If you used **Settings > Behavior > Pin to taskbar**, approve the Windows prompt
 when available; on Windows 10, TanMenu may instead open the shortcut location so you can right-click
 it and choose **Pin to taskbar**. Unpin TanMenu and remove its Start-menu shortcut as part of
@@ -73,8 +73,8 @@ uninstalling; keep the extracted folder at a stable path while pinned.
 
 Pushing a tag that exactly matches `Directory.Build.props` (for example `v0.9.3`) runs the GitHub
 Release workflow, builds and tests the app, then publishes the portable ZIP, its SHA-256 file, and
-the Velopack update feed/assets.
-Microsoft Store packages continue to be built locally and uploaded to Partner Center manually.
+the Velopack update feed/assets. The same run also retains an unsigned Microsoft Store MSIX and its
+SHA-256 as a GitHub Actions artifact; upload that package to Partner Center manually.
 
 ## Data location
 

@@ -12,6 +12,8 @@
 @inject ILaunchService LaunchService
 @inject ISettingsLauncher SettingsLauncher
 @inject IShellCommands ShellCommands
+@inject IAppUpdateService Updates
+@inject IUpdatePromptService UpdatePrompts
 @inject AppEvents Events
 @inject Microsoft.JSInterop.IJSRuntime JS
 @inject Microsoft.Extensions.Logging.ILogger<Index> Logger
@@ -46,6 +48,22 @@
                                @oninput="OnFilterInput" @onkeydown="OnSearchKeyDown" />
                     }
                 </div>
+                @if (ShowUpdateNotice)
+                {
+                    <button type="button"
+                            class="tm-update-notice @UpdateNoticeClass"
+                            disabled="@(UpdateState.Status == AppUpdateStatus.Downloading)"
+                            @onclick="HandleUpdateNotice">
+                        <span class="tm-update-symbol" aria-hidden="true">&#x2B07;</span>
+                        <span class="tm-update-text">@UpdateNoticeText</span>
+                        @if (UpdateState.Status == AppUpdateStatus.Downloading)
+                        {
+                            <span class="tm-update-progress" aria-hidden="true">
+                                <span style="width: @(Math.Clamp(UpdateState.Progress, 0, 100))%"></span>
+                            </span>
+                        }
+                    </button>
+                }
                 @if (_groups.Count > 0)
                 {
                     <div class="tm-groups">
@@ -122,6 +140,7 @@
     private bool _showAbout;
     private string? _launchError;
     private int _toastVersion;
+    private AppUpdateState UpdateState = new(AppUpdateStatus.Idle);
 
     // Search/filter state.
     private string _filter = "";
@@ -149,6 +168,8 @@
     {
         Events.SettingsChanged += OnSettingsChanged;
         Events.LauncherShown += OnLauncherShown;
+        Updates.StateChanged += OnUpdateStateChanged;
+        UpdateState = Updates.State;
         try
         {
             await ReloadAsync(force: true);
@@ -253,6 +274,56 @@
         // Only ever called from OnAfterRenderAsync (post-render), so the search box is rendered if it exists.
         try { await _searchRef.FocusAsync(); }
         catch { /* search box not present (e.g. splash/empty state) */ }
+    }
+
+    private bool ShowUpdateNotice => UpdateState.Status is AppUpdateStatus.Available
+        or AppUpdateStatus.Downloading
+        or AppUpdateStatus.ReadyToRestart;
+
+    private string UpdateNoticeText => UpdateState.Status switch
+    {
+        AppUpdateStatus.Available => L("UpdateNoticeAvailable", UpdateState.Version ?? ""),
+        AppUpdateStatus.Downloading => L(
+            "UpdateDownloading", UpdateState.Version ?? "", Math.Clamp(UpdateState.Progress, 0, 100)),
+        AppUpdateStatus.ReadyToRestart => L("UpdateNoticeReady", UpdateState.Version ?? ""),
+        _ => "",
+    };
+
+    private string UpdateNoticeClass => UpdateState.Status switch
+    {
+        AppUpdateStatus.Downloading => "downloading",
+        AppUpdateStatus.ReadyToRestart => "ready",
+        _ => "available",
+    };
+
+    private void OnUpdateStateChanged(object? sender, EventArgs e)
+    {
+        var state = Updates.State;
+        _ = InvokeAsync(() =>
+        {
+            UpdateState = state;
+            StateHasChanged();
+        }).ContinueWith(static t => { _ = t.Exception; },
+            CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
+    }
+
+    private async Task HandleUpdateNotice()
+    {
+        var state = Updates.State;
+        if (state.Status == AppUpdateStatus.Available)
+        {
+            if (!UpdatePrompts.ConfirmDownload(state.Version ?? "", _cfg.General.Language))
+                return;
+
+            await Updates.DownloadUpdateAsync();
+            if (Updates.State.Status == AppUpdateStatus.Failed)
+                ShowLaunchError(L("UpdateFailed", Updates.State.Error ?? L("UnknownError")));
+        }
+        else if (state.Status == AppUpdateStatus.ReadyToRestart &&
+                 UpdatePrompts.ConfirmRestart(state.Version ?? "", _cfg.General.Language))
+        {
+            Updates.ApplyAndRestart();
+        }
     }
 
     /// <summary>(Re)build the menu. <paramref name="force"/> rebuilds unconditionally (startup, settings,
@@ -492,5 +563,6 @@
     {
         Events.SettingsChanged -= OnSettingsChanged;
         Events.LauncherShown -= OnLauncherShown;
+        Updates.StateChanged -= OnUpdateStateChanged;
     }
 }

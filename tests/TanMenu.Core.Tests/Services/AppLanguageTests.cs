@@ -30,4 +30,12 @@ public class AppLanguageTests
     {
         Assert.Equal("My Tool", AppLanguage.LocalizeToolName("calc.exe", "My Tool", AppLanguage.EnUs));
     }
+
+    [Fact]
+    public void UpdateNotice_ExplainsThatDownloadRequiresUserAction()
+    {
+        Assert.Contains("点击下载", AppLanguage.Format("UpdateNoticeAvailable", AppLanguage.ZhHans, "1.2.3"));
+        Assert.Contains("click to download", AppLanguage.Format("UpdateNoticeAvailable", AppLanguage.EnUs, "1.2.3"));
+        Assert.Contains("是否现在下载", AppLanguage.Format("UpdateDownloadPrompt", AppLanguage.ZhHans, "1.2.3"));
+    }
 }

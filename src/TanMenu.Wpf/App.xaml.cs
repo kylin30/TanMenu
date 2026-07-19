@@ -22,6 +22,8 @@ public partial class App : Application
 
     /// <summary>Custom message a second instance posts to resurface the first.</summary>
     public const int WmShowFirstInstance = 0x8000 + 1;
+    private const string SingleInstanceMutexName = "TanMenuWpf";
+    private const string MainWindowTitle = "TanMenuWpf";
 
     private Mutex? _mutex;
     private bool _taskbarPinPromptActive;
@@ -29,22 +31,39 @@ public partial class App : Application
     [STAThread]
     public static void Main(string[] args)
     {
+        var isPackaged = PackageRuntime.HasPackageIdentity;
+
         // Velopack command-line hooks must run before WPF, DI, logging, or any application files
         // are opened. Microsoft Store/MSIX builds remain entirely Store-managed.
-        if (!PackageRuntime.HasPackageIdentity)
+        if (!isPackaged)
         {
             VelopackApp.Build()
                 .SetArgs(args)
                 .SetAutoApplyOnStartup(false)
                 .Run();
+        }
 
+        // A taskbar-pin click starts the stable launcher again. Reject that second instance
+        // before loading WPF/WebView2 or touching the taskbar identity: after a long idle those
+        // assemblies may have been paged out, which used to add seconds before the existing
+        // launcher even received its show message.
+        var mutex = new Mutex(true, SingleInstanceMutexName, out var createdNew);
+        if (!createdNew)
+        {
+            SignalFirstInstance();
+            mutex.Dispose();
+            return;
+        }
+
+        if (!isPackaged)
+        {
             // Give the unpackaged process the same stable identity as its Start-menu shortcut.
             // This must happen before WPF creates a window so Explorer groups the running app with
             // the permanent taskbar pin instead of producing a second, transient icon.
             TaskbarPinService.InitializeProcessIdentity();
         }
 
-        var app = new App();
+        var app = new App { _mutex = mutex };
         app.InitializeComponent();
         app.Run();
     }
@@ -53,7 +72,15 @@ public partial class App : Application
     private static extern IntPtr FindWindow(string? lpClassName, string? lpWindowName);
 
     [DllImport("user32.dll")]
-    private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool PostMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+
+    private static void SignalFirstInstance()
+    {
+        var existing = FindWindow(null, MainWindowTitle);
+        if (existing != IntPtr.Zero)
+            PostMessage(existing, WmShowFirstInstance, IntPtr.Zero, IntPtr.Zero);
+    }
 
     protected override async void OnStartup(StartupEventArgs e)
     {
@@ -74,19 +101,6 @@ public partial class App : Application
             TryLogFatal(args.Exception, "Unobserved task exception");
             args.SetObserved();
         };
-
-        // Single instance: if already running, signal the existing window and exit.
-        // Use a WPF-app-specific name so we don't collide with the original WinForms TanMenu
-        // (which uses the mutex/window name "TanMenu").
-        _mutex = new Mutex(true, "TanMenuWpf", out var createdNew);
-        if (!createdNew)
-        {
-            var existing = FindWindow(null, "TanMenuWpf");
-            if (existing != IntPtr.Zero)
-                SendMessage(existing, WmShowFirstInstance, IntPtr.Zero, IntPtr.Zero);
-            Shutdown();
-            return;
-        }
 
         // All remaining init is fragile (disk, registry, DI, native runtimes). Any unhandled failure
         // must surface a clear message and exit CLEANLY (release mutex, dispose services) — never a
@@ -158,6 +172,7 @@ public partial class App : Application
         services.AddSingleton<AppEvents>();
         services.AddSingleton<ISettingsLauncher, WpfSettingsLauncher>();
         services.AddSingleton<IShellCommands, WpfShellCommands>();
+        services.AddSingleton<IUpdatePromptService, WpfUpdatePromptService>();
         services.AddSingleton<ThemeService>();
         services.AddSingleton<IAppUpdateService>(_ =>
             PackageRuntime.HasPackageIdentity
@@ -316,25 +331,12 @@ public partial class App : Application
     {
         try
         {
-            // Keep startup responsive; the portable build checks and downloads quietly once the UI
-            // is ready. Installation still waits for an explicit restart from Settings.
+            // Keep startup responsive and only CHECK in the background. Downloading is deliberately
+            // user-initiated from the launcher/settings UI; an available update must never consume
+            // bandwidth or surface a modal prompt merely because the app started.
             await Task.Delay(TimeSpan.FromSeconds(3));
             var updater = Services.GetRequiredService<IAppUpdateService>();
             await updater.CheckForUpdatesAsync();
-            if (updater.State.Status == AppUpdateStatus.Available)
-                await updater.DownloadUpdateAsync();
-
-            if (updater.State.Status == AppUpdateStatus.ReadyToRestart)
-            {
-                var language = Services.GetRequiredService<ConfigService>().Config.General.Language;
-                var restart = MessageBox.Show(
-                    AppLanguage.Format("UpdateRestartPrompt", language, updater.State.Version ?? ""),
-                    AppLanguage.Text("UpdateTitle", language),
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Information);
-                if (restart == MessageBoxResult.Yes)
-                    updater.ApplyAndRestart();
-            }
         }
         catch (Exception ex)
         {

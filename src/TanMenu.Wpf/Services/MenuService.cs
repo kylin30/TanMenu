@@ -1,5 +1,7 @@
 using System.Collections.Concurrent;
 using System.IO;
+using System.Text.Json;
+using TanMenu.Core.Infrastructure;
 using TanMenu.Core.Models;
 using TanMenu.Core.Services;
 using TanMenu.Wpf.ViewModels;
@@ -21,6 +23,7 @@ public sealed class MenuService : IDisposable
 {
     private readonly MenuDataService _data;
     private readonly IIconProvider _icons;
+    private readonly IAppDataPaths _paths;
 
     /// <summary>The standard fallback icon (base64 PNG) for items with no extractable icon — the
     /// Windows stock application icon, or the bundled flat-file icon if that can't be obtained.</summary>
@@ -35,10 +38,12 @@ public sealed class MenuService : IDisposable
     /// <summary>Default display name of the built-in common-tools group.</summary>
     public const string DefaultToolsGroupName = "常用工具";
 
-    public MenuService(MenuDataService data, IIconProvider icons)
+    public MenuService(MenuDataService data, IIconProvider icons, IAppDataPaths paths)
     {
         _data = data;
         _icons = icons;
+        _paths = paths;
+        _iconSaveTimer = new System.Threading.Timer(_ => SaveIconCacheToDisk());
         _fallbackIcon = new Lazy<string>(() =>
         {
             var bytes = _icons.GetDefaultAppIconPngBytes();
@@ -54,6 +59,16 @@ public sealed class MenuService : IDisposable
     // fingerprint-gated) build, not on every summon.
     private readonly ConcurrentDictionary<string, (DateTime Mtime, long Size, byte[] Png)> _iconCache =
         new(StringComparer.OrdinalIgnoreCase);
+    private readonly object _iconCacheFileLock = new();
+    private readonly System.Threading.Timer _iconSaveTimer;
+    private string? _loadedIconCachePath;
+
+    private sealed class PersistedIcon
+    {
+        public DateTime Mtime { get; set; }
+        public long Size { get; set; }
+        public byte[] Png { get; set; } = Array.Empty<byte>();
+    }
 
     // Bumped by ClearIconCache and folded into the build fingerprint. "Clear cache" doesn't touch any
     // folder/tools mtime, so without this the unchanged-folders gate would skip the rebuild and the
@@ -72,7 +87,18 @@ public sealed class MenuService : IDisposable
     /// of being short-circuited by the unchanged-folders gate.</summary>
     public void ClearIconCache()
     {
-        _iconCache.Clear();
+        _iconSaveTimer.Change(System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
+        lock (_iconCacheFileLock)
+        {
+            _iconCache.Clear();
+            _loadedIconCachePath = _paths.IconCacheFilePath;
+            try
+            {
+                if (File.Exists(_loadedIconCachePath))
+                    File.Delete(_loadedIconCachePath);
+            }
+            catch { /* a locked/read-only cache must not break the settings action */ }
+        }
         _commandPathCache.Clear();   // re-resolve command→path so a newly-installed tool resolves next build
         _bundledIconCache.Clear();   // re-read bundled tool icons
         Interlocked.Increment(ref _cacheGeneration);
@@ -99,7 +125,71 @@ public sealed class MenuService : IDisposable
         if (bytes is not { Length: > 0 })
             return _fallbackIcon.Value;
         _iconCache[iconKey] = (mtime, size, bytes);
+        ScheduleIconCacheSave();
         return Convert.ToBase64String(bytes);
+    }
+
+    /// <summary>Load the persisted PNG cache on the STA worker before the first menu build. The path
+    /// is resolved per call so changing the live data folder switches cache files without a restart.
+    /// Invalid/truncated files are ignored; icon extraction then repairs the cache naturally.</summary>
+    private void EnsureIconCacheLoaded()
+    {
+        var path = _paths.IconCacheFilePath;
+        lock (_iconCacheFileLock)
+        {
+            if (string.Equals(_loadedIconCachePath, path, StringComparison.OrdinalIgnoreCase))
+                return;
+
+            _iconCache.Clear();
+            try
+            {
+                if (File.Exists(path))
+                {
+                    var json = File.ReadAllText(path);
+                    var persisted = JsonSerializer.Deserialize<Dictionary<string, PersistedIcon>>(json);
+                    if (persisted != null)
+                    {
+                        foreach (var (key, entry) in persisted)
+                        {
+                            if (!string.IsNullOrWhiteSpace(key) && entry.Png is { Length: > 0 })
+                                _iconCache[key] = (entry.Mtime, entry.Size, entry.Png);
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                _iconCache.Clear();
+            }
+            _loadedIconCachePath = path;
+        }
+    }
+
+    private void ScheduleIconCacheSave() =>
+        _iconSaveTimer.Change(1000, System.Threading.Timeout.Infinite);
+
+    private void SaveIconCacheToDisk()
+    {
+        lock (_iconCacheFileLock)
+        {
+            try
+            {
+                var path = _paths.IconCacheFilePath;
+                var snapshot = _iconCache.ToDictionary(
+                    x => x.Key,
+                    x => new PersistedIcon { Mtime = x.Value.Mtime, Size = x.Value.Size, Png = x.Value.Png },
+                    StringComparer.OrdinalIgnoreCase);
+                Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+                var tempPath = path + ".tmp";
+                File.WriteAllText(tempPath, JsonSerializer.Serialize(snapshot));
+                File.Move(tempPath, path, true);
+                _loadedIconCachePath = path;
+            }
+            catch
+            {
+                // Caching is an optimization. A locked/offline data folder must never affect launch.
+            }
+        }
     }
 
     /// <summary>Assign <paramref name="vm"/>'s icon from cache; on a miss set the fallback placeholder
@@ -236,6 +326,7 @@ public sealed class MenuService : IDisposable
             if (Interlocked.Exchange(ref decremented, 1) == 0)
                 Interlocked.Decrement(ref _pendingBuilds);
 
+            EnsureIconCacheLoaded();
             var fingerprint = ComputeFingerprint(rootFolder, showTools, tools, language);
             if (lastFingerprint is int last && last == fingerprint)
                 return new MenuBuildResult(false, new List<MenuGroupVm>(), fingerprint, new List<PendingIcon>());
@@ -284,9 +375,12 @@ public sealed class MenuService : IDisposable
             // populates them afterwards on this same STA worker (it runs strictly after this build).
             // No count guard: usedKeys also counts not-yet-cached pending misses, so a Count comparison
             // could skip eviction while a stale entry still exists. The loop is cheap (a few hundred keys).
+            var evicted = false;
             foreach (var key in _iconCache.Keys) // ConcurrentDictionary.Keys is a snapshot — safe to mutate during
                 if (!usedKeys.Contains(key))
-                    _iconCache.TryRemove(key, out _);
+                    evicted |= _iconCache.TryRemove(key, out _);
+            if (evicted)
+                ScheduleIconCacheSave();
 
             return new MenuBuildResult(true, groups, fingerprint, pending);
         });
@@ -548,5 +642,8 @@ public sealed class MenuService : IDisposable
                 _staJobs.Dispose();
         }
         catch { /* best-effort on shutdown */ }
+
+        _iconSaveTimer.Dispose();
+        SaveIconCacheToDisk();
     }
 }

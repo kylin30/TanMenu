@@ -50,7 +50,13 @@ Output:
 
 ```text
 dist\store\TanMenu_<version>_x64.msix
+dist\store\TanMenu_<version>_x64.msix.sha256
 ```
+
+Every `v*` release tag also runs the same Store packaging script in GitHub Actions. Download the
+`TanMenu-v<version>-Microsoft-Store` artifact from that workflow run; it contains the unsigned MSIX
+and checksum and is retained for 90 days. It is intentionally not attached to the public GitHub
+Release, so portable users do not mistake it for the green ZIP.
 
 For Microsoft Store distribution, the package does not need local production signing; the Store signs it during submission. Local sideload testing still needs a trusted test certificate.
 
@@ -151,10 +157,11 @@ MSIX versions are emitted as four-part versions, for example `0.9.1.0`.
 
 ## 6. Update policy
 
-Store updates remain deliberately manual: build the MSIX with `scripts\package-msix.ps1`, optionally
-run WACK, and upload the package in Partner Center. No Microsoft Entra application or CI publishing
-credentials are required.
+Store submission remains deliberately manual: each version tag builds the MSIX as a GitHub
+Actions artifact (or build it locally with `scripts\package-msix.ps1`), then optionally run WACK and
+upload the package in Partner Center. No Microsoft Entra application or CI publishing credentials
+are required.
 
-Git version tags are reserved for the separate portable ZIP workflow documented in
-`docs/portable-release.md`; pushing a `v*` tag creates a GitHub Release but does not submit anything
-to Microsoft Store.
+Git version tags drive both packaging paths documented in `docs/portable-release.md`: they create the
+public portable GitHub Release and retain the private Store MSIX artifact, but do not submit anything
+to Microsoft Store automatically.

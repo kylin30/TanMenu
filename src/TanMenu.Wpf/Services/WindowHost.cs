@@ -37,6 +37,7 @@ public sealed class WindowHost : IWindowHost
     private int _loggedFitVersion = int.MinValue;
     private CoreWebView2? _messageSource;
     private TaskCompletionSource<bool>? _sizeReportWaiter;
+    private int _revealVersion;
 
     public WindowHost(ConfigService config, AppEvents events)
     {
@@ -378,11 +379,27 @@ public sealed class WindowHost : IWindowHost
     {
         if (_window is null)
             return;
+
+        var revealVersion = ++_revealVersion;
+
+        // A previously rendered launcher already has a trustworthy size. Reuse it and activate the
+        // window synchronously, then refresh the browser measurement in the background. This is the
+        // common tray/taskbar recall path and avoids making a paged-out WebView2 round-trip part of
+        // the time-to-visible after the app has sat idle for a long time.
+        if (_reportedW > 0 && _reportedH > 0)
+        {
+            ApplyReportedSizeAndPlace(_reportedW, _reportedH);
+            _window.Show();
+            CompleteReveal();
+            _ = RefreshPlacementAfterRevealAsync(revealVersion);
+            return;
+        }
+
         _window.Show();
-        _ = RevealSequenceAsync();
+        _ = RevealSequenceAsync(revealVersion);
     }
 
-    private async Task RevealSequenceAsync()
+    private async Task RevealSequenceAsync(int revealVersion)
     {
         if (_window is null)
             return;
@@ -397,6 +414,25 @@ public sealed class WindowHost : IWindowHost
             await Task.Delay(60);
             await ResizeToContentAndPlaceAsync();
         }
+        if (revealVersion != _revealVersion || _window?.IsVisible != true)
+            return;
+        CompleteReveal();
+    }
+
+    private async Task RefreshPlacementAfterRevealAsync(int revealVersion)
+    {
+        await ResizeToContentAndPlaceAsync();
+        // ResizeToContentAndPlaceAsync applies the result itself. The version check deliberately
+        // happens afterwards: the browser request is harmless, but a superseded reveal must not
+        // activate or otherwise resurface a window the user has since hidden.
+        if (revealVersion != _revealVersion || _window?.IsVisible != true)
+            return;
+    }
+
+    private void CompleteReveal()
+    {
+        if (_window is null)
+            return;
         _window.Opacity = 1;
         _window.Activate();
         var h = new WindowInteropHelper(_window).Handle;

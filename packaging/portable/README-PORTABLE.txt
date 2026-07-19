@@ -6,7 +6,7 @@ TanMenu Portable / 绿色版
 1. 将整个文件夹解压到一个可写位置，例如 D:\Apps\TanMenu。
 2. 运行绿色版根目录的 TanMenu.exe。
 3. 配置、主题、缓存、日志和 WebView2 用户数据都保存在绿色版根目录的 Data 文件夹。
-4. 程序会自动从 GitHub Releases 检查并下载更新；在“设置 > 更新”中确认重启后安装。
+4. 程序会自动检查 GitHub Releases；发现新版本后在主界面提示，点击并确认后才会下载和安装。
 5. portable.flag 是绿色模式标记，请勿删除。
 6. 绿色版不会写入开机启动注册表，因此设置中的“开机自启”不可用。
 7. 如需任务栏一键呼出：打开“设置 > 行为 > 固定到任务栏”。系统支持时在 Windows 提示中确认；
@@ -26,8 +26,8 @@ English
 1. Extract the complete folder to a writable location, for example D:\Apps\TanMenu.
 2. Run TanMenu.exe from the portable root.
 3. Config, themes, caches, logs, and WebView2 user data stay in the Data folder at the portable root.
-4. TanMenu automatically checks GitHub Releases and downloads updates. Confirm the restart under
-   Settings > Updates to install one.
+4. TanMenu automatically checks GitHub Releases and shows new versions in the launcher. Click the
+   notice and confirm before TanMenu downloads or installs an update.
 5. portable.flag enables portable mode. Do not remove it.
 6. The portable edition does not write a Windows startup registry entry, so autostart is unavailable.
 7. For one-click taskbar recall, open Settings > Behavior > Pin to taskbar. Approve the Windows prompt
