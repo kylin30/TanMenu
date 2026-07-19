@@ -75,7 +75,7 @@ $version = Get-Version4
 
 Write-Host "Publishing TanMenu.Wpf ($Configuration)..."
 dotnet publish (Resolve-RepoPath "src\TanMenu.Wpf\TanMenu.Wpf.csproj") `
-    -c $Configuration -p:Platform=x64 /p:PublishProfile=win-x64 --no-restore
+    -c $Configuration -p:Platform=x64 /p:PublishProfile=win-x64
 if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed with exit code $LASTEXITCODE." }
 
 if (Test-Path $stageDir) { Remove-Item -LiteralPath $stageDir -Recurse -Force }
