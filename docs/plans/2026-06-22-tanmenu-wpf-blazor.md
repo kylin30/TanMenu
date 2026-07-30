@@ -7,6 +7,14 @@
 > component set; the default data folder moved to **`Documents\TanMenu`**; settings is a **native
 > WPF window** (root-folder model, theme + font); and `ColButtonCount` defaults to **10**. **Treat
 > the code (and the project memory / git log) as authoritative** where they diverge from this plan.
+>
+> ⚠️ **DOUBLY SUPERSEDED.** This plan also predates the **Avalonia 12 + NativeAOT rewrite**, which
+> deleted every framework choice it is built on: WPF, `WindowChrome`, `BlazorWebView`, WebView2,
+> the Blazor components, `H.NotifyIcon.Wpf`, `Microsoft.NET.Sdk.Razor`, the `wwwroot` static-web-asset
+> tree and the switchable CSS theme system (now ONE natively drawn Windows 2000 theme). The csproj
+> quoted at lines 81-105, the wwwroot copy targets at lines 353-382, the tech-stack list and the
+> "self-contained net10 WPF exe, no MSIX this phase" deployment note are all historical only — MSIX
+> shipped in 0.9.1. Read this file as a record of how the app got here, never as instructions.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 

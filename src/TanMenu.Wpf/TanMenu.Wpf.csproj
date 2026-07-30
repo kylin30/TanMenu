@@ -1,31 +1,56 @@
-<Project Sdk="Microsoft.NET.Sdk.Razor">
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- NOTE ON THE PROJECT NAME: this project no longer uses WPF (it is Avalonia + NativeAOT), but the
+       assembly is deliberately still called TanMenu.Wpf. The produced TanMenu.Wpf.exe filename is part
+       of the shipped identity: Velopack updates from 0.9.x, the MSIX Store package's Executable entry,
+       the per-user Run-key autostart value (RegistryAutoStartService compares the stored path against
+       Environment.ProcessPath), and the pinned taskbar shortcut all reference it. Renaming would break
+       autostart and the taskbar pin for every existing user for no functional gain. -->
+
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
+    <!-- windows10.0.19041.0 is required for the Windows.UI.Shell.TaskbarManager projection used by
+         TaskbarPinService; it is not a WPF/WinForms dependency. -->
     <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <UseWPF>true</UseWPF>
-    <ScopedCssEnabled>true</ScopedCssEnabled>
+    <LangVersion>latest</LangVersion>
     <RootNamespace>TanMenu.Wpf</RootNamespace>
     <AssemblyName>TanMenu.Wpf</AssemblyName>
+    <StartupObject>TanMenu.Wpf.Program</StartupObject>
     <ApplicationIcon>wwwroot\app.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
     <Product>TanMenu</Product>
     <Company>TanSoft</Company>
     <Authors>TanSoft</Authors>
     <Copyright>© TanSoft. All rights reserved.</Copyright>
     <AssemblyTitle>TanMenu</AssemblyTitle>
-    <ApplicationManifest>app.manifest</ApplicationManifest>
-    <StartupObject>TanMenu.Wpf.App</StartupObject>
   </PropertyGroup>
+
+  <PropertyGroup>
+    <!-- NativeAOT. BuiltInComInteropSupport must be off: the runtime's classic COM interop emits its
+         stubs at run time and cannot work here (IL3052). All COM goes through the source-generated
+         wrappers in TanMenu.Core.Interop. -->
+    <PublishAot>true</PublishAot>
+    <IsAotCompatible>true</IsAotCompatible>
+    <BuiltInComInteropSupport>false</BuiltInComInteropSupport>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- Do NOT enable InvariantGlobalization: the launcher sorts groups and fonts with
+         StringComparer.CurrentCultureIgnoreCase, which must keep collating Chinese correctly. -->
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <!-- Report every trim/AOT warning individually instead of one rolled-up warning per assembly. -->
+    <TrimmerSingleWarn>false</TrimmerSingleWarn>
+    <!-- Reflection-based bindings are stripped by the trimmer; compiled bindings are also faster. -->
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+  </PropertyGroup>
+
   <ItemGroup>
-    <!-- App.xaml is a Page so our explicit Main can initialize Velopack before WPF starts. -->
-    <ApplicationDefinition Remove="App.xaml" />
-    <Page Include="App.xaml" />
-  </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Wpf" Version="10.0.71" />
-    <PackageReference Include="H.NotifyIcon.Wpf" Version="2.3.2" />
+    <PackageReference Include="Avalonia" Version="12.1.0" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.0" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.0" />
+    <!-- No Avalonia.Diagnostics: it has not been published for the 12.x line (11.3.18 is its latest),
+         and it is a debug-only DevTools overlay, not something the app needs. -->
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
     <PackageReference Include="Serilog" Version="4.3.0" />
     <PackageReference Include="Serilog.Extensions.Logging" Version="9.0.1" />
@@ -33,12 +58,22 @@
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
     <PackageReference Include="Velopack" Version="$(VelopackVersion)" />
   </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\TanMenu.Core\TanMenu.Core.csproj" />
   </ItemGroup>
 
-  <!-- wwwroot is served to the WebView via the static-web-assets manifest but NOT copied as a
-       loose file. The tray/window icon needs a real file on disk, so copy app.ico to the output. -->
+  <!-- Fonts ship INSIDE the executable (avares://) rather than as loose files. The old WPF settings
+       window loaded them from <exe>\fonts; Avalonia resolves an embedded font collection instead, so
+       there is no on-disk copy to go missing and no per-theme stylesheet to reference them. -->
+  <ItemGroup>
+    <AvaloniaResource Include="wwwroot\fonts\*.ttf" />
+    <AvaloniaResource Include="wwwroot\app.ico" />
+    <AvaloniaResource Include="wwwroot\app-tile.png" />
+  </ItemGroup>
+
+  <!-- The tray icon is handed to Win32/Velopack as a real file, and Velopack's own shortcut creation
+       wants it on disk, so app.ico is ALSO copied next to the exe. -->
   <Target Name="CopyAppIconToOutput" AfterTargets="Build">
     <Copy SourceFiles="wwwroot\app.ico" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
   </Target>
@@ -46,9 +81,8 @@
     <Copy SourceFiles="wwwroot\app.ico" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="true" />
   </Target>
 
-  <!-- SoundService reads the wavs from <exe>\wwwroot\sounds at runtime, but the Razor SDK
-       serves wwwroot only virtually (no loose files on disk). Copy the sounds out so click/
-       hover effects actually play. -->
+  <!-- SoundService (TanMenu.Core) reads the wavs from <exe>\wwwroot\sounds at run time via
+       System.Media.SoundPlayer, so they stay loose files. -->
   <ItemGroup>
     <TanMenuSounds Include="wwwroot\sounds\*.wav" />
   </ItemGroup>
@@ -59,20 +93,8 @@
     <Copy SourceFiles="@(TanMenuSounds)" DestinationFolder="$(PublishDir)wwwroot\sounds" SkipUnchangedFiles="true" />
   </Target>
 
-  <!-- The WebView loads fonts from wwwroot virtually, but the native WPF settings window needs the
-       integrated font files on disk to render the chosen UI font. Copy the TTFs to <exe>\fonts. -->
-  <ItemGroup>
-    <TanMenuFonts Include="wwwroot\fonts\*.ttf" />
-  </ItemGroup>
-  <Target Name="CopyFontsToOutput" AfterTargets="Build">
-    <Copy SourceFiles="@(TanMenuFonts)" DestinationFolder="$(OutDir)fonts" SkipUnchangedFiles="true" />
-  </Target>
-  <Target Name="CopyFontsToPublish" AfterTargets="Publish">
-    <Copy SourceFiles="@(TanMenuFonts)" DestinationFolder="$(PublishDir)fonts" SkipUnchangedFiles="true" />
-  </Target>
-
   <!-- Bundled icons for Store-app alias tools (e.g. mspaint.exe), whose 0-byte execution-alias stub
-       has no embedded icon. MenuService reads these from <exe>\wwwroot\tool-icons at runtime. -->
+       has no embedded icon. MenuService reads these from <exe>\wwwroot\tool-icons at run time. -->
   <ItemGroup>
     <TanMenuToolIcons Include="wwwroot\tool-icons\*.png" />
   </ItemGroup>
@@ -82,4 +104,5 @@
   <Target Name="CopyToolIconsToPublish" AfterTargets="Publish">
     <Copy SourceFiles="@(TanMenuToolIcons)" DestinationFolder="$(PublishDir)wwwroot\tool-icons" SkipUnchangedFiles="true" />
   </Target>
+
 </Project>

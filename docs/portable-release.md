@@ -8,8 +8,7 @@ retains a Store submission package as an Actions artifact. Store submission rema
 
 `portable.flag` at the application root enables portable mode. In that mode:
 
-- Config, themes, caches, and logs are stored under `<portable-root>\Data`.
-- WebView2 user data is stored under `<portable-root>\Data\WebView2`.
+- Config, caches, and logs are stored under `<portable-root>\Data`.
 - Velopack may replace the application content directory during updates, but never the stable Data folder.
 - The normal `Documents\TanMenu` migration and data-location registry pointer are not used.
 - Windows autostart is disabled so the portable edition never creates a Run-key value.
@@ -31,9 +30,24 @@ launcher. It does not download automatically: the user clicks the notice and con
 download starts, then explicitly confirms the restart. The Store/MSIX build does not use Velopack
 and remains managed by Microsoft Store.
 
-The application is self-contained for .NET 10 and targets Windows 10 version 2004 (build 19041) or
-later on x64. It still requires Microsoft Edge WebView2 Evergreen Runtime, which is normally present
-on Windows 11 but may need to be installed separately on Windows 10.
+The application is compiled ahead of time with NativeAOT and targets Windows 10 version 2004
+(build 19041) or later on x64. Nothing has to be installed on the target machine: there is no .NET
+runtime requirement and, since the WebView was removed, no Microsoft Edge WebView2 requirement either.
+
+### Upgrading an existing 0.9.x install
+
+The Velopack update keeps `<portable-root>\Data` untouched, so config, caches and logs survive, as
+does an existing taskbar pin (it targets the stable root `TanMenu.exe`, whose name comes from
+`--packId`, not from the executable inside the package). Two folders are left behind by the older
+layout and are **not** deleted automatically, because both can contain data the user chose to keep:
+
+- `Data\themes\` — from the removed CSS theme system.
+- `Data\WebView2\` — the removed WebView's user-data folder, which can be a few hundred MB.
+
+Neither is read or written any more. Users who want the space back can delete them by hand.
+
+Because the payload changed from hundreds of managed files to a native executable, the first Velopack
+delta after this migration is effectively a full download. That is expected, not an error.
 
 ## Build locally
 
@@ -41,9 +55,20 @@ From the repository root:
 
 ```powershell
 dotnet restore TanMenu.slnx
-dotnet tool install --tool-path build\tools vpk --version 1.2.0
-powershell -ExecutionPolicy Bypass -File scripts\package-portable.ps1
+# Install the vpk CLI at the SAME version as the Velopack SDK reference, so the two cannot drift:
+[xml]$props = Get-Content Directory.Build.props -Raw
+dotnet tool install --tool-path build\tools vpk --version ([string]$props.Project.PropertyGroup.VelopackVersion)
+# -VpkPath is required: --tool-path does NOT put vpk on PATH, and the script's default is a bare
+# "vpk", so omitting this fails at the packing step with "The term 'vpk' is not recognized".
+powershell -ExecutionPolicy Bypass -File scripts\package-portable.ps1 -VpkPath .\build\tools\vpk.exe
 ```
+
+`package-portable.ps1` runs a NativeAOT publish, so it takes several minutes and needs the MSVC
+toolchain that ILC uses for the native link step (`vswhere.exe` must be resolvable; the CI workflows
+add `%ProgramFiles(x86)%\Microsoft Visual Studio\Installer` to `PATH` when it is not already there).
+Before staging, the script asserts the publish output really is native — a managed `TanMenu.Wpf.dll`
+or `coreclr.dll` next to the exe means `PublishAot` did not apply — and prints the file count and
+size of the payload it is about to ship.
 
 Outputs:
 
@@ -73,4 +98,6 @@ the ZIP and update assets, and creates a public GitHub Release using the reposit
 `GITHUB_TOKEN`. No custom secrets or GitHub Environment are required.
 
 If a release attempt fails before the GitHub Release is created, fix the source and use a new higher
-version. Do not move a published tag to different source code.
+version. Do not move a published tag to different source code. Because an AOT publish only happens
+at publish time, a push to `main` also runs a publish smoke job in `ci.yml` — that is the check that
+keeps an ILC failure from being discovered for the first time at tag time.

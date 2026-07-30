@@ -1,0 +1,25 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="TanMenu.Wpf.App"
+             RequestedThemeVariant="Light">
+
+  <!--
+    Two style layers, in this order and for different consumers:
+
+      1. FluentTheme  — the DEFAULT look, used by the settings window's standard controls and by the
+                        shared MessageBox (Dialogs/MessageBoxWindow.axaml). It also supplies the base
+                        ControlThemes that Retro.axaml's own ControlThemes build on.
+      2. Retro.axaml  — TanMenu's single visual identity (Windows 2000). Everything in it is either an
+                        x:Key'd ControlTheme or a class selector (Border.retro-frame, .tm-item, …), so
+                        it is opt-in: it cannot leak into the MessageBox or any un-classed control.
+
+    RequestedThemeVariant is pinned to Light on purpose. The retro theme is a fixed light palette of
+    real Windows 2000 system colours, so letting the OS dark-mode flip Fluent underneath it would give
+    the dialogs a dark chrome that no longer matches the launcher they belong to.
+  -->
+  <Application.Styles>
+    <FluentTheme />
+    <StyleInclude Source="avares://TanMenu.Wpf/Themes/Retro.axaml" />
+  </Application.Styles>
+
+</Application>

@@ -4,12 +4,14 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 using TanMenu.Core.Infrastructure;
+using TanMenu.Core.Interop;
+using TanMenu.Core.Serialization;
 
 namespace TanMenu.Core.Services;
 
 public sealed class ShortcutResolver : IShortcutResolver, IDisposable
 {
-    private readonly ConcurrentDictionary<string, CacheEntry> _cache = new();
+    private readonly ConcurrentDictionary<string, ShortcutCacheEntry> _cache = new();
     private readonly IAppDataPaths _paths;
     // Resolved fresh each access (a computed property, like ConfigService._configPath) so a runtime
     // data-folder relocation (MutableAppDataPaths.SetRoot) is picked up immediately — otherwise the
@@ -24,13 +26,6 @@ public sealed class ShortcutResolver : IShortcutResolver, IDisposable
 
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
     private static extern uint GetLongPathName(string lpszShortPath, StringBuilder lpszLongPath, uint cchBuffer);
-
-    private sealed class CacheEntry
-    {
-        public string? TargetPath { get; set; }
-        public DateTime LastModified { get; set; }
-        public long FileSize { get; set; }
-    }
 
     public ShortcutResolver(IAppDataPaths paths)
     {
@@ -63,7 +58,7 @@ public sealed class ShortcutResolver : IShortcutResolver, IDisposable
         return targetPath;
     }
 
-    private static bool IsStillValid(CacheEntry cached, string shortcutPath)
+    private static bool IsStillValid(ShortcutCacheEntry cached, string shortcutPath)
     {
         try
         {
@@ -85,7 +80,7 @@ public sealed class ShortcutResolver : IShortcutResolver, IDisposable
         {
             var fileInfo = new FileInfo(shortcutPath);
 
-            _cache[key] = new CacheEntry
+            _cache[key] = new ShortcutCacheEntry
             {
                 TargetPath = targetPath,
                 LastModified = fileInfo.LastWriteTime,
@@ -103,67 +98,21 @@ public sealed class ShortcutResolver : IShortcutResolver, IDisposable
     // Resolve via IShellLink/IPersistFile rather than the WScript.Shell ProgID — WSH is blocked by
     // policy in many hardened/managed environments and isn't available in an MSIX sandbox, where the
     // old path silently returned null for EVERY .lnk. IShellLink works in those environments.
+    // The COM plumbing lives in TanMenu.Core.Interop.ShellLink because it must be source-generated
+    // (built-in COM interop cannot work under NativeAOT) and TaskbarPinService needs the same types.
     private static string? ResolveShortcutActual(string shortcutPath)
     {
-        IShellLinkW? link = null;
         try
         {
-            link = (IShellLinkW)new ShellLink();
-            ((IPersistFile)link).Load(shortcutPath, 0);
-            // Don't call Resolve() — it can pop UI / hit the network for dead links; read the stored path.
-            var sb = new StringBuilder(1024);
-            link.GetPath(sb, sb.Capacity, IntPtr.Zero, 0);
-            var target = sb.ToString();
+            using var link = ShellLink.Create();
+            link.Load(shortcutPath);
+            var target = link.GetPath();
             return string.IsNullOrEmpty(target) ? null : ConvertToLongPath(target);
         }
         catch
         {
             return null;
         }
-        finally
-        {
-            if (link != null)
-                Marshal.ReleaseComObject(link);
-        }
-    }
-
-    [ComImport, Guid("00021401-0000-0000-C000-000000000046")]
-    private class ShellLink { }
-
-    [ComImport, Guid("000214F9-0000-0000-C000-000000000046"),
-     InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    private interface IShellLinkW
-    {
-        void GetPath([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder pszFile, int cch, IntPtr pfd, uint fFlags);
-        void GetIDList(out IntPtr ppidl);
-        void SetIDList(IntPtr pidl);
-        void GetDescription([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder pszName, int cch);
-        void SetDescription([MarshalAs(UnmanagedType.LPWStr)] string pszName);
-        void GetWorkingDirectory([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder pszDir, int cch);
-        void SetWorkingDirectory([MarshalAs(UnmanagedType.LPWStr)] string pszDir);
-        void GetArguments([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder pszArgs, int cch);
-        void SetArguments([MarshalAs(UnmanagedType.LPWStr)] string pszArgs);
-        void GetHotkey(out short pwHotkey);
-        void SetHotkey(short wHotkey);
-        void GetShowCmd(out int piShowCmd);
-        void SetShowCmd(int iShowCmd);
-        void GetIconLocation([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder pszIconPath, int cch, out int piIcon);
-        void SetIconLocation([MarshalAs(UnmanagedType.LPWStr)] string pszIconPath, int iIcon);
-        void SetRelativePath([MarshalAs(UnmanagedType.LPWStr)] string pszPathRel, uint dwReserved);
-        void Resolve(IntPtr hwnd, uint fFlags);
-        void SetPath([MarshalAs(UnmanagedType.LPWStr)] string pszFile);
-    }
-
-    [ComImport, Guid("0000010b-0000-0000-C000-000000000046"),
-     InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    private interface IPersistFile
-    {
-        void GetClassID(out Guid pClassID);
-        [PreserveSig] int IsDirty();
-        void Load([MarshalAs(UnmanagedType.LPWStr)] string pszFileName, uint dwMode);
-        void Save([MarshalAs(UnmanagedType.LPWStr)] string pszFileName, [MarshalAs(UnmanagedType.Bool)] bool fRemember);
-        void SaveCompleted([MarshalAs(UnmanagedType.LPWStr)] string pszFileName);
-        void GetCurFile([MarshalAs(UnmanagedType.LPWStr)] out string ppszFileName);
     }
 
     private static string ConvertToLongPath(string shortPath)
@@ -201,7 +150,8 @@ public sealed class ShortcutResolver : IShortcutResolver, IDisposable
             {
                 if (!File.Exists(_cacheFile)) return;
                 var json = File.ReadAllText(_cacheFile, Encoding.UTF8);
-                var data = JsonSerializer.Deserialize<Dictionary<string, CacheEntry>>(json);
+                var data = JsonSerializer.Deserialize(
+                    json, LinkCacheJsonContext.Default.DictionaryStringShortcutCacheEntry);
                 if (data != null)
                     foreach (var kvp in data) _cache[kvp.Key] = kvp.Value;
             }
@@ -224,7 +174,8 @@ public sealed class ShortcutResolver : IShortcutResolver, IDisposable
             {
                 var snapshot = _cache.ToDictionary(x => x.Key, x => x.Value);
                 Directory.CreateDirectory(Path.GetDirectoryName(_cacheFile)!);
-                var json = JsonSerializer.Serialize(snapshot, new JsonSerializerOptions { WriteIndented = false });
+                var json = JsonSerializer.Serialize(
+                    snapshot, LinkCacheJsonContext.Default.DictionaryStringShortcutCacheEntry);
                 File.WriteAllText(_cacheFile, json, Encoding.UTF8);
             }
             catch

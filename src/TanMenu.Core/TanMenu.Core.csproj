@@ -8,6 +8,13 @@
     <LangVersion>latest</LangVersion>
     <RootNamespace>TanMenu.Core</RootNamespace>
     <AssemblyName>TanMenu.Core</AssemblyName>
+    <!-- The shell interop marshals string-out parameters through char* (the COM source generator
+         does not support StringBuilder). -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- Keep the trim/AOT analyzers on permanently: the app publishes with PublishAot, so a new
+         reflection-based call here must fail the build rather than surface as a runtime error in a
+         released binary. -->
+    <IsAotCompatible>true</IsAotCompatible>
   </PropertyGroup>
 
   <ItemGroup>

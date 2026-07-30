@@ -2,6 +2,20 @@ namespace TanMenu.Core.Models;
 
 public class AppConfig
 {
+    /// <summary>
+    /// The only theme id the app recognizes. The CSS theme packs (WinXP / Win7 / Windows11 / Pixel,
+    /// plus user-authored <c>user:&lt;name&gt;</c> stylesheets) went away with the WebView in the
+    /// Avalonia + NativeAOT rewrite; a single native Windows 2000 classic theme replaced them.
+    /// <para>
+    /// The field is kept rather than deleted so an old config still round-trips, and every legacy
+    /// value is coerced to this one on load (<c>ConfigService.Normalize</c>). Deliberately NOT reusing
+    /// any historical id: "Win7" would name a theme the app no longer renders, and "Win2000" was
+    /// previously a *removed* value that migrated away — either would make the file lie about what
+    /// is on screen.
+    /// </para>
+    /// </summary>
+    public const string CanonicalTheme = "Classic";
+
     public GeneralConfig General { get; set; } = new();
 
     // Defaults are intentionally EMPTY — no hardcoded personal paths.
@@ -37,11 +51,13 @@ public class GeneralConfig
     public int PositionOffset { get; set; } = 8;
     public int ColButtonCount { get; set; } = 10;
 
-    /// <summary>Active theme: "WinXP" | "Win7" | "Windows11" | "Pixel".</summary>
-    public string ThemeName { get; set; } = "Win7";
+    /// <summary>Active theme. Exactly one theme exists — see <see cref="AppConfig.CanonicalTheme"/>.
+    /// Any other value (including every historical id) is coerced on load.</summary>
+    public string ThemeName { get; set; } = AppConfig.CanonicalTheme;
 
-    /// <summary>UI font family — applied UNIFORMLY across all themes (default 阿里巴巴普惠体).
-    /// Empty = fall back to the active theme's own stylesheet font.</summary>
+    /// <summary>UI font family, applied to the whole launcher window (default 阿里巴巴普惠体, which
+    /// ships embedded in the executable). Empty = fall back to the theme's own chrome font.
+    /// Resolution lives in <c>TanMenu.Wpf.Services.AppFonts</c>.</summary>
     public string FontFamily { get; set; } = "Alibaba PuHuiTi";
 
     /// <summary>Launcher button size: "Small" | "Medium" | "Large". Default Small.</summary>

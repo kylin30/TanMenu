@@ -2,6 +2,7 @@ using System.IO;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging.Abstractions;
 using TanMenu.Core.Infrastructure;
+using TanMenu.Core.Models;
 using TanMenu.Core.Services;
 using Xunit;
 
@@ -46,20 +47,81 @@ public class ConfigServiceTests
         }
     }
 
-    [Fact]
-    public async Task LoadAsync_LegacyFluent2Theme_NormalizedToWindows11()
+    // Every historical themeName, from every era of the CSS theme system, plus a user-authored
+    // stylesheet id and outright junk. The Avalonia rewrite ships ONE theme, so all of them must
+    // land on the single canonical id instead of leaving the settings dropdown with no valid
+    // selection (the old code fell back to "Win7" in the renderer but "WinXP" in the dropdown).
+    [Theory]
+    [InlineData("Fluent2")]      // renamed to Windows11 in b0f41e5
+    [InlineData("Windows11")]
+    [InlineData("Win98")]        // removed classic themes
+    [InlineData("Win31")]
+    [InlineData("Win2000")]
+    [InlineData("WinXP")]
+    [InlineData("Win7")]         // the previous default
+    [InlineData("Pixel")]
+    [InlineData("user:my custom skin")] // a user-authored .css theme; the feature is gone
+    [InlineData("")]
+    [InlineData("nonsense")]
+    public async Task LoadAsync_AnyHistoricalTheme_CoercedToTheSingleSurvivingTheme(string stored)
     {
         var paths = NewPaths(out var root);
         try
         {
-            // A config written before the "Fluent2" → "Windows11" theme rename (commit b0f41e5).
-            await File.WriteAllTextAsync(paths.ConfigFilePath, "{\"general\":{\"themeName\":\"Fluent2\"}}");
+            await File.WriteAllTextAsync(
+                paths.ConfigFilePath, $"{{\"general\":{{\"themeName\":\"{stored}\"}}}}");
 
             var svc = new ConfigService(paths, NullLogger<ConfigService>.Instance);
             await svc.LoadAsync();
 
-            // Normalized once on load so every consumer (settings dropdown, stylesheet) sees one key.
-            Assert.Equal("Windows11", svc.Config.General.ThemeName);
+            Assert.Equal(AppConfig.CanonicalTheme, svc.Config.General.ThemeName);
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task LoadAsync_NullGeneral_DoesNotProduceANullConfigSection()
+    {
+        var paths = NewPaths(out var root);
+        try
+        {
+            // A hand-edited or truncated file. This used to load with HasValidConfig = true and then
+            // NullReference on the very first read of Config.General — RestoreFromAsync rejected the
+            // shape but LoadAsync did not.
+            await File.WriteAllTextAsync(
+                paths.ConfigFilePath, "{\"general\":null,\"folders\":null,\"rootFolder\":\"C:\\\\X\"}");
+
+            var svc = new ConfigService(paths, NullLogger<ConfigService>.Instance);
+            await svc.LoadAsync();
+
+            Assert.NotNull(svc.Config.General);
+            Assert.NotNull(svc.Config.Folders);
+            Assert.NotNull(svc.Config.General.DefaultTools);
+            Assert.Equal("Auto", svc.Config.General.Language);
+            Assert.Equal(AppConfig.CanonicalTheme, svc.Config.General.ThemeName);
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task LoadAsync_NullDefaultTools_RestoresTheBuiltInList()
+    {
+        var paths = NewPaths(out var root);
+        try
+        {
+            await File.WriteAllTextAsync(
+                paths.ConfigFilePath, "{\"general\":{\"defaultTools\":null},\"rootFolder\":\"C:\\\\X\"}");
+
+            var svc = new ConfigService(paths, NullLogger<ConfigService>.Instance);
+            await svc.LoadAsync();
+
+            Assert.NotEmpty(svc.Config.General.DefaultTools);
         }
         finally
         {

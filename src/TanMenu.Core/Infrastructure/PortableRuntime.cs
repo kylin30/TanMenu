@@ -11,7 +11,6 @@ public static class PortableRuntime
 {
     public const string MarkerFileName = "portable.flag";
     public const string DataFolderName = "Data";
-    public const string WebView2FolderName = "WebView2";
 
     public static bool IsEnabled() => IsEnabledAt(AppContext.BaseDirectory);
 
@@ -22,11 +21,6 @@ public static class PortableRuntime
 
     public static string GetDataRoot(string appBaseDirectory) =>
         Path.Combine(ValidateBaseDirectory(appBaseDirectory), DataFolderName);
-
-    public static string GetWebView2DataFolder() => GetWebView2DataFolder(AppContext.BaseDirectory);
-
-    public static string GetWebView2DataFolder(string appBaseDirectory) =>
-        Path.Combine(GetDataRoot(appBaseDirectory), WebView2FolderName);
 
     /// <summary>
     /// Moves data created beside an older portable executable to the stable Velopack application

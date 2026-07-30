@@ -1,9 +1,9 @@
 using System.IO;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using TanMenu.Core.Infrastructure;
 using TanMenu.Core.Models;
+using TanMenu.Core.Serialization;
 
 namespace TanMenu.Core.Services;
 
@@ -11,8 +11,12 @@ public class ConfigService
 {
     private readonly IAppDataPaths _paths;
     private readonly ILogger<ConfigService> _logger;
-    private readonly JsonSerializerOptions _jsonOptions;
     private readonly SemaphoreSlim _saveLock = new(1, 1); // serialize SaveAsync: callers share one .tmp path
+
+    /// <summary>The on-disk contract for config.json (camelCase, indented, nulls omitted).
+    /// See <see cref="ConfigJsonContext"/> — changing it breaks existing users' settings.</summary>
+    private static readonly System.Text.Json.Serialization.Metadata.JsonTypeInfo<AppConfig> ConfigType =
+        ConfigJsonContext.Default.AppConfig;
 
     /// <summary>Resolved fresh each access so a runtime data-folder change is picked up immediately.</summary>
     private string _configPath => _paths.ConfigFilePath;
@@ -25,14 +29,6 @@ public class ConfigService
         _paths = paths;
         _logger = logger;
 
-        _jsonOptions = new JsonSerializerOptions
-        {
-            WriteIndented = true,
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            Converters = { new JsonStringEnumConverter() },
-            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-        };
-
         Config = new AppConfig();
         HasValidConfig = false;
 
@@ -42,7 +38,7 @@ public class ConfigService
     /// <summary>Deep clone of the current config — used by the settings window's edit-then-apply
     /// workflow so changes only take effect on "应用/确定", not immediately.</summary>
     public AppConfig CloneConfig() =>
-        JsonSerializer.Deserialize<AppConfig>(JsonSerializer.Serialize(Config, _jsonOptions), _jsonOptions)
+        JsonSerializer.Deserialize(JsonSerializer.Serialize(Config, ConfigType), ConfigType)
         ?? new AppConfig();
 
     public async Task LoadAsync()
@@ -55,7 +51,7 @@ public class ConfigService
 
                 if (!string.IsNullOrWhiteSpace(jsonContent))
                 {
-                    var loadedConfig = JsonSerializer.Deserialize<AppConfig>(jsonContent, _jsonOptions);
+                    var loadedConfig = JsonSerializer.Deserialize(jsonContent, ConfigType);
                     if (loadedConfig != null)
                     {
                         Config = loadedConfig;
@@ -93,23 +89,19 @@ public class ConfigService
         }
     }
 
-    /// <summary>Canonicalize legacy/renamed config values once on load, so every consumer sees one set of
-    /// keys instead of each having to special-case the old value. "Fluent2" was renamed to "Windows11"
-    /// (commit b0f41e5); the removed classic themes "Win98"/"Win31"/"Win2000" all map to the default
-    /// "Win7".</summary>
+    /// <summary>Canonicalize a freshly loaded config so every consumer sees one set of values instead
+    /// of each having to special-case history.</summary>
     private static void Normalize(AppConfig config)
     {
-        if (config.General is null)
-            return;
+        // A hand-edited or truncated file can carry `{"general": null}` (or a null folders/tools
+        // array). That used to load with HasValidConfig = true and then NullReference on the first
+        // read — RestoreFromAsync rejects the shape, but LoadAsync sailed straight past it.
+        config.General ??= new GeneralConfig();
+        config.Folders ??= [];
+        config.General.DefaultTools ??= DefaultTool.BuiltInDefaults();
+
         config.General.Language = AppLanguage.NormalizeSetting(config.General.Language);
-        if (string.Equals(config.General.ThemeName, "Fluent2", StringComparison.OrdinalIgnoreCase))
-            config.General.ThemeName = "Windows11";
-        // The removed classic themes ("Win98" and the interim "Win31"/"Win2000") migrate to the default
-        // "Win7", so the settings dropdown shows a valid selection (ResolveTheme also falls back to Win7).
-        if (string.Equals(config.General.ThemeName, "Win98", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(config.General.ThemeName, "Win31", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(config.General.ThemeName, "Win2000", StringComparison.OrdinalIgnoreCase))
-            config.General.ThemeName = "Win7";
+        config.General.ThemeName = AppConfig.CanonicalTheme;
     }
 
     public async Task SaveAsync()
@@ -122,7 +114,7 @@ public class ConfigService
         {
             _paths.EnsureCreated();
 
-            var jsonContent = JsonSerializer.Serialize(Config, _jsonOptions);
+            var jsonContent = JsonSerializer.Serialize(Config, ConfigType);
 
             // Atomic write: serialize to a temp file in the same folder, then swap it into place,
             // so a crash mid-write can never leave a truncated/empty config.json behind.
@@ -171,7 +163,7 @@ public class ConfigService
         // throw (it's unsupported on FAT32/exFAT and some SMB shares) or strand a leftover .tmp. A backup
         // is a throwaway copy — a crash mid-write just means re-running 备份 — so a plain write is both
         // simpler and more portable than risking the atomic path on an arbitrary destination.
-        var json = JsonSerializer.Serialize(Config, _jsonOptions);
+        var json = JsonSerializer.Serialize(Config, ConfigType);
         await File.WriteAllTextAsync(destPath, json);
     }
 
@@ -200,7 +192,7 @@ public class ConfigService
                 rf.ValueKind == JsonValueKind.Null) // an explicit null rootFolder is not a meaningful value
                 return false;
 
-            var restored = root.Deserialize<AppConfig>(_jsonOptions);
+            var restored = JsonSerializer.Deserialize(root, ConfigType);
             if (restored?.General is null)
                 return false;
 

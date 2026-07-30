@@ -6,6 +6,18 @@
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
   IgnorableNamespaces="uap desktop rescap">
 
+  <!-- FROZEN VALUES - changing any of these breaks continuity for existing Store users:
+       * Identity/@Name and Identity/@Publisher      : Partner Center rejects a mismatch outright.
+       * Application/@Id="TanMenu"                   : forms the packaged AUMID
+         (TanXiang.TanMenu_<publisherhash>!TanMenu). Changing it orphans every existing user's
+         taskbar pin, Start tile and startupTask enable-state.
+       * desktop:StartupTask/@TaskId                 : must equal StartupTaskAutoStartService.TaskId.
+       * Resource Language entries                   : each declared language requires a completed
+         Partner Center listing.
+       Application/@Executable stays TanMenu.Wpf.exe. The app was rewritten from WPF to Avalonia +
+       NativeAOT, but the executable FILENAME is a compatibility contract (see the csproj comment),
+       not a description of the UI framework. -->
+
   <Identity
     Name="__IDENTITY_NAME__"
     Publisher="__PUBLISHER__"

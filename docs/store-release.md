@@ -1,6 +1,24 @@
 # TanMenu Microsoft Store release
 
-This project can produce an MSIX package for Microsoft Store submission.
+This project produces an MSIX package for Microsoft Store submission. Packaging is implemented as a
+`makeappx`-based script (`scripts/package-msix.ps1` + `packaging/msix/AppxManifest.xml.in`), not a
+`.wapproj`, and it runs automatically on every `v*` tag.
+
+## 0. How the packaged build differs at run time
+
+- The app detects package identity through `PackageRuntime.HasPackageIdentity` and then routes its
+  writable data to `Windows.Storage.ApplicationData` instead of `Documents\TanMenu`. The data folder
+  cannot be relocated in Settings for a packaged build.
+- Autostart uses the manifest-declared `windows.startupTask` extension
+  (`StartupTaskAutoStartService`), not the per-user Run key. The manifest's `TaskId` and the constant
+  in that service must stay equal.
+- Velopack is not used: the packaged build reports "managed by Microsoft Store" and never
+  self-updates.
+- `runFullTrust` is declared because it is a packaged desktop app; full trust means direct
+  `System.IO`, so `broadFileSystemAccess` is not needed.
+- The payload is a NativeAOT build: one native `TanMenu.Wpf.exe` plus the Avalonia native libraries
+  and the loose `app.ico` / `wwwroot\sounds` / `wwwroot\tool-icons` assets. There is no bundled .NET
+  runtime and no WebView2 dependency.
 
 ## 1. Reserve the app name
 
@@ -80,6 +98,11 @@ dist\store\TanMenu_<version>_wack.xml
 
 The Desktop Bridge "blocked executables" test is an optional Windows 10 S compatibility check. TanMenu's core purpose is launching desktop items, so any remaining warnings should be reviewed and documented for certification notes rather than hidden.
 
+The package now contains a single native executable instead of several hundred managed assemblies,
+so the WACK "Binary analyzer" and "Supported APIs" results differ from the pre-AOT submissions.
+Re-run WACK and re-document the outcome for the first AOT submission rather than reusing the notes
+from an earlier release.
+
 Microsoft docs:
 - Windows Desktop Bridge tests: https://learn.microsoft.com/en-us/windows/uwp/debug-test-perf/windows-desktop-bridge-app-tests
 - WACK command line: https://learn.microsoft.com/en-us/windows/uwp/debug-test-perf/windows-app-certification-kit
@@ -93,9 +116,20 @@ Required submission areas:
 - Age ratings.
 - Packages: upload the generated `.msix` package. Microsoft recommends `.msixupload` for Windows 10+ packages, but Partner Center also accepts `.msix`.
 - Store listings: description, screenshots, logo assets, keywords, and release notes.
+- Privacy policy and support info: use the GitHub repository as the product website and GitHub Issues as the support page.
 - Submission options: explain restricted capability use. TanMenu declares `runFullTrust` because it is a packaged desktop app.
 
 Partner Center shows one row per Store listing language. Open both **Chinese (Simplified)** and **English (United States)** and complete each language separately.
+
+Suggested support links:
+
+```text
+Website:
+https://github.com/kylin30/TanMenu
+
+Support contact info:
+https://github.com/kylin30/TanMenu/issues
+```
 
 Suggested Chinese (Simplified) listing copy:
 
@@ -109,13 +143,15 @@ Short description:
 Description:
 TanMenu 是一个复古 Windows 风格的桌面启动器。它可以扫描你指定的文件夹，整理应用、快捷方式、文件夹和常用系统工具，并在屏幕底部以紧凑菜单快速打开。
 
-它支持 Windows 98 / XP / 7 风格主题、系统托盘唤出、自动关闭、置顶、开机启动、可迁移数据目录、真实图标提取，以及中英文界面切换。所有配置和缓存默认保存在用户文档目录下，不会写入安装目录。
+它采用 Windows 2000 经典风格界面，并支持系统托盘唤出、自动关闭、置顶、开机启动、可迁移数据目录、真实图标提取，以及中英文界面切换。所有配置和缓存默认保存在用户文档目录下，不会写入安装目录。
+
+项目主页和源代码：https://github.com/kylin30/TanMenu
 
 Keywords:
 启动器, 快捷方式, 桌面工具, 应用菜单, 复古, Windows
 
 Release notes:
-首个 Microsoft Store 版本。支持中英文界面、复古主题、托盘唤出、文件夹扫描和常用工具启动。
+首个 Microsoft Store 版本。支持中英文界面、Windows 2000 经典风格界面、托盘唤出、文件夹扫描和常用工具启动。
 ```
 
 Suggested English (United States) listing copy:
@@ -130,19 +166,21 @@ A retro Windows desktop launcher for opening apps, folders, and shortcuts quickl
 Description:
 TanMenu is a retro-styled Windows desktop launcher. It scans a folder you choose, organizes apps, shortcuts, folders, and common system tools, then opens them from a compact menu near the bottom of the screen.
 
-It includes Windows 98 / XP / 7 inspired themes, tray recall, auto close, always-on-top mode, optional startup, movable data storage, real icon extraction, and Chinese/English UI switching. Configuration and cache files are stored in the user's documents folder by default and are not written beside the installed app.
+It uses a Windows 2000 inspired classic interface, and includes tray recall, auto close, always-on-top mode, optional startup, movable data storage, real icon extraction, and Chinese/English UI switching. Configuration and cache files are stored in the user's documents folder by default and are not written beside the installed app.
+
+Project home and source code: https://github.com/kylin30/TanMenu
 
 Keywords:
 launcher, shortcuts, desktop tool, app menu, retro, Windows
 
 Release notes:
-First Microsoft Store release. Includes Chinese and English UI support, retro themes, tray recall, folder scanning, and common tool launching.
+First Microsoft Store release. Includes Chinese and English UI support, a retro Windows 2000 interface, tray recall, folder scanning, and common tool launching.
 ```
 
 Recommended certification note:
 
 ```text
-TanMenu is a full-trust Windows desktop launcher packaged as MSIX. It uses runFullTrust for the WPF desktop process and lets users launch desktop files, folders, apps, and shortcuts from their own Windows profile. The app does not install drivers, services, browser extensions, or private signing keys.
+TanMenu is a full-trust Windows desktop launcher packaged as MSIX. It uses runFullTrust for its native desktop process and lets users launch desktop files, folders, apps, and shortcuts from their own Windows profile. The app does not install drivers, services, browser extensions, or private signing keys.
 ```
 
 ## 5. Versioning
@@ -150,7 +188,7 @@ TanMenu is a full-trust Windows desktop launcher packaged as MSIX. It uses runFu
 Before each Store update, bump `Directory.Build.props`:
 
 ```xml
-<Version>0.9.1</Version>
+<Version>0.10.0</Version>
 ```
 
 MSIX versions are emitted as four-part versions, for example `0.9.1.0`.

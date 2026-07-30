@@ -25,8 +25,8 @@ public static class AppLanguage
             ["CommonTools"] = ("常用工具", "Common Tools"),
             ["Language"] = ("语言：", "Language:"),
             ["Theme"] = ("主题：", "Theme:"),
-            ["ThemeFolder"] = ("主题文件夹…", "Theme Folder..."),
-            ["ThemeFolderTooltip"] = ("打开存放自定义主题 .css 的文件夹", "Open the folder for custom .css themes"),
+            // "ThemeFolder" / "ThemeFolderTooltip" removed with the user-authored .css theme feature:
+            // there is no themes folder to open any more (one natively drawn theme, Themes/Retro.axaml).
             ["Font"] = ("字体：", "Font:"),
             ["ColumnCount"] = ("每列按钮数：", "Buttons per column:"),
             ["ButtonSize"] = ("按钮大小：", "Button size:"),
@@ -66,7 +66,7 @@ public static class AppLanguage
             ["DataFolder"] = ("数据文件夹", "Data Folder"),
             ["DataFolderHelp"] = ("配置与缓存的存放位置（默认在“文档\\TanMenu”）。更改会立即移动数据并生效（与“应用”按钮无关）。", "Where config and caches are stored. The default is Documents\\TanMenu. Changing it moves data immediately and does not depend on Apply."),
             ["DataFolderPackagedHelp"] = ("Store/MSIX 版本使用 Windows 为应用分配的本地 AppData。可打开、清理、备份或恢复配置，但不能改到任意文件夹。", "The Store/MSIX version uses Windows-managed local app data. You can open, clear, back up, or restore config, but cannot move it to an arbitrary folder."),
-            ["DataFolderPortableHelp"] = ("绿色版的配置、缓存、日志与 WebView2 数据固定保存在绿色版根目录的 Data 文件夹中，软件更新不会覆盖它。", "The portable edition keeps config, caches, logs, and WebView2 data in the Data folder at the portable app root, where updates do not overwrite it."),
+            ["DataFolderPortableHelp"] = ("绿色版的配置、缓存与日志固定保存在绿色版根目录的 Data 文件夹中，软件更新不会覆盖它。", "The portable edition keeps config, caches, and logs in the Data folder at the portable app root, where updates do not overwrite it."),
             ["Change"] = ("更改…", "Change..."),
             ["ResetDefault"] = ("重置为默认", "Reset to Default"),
             ["ClearCache"] = ("清理缓存", "Clear Cache"),
@@ -154,8 +154,6 @@ public static class AppLanguage
             ["TrayExit"] = ("退出", "Exit"),
             ["OpenSettingsFailed"] = ("无法打开设置窗口。", "Could not open the settings window."),
             ["StartupFailed"] = ("TanMenu 启动失败：\n{0}", "TanMenu failed to start:\n{0}"),
-            ["WebView2Title"] = ("缺少 WebView2 运行时", "WebView2 Runtime Missing"),
-            ["WebView2Missing"] = ("运行 TanMenu 需要 Microsoft Edge WebView2 运行时。\n\n请从下面的地址下载安装后重试：\nhttps://developer.microsoft.com/microsoft-edge/webview2/", "TanMenu requires the Microsoft Edge WebView2 Runtime.\n\nInstall it from the URL below, then try again:\nhttps://developer.microsoft.com/microsoft-edge/webview2/"),
             ["HotkeyRegistrationFailed"] = ("全局热键「{0}」注册失败，可能已被其它程序占用。\n请在设置里改用其它组合键。", "Global hotkey \"{0}\" could not be registered. It may already be used by another app.\nChoose another shortcut in Settings."),
             ["DataFolderInsideItself"] = ("不能把数据文件夹移动到当前数据文件夹的子目录中。", "The data folder cannot be moved into one of its own subfolders."),
         };

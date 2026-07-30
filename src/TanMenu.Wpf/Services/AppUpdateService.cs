@@ -26,6 +26,10 @@ public sealed record AppUpdateState(
 public interface IAppUpdateService
 {
     AppUpdateState State { get; }
+
+    /// <summary>Raised synchronously on whichever thread changed the state. During a download that
+    /// is VELOPACK'S thread, not the UI thread — subscribers must marshal themselves
+    /// (<c>Dispatcher.UIThread.Post</c>) before touching any control.</summary>
     event EventHandler? StateChanged;
     Task CheckForUpdatesAsync(CancellationToken cancellationToken = default);
     Task DownloadUpdateAsync(CancellationToken cancellationToken = default);
@@ -70,6 +74,8 @@ public sealed class VelopackAppUpdateService : IAppUpdateService
             }
 
             SetState(new AppUpdateState(AppUpdateStatus.Checking));
+            // Velopack's CheckForUpdatesAsync takes no token, so cancellation can only take effect at
+            // the explicit check above; a cancel requested mid-request is observed after it returns.
             cancellationToken.ThrowIfCancellationRequested();
             _availableUpdate = await _manager.CheckForUpdatesAsync();
             SetState(_availableUpdate is null
@@ -107,6 +113,8 @@ public sealed class VelopackAppUpdateService : IAppUpdateService
 
             await _manager.DownloadUpdatesAsync(
                 update,
+                // Invoked on Velopack's download thread — SetState therefore raises StateChanged off
+                // the UI thread, which is why the interface documents that subscribers must marshal.
                 progress => SetState(new AppUpdateState(
                     AppUpdateStatus.Downloading,
                     update.TargetFullRelease.Version.ToString(),

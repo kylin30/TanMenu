@@ -61,10 +61,6 @@ public static class DataLocation
     /// <summary>True when <paramref name="folder"/> is the implicit default (Documents\TanMenu).</summary>
     public static bool IsDefaultLocation(string folder) => SamePath(folder, DefaultRoot);
 
-    /// <summary>True when the registry data root is the implicit default (Documents\TanMenu) — i.e. no
-    /// custom HKCU pointer is currently in effect.</summary>
-    public static bool IsUsingDefaultLocation() => IsDefaultLocation(GetDataRoot());
-
     /// <summary>Total size in bytes of files under <paramref name="folder"/>. Recurses manually so one
     /// unreadable subfolder doesn't abort the whole walk, and skips reparse points (junctions/symlinks)
     /// so a directory cycle can't loop forever or double-count. Returns whatever it could sum.</summary>
@@ -170,15 +166,20 @@ public static class DataLocation
     /// data as-is; otherwise move the current config + caches into it. Returns false (no change)
     /// if newFolder is the current root.
     /// </summary>
-    public static bool Relocate(string newFolder, out bool usedExisting)
-        => Relocate(newFolder, GetDataRoot(), out usedExisting);
+    /// <param name="language">The user's configured UI language, used for the one error message this
+    /// method can raise. Null falls back to the OS UI culture.</param>
+    public static bool Relocate(string newFolder, out bool usedExisting, string? language = null)
+        => Relocate(newFolder, GetDataRoot(), out usedExisting, language);
 
     /// <summary>
     /// Point the app at <paramref name="newFolder"/>, treating <paramref name="currentRoot"/> as where
     /// the data lives now (the LIVE root, which can differ from the registry pointer after a startup
     /// fallback). If newFolder already holds a config.json, adopt it; otherwise move the current data in.
     /// </summary>
-    public static bool Relocate(string newFolder, string currentRoot, out bool usedExisting)
+    /// <param name="language">The user's configured UI language, used for the one error message this
+    /// method can raise. Null falls back to the OS UI culture.</param>
+    public static bool Relocate(string newFolder, string currentRoot, out bool usedExisting,
+        string? language = null)
     {
         usedExisting = false;
 
@@ -188,8 +189,11 @@ public static class DataLocation
         // Reject a target INSIDE the current root (e.g. picking <root>\cache): CopyData would write the
         // config into that subfolder and the deferred DeleteData(currentRoot) would then delete it again,
         // losing the data. A data folder can't live inside itself, so this is always a user mistake.
+        // The message is resolved with the caller's configured language: passing null here (as this
+        // did before) makes AppLanguage fall back to CultureInfo.CurrentUICulture, so a user running
+        // an English UI on a Chinese Windows would get this one dialog in Chinese.
         if (IsInside(newFolder, currentRoot))
-            throw new InvalidOperationException(AppLanguage.Text("DataFolderInsideItself", null));
+            throw new InvalidOperationException(AppLanguage.Text("DataFolderInsideItself", language));
 
         Directory.CreateDirectory(newFolder);
 

@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using Avalonia.Controls;
 using Microsoft.Extensions.Logging;
 using TanMenu.Core.Services;
 
@@ -6,10 +7,11 @@ namespace TanMenu.Wpf.Services;
 
 /// <summary>
 /// Registers a CONFIGURABLE global hotkey (off by default) on the launcher window via Win32
-/// RegisterHotKey, and toggles the launcher on WM_HOTKEY. Re-applies whenever settings change,
-/// so enabling/disabling or re-binding the hotkey takes effect immediately.
+/// RegisterHotKey, and toggles the launcher on WM_HOTKEY. Re-applies whenever settings change, so
+/// enabling/disabling or re-binding the hotkey takes effect immediately. Also owns the window's raw
+/// message hook, which is the only place the second-instance message can be observed.
 /// </summary>
-public sealed class GlobalHotkeyService : IDisposable
+public sealed partial class GlobalHotkeyService : IDisposable
 {
     private const int HotkeyId = 0xB001;
     public const int WM_HOTKEY = 0x0312;
@@ -24,6 +26,7 @@ public sealed class GlobalHotkeyService : IDisposable
     private string? _currentCombo; // last combo successfully registered (restored on a failed rebind)
     private string? _appliedCombo; // last DESIRED combo Apply acted on (success or fail) — skips redundant re-apply
     private bool _appliedOnce;     // ensure the very first Apply runs even when the desired state is "disabled"
+    private Win32Properties.CustomWndProcHookCallback? _hook; // kept alive for the window's lifetime
 
     /// <summary>Raised (with the offending combo) when a requested hotkey can't be registered, e.g.
     /// it's already owned by another app — so the settings UI can warn the user.</summary>
@@ -39,11 +42,35 @@ public sealed class GlobalHotkeyService : IDisposable
         _events.SettingsChanged += Apply; // re-register when the user changes the hotkey/toggle
     }
 
-    /// <summary>Bind to the launcher window handle (once available) and register from config.</summary>
-    public void Attach(IntPtr hwnd)
+    /// <summary>Bind to the launcher window (once realized): install the message hook and register the
+    /// configured hotkey. Called synchronously from the window's Opened handler.</summary>
+    public void Attach(Window window)
     {
-        _hwnd = hwnd;
+        _hwnd = window.TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
+        _hook = WndProcHook;
+        Win32Properties.AddWndProcHookCallback(window, _hook);
         Apply();
+    }
+
+    /// <summary>The launcher's raw Win32 message hook. Exactly two messages are handled; everything
+    /// else falls through untouched.</summary>
+    private IntPtr WndProcHook(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (ProcessMessage((int)msg, wParam))
+        {
+            handled = true;
+            return IntPtr.Zero;
+        }
+
+        if (msg == unchecked((uint)Program.WmShowFirstInstance))
+        {
+            // Deliberately SHOW, never toggle: clicking the taskbar pin again must not hide the
+            // launcher the user just asked for.
+            _host.ShowAndActivate();
+            handled = true;
+        }
+
+        return IntPtr.Zero;
     }
 
     /// <summary>(Re)register the hotkey from the current config; safe to call repeatedly.</summary>
@@ -102,6 +129,7 @@ public sealed class GlobalHotkeyService : IDisposable
     {
         if (!HotkeyParser.TryParse(combo, out var mods, out var vk))
             return false;
+        // MOD_NOREPEAT is always OR-ed in so holding the combo fires exactly once.
         if (RegisterHotKey(_hwnd, HotkeyId, mods | HotkeyParser.MOD_NOREPEAT, vk))
         {
             _registered = true;
@@ -110,7 +138,7 @@ public sealed class GlobalHotkeyService : IDisposable
         return false;
     }
 
-    /// <summary>Call from the window's WndProc — toggles the launcher if it's our hotkey message.</summary>
+    /// <summary>Call from the window's message hook — toggles the launcher if it's our hotkey message.</summary>
     public bool ProcessMessage(int msg, IntPtr wParam)
     {
         if (msg == WM_HOTKEY && wParam.ToInt32() == HotkeyId)
@@ -134,11 +162,15 @@ public sealed class GlobalHotkeyService : IDisposable
     {
         _events.SettingsChanged -= Apply;
         Unregister();
+        // The message hook is not removed: it is torn down with the window, and ExitApp disposes the
+        // container only on the way out of the process.
     }
 
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
+    [LibraryImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
 
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
+    [LibraryImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool UnregisterHotKey(IntPtr hWnd, int id);
 }

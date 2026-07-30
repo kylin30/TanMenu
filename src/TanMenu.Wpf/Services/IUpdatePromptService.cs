@@ -1,59 +1,64 @@
-using System.Windows;
+using Avalonia.Threading;
 using TanMenu.Core.Services;
+using TanMenu.Wpf.Dialogs;
 
 namespace TanMenu.Wpf.Services;
 
-/// <summary>Native confirmations used by the Blazor launcher before downloading or applying an
-/// update. Keeping these outside the component provides a real owner window and preserves the
-/// launcher's hide-on-blur behavior while the modal dialog owns focus.</summary>
+/// <summary>Native confirmations used by the launcher before downloading or applying an update.
+/// Keeping these outside the view provides a real owner window and preserves the launcher's
+/// hide-on-blur behavior while the modal dialog owns focus.</summary>
 public interface IUpdatePromptService
 {
-    bool ConfirmDownload(string version, string? language);
-    bool ConfirmRestart(string version, string? language);
+    Task<bool> ConfirmDownloadAsync(string version, string? language);
+    Task<bool> ConfirmRestartAsync(string version, string? language);
 }
 
-public sealed class WpfUpdatePromptService(IWindowHost host) : IUpdatePromptService
+public sealed class UpdatePromptService(IWindowHost host) : IUpdatePromptService
 {
-    public bool ConfirmDownload(string version, string? language) => Confirm(
+    public Task<bool> ConfirmDownloadAsync(string version, string? language) => ConfirmAsync(
         AppLanguage.Format("UpdateDownloadPrompt", language, version),
         language,
-        MessageBoxImage.Question);
+        MessageBoxIcon.Question);
 
-    public bool ConfirmRestart(string version, string? language) => Confirm(
+    public Task<bool> ConfirmRestartAsync(string version, string? language) => ConfirmAsync(
         AppLanguage.Format("UpdateRestartPrompt", language, version),
         language,
-        MessageBoxImage.Information);
+        MessageBoxIcon.Info);
 
-    private bool Confirm(string message, string? language, MessageBoxImage image)
+    private Task<bool> ConfirmAsync(string message, string? language, MessageBoxIcon icon)
     {
-        var confirmed = false;
-        Application.Current.Dispatcher.Invoke(() =>
+        if (Dispatcher.UIThread.CheckAccess())
+            return ConfirmCoreAsync(message, language, icon);
+
+        var marshalled = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        Dispatcher.UIThread.Post(async () =>
         {
-            // The owner temporarily deactivates while the native confirmation has focus. Prevent
-            // auto-hide until it closes, otherwise the dialog would appear detached from the menu.
-            host.SuppressHide(true);
             try
             {
-                var owner = Application.Current.Windows.OfType<MainWindow>().FirstOrDefault();
-                var result = owner is null
-                    ? MessageBox.Show(
-                        message,
-                        AppLanguage.Text("UpdateTitle", language),
-                        MessageBoxButton.YesNo,
-                        image)
-                    : MessageBox.Show(
-                        owner,
-                        message,
-                        AppLanguage.Text("UpdateTitle", language),
-                        MessageBoxButton.YesNo,
-                        image);
-                confirmed = result == MessageBoxResult.Yes;
+                marshalled.TrySetResult(await ConfirmCoreAsync(message, language, icon));
             }
-            finally
+            catch (Exception ex)
             {
-                host.SuppressHide(false);
+                marshalled.TrySetException(ex);
             }
         });
-        return confirmed;
+        return marshalled.Task;
+    }
+
+    private async Task<bool> ConfirmCoreAsync(string message, string? language, MessageBoxIcon icon)
+    {
+        // The owner temporarily deactivates while the confirmation has focus. Prevent auto-hide until
+        // it closes, otherwise the dialog would appear detached from the menu.
+        host.SuppressHide(true);
+        try
+        {
+            var result = await MessageBox.ShowAsync(host.Window, message,
+                AppLanguage.Text("UpdateTitle", language), MessageBoxButtons.YesNo, icon);
+            return result == MessageBoxResult.Yes;
+        }
+        finally
+        {
+            host.SuppressHide(false);
+        }
     }
 }

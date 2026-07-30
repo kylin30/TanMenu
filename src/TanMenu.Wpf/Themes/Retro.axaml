@@ -1,0 +1,394 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!--
+    TanMenu's single visual identity: Windows 2000 classic.
+
+    The CSS theme packs (98/XP/7/Fluent/Pixel/macOS9 + user .css) were dropped in the Avalonia +
+    NativeAOT rewrite. What replaces them is one theme done properly, and the thing worth doing
+    properly is the BEVEL: every raised surface is a real two-pixel double border (outer highlight /
+    dark-shadow, inner light / shadow), and pressing a button genuinely inverts that bevel and shifts
+    its content one pixel down-right. That inversion is the detail that makes the chrome read as the
+    real thing rather than a skin, and it is drawn with four brushes and no images, no gradients to
+    band, and no blur to fail on battery saver — which is also why it costs nothing to render.
+
+    Every colour below is a real Windows 2000 system colour, not a designer palette. Authenticity is
+    the design; do not "modernize" these values.
+  -->
+
+  <Styles.Resources>
+
+    <!-- ── Windows 2000 system colours ─────────────────────────────────────────────── -->
+    <SolidColorBrush x:Key="RetroFace"        Color="#D4D0C8" />  <!-- 3D face / button face   -->
+    <SolidColorBrush x:Key="RetroHighlight3D" Color="#FFFFFF" />  <!-- outer top-left          -->
+    <SolidColorBrush x:Key="RetroLight3D"     Color="#DFDFDF" />  <!-- inner top-left          -->
+    <SolidColorBrush x:Key="RetroShadow3D"    Color="#808080" />  <!-- inner bottom-right      -->
+    <SolidColorBrush x:Key="RetroDarkShadow"  Color="#404040" />  <!-- outer bottom-right      -->
+    <SolidColorBrush x:Key="RetroText"        Color="#000000" />
+    <SolidColorBrush x:Key="RetroGrayText"    Color="#808080" />  <!-- disabled label          -->
+    <SolidColorBrush x:Key="RetroField"       Color="#FFFFFF" />  <!-- sunken input background -->
+    <SolidColorBrush x:Key="RetroSelection"   Color="#0A246A" />  <!-- classic selection navy  -->
+    <SolidColorBrush x:Key="RetroSelectionText" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="RetroCaptionText" Color="#FFFFFF" />
+
+    <!-- The active caption gradient, verbatim from the Windows 2000 default scheme. -->
+    <LinearGradientBrush x:Key="RetroCaption" StartPoint="0%,0%" EndPoint="100%,0%">
+      <GradientStop Offset="0" Color="#0A246A" />
+      <GradientStop Offset="1" Color="#A6CAF0" />
+    </LinearGradientBrush>
+
+    <!-- Search-hit glow. The one non-period colour in the theme, and it earns its place: the
+         filter never hides or moves anything (see the launcher spec §2.2), so the ONLY signal that
+         a keystroke matched is this ring. It has to survive against a grey field. -->
+    <SolidColorBrush x:Key="RetroHit"         Color="#F5B301" />
+
+    <!-- ── Metrics ─────────────────────────────────────────────────────────────────────
+         Every number here was carried over verbatim from the pre-Avalonia CSS layout so the port
+         is dimensionally identical to the build users already had. Do not "round" them.  -->
+    <x:Double x:Key="RetroColumnMinWidth">160</x:Double>   <!-- min width of one column of items  -->
+    <x:Double x:Key="RetroItemGap">4</x:Double>            <!-- vertical gap between items        -->
+    <x:Double x:Key="RetroColumnGap">4</x:Double>          <!-- gap between columns in a group    -->
+    <x:Double x:Key="RetroGroupGap">8</x:Double>           <!-- gap between group boxes           -->
+    <x:Double x:Key="RetroUpdateMinWidth">360</x:Double>   <!-- update notice, anti-jitter        -->
+    <Thickness x:Key="RetroGutter">6</Thickness>           <!-- transparent gutter around the frame -->
+
+    <!-- ══════════════════════════════════════════════════════════════════════════════
+         Launcher item button — the most-repeated control in the app.
+         Layout numbers come from the size classes (小/中/大); the template reads them from
+         attached values set by the view so one template serves all three sizes.
+         ══════════════════════════════════════════════════════════════════════════════ -->
+    <ControlTheme x:Key="RetroItemButton" TargetType="Button">
+      <Setter Property="Background" Value="{StaticResource RetroFace}" />
+      <Setter Property="Foreground" Value="{StaticResource RetroText}" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Left" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="Cursor" Value="Arrow" />
+      <Setter Property="FocusAdorner" Value="{x:Null}" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <!-- outer bevel: highlight top-left / dark-shadow bottom-right -->
+          <Panel>
+            <Border Name="OuterTL" BorderThickness="1,1,0,0"
+                    BorderBrush="{StaticResource RetroHighlight3D}" />
+            <Border Name="OuterBR" BorderThickness="0,0,1,1"
+                    BorderBrush="{StaticResource RetroDarkShadow}" />
+            <Border Margin="1">
+              <Panel>
+                <Border Name="InnerTL" BorderThickness="1,1,0,0"
+                        BorderBrush="{StaticResource RetroLight3D}" />
+                <Border Name="InnerBR" BorderThickness="0,0,1,1"
+                        BorderBrush="{StaticResource RetroShadow3D}" />
+                <Border Name="Face" Background="{TemplateBinding Background}" Margin="1">
+                  <ContentPresenter Name="PART_ContentPresenter"
+                                    Content="{TemplateBinding Content}"
+                                    ContentTemplate="{TemplateBinding ContentTemplate}"
+                                    Padding="{TemplateBinding Padding}"
+                                    HorizontalContentAlignment="Left"
+                                    VerticalContentAlignment="Center" />
+                </Border>
+              </Panel>
+            </Border>
+          </Panel>
+        </ControlTemplate>
+      </Setter>
+
+      <!-- Pressed inverts every tone AND nudges the content one pixel down-right. Windows did the
+           nudge too; without it the bevel flip alone reads as a colour glitch rather than a press. -->
+      <Style Selector="^:pressed /template/ Border#OuterTL">
+        <Setter Property="BorderBrush" Value="{StaticResource RetroShadow3D}" />
+      </Style>
+      <Style Selector="^:pressed /template/ Border#OuterBR">
+        <Setter Property="BorderBrush" Value="{StaticResource RetroHighlight3D}" />
+      </Style>
+      <Style Selector="^:pressed /template/ Border#InnerTL">
+        <Setter Property="BorderBrush" Value="{StaticResource RetroDarkShadow}" />
+      </Style>
+      <Style Selector="^:pressed /template/ Border#InnerBR">
+        <Setter Property="BorderBrush" Value="{StaticResource RetroFace}" />
+      </Style>
+      <Style Selector="^:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Margin" Value="1,1,-1,-1" />
+      </Style>
+
+      <!-- Hover only lightens the face. Windows 2000 had no hover state at all, but a launcher
+           that gives no feedback under the cursor feels broken to anyone born after 2000; this is
+           the smallest concession that reads as alive without breaking period. -->
+      <Style Selector="^:pointerover:not(:pressed) /template/ Border#Face">
+        <Setter Property="Background" Value="#DEDBD4" />
+      </Style>
+
+      <!-- Disabled = the classic embossed grey label, drawn by the view (the template only greys
+           the content); the item stays laid out so the grid never reflows. -->
+      <Style Selector="^:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Opacity" Value="0.55" />
+      </Style>
+    </ControlTheme>
+
+    <!-- ══════════════════════════════════════════════════════════════════════════════
+         Caption buttons — 16×14, raised, with the glyph drawn as geometry so it stays
+         crisp at every DPI (a font glyph would hint differently per scale).
+         ══════════════════════════════════════════════════════════════════════════════ -->
+    <ControlTheme x:Key="RetroCaptionButton" TargetType="Button">
+      <Setter Property="Width" Value="16" />
+      <Setter Property="Height" Value="14" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Background" Value="{StaticResource RetroFace}" />
+      <Setter Property="Foreground" Value="{StaticResource RetroText}" />
+      <Setter Property="FocusAdorner" Value="{x:Null}" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Panel>
+            <Border Name="OuterTL" BorderThickness="1,1,0,0"
+                    BorderBrush="{StaticResource RetroHighlight3D}" />
+            <Border Name="OuterBR" BorderThickness="0,0,1,1"
+                    BorderBrush="{StaticResource RetroDarkShadow}" />
+            <Border Margin="1">
+              <Panel>
+                <Border Name="InnerTL" BorderThickness="1,1,0,0"
+                        BorderBrush="{StaticResource RetroLight3D}" />
+                <Border Name="InnerBR" BorderThickness="0,0,1,1"
+                        BorderBrush="{StaticResource RetroShadow3D}" />
+                <Border Background="{TemplateBinding Background}" Margin="1">
+                  <ContentPresenter Name="PART_ContentPresenter"
+                                    Content="{TemplateBinding Content}"
+                                    HorizontalContentAlignment="Center"
+                                    VerticalContentAlignment="Center" />
+                </Border>
+              </Panel>
+            </Border>
+          </Panel>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:pressed /template/ Border#OuterTL">
+        <Setter Property="BorderBrush" Value="{StaticResource RetroShadow3D}" />
+      </Style>
+      <Style Selector="^:pressed /template/ Border#OuterBR">
+        <Setter Property="BorderBrush" Value="{StaticResource RetroHighlight3D}" />
+      </Style>
+      <Style Selector="^:pressed /template/ Border#InnerTL">
+        <Setter Property="BorderBrush" Value="{StaticResource RetroDarkShadow}" />
+      </Style>
+      <Style Selector="^:pressed /template/ Border#InnerBR">
+        <Setter Property="BorderBrush" Value="{StaticResource RetroFace}" />
+      </Style>
+      <Style Selector="^:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Margin" Value="1,1,-1,-1" />
+      </Style>
+      <!-- The greyed, non-focusable Maximize the launcher can never do (a fixed-size window shows
+           it disabled, exactly as Windows did). -->
+      <Style Selector="^:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Opacity" Value="0.4" />
+      </Style>
+    </ControlTheme>
+
+    <!-- ══════════════════════════════════════════════════════════════════════════════
+         Menu-bar item. The 1px transparent border is structural: it reserves the space the
+         hover border occupies so the row never shifts.
+         ══════════════════════════════════════════════════════════════════════════════ -->
+    <ControlTheme x:Key="RetroMenuItem" TargetType="Button">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{StaticResource RetroText}" />
+      <Setter Property="Padding" Value="11,5" />
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="Cursor" Value="Arrow" />
+      <Setter Property="FocusAdorner" Value="{x:Null}" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Name="Chrome" Background="{TemplateBinding Background}"
+                  BorderThickness="1" BorderBrush="Transparent">
+            <ContentPresenter Content="{TemplateBinding Content}"
+                              Padding="{TemplateBinding Padding}"
+                              HorizontalContentAlignment="Center"
+                              VerticalContentAlignment="Center" />
+          </Border>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:pointerover /template/ Border#Chrome">
+        <Setter Property="Background" Value="{StaticResource RetroSelection}" />
+      </Style>
+      <Style Selector="^:pointerover">
+        <Setter Property="Foreground" Value="{StaticResource RetroSelectionText}" />
+      </Style>
+    </ControlTheme>
+
+    <!-- ══════════════════════════════════════════════════════════════════════════════
+         Sunken field (the search box). Bevel inverted relative to a button.
+         ══════════════════════════════════════════════════════════════════════════════ -->
+    <ControlTheme x:Key="RetroTextBox" TargetType="TextBox">
+      <Setter Property="Background" Value="{StaticResource RetroField}" />
+      <Setter Property="Foreground" Value="{StaticResource RetroText}" />
+      <Setter Property="CaretBrush" Value="{StaticResource RetroText}" />
+      <Setter Property="SelectionBrush" Value="{StaticResource RetroSelection}" />
+      <Setter Property="SelectionForegroundBrush" Value="{StaticResource RetroSelectionText}" />
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="Padding" Value="3,2" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Panel>
+            <Border BorderThickness="1,1,0,0" BorderBrush="{StaticResource RetroShadow3D}" />
+            <Border BorderThickness="0,0,1,1" BorderBrush="{StaticResource RetroHighlight3D}" />
+            <Border Margin="1">
+              <Panel>
+                <Border BorderThickness="1,1,0,0" BorderBrush="{StaticResource RetroDarkShadow}" />
+                <Border BorderThickness="0,0,1,1" BorderBrush="{StaticResource RetroFace}" />
+                <Border Background="{TemplateBinding Background}" Margin="1">
+                  <Panel>
+                    <TextBlock Name="PART_Watermark"
+                               Text="{TemplateBinding PlaceholderText}"
+                               Foreground="{StaticResource RetroGrayText}"
+                               Margin="{TemplateBinding Padding}"
+                               VerticalAlignment="Center"
+                               IsVisible="{TemplateBinding Text, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
+                    <TextPresenter Name="PART_TextPresenter"
+                                   Text="{TemplateBinding Text, Mode=TwoWay}"
+                                   CaretBrush="{TemplateBinding CaretBrush}"
+                                   SelectionBrush="{TemplateBinding SelectionBrush}"
+                                   SelectionForegroundBrush="{TemplateBinding SelectionForegroundBrush}"
+                                   SelectionStart="{TemplateBinding SelectionStart}"
+                                   SelectionEnd="{TemplateBinding SelectionEnd}"
+                                   Margin="{TemplateBinding Padding}"
+                                   VerticalAlignment="Center" />
+                  </Panel>
+                </Border>
+              </Panel>
+            </Border>
+          </Panel>
+        </ControlTemplate>
+      </Setter>
+    </ControlTheme>
+
+    <!-- ══════════════════════════════════════════════════════════════════════════════
+         Group box: a 2px ETCHED rectangle (shadow outside, highlight inside) with the title
+         painted over the top edge on a face-coloured plate — the classic notched legend.
+         ══════════════════════════════════════════════════════════════════════════════ -->
+    <ControlTheme x:Key="RetroGroupBox" TargetType="HeaderedContentControl">
+      <Setter Property="Foreground" Value="{StaticResource RetroText}" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Grid>
+            <!-- The frame starts half a line-height down so the legend can straddle it. -->
+            <Panel Margin="0,7,0,0">
+              <Border BorderThickness="1,1,0,0" BorderBrush="{StaticResource RetroShadow3D}" />
+              <Border BorderThickness="0,0,1,1" BorderBrush="{StaticResource RetroHighlight3D}" />
+              <Border Margin="1">
+                <Border BorderThickness="1,1,0,0" BorderBrush="{StaticResource RetroHighlight3D}" />
+              </Border>
+              <ContentPresenter Content="{TemplateBinding Content}"
+                                Margin="8,10,8,8" />
+            </Panel>
+            <Border Name="LegendPlate" Background="{StaticResource RetroFace}"
+                    HorizontalAlignment="Left" VerticalAlignment="Top"
+                    Margin="8,0,0,0" Padding="3,0">
+              <ContentPresenter Name="PART_HeaderPresenter"
+                                Content="{TemplateBinding Header}"
+                                ContentTemplate="{TemplateBinding HeaderTemplate}" />
+            </Border>
+          </Grid>
+        </ControlTemplate>
+      </Setter>
+    </ControlTheme>
+
+  </Styles.Resources>
+
+  <!-- ══════════════════════════════════════════════════════════════════════════════════
+       Loose styles applied by class, for the pieces that are plain elements rather than
+       templated controls.
+       ══════════════════════════════════════════════════════════════════════════════════ -->
+
+  <!-- Window frame: raised 2px bevel around the whole popup. -->
+  <Style Selector="Border.retro-frame">
+    <Setter Property="Background" Value="{StaticResource RetroFace}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BorderBrush" Value="{StaticResource RetroDarkShadow}" />
+  </Style>
+
+  <!-- Caption bar. 18px is the Windows 2000 default caption height at 96 DPI. -->
+  <Style Selector="Border.retro-caption">
+    <Setter Property="Background" Value="{StaticResource RetroCaption}" />
+    <Setter Property="Height" Value="18" />
+    <Setter Property="Padding" Value="2,0" />
+  </Style>
+
+  <Style Selector="TextBlock.retro-caption-text">
+    <Setter Property="Foreground" Value="{StaticResource RetroCaptionText}" />
+    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="TextWrapping" Value="NoWrap" />
+  </Style>
+
+  <!-- The search hit / dim states. Items are NEVER hidden and the layout NEVER reflows
+       (launcher spec §2.2) — a filter that collapsed non-matches would resize the popup on
+       every keystroke.
+
+       The hit ring WRAPS the button rather than overlaying it, and its 2px thickness is reserved
+       even when transparent. That is deliberate: an overlay ring drawn with a negative margin would
+       be clipped by the group box, and a ring that only takes space once a match appears would
+       shift every item by 2px on the first keystroke — the exact reflow this whole design avoids. -->
+  <Style Selector="ContentControl.tm-item">
+    <Setter Property="Opacity" Value="1" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <DoubleTransition Property="Opacity" Duration="0:0:0.12" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="ContentControl.tm-item.tm-dim">
+    <Setter Property="Opacity" Value="0.32" />
+  </Style>
+
+  <!-- DESCENDANT selectors, not the `>` child combinator: a ContentControl presents its content
+       through a ContentPresenter, so the ring is never a direct child in the visual tree and `>`
+       silently matches nothing — which is exactly how the gold ring came to be invisible once. -->
+  <Style Selector="ContentControl.tm-item Border.tm-hit-ring">
+    <Setter Property="BorderThickness" Value="2" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.12" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="ContentControl.tm-item.tm-hit Border.tm-hit-ring">
+    <Setter Property="BorderBrush" Value="{StaticResource RetroHit}" />
+    <Setter Property="BoxShadow" Value="0 0 8 1 #8CF5B301" />
+  </Style>
+
+  <!-- Empty state. -->
+  <Style Selector="StackPanel.tm-empty">
+    <Setter Property="Margin" Value="22,28" />
+  </Style>
+  <Style Selector="StackPanel.tm-empty > TextBlock">
+    <Setter Property="Foreground" Value="#444444" />
+    <Setter Property="FontSize" Value="14" />
+    <Setter Property="LineHeight" Value="24" />
+    <Setter Property="TextAlignment" Value="Center" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+  </Style>
+  <Style Selector="StackPanel.tm-empty > TextBlock.title">
+    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="Margin" Value="0,0,0,6" />
+  </Style>
+
+  <!-- The update notice is disabled WHILE DOWNLOADING to stop a second click, but it is the one
+       control that must stay fully legible in that state — it is reporting live progress. The CSS
+       build had the same override (`opacity: 1` on `.tm-update-notice.downloading`) for the same
+       reason. Undo the theme's generic disabled fade here only. -->
+  <Style Selector="Button.tm-update-notice:disabled /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Opacity" Value="1" />
+  </Style>
+
+  <!-- Toast: a transient error plate, bottom-centred over the content. -->
+  <Style Selector="Border.tm-toast">
+    <Setter Property="Background" Value="#FFFFE1" />
+    <Setter Property="BorderBrush" Value="{StaticResource RetroDarkShadow}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Padding" Value="10,6" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="VerticalAlignment" Value="Bottom" />
+    <Setter Property="Margin" Value="0,0,0,12" />
+  </Style>
+
+</Styles>

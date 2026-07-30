@@ -4,13 +4,14 @@ using System.Text.Json;
 using TanMenu.Core.Infrastructure;
 using TanMenu.Core.Models;
 using TanMenu.Core.Services;
+using TanMenu.Wpf.Serialization;
 using TanMenu.Wpf.ViewModels;
 
 namespace TanMenu.Wpf.Services;
 
 /// <summary>
 /// Bridges Core's <see cref="MenuDataService"/> (which yields <c>IconKey</c> paths) to the
-/// retro Blazor UI's view models (which bind <c>IconBase64</c>), encoding icons via
+/// launcher's view models (which bind <c>IconBase64</c>), encoding icons via
 /// <see cref="IIconProvider"/>. Base64 lives in the UI layer only; Core stays icon-format-agnostic.
 ///
 /// The folder scan + .lnk resolution + icon extraction run on ONE long-lived STA worker thread
@@ -35,8 +36,9 @@ public sealed class MenuService : IDisposable
     private const string DefaultIconBase64 =
         "iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAAFiUAABYlAUlSJPAAAACrSURBVGhD7dM7DsMgFERRL5s1sRLWRJNUbkYkT9jv40T3StMCp+A4iIh+ptba6+70zNT0MVen56Z1PmDOeXmlCA/AGKMO4QUoQ3gCShDegHREBCAVEQVIQ3gAvi0cAcAYAKu/BPTebw3ATiuA5wBYATBWAtBPuTsAO60AngNgBcBYCUA/5e4A7LQCeA6AFQBjJQD9lJ+mj10NgNV5QfT0Xrf0oqjpvUREz+0N2/Xp7Z0GKaEAAAAASUVORK5CYII=";
 
-    /// <summary>Default display name of the built-in common-tools group.</summary>
-    public const string DefaultToolsGroupName = "常用工具";
+    // NOTE: there is deliberately no DefaultToolsGroupName constant. The built-in group's title is
+    // AppLanguage.Text("CommonTools", language) (see BuildDefaultToolsGroup) — a hard-coded Chinese
+    // constant would be an unlocalized second source of truth that nothing reads.
 
     public MenuService(MenuDataService data, IIconProvider icons, IAppDataPaths paths)
     {
@@ -62,13 +64,6 @@ public sealed class MenuService : IDisposable
     private readonly object _iconCacheFileLock = new();
     private readonly System.Threading.Timer _iconSaveTimer;
     private string? _loadedIconCachePath;
-
-    private sealed class PersistedIcon
-    {
-        public DateTime Mtime { get; set; }
-        public long Size { get; set; }
-        public byte[] Png { get; set; } = Array.Empty<byte>();
-    }
 
     // Bumped by ClearIconCache and folded into the build fingerprint. "Clear cache" doesn't touch any
     // folder/tools mtime, so without this the unchanged-folders gate would skip the rebuild and the
@@ -146,7 +141,10 @@ public sealed class MenuService : IDisposable
                 if (File.Exists(path))
                 {
                     var json = File.ReadAllText(path);
-                    var persisted = JsonSerializer.Deserialize<Dictionary<string, PersistedIcon>>(json);
+                    // Source-generated contract, deliberately using the serializer DEFAULTS so the
+                    // PascalCase/compact shape written before the NativeAOT migration still parses.
+                    var persisted = JsonSerializer.Deserialize(
+                        json, IconCacheJsonContext.Default.DictionaryStringPersistedIcon);
                     if (persisted != null)
                     {
                         foreach (var (key, entry) in persisted)
@@ -181,7 +179,8 @@ public sealed class MenuService : IDisposable
                     StringComparer.OrdinalIgnoreCase);
                 Directory.CreateDirectory(Path.GetDirectoryName(path)!);
                 var tempPath = path + ".tmp";
-                File.WriteAllText(tempPath, JsonSerializer.Serialize(snapshot));
+                File.WriteAllText(tempPath, JsonSerializer.Serialize(
+                    snapshot, IconCacheJsonContext.Default.DictionaryStringPersistedIcon));
                 File.Move(tempPath, path, true);
                 _loadedIconCachePath = path;
             }
@@ -213,7 +212,8 @@ public sealed class MenuService : IDisposable
     // ---- Bundled tool icons (Store-app aliases) --------------------------------------------------
     // Store-app aliases (e.g. mspaint.exe on Win11) resolve to a 0-byte App Execution Alias stub with no
     // embedded icon, so the shell only yields a generic icon. For these known commands we ship a real
-    // icon under wwwroot/tool-icons (copied next to the exe by the csproj, like the sounds/fonts).
+    // icon under wwwroot/tool-icons (copied next to the exe by the csproj, like the sounds; the fonts
+    // are embedded as AvaloniaResource instead and have no loose copy).
     private static readonly Dictionary<string, string> _bundledToolIcons =
         new(StringComparer.OrdinalIgnoreCase)
         {
@@ -395,8 +395,9 @@ public sealed class MenuService : IDisposable
     }
 
     /// <summary>Extract the real icons for the pending items on the STA worker, invoking
-    /// <paramref name="onBatch"/> as batches complete so the UI can light them up progressively. The
-    /// callback is responsible for marshaling to its own render thread.</summary>
+    /// <paramref name="onBatch"/> as batches complete so the UI can light them up progressively.
+    /// <paramref name="onBatch"/> is called ON THE STA WORKER — the callback is responsible for
+    /// marshaling to its own render thread (<c>Dispatcher.UIThread.Post</c>).</summary>
     public Task ExtractIconsAsync(IReadOnlyList<PendingIcon> pending,
         Action<IReadOnlyList<(MenuItemVm Item, string Base64)>> onBatch, Func<bool> isStale)
         => ExtractIconsFromAsync(pending, 0, onBatch, isStale);
@@ -569,7 +570,7 @@ public sealed class MenuService : IDisposable
     // One long-lived STA thread + job queue, created on first use. Reusing the apartment keeps shell
     // COM (CShellLink, SHGetFileInfo) warm across summons instead of paying thread + COM-apartment
     // spin-up/teardown on every build. Continuations resume off this worker (RunContinuationsAsynchronously)
-    // so the Blazor StateHasChanged runs on the UI sync context, not here.
+    // so an awaiting caller resumes on its own context (Dispatcher.UIThread for the launcher), not here.
     private readonly BlockingCollection<Action> _staJobs = new();
     private Thread? _staThread;
     private readonly object _staInit = new();

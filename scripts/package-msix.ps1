@@ -36,6 +36,41 @@ function Find-MakeAppx {
     throw "makeappx.exe was not found. Install the Windows SDK/MSIX Packaging Tools."
 }
 
+# Validates the shape of a NativeAOT publish before it is packed into a Store submission. Under AOT
+# the payload is one native TanMenu.Wpf.exe, the Avalonia native libraries, and the loose assets the
+# app reads from disk -- not the ~569 staged files a self-contained ReadyToRun publish produced. If
+# PublishAot silently fails to apply, the folder still looks plausible but ships managed assemblies
+# plus the CoreCLR host, which would fail Store certification and not run on a clean machine.
+function Assert-AotPublishOutput([string]$dir) {
+    foreach ($file in @("TanMenu.Wpf.exe", "app.ico")) {
+        if (!(Test-Path -LiteralPath (Join-Path $dir $file))) {
+            throw "Publish output is missing '$file': $dir"
+        }
+    }
+    # SoundService and MenuService read these by path at run time, so they must survive publish.
+    foreach ($folder in @("wwwroot\sounds", "wwwroot\tool-icons")) {
+        if (!(Test-Path -LiteralPath (Join-Path $dir $folder))) {
+            throw "Publish output is missing the '$folder' asset folder: $dir"
+        }
+    }
+    foreach ($managed in @("TanMenu.Wpf.dll", "coreclr.dll", "TanMenu.Wpf.runtimeconfig.json")) {
+        if (Test-Path -LiteralPath (Join-Path $dir $managed)) {
+            throw "Publish output contains '$managed', so this is a managed (non-AOT) publish: $dir"
+        }
+    }
+    # Avalonia loads these by filename at run time. A missing one is not a build error -- it is a
+    # blank or crashing window on the user's machine -- so warn loudly rather than failing a release
+    # if a future Avalonia version renames them.
+    $natives = @("libSkiaSharp.dll", "libHarfBuzzSharp.dll", "av_libglesv2.dll")
+    $missing = @($natives | Where-Object { !(Test-Path -LiteralPath (Join-Path $dir $_)) })
+    if ($missing.Count -gt 0) {
+        Write-Warning "Avalonia native libraries not found in the publish output: $($missing -join ', '). Verify the payload before submitting."
+    }
+    $files = @(Get-ChildItem -LiteralPath $dir -Recurse -File)
+    $megabytes = [math]::Round((($files | Measure-Object Length -Sum).Sum / 1MB), 1)
+    Write-Host "Publish payload: $($files.Count) files, $megabytes MB."
+}
+
 function New-Logo([string]$sourcePath, [string]$targetPath, [int]$width, [int]$height) {
     Add-Type -AssemblyName System.Drawing
 
@@ -73,10 +108,15 @@ $stageDir = Resolve-RepoPath "build\msix\stage"
 $outputDir = Resolve-RepoPath $OutputRoot
 $version = Get-Version4
 
+# NOTE: deliberately no --no-restore. A clean runner has neither the win-x64 runtime pack nor the
+# NativeAOT ILC packs, and publish must be allowed to restore them (commit 4fbeeb3). Expect this step
+# to take several minutes: ILC compiles and natively links the whole program in one pass.
 Write-Host "Publishing TanMenu.Wpf ($Configuration)..."
 dotnet publish (Resolve-RepoPath "src\TanMenu.Wpf\TanMenu.Wpf.csproj") `
     -c $Configuration -p:Platform=x64 /p:PublishProfile=win-x64
 if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed with exit code $LASTEXITCODE." }
+
+Assert-AotPublishOutput $publishDir
 
 if (Test-Path $stageDir) { Remove-Item -LiteralPath $stageDir -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $stageDir | Out-Null
@@ -84,7 +124,10 @@ New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
 
 Write-Host "Staging package files..."
 Copy-Item -Path (Join-Path $publishDir "*") -Destination $stageDir -Recurse -Force
+# Defensive: publish never produces a config.json, but this guarantees a developer's own settings can
+# never leak into a Store package.
 Remove-Item -LiteralPath (Join-Path $stageDir "config.json") -Force -ErrorAction SilentlyContinue
+# Still required under AOT: ILC emits a NATIVE TanMenu.Wpf.pdb next to the executable.
 Get-ChildItem -Path $stageDir -Recurse -File -Filter "*.pdb" | Remove-Item -Force
 
 $assets = Join-Path $stageDir "Assets"

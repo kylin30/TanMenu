@@ -1,9 +1,8 @@
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
-using System.Runtime.InteropServices.ComTypes;
-using System.Text;
 using TanMenu.Core.Infrastructure;
+using TanMenu.Core.Interop;
 using Windows.UI.Shell;
 
 namespace TanMenu.Wpf.Services;
@@ -24,9 +23,25 @@ public sealed record TaskbarPinState(TaskbarPinStatus Status, string? Error = nu
 /// taskbar pin. The portable shortcut targets Velopack's stable root launcher, not the replaceable
 /// <c>current</c> application directory, so in-place updates do not break it.
 /// </summary>
-public sealed class TaskbarPinService
+/// <remarks>
+/// All .lnk work goes through <see cref="ShellLink"/> (source-generated COM in TanMenu.Core). The
+/// old <c>Type.GetTypeFromCLSID</c> + <c>Activator.CreateInstance</c> + <c>[ComImport]</c> path is
+/// unusable here: NativeAOT has no built-in COM, and it fails at RUN time with no build warning —
+/// every pinned shortcut would have looked "not ours" and the pin prompt would have reappeared on
+/// every single reveal.
+///
+/// The shell COM below runs on the caller's thread, which is the UI thread for every call site
+/// (the pin prompt and the settings window). That thread is STA, which the shell requires; a
+/// ComWrappers RCW performs raw vtable calls with NO apartment check, so calling any of this from a
+/// pool thread would be undefined behaviour rather than a clean RPC_E_WRONG_THREAD.
+/// </remarks>
+public sealed partial class TaskbarPinService
 {
     public const string AppUserModelId = "TanSoft.TanMenu";
+
+    /// <summary>Buffer size for reading a shortcut's stored target — MAX_PATH is not enough for a
+    /// long path, and the shell writes up to 32767 characters plus the terminator.</summary>
+    private const int ShortcutPathCapacity = 32768;
 
     private readonly bool _isPackaged;
     private readonly Func<string> _launcherPath;
@@ -221,166 +236,48 @@ public sealed class TaskbarPinService
 
     private static bool ShortcutMatchesCurrentApp(string shortcutPath, string expectedTarget)
     {
-        IShellLinkW? link = null;
-        try
-        {
-            var shellLinkType = Type.GetTypeFromCLSID(
-                new Guid("00021401-0000-0000-C000-000000000046"), throwOnError: true)!;
-            link = (IShellLinkW)Activator.CreateInstance(shellLinkType)!;
-            ((IPersistFile)link).Load(shortcutPath, 0); // STGM_READ
+        // using: the RCW is created with CreateObjectFlags.UniqueInstance, so disposing it actually
+        // releases the underlying COM object — the AOT-safe replacement for FinalReleaseComObject.
+        // It must run on the exception path too: a desktop with hundreds of pins is scanned per
+        // reveal, and a leak per stale .lnk would accumulate for the life of the tray process.
+        using var link = ShellLink.Create();
+        link.Load(shortcutPath, 0); // STGM_READ
 
-            string? shortcutAppId = null;
-            var key = PropertyKey.AppUserModelId;
-            var hr = ((IPropertyStore)link).GetValue(ref key, out var value);
-            if (hr >= 0)
-            {
-                try
-                {
-                    if (value.ValueType == 31 && value.Pointer != IntPtr.Zero)
-                        shortcutAppId = Marshal.PtrToStringUni(value.Pointer);
-                }
-                finally
-                {
-                    PropVariantClear(ref value);
-                }
-            }
+        var shortcutAppId = link.GetAppUserModelId();
 
-            // Pins created from older TanMenu shortcuts may not carry an AUMID. Only accept an
-            // exact executable target match; the filename alone could point to an obsolete copy.
-            var path = new StringBuilder(32768);
-            link.GetPath(path, path.Capacity, IntPtr.Zero, 4); // SLGP_RAWPATH
-            if (path.Length == 0)
-                return false;
+        // Pins created from older TanMenu shortcuts may not carry an AUMID. Only accept an
+        // exact executable target match; the filename alone could point to an obsolete copy.
+        var path = link.GetPath(ShellLink.RawPath, ShortcutPathCapacity);
+        if (path.Length == 0)
+            return false;
 
-            var targetMatches = string.Equals(Path.GetFullPath(path.ToString()), expectedTarget,
-                StringComparison.OrdinalIgnoreCase);
-            var identityMatches = string.IsNullOrEmpty(shortcutAppId) ||
-                                  string.Equals(shortcutAppId, AppUserModelId,
-                                      StringComparison.Ordinal);
-            return targetMatches && identityMatches;
-        }
-        finally
-        {
-            if (link is not null && Marshal.IsComObject(link))
-                Marshal.FinalReleaseComObject(link);
-        }
+        var targetMatches = string.Equals(Path.GetFullPath(path), expectedTarget,
+            StringComparison.OrdinalIgnoreCase);
+        var identityMatches = string.IsNullOrEmpty(shortcutAppId) ||
+                              string.Equals(shortcutAppId, AppUserModelId,
+                                  StringComparison.Ordinal);
+        return targetMatches && identityMatches;
     }
 
     private static void CreateShortcut(string shortcutPath, string target)
     {
-        IShellLinkW? link = null;
-        try
-        {
-            var shellLinkType = Type.GetTypeFromCLSID(
-                new Guid("00021401-0000-0000-C000-000000000046"), throwOnError: true)!;
-            link = (IShellLinkW)Activator.CreateInstance(shellLinkType)!;
-            link.SetPath(target);
-            link.SetWorkingDirectory(Path.GetDirectoryName(target)!);
-            link.SetDescription("TanMenu");
-            link.SetIconLocation(target, 0);
-
-            var key = PropertyKey.AppUserModelId;
-            // InitPropVariantFromString is a C++ header-only helper, not a DLL export. Build the
-            // equivalent VT_LPWSTR value here; PropVariantClear releases the CoTaskMem buffer.
-            var value = new PropVariant
-            {
-                ValueType = 31, // VT_LPWSTR
-                Pointer = Marshal.StringToCoTaskMemUni(AppUserModelId),
-            };
-
-            try
-            {
-                Marshal.ThrowExceptionForHR(((IPropertyStore)link).SetValue(ref key, ref value));
-                Marshal.ThrowExceptionForHR(((IPropertyStore)link).Commit());
-            }
-            finally
-            {
-                PropVariantClear(ref value);
-            }
-
-            ((IPersistFile)link).Save(shortcutPath, true);
-        }
-        finally
-        {
-            if (link is not null && Marshal.IsComObject(link))
-                Marshal.FinalReleaseComObject(link);
-        }
+        using var link = ShellLink.Create();
+        link.SetPath(target);
+        link.SetWorkingDirectory(Path.GetDirectoryName(target)!);
+        link.SetDescription("TanMenu");
+        link.SetIconLocation(target, 0);
+        // Stamps the AUMID into the link's property store and commits it. Must match the AUMID the
+        // process sets in InitializeProcessIdentity, or TaskbarManager cannot associate the two.
+        link.SetAppUserModelId(AppUserModelId);
+        link.Save(shortcutPath, true);
     }
 
-    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
-    private static extern int SetCurrentProcessExplicitAppUserModelID(string appId);
+    [LibraryImport("shell32.dll", StringMarshalling = StringMarshalling.Utf16)]
+    private static partial int SetCurrentProcessExplicitAppUserModelID(string appId);
 
-    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
-    private static extern void SHChangeNotify(ShellChangeNotifyEventId eventId,
+    [LibraryImport("shell32.dll", StringMarshalling = StringMarshalling.Utf16)]
+    private static partial void SHChangeNotify(ShellChangeNotifyEventId eventId,
         ShellChangeNotifyFlags flags, string item1, IntPtr item2);
-
-    [DllImport("ole32.dll")]
-    private static extern int PropVariantClear(ref PropVariant propVariant);
-
-    [ComImport]
-    [Guid("000214F9-0000-0000-C000-000000000046")]
-    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    private interface IShellLinkW
-    {
-        void GetPath([Out, MarshalAs(UnmanagedType.LPWStr)] System.Text.StringBuilder file,
-            int maxPath, IntPtr findData, uint flags);
-        void GetIDList(out IntPtr idList);
-        void SetIDList(IntPtr idList);
-        void GetDescription([Out, MarshalAs(UnmanagedType.LPWStr)] System.Text.StringBuilder name, int maxName);
-        void SetDescription([MarshalAs(UnmanagedType.LPWStr)] string name);
-        void GetWorkingDirectory([Out, MarshalAs(UnmanagedType.LPWStr)] System.Text.StringBuilder dir, int maxPath);
-        void SetWorkingDirectory([MarshalAs(UnmanagedType.LPWStr)] string dir);
-        void GetArguments([Out, MarshalAs(UnmanagedType.LPWStr)] System.Text.StringBuilder args, int maxPath);
-        void SetArguments([MarshalAs(UnmanagedType.LPWStr)] string args);
-        void GetHotkey(out short hotkey);
-        void SetHotkey(short hotkey);
-        void GetShowCmd(out int showCommand);
-        void SetShowCmd(int showCommand);
-        void GetIconLocation([Out, MarshalAs(UnmanagedType.LPWStr)] System.Text.StringBuilder iconPath,
-            int iconPathLength, out int iconIndex);
-        void SetIconLocation([MarshalAs(UnmanagedType.LPWStr)] string iconPath, int iconIndex);
-        void SetRelativePath([MarshalAs(UnmanagedType.LPWStr)] string path, uint reserved);
-        void Resolve(IntPtr hwnd, uint flags);
-        void SetPath([MarshalAs(UnmanagedType.LPWStr)] string file);
-    }
-
-    [ComImport]
-    [Guid("886D8EEB-8CF2-4446-8D02-CDBA1DBDCF99")]
-    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    private interface IPropertyStore
-    {
-        [PreserveSig] int GetCount(out uint count);
-        [PreserveSig] int GetAt(uint index, out PropertyKey key);
-        [PreserveSig] int GetValue(ref PropertyKey key, out PropVariant value);
-        [PreserveSig] int SetValue(ref PropertyKey key, ref PropVariant value);
-        [PreserveSig] int Commit();
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct PropertyKey
-    {
-        public Guid FormatId;
-        public uint PropertyId;
-
-        public static PropertyKey AppUserModelId => new()
-        {
-            FormatId = new Guid("9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3"),
-            PropertyId = 5,
-        };
-    }
-
-    // PROPVARIANT's union is 16 bytes on 64-bit Windows; the string initialized by
-    // InitPropVariantFromString occupies the pointer at offset 8 and is released by PropVariantClear.
-    [StructLayout(LayoutKind.Sequential)]
-    private struct PropVariant
-    {
-        public ushort ValueType;
-        public ushort Reserved1;
-        public ushort Reserved2;
-        public ushort Reserved3;
-        public IntPtr Pointer;
-        public int Value;
-    }
 
     private enum ShellChangeNotifyEventId : uint
     {

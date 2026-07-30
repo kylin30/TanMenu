@@ -33,8 +33,6 @@ public class PortableRuntimeTests
             var data = PortableRuntime.GetDataRoot(root);
 
             Assert.Equal(Path.Combine(root, "Data"), data);
-            Assert.Equal(Path.Combine(root, "Data", "WebView2"),
-                PortableRuntime.GetWebView2DataFolder(root));
         }
         finally
         {

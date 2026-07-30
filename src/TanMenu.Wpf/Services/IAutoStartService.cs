@@ -3,7 +3,8 @@ using TanMenu.Core.Infrastructure;
 
 namespace TanMenu.Wpf.Services;
 
-/// <summary>Launch-at-login toggle. Abstracted so a packaged build can swap in a StartupTask impl.</summary>
+/// <summary>Launch-at-login toggle. One of the three implementations below is selected at startup by
+/// distribution mode: portable, packaged (MSIX), or plain unpackaged.</summary>
 public interface IAutoStartService
 {
     bool IsEnabled();
@@ -11,12 +12,17 @@ public interface IAutoStartService
 }
 
 /// <summary>
-/// Unpackaged autostart via the per-user Run key. (For a future MSIX build, replace with a
-/// <c>windows.startupTask</c>-backed implementation.)
+/// Plain unpackaged autostart via the per-user Run key. (Packaged builds use
+/// <see cref="StartupTaskAutoStartService"/>; portable builds use <see cref="PortableAutoStartService"/>.)
 /// </summary>
 public sealed class RegistryAutoStartService : IAutoStartService
 {
     private const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
+
+    // User-visible state that already exists on disk for released 0.9.x installs. Renaming it would
+    // orphan every existing autostart entry: Windows would keep launching the old value at logon
+    // while the settings checkbox read "off". It is also why the executable is still TanMenu.Wpf.exe
+    // — IsEnabled compares the stored path against Environment.ProcessPath (see the csproj comment).
     private const string ValueName = "TanMenuWpf";
 
     private static string ExePath => Environment.ProcessPath ?? "";
@@ -51,8 +57,15 @@ public sealed class PortableAutoStartService : IAutoStartService
 }
 
 /// <summary>Packaged/MSIX autostart via the manifest-declared windows.startupTask extension.</summary>
+/// <remarks>
+/// The WinRT calls block on their <c>IAsyncOperation</c> (<c>.AsTask().GetAwaiter().GetResult()</c>)
+/// and are reached from the UI thread. That is safe only because StartupTask completes without
+/// needing to re-enter the UI thread; do not add work to these paths that would.
+/// </remarks>
 public sealed class StartupTaskAutoStartService : IAutoStartService
 {
+    /// <summary>Must stay equal to <c>desktop:StartupTask/@TaskId</c> in
+    /// <c>packaging/msix/AppxManifest.xml.in</c>, or the packaged toggle silently does nothing.</summary>
     public const string TaskId = "TanMenuStartupTask";
 
     public bool IsEnabled()

@@ -16,7 +16,9 @@ jobs:
   portable-release:
     name: Build portable app and publish update feed
     runs-on: windows-latest
-    timeout-minutes: 45
+    # Raised from 45: this job now runs a NativeAOT publish, which compiles and natively links the
+    # whole program in a single ILC pass and takes far longer than the old ReadyToRun publish.
+    timeout-minutes: 60
 
     steps:
       - name: Checkout repository
@@ -52,6 +54,21 @@ jobs:
 
       - name: Test
         run: dotnet test tests/TanMenu.Core.Tests/TanMenu.Core.Tests.csproj -c Release --no-build
+
+      - name: Ensure vswhere is on PATH
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if (Get-Command vswhere.exe -ErrorAction SilentlyContinue) {
+            Write-Host 'vswhere.exe is already on PATH.'
+            exit 0
+          }
+          $installer = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer'
+          if (!(Test-Path (Join-Path $installer 'vswhere.exe'))) {
+            throw "vswhere.exe was not found under '$installer'. ILC uses it to locate the MSVC linker and Windows SDK libs for the native link step."
+          }
+          Add-Content -Path $env:GITHUB_PATH -Value $installer
+          Write-Host "Added '$installer' to PATH."
 
       - name: Install Velopack CLI
         shell: pwsh
@@ -118,7 +135,9 @@ jobs:
   store-package:
     name: Build Microsoft Store package
     runs-on: windows-latest
-    timeout-minutes: 30
+    # Raised from 30: package-msix.ps1 now runs its own NativeAOT publish. The two jobs deliberately
+    # publish independently, so the AOT compile happens twice per tag.
+    timeout-minutes: 45
 
     steps:
       - name: Checkout repository
@@ -143,6 +162,21 @@ jobs:
           if ($tag -cne "v$version") {
             throw "Store package tag '$tag' must match product version '$version'."
           }
+
+      - name: Ensure vswhere is on PATH
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if (Get-Command vswhere.exe -ErrorAction SilentlyContinue) {
+            Write-Host 'vswhere.exe is already on PATH.'
+            exit 0
+          }
+          $installer = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer'
+          if (!(Test-Path (Join-Path $installer 'vswhere.exe'))) {
+            throw "vswhere.exe was not found under '$installer'. ILC uses it to locate the MSVC linker and Windows SDK libs for the native link step."
+          }
+          Add-Content -Path $env:GITHUB_PATH -Value $installer
+          Write-Host "Added '$installer' to PATH."
 
       - name: Restore
         run: dotnet restore TanMenu.slnx

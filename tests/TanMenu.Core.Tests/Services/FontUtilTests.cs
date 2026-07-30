@@ -19,12 +19,14 @@ public class FontUtilTests
     }
 
     [Theory]
-    // The value is inlined into a window-wide <style> font-family; CSS-significant characters that
-    // could break out of or hijack the rule must be stripped (defence against a hand-edited config).
+    // The value goes straight into Avalonia's FontFamily, so a hand-edited config.json must not be
+    // able to smuggle punctuation into the family token. The inputs below are deliberately hostile
+    // shapes (the CSS-injection payloads the pre-Avalonia build had to defend against, kept because
+    // they exercise every character class the whitelist drops).
     [InlineData("Arial\"; } body { background:url(x)")]
     [InlineData("a<script>alert(1)</script>")]
     [InlineData("x'); @import url(evil); /*")]
-    public void Sanitize_StripsCssBreakingCharacters(string input)
+    public void Sanitize_StripsEverythingOutsideTheWhitelist(string input)
     {
         var result = FontUtil.Sanitize(input);
         foreach (var c in new[] { '"', '\'', ';', '{', '}', '<', '>', '(', ')', '\\', ':', '@', '#', '/', '*' })
