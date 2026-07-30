@@ -35,10 +35,17 @@
            reflow the grid the way a border thickness change would. -->
       <Setter Property="FocusAdorner">
         <Template>
+          <!-- Windows 11's two-ring focus rectangle: a 2 px outer ring in the text colour with a
+               1 px inner ring in the opposite colour, so it reads against both a light tile and a
+               dark one without knowing which it is over. -->
           <Border BorderBrush="{DynamicResource FocusStrokeOuterBrush}"
                   BorderThickness="2"
-                  CornerRadius="6"
-                  Margin="-2" />
+                  CornerRadius="7"
+                  Margin="-3">
+            <Border BorderBrush="{DynamicResource FocusStrokeInnerBrush}"
+                    BorderThickness="1"
+                    CornerRadius="5" />
+          </Border>
         </Template>
       </Setter>
 
@@ -136,26 +143,26 @@
     <Setter Property="Padding" Value="12,10" />
   </Style>
 
-  <!-- Glyphs are geometry, not font characters: identical at every DPI, and a build that ships no
-       icon font cannot render a missing one as tofu. Open outlines are stroked, closed shapes are
-       filled, hence the two styles. -->
-  <Style Selector="Path.tm-search-glyph">
-    <Setter Property="Stroke" Value="{DynamicResource TextTertiaryBrush}" />
-    <Setter Property="StrokeThickness" Value="1.3" />
-    <Setter Property="StrokeLineCap" Value="Round" />
-    <Setter Property="Width" Value="16" />
-    <Setter Property="Height" Value="16" />
-    <Setter Property="Stretch" Value="Uniform" />
-    <Setter Property="VerticalAlignment" Value="Center" />
-  </Style>
-
-  <Style Selector="Path.tm-stroke-glyph">
-    <Setter Property="Stroke" Value="{DynamicResource TextSecondaryBrush}" />
-    <Setter Property="StrokeThickness" Value="1.3" />
-    <Setter Property="StrokeLineCap" Value="Round" />
-    <Setter Property="Stretch" Value="Uniform" />
+  <!-- Iconography is Segoe Fluent Icons — the Windows 11 icon face — rather than hand-drawn
+       geometry, so the launcher's search, overflow and close glyphs are the same shapes the shell
+       and every other Windows 11 app draw. Segoe MDL2 Assets stands in on Windows 10 at the same
+       code points. Both are system fonts; nothing is bundled. -->
+  <Style Selector="TextBlock.tm-icon">
+    <Setter Property="FontFamily" Value="{DynamicResource IconFontFamily}" />
+    <Setter Property="FontSize" Value="16" />
+    <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
     <Setter Property="HorizontalAlignment" Value="Center" />
     <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="TextAlignment" Value="Center" />
+  </Style>
+
+  <!-- Quieter icons: the search affordance and the folder hint are labels, not actions. -->
+  <Style Selector="TextBlock.tm-icon.subtle">
+    <Setter Property="Foreground" Value="{DynamicResource TextTertiaryBrush}" />
+  </Style>
+
+  <Style Selector="TextBlock.tm-icon.small">
+    <Setter Property="FontSize" Value="14" />
   </Style>
 
   <!-- The search field is a plain TextBox stripped to text only; the field's own shape, fill and
@@ -233,8 +240,12 @@
 
   <!-- ══ Sections ═════════════════════════════════════════════════════════════════════════════ -->
 
+  <!-- Body Strong, per the Windows 11 ramp: 14/20 SemiBold. The FACE is deliberately inherited
+       rather than pinned to FontFamilyText: a user who picked a font in settings expects it here
+       too, and at 14 px the inherited default IS the Text optical size anyway. -->
   <Style Selector="TextBlock.tm-section">
     <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
+    <Setter Property="LineHeight" Value="{DynamicResource LineHeightBody}" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
     <Setter Property="VerticalAlignment" Value="Center" />
@@ -253,15 +264,10 @@
   <Style Selector="Border.tm-section-head.clickable:pointerover">
     <Setter Property="Background" Value="{DynamicResource SubtleFillSecondaryBrush}" />
   </Style>
-  <Style Selector="Border.tm-section-head.clickable:pointerover Path.tm-folder">
+  <Style Selector="Border.tm-section-head.clickable:pointerover TextBlock.tm-folder">
     <Setter Property="Opacity" Value="1" />
   </Style>
-  <Style Selector="Path.tm-folder">
-    <Setter Property="Fill" Value="{DynamicResource TextTertiaryBrush}" />
-    <Setter Property="Width" Value="14" />
-    <Setter Property="Height" Value="14" />
-    <Setter Property="Stretch" Value="Uniform" />
-    <Setter Property="VerticalAlignment" Value="Center" />
+  <Style Selector="TextBlock.tm-folder">
     <Setter Property="Opacity" Value="0" />
   </Style>
 
@@ -274,6 +280,7 @@
   <Style Selector="StackPanel.tm-empty > TextBlock">
     <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
     <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
+    <Setter Property="LineHeight" Value="{DynamicResource LineHeightBody}" />
     <Setter Property="TextAlignment" Value="Center" />
     <Setter Property="TextWrapping" Value="Wrap" />
   </Style>
@@ -282,8 +289,13 @@
   <Style Selector="StackPanel.tm-empty Button">
     <Setter Property="HorizontalContentAlignment" Value="Center" />
   </Style>
+  <!-- Subtitle, per the Windows 11 ramp: 20/28 SemiBold. The FACE comes from the view model
+       (TitleFontFamily), which resolves to Segoe UI Variable Display — the optical size Segoe UI
+       Variable is designed for at 18 px and up — only while the user has not chosen a font of
+       their own. Pinning it here would silently override that setting. -->
   <Style Selector="StackPanel.tm-empty > TextBlock.title">
     <Setter Property="FontSize" Value="{DynamicResource FontSizeSubtitle}" />
+    <Setter Property="LineHeight" Value="{DynamicResource LineHeightSubtitle}" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
     <Setter Property="Margin" Value="0,0,0,6" />
@@ -320,6 +332,7 @@
   <Style Selector="Border.tm-toast > TextBlock">
     <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
     <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
+    <Setter Property="LineHeight" Value="{DynamicResource LineHeightBody}" />
   </Style>
 
 </Styles>

@@ -3,31 +3,56 @@ using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Platform;
 using Avalonia.Styling;
+using Microsoft.Win32;
 using TanMenu.Core.Services;
 
 namespace TanMenu.Wpf.Services;
 
 /// <summary>
 /// Owns the two things Themes/Fluent2/Tokens.axaml cannot express statically: which
-/// <see cref="ThemeVariant"/> is active, and what the user's real Windows accent colour is.
+/// <see cref="ThemeVariant"/> is active, and the user's real Windows accent palette.
 /// </summary>
 /// <remarks>
-/// The accent is not a static token because Avalonia's FluentTheme hardcodes
-/// <c>SystemAccentColor</c> to <c>#0078D7</c> — measured 2026-07-30 — rather than reading Windows
-/// personalization. Fluent 2 is an accent-led language, so the launcher reads the real value from
-/// <see cref="Application.PlatformSettings"/> and republishes it into <c>Application.Resources</c>,
-/// which is searched BEFORE <c>Application.Styles</c> and therefore wins over the design-time
-/// defaults in Tokens.axaml.
 /// <para>
-/// In Avalonia 12 platform settings hang off <c>Application</c>, not off a <c>TopLevel</c> as they
-/// did in 11, so the accent is available before the first window exists and there is no
-/// "wait for a window" dance.
+/// Avalonia's FluentTheme hardcodes <c>SystemAccentColor</c> to <c>#0078D7</c> — measured
+/// 2026-07-30 — rather than reading Windows personalization, and Windows 11 is an accent-led design
+/// language, so the accent has to be published from here.
+/// </para>
+/// <para>
+/// Windows does not expose one accent colour but a PALETTE of eight, and a Windows 11 app is
+/// expected to pick from it by context rather than tint the base colour itself: an accent fill on a
+/// LIGHT surface uses a darker shade so it holds contrast against white, and on a DARK surface a
+/// lighter one. That is why this publishes a theme-variant dictionary instead of a single brush.
 /// </para>
 /// </remarks>
 public static class AppTheme
 {
-    /// <summary>Used when the platform cannot report an accent (and at design time).</summary>
+    /// <summary>Used when the palette cannot be read (and at design time) — the Windows default blue.</summary>
     public static readonly Color FallbackAccent = Color.FromRgb(0x00, 0x78, 0xD4);
+
+    /// <summary>
+    /// Windows' own accent palette, in the order the registry stores it. Windows 11 personalization
+    /// writes eight RGBA entries; WinUI names the same entries
+    /// <c>SystemAccentColorLight3..SystemAccentColorDark3</c>.
+    /// </summary>
+    public enum Shade
+    {
+        Lighter3 = 0,
+        Lighter2 = 1,
+        Lighter1 = 2,
+        Base = 3,
+        Darker1 = 4,
+        Darker2 = 5,
+        Darker3 = 6,
+        // index 7 is the "alt"/complementary colour Windows uses for some system surfaces; unused here.
+    }
+
+    private const string AccentKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Explorer\Accent";
+    private const string AccentPaletteValue = "AccentPalette";
+
+    /// <summary>The dictionary this class owns inside <c>Application.Resources</c>, kept so a colour
+    /// change replaces it instead of stacking another copy on every notification.</summary>
+    private static ResourceDictionary? _published;
 
     /// <summary><see cref="ThemeVariant.Default"/> means "inherit from the platform", which is
     /// exactly what the System setting wants — Avalonia then tracks OS theme changes itself.</summary>
@@ -40,32 +65,74 @@ public static class AppTheme
         };
 
     /// <summary>Apply the configured appearance to the running application. Safe to call repeatedly;
-    /// the settings window calls it on every Apply.</summary>
+    /// the settings window calls it on every selection change.</summary>
     public static void Apply(Application app, string? appearance) =>
         app.RequestedThemeVariant = ToVariant(appearance);
 
     /// <summary>
-    /// Publish the platform accent as the <c>Accent*</c> brushes the launcher binds to. Called at
-    /// startup and again whenever the platform reports a colour change.
+    /// Publish the platform accent as the <c>Accent*</c> resources the UI binds to, per variant.
+    /// Called at startup and again whenever the platform reports a colour change.
     /// </summary>
+    /// <remarks>
+    /// The dictionary goes into <c>Application.Resources</c>, which is searched BEFORE
+    /// <c>Application.Styles</c>, so it wins over the design-time defaults in Tokens.axaml without
+    /// those having to be removed — the XAML previewer and any early binding still resolve.
+    /// </remarks>
+    /// <summary>The accent colours one theme variant needs, chosen out of the Windows palette.</summary>
+    /// <param name="Fill">Accent fills and the focus outline.</param>
+    /// <param name="Text">Accent-coloured TEXT, which needs more contrast than a fill.</param>
+    /// <param name="OnAccent">Text drawn ON an accent fill.</param>
+    /// <param name="Gradient">Start of the splash card's accent gradient.</param>
+    /// <param name="GradientShaded">End of that gradient.</param>
+    public readonly record struct AccentSet(
+        Color Fill, Color Text, Color OnAccent, Color Gradient, Color GradientShaded);
+
+    /// <summary>
+    /// Pick the accent colours for one variant out of Windows' eight-shade palette. Pure, so the
+    /// choice is unit-tested rather than eyeballed in a screenshot.
+    /// </summary>
+    /// <remarks>
+    /// The raw accent is tuned for the taskbar. On a LIGHT surface a fill made from it does not hold
+    /// contrast under white text, so Windows 11 uses a darker shade; on a DARK surface it disappears
+    /// into the background, so a lighter one is used — and light fills then need dark text on them.
+    /// This is the same Dark1/Dark2 and Light2/Light3 selection WinUI makes.
+    /// </remarks>
+    public static AccentSet ResolveAccent(Color[]? palette, bool dark) => dark
+        ? new AccentSet(
+            Fill: Pick(palette, Shade.Lighter2),
+            Text: Pick(palette, Shade.Lighter3),
+            OnAccent: Colors.Black,
+            Gradient: Pick(palette, Shade.Lighter2),
+            GradientShaded: Pick(palette, Shade.Base))
+        : new AccentSet(
+            Fill: Pick(palette, Shade.Darker1),
+            Text: Pick(palette, Shade.Darker2),
+            OnAccent: Colors.White,
+            Gradient: Pick(palette, Shade.Base),
+            GradientShaded: Pick(palette, Shade.Darker1));
+
     public static void PublishAccent(Application app)
     {
-        var accent = ReadPlatformAccent(app);
+        var palette = ReadAccentPalette();
 
-        var shaded = Shade(accent, -0.18);
+        var dict = new ResourceDictionary();
+        dict.ThemeDictionaries[ThemeVariant.Light] = Build(ResolveAccent(palette, dark: false));
+        dict.ThemeDictionaries[ThemeVariant.Dark] = Build(ResolveAccent(palette, dark: true));
 
-        app.Resources["AccentDefaultBrush"] = new SolidColorBrush(accent);
-        // Accent-on-surface text needs to survive both variants, so it is shifted away from the
-        // surface rather than used raw: darkened for light backgrounds, lightened for dark ones.
-        app.Resources["AccentTextBrush"] = new SolidColorBrush(Shade(accent, -0.35));
-        app.Resources["AccentTextBrushDark"] = new SolidColorBrush(Shade(accent, 0.45));
-        app.Resources["TextOnAccentBrush"] =
-            new SolidColorBrush(RelativeLuminance(accent) > 0.5 ? Colors.Black : Colors.White);
+        if (_published is not null)
+            app.Resources.MergedDictionaries.Remove(_published);
+        app.Resources.MergedDictionaries.Add(dict);
+        _published = dict;
 
-        // Raw Colors as well as brushes: a GradientStop takes a Color, not a Brush, and the splash
-        // card is an accent gradient.
-        app.Resources["AccentColor"] = accent;
-        app.Resources["AccentColorShaded"] = shaded;
+        static ResourceDictionary Build(AccentSet a) => new()
+        {
+            ["AccentDefaultBrush"] = new SolidColorBrush(a.Fill),
+            ["AccentTextBrush"] = new SolidColorBrush(a.Text),
+            ["TextOnAccentBrush"] = new SolidColorBrush(a.OnAccent),
+            // Raw Colors as well as brushes: a GradientStop takes a Color (the splash card).
+            ["AccentColor"] = a.Gradient,
+            ["AccentColorShaded"] = a.GradientShaded,
+        };
     }
 
     /// <summary>Subscribe to OS colour changes so a live launcher re-tints without a restart.
@@ -82,40 +149,34 @@ public static class AppTheme
         return new Unsubscriber(() => settings.ColorValuesChanged -= Handler);
     }
 
-    private static Color ReadPlatformAccent(Application app)
+    /// <summary>
+    /// Windows' eight-entry accent palette, or null when it cannot be read (a policy-locked or
+    /// freshly-provisioned profile). Each entry is stored as RGBA, little-endian byte order.
+    /// </summary>
+    public static Color[]? ReadAccentPalette()
     {
         try
         {
-            return app.PlatformSettings?.GetColorValues().AccentColor1 ?? FallbackAccent;
+            using var key = Registry.CurrentUser.OpenSubKey(AccentKeyPath);
+            if (key?.GetValue(AccentPaletteValue) is not byte[] bytes || bytes.Length < 7 * 4)
+                return null;
+
+            var shades = new Color[7];
+            for (var i = 0; i < shades.Length; i++)
+                shades[i] = Color.FromRgb(bytes[i * 4], bytes[i * 4 + 1], bytes[i * 4 + 2]);
+            return shades;
         }
         catch
         {
             // An accent is decoration; never let reading it take startup down.
-            return FallbackAccent;
+            return null;
         }
     }
 
-    /// <summary>Move a colour toward black (negative) or white (positive) by a fraction.</summary>
-    private static Color Shade(Color c, double amount)
-    {
-        static byte Mix(byte channel, double amount) => amount < 0
-            ? (byte)Math.Clamp(channel * (1 + amount), 0, 255)
-            : (byte)Math.Clamp(channel + (255 - channel) * amount, 0, 255);
-
-        return Color.FromArgb(c.A, Mix(c.R, amount), Mix(c.G, amount), Mix(c.B, amount));
-    }
-
-    /// <summary>sRGB relative luminance, used only to pick black-or-white text on the accent.</summary>
-    private static double RelativeLuminance(Color c)
-    {
-        static double Linear(byte channel)
-        {
-            var v = channel / 255.0;
-            return v <= 0.03928 ? v / 12.92 : Math.Pow((v + 0.055) / 1.055, 2.4);
-        }
-
-        return 0.2126 * Linear(c.R) + 0.7152 * Linear(c.G) + 0.0722 * Linear(c.B);
-    }
+    /// <summary>Fall back to the plain Windows blue when the palette is unavailable, rather than
+    /// inventing shades — a wrong-but-plausible tint is worse than the documented default.</summary>
+    private static Color Pick(Color[]? palette, Shade shade) =>
+        palette is not null && (int)shade < palette.Length ? palette[(int)shade] : FallbackAccent;
 
     private sealed class Unsubscriber(Action dispose) : IDisposable
     {

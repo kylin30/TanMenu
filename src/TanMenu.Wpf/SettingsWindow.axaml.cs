@@ -137,7 +137,16 @@ public partial class SettingsWindow : Window
     protected override void OnOpened(EventArgs e)
     {
         base.OnOpened(e);
+        ApplyBackdrop();
         PositionAboveLauncher();
+    }
+
+    /// <summary>Mica is a request, not a guarantee. Without a granted backdrop the transparent
+    /// window would be a hole, so fall back to the opaque Fluent 2 surface colour.</summary>
+    private void ApplyBackdrop()
+    {
+        if (ActualTransparencyLevel != WindowTransparencyLevel.Mica)
+            Background = this.FindResource("SurfaceBaseBrush") as IBrush ?? Brushes.White;
     }
 
     private void PositionAboveLauncher()

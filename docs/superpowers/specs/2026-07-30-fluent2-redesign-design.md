@@ -85,9 +85,16 @@ acrylic backdrop shows through.
 Shape: `RadiusControl` 4, `RadiusOverlay` 8. Spacing scale: 4 / 8 / 12 / 16 / 20.
 Type ramp: Caption 12, Body 14, BodyStrong 14 + SemiBold, Subtitle 20 + SemiBold.
 
-Accent is **not** a static token. `AppTheme` reads
-`TopLevel.PlatformSettings.GetColorValues().AccentColor1` at startup, falls back to `#0078D4`, and
-publishes `AccentDefault` / `AccentText` into `Application.Resources` so both variants pick it up.
+Accent is **not** a static token, and it is not one colour either. Windows keeps an eight-shade
+palette at `HKCU\…\Explorer\Accent\AccentPalette`, and a Windows 11 app selects from it by context
+rather than tinting the base itself: an accent fill on a light surface uses `Darker1` so it holds
+white text, on a dark surface `Lighter2` — and a light fill then needs *dark* text on it. Accent
+TEXT steps one further (`Darker2` / `Lighter3`). `AppTheme.ResolveAccent` is a pure function over the
+palette so that selection is unit-tested rather than eyeballed; `AppTheme.PublishAccent` wraps it in
+a `ThemeDictionaries` dictionary pushed into `Application.Resources`, which is searched before
+`Application.Styles` and therefore wins over Tokens.axaml's design-time defaults. With no readable
+palette every shade falls back to `#0078D4` rather than being derived — a plausible-but-wrong tint is
+worse than the documented default.
 
 The same dictionary overrides the three Avalonia keys that measurement showed do propagate:
 `ControlCornerRadius` → 4, `OverlayCornerRadius` → 8, `ContentControlThemeFontFamily` → the resolved
@@ -100,13 +107,39 @@ and re-tinting ~1054 baked brushes to gain a slightly different grey is not wort
 
 ## Typography
 
-Segoe UI Variable Text (Windows 11) → Segoe UI (Windows 10) → the Avalonia default, with
-`Microsoft YaHei UI` appended so CJK never renders as tofu. Both fonts were confirmed present on the
-development machine. All four bundled TTFs are deleted: the app default becomes the system font, the
-font dropdown lists only "默认（系统字体）" plus installed families, and `ConfigService.Normalize`
-maps the three retired bundled names (`Alibaba PuHuiTi`, `Pixel`, `Press Start 2P`) to `""`.
+Windows 11's type ramp, including its line heights, which are part of the spec: Caption 12/16,
+Body 14/20, Body Strong 14/20 SemiBold, Subtitle 20/28 SemiBold.
+
+Segoe UI Variable ships three **optical sizes** and Windows 11 selects between them by size band —
+Small below 14, Text at 14, Display from 18 up — because a face drawn for body copy looks loose when
+scaled to a heading. All three are separate addressable family names (verified installed:
+`Segoe UI Variable Small` / `Text` / `Display`). Each falls back to Segoe UI for Windows 10 and
+appends `Microsoft YaHei UI` so CJK never renders as tofu.
+
+The optical size is applied **only while the user has not chosen a font**. A font setting that
+silently stopped applying to headings would look like a bug, so the Subtitle face comes from
+`LauncherViewModel.TitleFontFamily`, which returns the user's family when one is set and the Display
+stack otherwise. Everything at 14 px simply inherits, where the default already *is* the Text size.
+
+All four bundled TTFs are deleted: the app default becomes the system font, the font dropdown lists
+only "默认（系统字体）" plus installed families, and `ConfigService.Normalize` maps the three retired
+bundled names (`Alibaba PuHuiTi`, `Pixel`, `Press Start 2P`) to `""`.
 
 Payload effect: 68.6 MB → roughly 46 MB.
+
+## Windows 11 platform conformance
+
+Beyond the visual language, the app follows the conventions a Windows 11 app is expected to observe.
+Each was verified against the running build, not assumed:
+
+| Convention | What the app does | How it was verified |
+|---|---|---|
+| **Materials** — Mica backs long-lived app windows, acrylic backs transient light-dismiss surfaces | Settings window: Mica. Launcher (hides on blur): acrylic. Both fall back to opaque `SurfaceBase` when the platform declines | Sampling the settings window's blank area across positions gives *different* values (wallpaper tint bleeding through); a flat fallback would give one |
+| **Rounded corners** — Windows 11 rounds windows, but not borderless ones | `DWMWA_WINDOW_CORNER_PREFERENCE` = `DWMWCP_ROUND` on the launcher's HWND | `DwmGetWindowAttribute` returns 2, and the pixel at the window's corner is desktop wallpaper rather than window chrome |
+| **Iconography** — Segoe Fluent Icons | Search `E721`, More `E712`, Close `E8BB`, Folder `E8B7`, Download `E896`, with Segoe MDL2 Assets as the Windows 10 fallback at the same code points | Both fonts confirmed installed; glyphs render as the shell's |
+| **Accent** — select from the system palette | See the token section above | `AppThemeTests` |
+| **Focus visuals** — a two-ring focus rectangle | 2 px outer ring in the text colour, 1 px inner ring in the opposite colour, drawn as a focus *adorner* so showing it cannot reflow the grid | — |
+| **Type ramp** — optical sizes and line heights | See the typography section above | Family names confirmed addressable |
 
 ## Layout
 

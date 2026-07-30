@@ -80,11 +80,11 @@
                         Focusable="False"
                         AutomationProperties.Name="{Binding MenuMoreText}"
                         ToolTip.Tip="{Binding MenuMoreText}">
-                  <StackPanel Orientation="Horizontal" Spacing="3">
-                    <Ellipse Width="3" Height="3" Fill="{DynamicResource TextSecondaryBrush}" />
-                    <Ellipse Width="3" Height="3" Fill="{DynamicResource TextSecondaryBrush}" />
-                    <Ellipse Width="3" Height="3" Fill="{DynamicResource TextSecondaryBrush}" />
-                  </StackPanel>
+                  <!-- Segoe Fluent Icons code points, the same glyphs the Windows 11 shell uses:
+                       E712 More, E8BB ChromeClose, E721 Search, E8B7 Folder, E896 Download. They
+                       exist at these code points in Segoe MDL2 Assets too, which is the Windows 10
+                       fallback in IconFontFamily. -->
+                  <TextBlock Classes="tm-icon" Text="&#xE712;" />
                   <Button.Flyout>
                     <MenuFlyout Placement="BottomEdgeAlignedRight">
                       <MenuItem Header="{Binding MenuOpenRootText}" Click="OnOpenRootClick" />
@@ -103,15 +103,14 @@
                         Click="OnCloseClick"
                         AutomationProperties.Name="{Binding MenuHideText}"
                         ToolTip.Tip="{Binding MenuHideText}">
-                  <Path Classes="tm-stroke-glyph" Width="10" Height="10"
-                        Data="M0,0 L10,10 M10,0 L0,10" />
+                  <TextBlock Classes="tm-icon small" Text="&#xE8BB;" />
                 </Button>
               </StackPanel>
 
               <Border Classes="tm-searchfield" x:Name="SearchField">
                 <DockPanel>
-                  <Path DockPanel.Dock="Left" Classes="tm-search-glyph" Margin="0,0,8,0"
-                        Data="M6.4,1.2 A5.2,5.2 0 1 0 6.4,11.6 A5.2,5.2 0 1 0 6.4,1.2 Z M10.4,10.4 L14.6,14.6" />
+                  <TextBlock DockPanel.Dock="Left" Classes="tm-icon subtle small"
+                             Text="&#xE721;" Margin="0,0,8,0" />
                   <!-- Background and BorderThickness are LOCAL values on purpose: a local value
                        outranks a style setter, which is what stops Avalonia's own :pointerover and
                        :focus TextBox styling from repainting a field the Border already paints. -->
@@ -146,9 +145,8 @@
                       MinWidth="360"
                       Click="OnUpdateNoticeClick">
                 <DockPanel>
-                  <Path DockPanel.Dock="Left" Classes="tm-stroke-glyph" Width="14" Height="14"
-                        Margin="0,0,10,0"
-                        Data="M7,0 L7,10 M3,6.5 L7,10.5 L11,6.5 M0.5,13.5 L13.5,13.5" />
+                  <TextBlock DockPanel.Dock="Left" Classes="tm-icon small"
+                             Text="&#xE896;" Margin="0,0,10,0" />
                   <Border DockPanel.Dock="Right"
                           IsVisible="{Binding IsUpdateDownloading}"
                           Width="84" Height="4" Margin="10,0,0,0"
@@ -192,9 +190,9 @@
                               HorizontalAlignment="Left">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                           <TextBlock Classes="tm-section" Text="{Binding DirectoryName}" />
-                          <Path Classes="tm-folder"
-                                IsVisible="{Binding IsDirectoryClickable}"
-                                Data="M0.5,2 H5 L6.5,4 H15.5 V13 H0.5 Z" />
+                          <TextBlock Classes="tm-icon subtle small tm-folder"
+                                     IsVisible="{Binding IsDirectoryClickable}"
+                                     Text="&#xE8B7;" />
                         </StackPanel>
                       </Border>
 
@@ -247,7 +245,8 @@
 
               <!-- 3. Loaded, but there is genuinely nothing configured. -->
               <StackPanel Classes="tm-empty" IsVisible="{Binding ShowEmpty}">
-                <TextBlock Classes="title" Text="{Binding EmptyTitleText}" />
+                <TextBlock Classes="title" Text="{Binding EmptyTitleText}"
+                           FontFamily="{Binding TitleFontFamily}" />
                 <TextBlock Text="{Binding EmptyHelpText}" MaxWidth="360" />
                 <StackPanel Orientation="Horizontal" Spacing="8"
                             HorizontalAlignment="Center" Margin="0,14,0,0">
@@ -258,7 +257,8 @@
 
               <!-- 4. There ARE shortcuts, but the filter matched none of them. -->
               <StackPanel Classes="tm-empty" IsVisible="{Binding ShowNoMatches}">
-                <TextBlock Classes="title" Text="{Binding NoMatchTitleText}" />
+                <TextBlock Classes="title" Text="{Binding NoMatchTitleText}"
+                           FontFamily="{Binding TitleFontFamily}" />
                 <TextBlock Text="{Binding NoMatchHelpText}" MaxWidth="360" />
                 <Button Content="{Binding ClearFilterText}" Click="OnClearFilterClick"
                         Padding="14,6" HorizontalAlignment="Center" Margin="0,14,0,0" />

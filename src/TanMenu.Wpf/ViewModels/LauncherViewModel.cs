@@ -303,15 +303,15 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
     /// chrome. A blank setting falls back to the theme's own chrome font; a garbage name degrades
     /// through the trailing fallbacks rather than rendering as tofu.
     /// </summary>
-    public FontFamily WindowFontFamily
-    {
-        get
-        {
-            // AppFonts owns the bundled-collection lookup: the embedded families are not installed
-            // system fonts, so the bare config string would never resolve here.
-            return AppFonts.Resolve(_cfg.General.FontFamily, whenBlank: ThemeChromeFont);
-        }
-    }
+    public FontFamily WindowFontFamily => AppFonts.Resolve(_cfg.General.FontFamily, whenBlank: ThemeChromeFont);
+
+    /// <summary>
+    /// The face for Subtitle-sized text (20 px). Windows 11 switches Segoe UI Variable to its
+    /// Display optical size at 18 px and up — but only when the user has NOT chosen a font of their
+    /// own, because a font setting that stopped applying to headings would look like a bug.
+    /// </summary>
+    public FontFamily TitleFontFamily =>
+        AppFonts.Resolve(_cfg.General.FontFamily, whenBlank: AppFonts.DefaultDisplay);
 
     // Button size class: anything unrecognized falls back to Small, exactly as the old size-* class did.
     public bool IsSmallButtons => SizeClass == "Small";
@@ -328,6 +328,7 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
     private void RaiseAppearanceChanged()
     {
         RaisePropertyChanged(nameof(WindowFontFamily));
+        RaisePropertyChanged(nameof(TitleFontFamily));
         RaisePropertyChanged(nameof(IsSmallButtons));
         RaisePropertyChanged(nameof(IsMediumButtons));
         RaisePropertyChanged(nameof(IsLargeButtons));

@@ -31,11 +31,21 @@ public static class AppFonts
     /// </summary>
     public const string UiStack = "Segoe UI Variable Text, Segoe UI, Microsoft YaHei UI";
 
+    /// <summary>
+    /// The face for 18 px and above. Segoe UI Variable ships three optical sizes and Windows 11
+    /// selects between them by size band — Small below 14, Text at 14, Display from 18 — because a
+    /// face drawn for body copy looks loose when scaled up to a heading.
+    /// </summary>
+    public const string DisplayStack = "Segoe UI Variable Display, Segoe UI, Microsoft YaHei UI";
+
     /// <summary>Appended to a user-chosen family so a Latin-only pick still renders CJK item names.</summary>
     private const string GlyphFallbacks = "Microsoft YaHei UI, Segoe UI";
 
     /// <summary>The default UI font as a resolved family.</summary>
     public static FontFamily Default { get; } = new(UiStack);
+
+    /// <summary>The default heading font — see <see cref="DisplayStack"/>.</summary>
+    public static FontFamily DefaultDisplay { get; } = new(DisplayStack);
 
     /// <summary>Resolve a configured font name. Blank yields <paramref name="whenBlank"/> (each window
     /// decides what "app default" means for its own chrome); an unknown name is treated as an

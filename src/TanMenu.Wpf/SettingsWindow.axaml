@@ -21,11 +21,17 @@
         Width="540" Height="540" MinWidth="480" MinHeight="460"
         WindowStartupLocation="Manual" CanResize="True"
         FontSize="13" ShowInTaskbar="True"
-        Background="{DynamicResource SurfaceBaseBrush}"><!--
-        Background is the one colour this window does NOT leave to Avalonia. Its Fluent 1 dark
-        palette paints a dialog pure #000000, which is both harsher than Fluent 2 (#202020) and a
-        visible mismatch next to the launcher's surface. Everything else — controls, focus, scroll,
-        IME — stays platform-default on purpose. -->
+        TransparencyLevelHint="Mica"
+        Background="Transparent"><!--
+        Mica, per the Windows 11 material guidance: Mica backs long-lived APP windows, acrylic backs
+        transient light-dismiss surfaces. This settings dialog stays open while the user works in it,
+        so it takes Mica; the launcher, which hides the moment it loses focus, takes acrylic.
+
+        Background must be Transparent for the backdrop to show through. When the platform does not
+        grant Mica (Windows 10, transparency disabled, remote desktop) the code-behind paints
+        SurfaceBaseBrush instead — Avalonia's own Fluent 1 dark palette would otherwise leave a
+        dialog pure #000000, harsher than Fluent 2's #202020 and a visible mismatch next to the
+        launcher. Everything else — controls, focus, scroll, IME — stays platform-default on purpose. -->
 
   <Window.Styles>
     <!-- Fluent's TabItem theme hardcodes a 24px header, which does not inherit the window's 13px and

@@ -19,6 +19,8 @@ namespace TanMenu.Wpf;
 /// </summary>
 public partial class MainWindow : Window
 {
+    // partial so the source-generated LibraryImport stub below can live here (NativeAOT: no
+    // marshalling IL is generated at run time).
     private readonly LauncherViewModel _viewModel;
     private readonly IWindowHost _host;
 
@@ -41,6 +43,7 @@ public partial class MainWindow : Window
         base.OnOpened(e);
 
         ApplyBackdrop();
+        ApplyRoundedCorners();
 
         // The host owns show/hide/size/place and needs the window once its HWND exists. The DI
         // registration deliberately hands out the same instance for IWindowHost and WindowHost.
@@ -69,6 +72,41 @@ public partial class MainWindow : Window
         Acrylic.IsVisible = granted;
         OpaqueFallback.IsVisible = !granted;
     }
+
+    /// <summary>
+    /// Ask DWM to round the window, which is what makes this a Windows 11 window rather than a
+    /// rectangle with rounded paint inside it.
+    /// </summary>
+    /// <remarks>
+    /// Windows 11 rounds ordinary windows automatically, but NOT a borderless one — and this window
+    /// has no decorations at all. Without the attribute the drawn 8 px surface would sit inside
+    /// square window edges, and the shadow DWM casts would be square too. Windows 10 does not know
+    /// the attribute and fails the call harmlessly, which is why the result is ignored.
+    /// </remarks>
+    private void ApplyRoundedCorners()
+    {
+        try
+        {
+            var handle = TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
+            if (handle == IntPtr.Zero)
+                return;
+
+            var preference = DwmWindowCornerPreferenceRound;
+            _ = DwmSetWindowAttribute(handle, DwmWindowCornerPreference, ref preference, sizeof(int));
+        }
+        catch (DllNotFoundException)
+        {
+            // dwmapi.dll is present on every supported Windows; guard anyway rather than let a
+            // decoration concern take the launcher down.
+        }
+    }
+
+    private const int DwmWindowCornerPreference = 33; // DWMWA_WINDOW_CORNER_PREFERENCE
+    private const int DwmWindowCornerPreferenceRound = 2; // DWMWCP_ROUND
+
+    [System.Runtime.InteropServices.LibraryImport("dwmapi.dll")]
+    private static partial int DwmSetWindowAttribute(
+        IntPtr hwnd, int attribute, ref int value, int size);
 
     // ══════════════════════════════════════════════════════════════════════════════════════════
     // Reveal + deferred focus
