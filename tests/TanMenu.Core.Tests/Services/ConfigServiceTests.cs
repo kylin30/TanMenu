@@ -60,6 +60,7 @@ public class ConfigServiceTests
     [InlineData("WinXP")]
     [InlineData("Win7")]         // the previous default
     [InlineData("Pixel")]
+    [InlineData("Classic")]      // the Windows 2000 theme the Fluent 2 rebuild replaced
     [InlineData("user:my custom skin")] // a user-authored .css theme; the feature is gone
     [InlineData("")]
     [InlineData("nonsense")]
@@ -75,6 +76,101 @@ public class ConfigServiceTests
             await svc.LoadAsync();
 
             Assert.Equal(AppConfig.CanonicalTheme, svc.Config.General.ThemeName);
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Theory]
+    [InlineData("Alibaba PuHuiTi")]
+    [InlineData("alibaba puhuiti")]  // stored case is not guaranteed
+    [InlineData("Pixel")]
+    [InlineData("Press Start 2P")]
+    public async Task LoadAsync_RetiredBundledFont_CoercedToTheAppDefault(string stored)
+    {
+        var paths = NewPaths(out var root);
+        try
+        {
+            // These three named TTFs that shipped inside the executable. The Fluent 2 rebuild deleted
+            // them, so the stored name now resolves to nothing and the text stack would silently
+            // substitute an arbitrary family. "" means "the app's own default", which is the truth.
+            await File.WriteAllTextAsync(
+                paths.ConfigFilePath, $"{{\"general\":{{\"fontFamily\":\"{stored}\"}}}}");
+
+            var svc = new ConfigService(paths, NullLogger<ConfigService>.Instance);
+            await svc.LoadAsync();
+
+            Assert.Equal("", svc.Config.General.FontFamily);
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task LoadAsync_InstalledFontName_IsLeftAlone()
+    {
+        var paths = NewPaths(out var root);
+        try
+        {
+            // Only the three retired BUNDLED names are coerced. A system family the user picked is
+            // still perfectly resolvable and must survive the upgrade untouched.
+            await File.WriteAllTextAsync(
+                paths.ConfigFilePath, "{\"general\":{\"fontFamily\":\"Verdana\"}}");
+
+            var svc = new ConfigService(paths, NullLogger<ConfigService>.Instance);
+            await svc.LoadAsync();
+
+            Assert.Equal("Verdana", svc.Config.General.FontFamily);
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Theory]
+    [InlineData("Light", AppAppearance.Light)]
+    [InlineData("dark", AppAppearance.Dark)]
+    [InlineData("System", AppAppearance.System)]
+    [InlineData("", AppAppearance.System)]
+    [InlineData("nonsense", AppAppearance.System)]
+    public async Task LoadAsync_NormalizesAppearance(string stored, string expected)
+    {
+        var paths = NewPaths(out var root);
+        try
+        {
+            await File.WriteAllTextAsync(
+                paths.ConfigFilePath, $"{{\"general\":{{\"appearance\":\"{stored}\"}}}}");
+
+            var svc = new ConfigService(paths, NullLogger<ConfigService>.Instance);
+            await svc.LoadAsync();
+
+            Assert.Equal(expected, svc.Config.General.Appearance);
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task LoadAsync_ConfigWithNoAppearanceKey_DefaultsToFollowingTheSystem()
+    {
+        var paths = NewPaths(out var root);
+        try
+        {
+            // Every config.json written before the Fluent 2 rebuild is in this shape.
+            await File.WriteAllTextAsync(
+                paths.ConfigFilePath, "{\"general\":{\"language\":\"zh-Hans\"}}");
+
+            var svc = new ConfigService(paths, NullLogger<ConfigService>.Instance);
+            await svc.LoadAsync();
+
+            Assert.Equal(AppAppearance.System, svc.Config.General.Appearance);
         }
         finally
         {

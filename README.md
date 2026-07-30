@@ -1,13 +1,14 @@
 # TanMenu (Avalonia + NativeAOT)
 
-A retro-styled Windows desktop launcher: a borderless, content-sized popup that sits
-bottom-center above the taskbar, scans configured folders for apps / `.lnk` shortcuts,
-and launches them. Pin its permanent taskbar entry for one-click recall, or use the tray fallback.
+A Windows desktop launcher: a borderless, content-sized popup that sits bottom-center above the
+taskbar, scans configured folders for apps / `.lnk` shortcuts, and launches them. Pin its permanent
+taskbar entry for one-click recall, or use the tray fallback.
 
-The UI is drawn with native Avalonia controls and published with NativeAOT. Earlier versions hosted
-an HTML/CSS UI in a `BlazorWebView` inside a WPF window; that WebView, the Blazor components and the
-CSS theme system were all removed, and a single natively drawn Windows 2000 classic theme replaced
-the switchable theme packs.
+The UI is drawn with native Avalonia controls in the **Fluent 2** design language — acrylic surface,
+8 px radius, the system UI face, the user's Windows accent colour, and light/dark that follows the
+OS — and published with NativeAOT. Earlier versions hosted an HTML/CSS UI in a `BlazorWebView`
+inside a WPF window, with switchable CSS theme packs; that whole stack was removed, briefly replaced
+by a natively drawn Windows 2000 theme, and then by the current one.
 
 ## Architecture
 
@@ -18,7 +19,9 @@ the switchable theme packs.
   hotkey, settings window, launcher UI, and the app-level services (menu build, updates, autostart,
   taskbar pin, data location).
 - **`tests/TanMenu.Core.Tests`** — xUnit. Covers the on-disk JSON contracts (config, link cache, icon
-  cache), the source-generated shell-link COM, and the launcher's match/chunk rules.
+  cache), the source-generated shell-link COM, the launcher's match/filter rules, and the Fluent 2
+  token layer (no colour literals outside `Tokens.axaml`; every referenced token defined in both
+  variants).
 
 Tech: .NET 10 (`net10.0-windows10.0.19041.0`, x64), Avalonia 12.1, NativeAOT, Serilog,
 source-generated `System.Text.Json`, `Microsoft.Extensions.DependencyInjection`, Velopack.
@@ -33,15 +36,23 @@ source-generated `System.Text.Json`, `Microsoft.Extensions.DependencyInjection`,
 
 ## Features
 
-- Retro **Windows 2000 classic** UI, drawn natively (real two-pixel bevels, no images, no CSS).
-  There is one theme and it is not switchable; invalid shortcuts still get a default icon.
-- Folder scanning + `.lnk` resolution + real Win32 icon extraction.
-- Content-sized horizontal window with no scrollbars, locked bottom-center on the primary display,
-  and hidden automatically when focus is lost.
+- **Fluent 2** UI drawn natively: acrylic surface with an opaque fallback, section headings over a
+  wrapping tile grid, and one look rendered **light or dark** (following the OS by default). Colour
+  comes from one token file; the accent is read from Windows personalization.
+- **Search-first**: the search box owns the header and typing genuinely filters — non-matches are
+  removed and empty sections disappear. `↑↓←→` walk the tile grid, `Enter` launches, `Esc` clears
+  then hides.
+- Folder scanning + `.lnk` resolution + real Win32 icon extraction. A shortcut whose target is gone
+  stays visible but greyed and unlaunchable.
+- Content-sized window capped at 1100 px wide and 72 % of the work area, locked bottom-center on the
+  primary display, scrolling past that, and hidden automatically when focus is lost.
 - Recall: permanent taskbar pin, system tray (left-click toggle, show/exit menu), single instance.
 - Optional **autostart** (per-user registry Run entry; deliberately unavailable in portable mode).
-- Native **settings** window grouped by function: root folder, font, columns per group,
-  hide-on-blur/TopMost, one-click taskbar pinning, autostart, and a relocatable data folder.
+- Native **settings** window grouped by function: root folder, appearance (system/light/dark), font,
+  button size, hide-on-blur/TopMost, one-click taskbar pinning, autostart, and a relocatable data
+  folder.
+- **No bundled fonts.** The UI uses Segoe UI Variable Text → Segoe UI, with Microsoft YaHei UI for
+  CJK, which is both the Fluent 2 typeface and a third of the payload saved.
 
 ## Build & run (dev)
 

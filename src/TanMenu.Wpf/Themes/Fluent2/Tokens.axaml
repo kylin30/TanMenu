@@ -1,0 +1,139 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!--
+    TanMenu's Fluent 2 design tokens — the ONE place a colour, radius, spacing step or type size is
+    defined. Themes/Fluent2/Launcher.axaml consumes these and defines no literal of its own
+    (Fluent2TokenTests enforces that).
+
+    ── Why a token layer exists at all ──────────────────────────────────────────────────────────
+    Avalonia 12.1's FluentTheme is Fluent *1* (Windows 10 / UWP). Measured on 2026-07-30: it exposes
+    1054 resources built on the UWP palette (SystemBaseHighColor, SystemChromeMediumColor, …) and
+    NONE of the Fluent 2 semantic tokens — TextFillColorPrimaryBrush, SubtleFillColorSecondaryBrush,
+    CardBackgroundFillColorDefaultBrush, AccentFillColorDefaultBrush and
+    SolidBackgroundFillColorBaseBrush all resolve to MISSING.
+
+    ── Why colour is redefined here instead of retinting FluentTheme ────────────────────────────
+    Because retinting does not work. Layering a dictionary that redefines SystemBaseHighColor on top
+    of FluentTheme leaves every derived brush unchanged: they are baked with {StaticResource} at
+    parse time. Measured — after overriding SystemBaseHighColor to red, ButtonForeground was still
+    #FF000000. Do not try that shortcut again.
+
+    ── What CAN be corrected globally ───────────────────────────────────────────────────────────
+    Scalar theme keys are consumed by control templates with {DynamicResource}, so overriding them
+    here really does reach every standard control. The three at the bottom of this file are what
+    pull the settings window and the message box into Fluent 2 proportions and typography without
+    touching a single control template.
+
+    ── Values ───────────────────────────────────────────────────────────────────────────────────
+    The neutrals are alpha over the surface, not opaque greys, which is what lets the acrylic
+    backdrop show through them. Every pair below is Light / Dark.
+  -->
+
+  <Styles.Resources>
+    <ResourceDictionary>
+
+      <ResourceDictionary.ThemeDictionaries>
+
+        <!-- ══ Light ══════════════════════════════════════════════════════════════════════════ -->
+        <ResourceDictionary x:Key="Light">
+          <!-- Surfaces -->
+          <SolidColorBrush x:Key="SurfaceBaseBrush"          Color="#F3F3F3" />
+          <SolidColorBrush x:Key="SurfaceLayerBrush"         Color="#B3FFFFFF" />
+          <SolidColorBrush x:Key="SubtleFillSecondaryBrush"  Color="#0A000000" />
+          <SolidColorBrush x:Key="SubtleFillTertiaryBrush"   Color="#06000000" />
+          <!-- Text -->
+          <SolidColorBrush x:Key="TextPrimaryBrush"          Color="#E4000000" />
+          <SolidColorBrush x:Key="TextSecondaryBrush"        Color="#9B000000" />
+          <SolidColorBrush x:Key="TextTertiaryBrush"         Color="#72000000" />
+          <SolidColorBrush x:Key="TextDisabledBrush"         Color="#5C000000" />
+          <!-- Strokes -->
+          <SolidColorBrush x:Key="StrokeControlBrush"        Color="#0F000000" />
+          <SolidColorBrush x:Key="StrokeSurfaceFlyoutBrush"  Color="#33000000" />
+          <SolidColorBrush x:Key="StrokeDividerBrush"        Color="#0F000000" />
+          <SolidColorBrush x:Key="FocusStrokeOuterBrush"     Color="#E4000000" />
+          <!-- Accent: design-time defaults only. AppTheme overwrites these in Application.Resources
+               at startup with the user's real Windows accent, which is looked up FIRST. -->
+          <SolidColorBrush x:Key="AccentDefaultBrush"        Color="#0078D4" />
+          <SolidColorBrush x:Key="AccentTextBrush"           Color="#003E92" />
+          <SolidColorBrush x:Key="TextOnAccentBrush"         Color="#FFFFFFFF" />
+          <!-- Raw Colors too: a GradientStop takes a Color, not a Brush (the splash card). -->
+          <Color x:Key="AccentColor">#0078D4</Color>
+          <Color x:Key="AccentColorShaded">#00629F</Color>
+          <!-- The acrylic tint. Light acrylic is a light tint at low opacity over the desktop. -->
+          <Color x:Key="AcrylicTintColor">#F3F3F3</Color>
+          <x:Double x:Key="AcrylicTintOpacity">0.85</x:Double>
+          <!-- Fluent 2 flyout elevation. Softer in light, deeper in dark where there is less
+               contrast between the surface and what is behind it. -->
+          <BoxShadows x:Key="ShadowFlyout">0 4 16 0 #33000000</BoxShadows>
+        </ResourceDictionary>
+
+        <!-- ══ Dark ═══════════════════════════════════════════════════════════════════════════ -->
+        <ResourceDictionary x:Key="Dark">
+          <!-- Surfaces -->
+          <SolidColorBrush x:Key="SurfaceBaseBrush"          Color="#202020" />
+          <SolidColorBrush x:Key="SurfaceLayerBrush"         Color="#4D3A3A3A" />
+          <SolidColorBrush x:Key="SubtleFillSecondaryBrush"  Color="#0FFFFFFF" />
+          <SolidColorBrush x:Key="SubtleFillTertiaryBrush"   Color="#0BFFFFFF" />
+          <!-- Text -->
+          <SolidColorBrush x:Key="TextPrimaryBrush"          Color="#FFFFFFFF" />
+          <SolidColorBrush x:Key="TextSecondaryBrush"        Color="#C8FFFFFF" />
+          <SolidColorBrush x:Key="TextTertiaryBrush"         Color="#8BFFFFFF" />
+          <SolidColorBrush x:Key="TextDisabledBrush"         Color="#5CFFFFFF" />
+          <!-- Strokes -->
+          <SolidColorBrush x:Key="StrokeControlBrush"        Color="#12FFFFFF" />
+          <SolidColorBrush x:Key="StrokeSurfaceFlyoutBrush"  Color="#33000000" />
+          <SolidColorBrush x:Key="StrokeDividerBrush"        Color="#15FFFFFF" />
+          <SolidColorBrush x:Key="FocusStrokeOuterBrush"     Color="#FFFFFFFF" />
+          <!-- Accent -->
+          <SolidColorBrush x:Key="AccentDefaultBrush"        Color="#4CC2FF" />
+          <SolidColorBrush x:Key="AccentTextBrush"           Color="#99EBFF" />
+          <SolidColorBrush x:Key="TextOnAccentBrush"         Color="#FF000000" />
+          <Color x:Key="AccentColor">#4CC2FF</Color>
+          <Color x:Key="AccentColorShaded">#3E9FD1</Color>
+          <!-- Acrylic -->
+          <Color x:Key="AcrylicTintColor">#2C2C2C</Color>
+          <x:Double x:Key="AcrylicTintOpacity">0.80</x:Double>
+          <BoxShadows x:Key="ShadowFlyout">0 4 16 0 #66000000</BoxShadows>
+        </ResourceDictionary>
+
+      </ResourceDictionary.ThemeDictionaries>
+
+      <!-- ══ Variant-independent: shape, spacing, type ═════════════════════════════════════════ -->
+
+      <!-- Fluent 2 shape scale. 4 for controls, 8 for the overlay/window surface. -->
+      <CornerRadius x:Key="RadiusControl">4</CornerRadius>
+      <CornerRadius x:Key="RadiusOverlay">8</CornerRadius>
+
+      <!-- Spacing scale. Every margin/padding/gap in Launcher.axaml comes from these. -->
+      <x:Double x:Key="Space1">4</x:Double>
+      <x:Double x:Key="Space2">8</x:Double>
+      <x:Double x:Key="Space3">12</x:Double>
+      <x:Double x:Key="Space4">16</x:Double>
+      <x:Double x:Key="Space5">20</x:Double>
+      <Thickness x:Key="SurfacePadding">16</Thickness>
+
+      <!-- Fluent 2 type ramp (the subset the launcher uses). -->
+      <x:Double x:Key="FontSizeCaption">12</x:Double>
+      <x:Double x:Key="FontSizeBody">14</x:Double>
+      <x:Double x:Key="FontSizeSubtitle">20</x:Double>
+
+      <!-- The UI font. Segoe UI Variable Text is Windows 11's Fluent 2 UI face; Segoe UI covers
+           Windows 10; Microsoft YaHei UI is appended so a CJK item name never renders as tofu.
+           Nothing is bundled — the 22.7 MB of embedded TTFs went away with the retro theme. -->
+      <FontFamily x:Key="AppFontFamily">Segoe UI Variable Text, Segoe UI, Microsoft YaHei UI</FontFamily>
+
+      <!-- ══ Overrides that reach Avalonia's own control templates ═════════════════════════════
+           These three keys are read with {DynamicResource} by FluentTheme's templates, so setting
+           them here re-proportions every standard control — the settings window's tabs, dropdowns,
+           checkboxes, text boxes and scrollbars, and the shared message box — from Avalonia's
+           defaults (3 px radius, bundled Inter) to Fluent 2's. Verified by measurement; colour keys
+           do NOT work this way (see the header). -->
+      <CornerRadius x:Key="ControlCornerRadius">4</CornerRadius>
+      <CornerRadius x:Key="OverlayCornerRadius">8</CornerRadius>
+      <FontFamily x:Key="ContentControlThemeFontFamily">Segoe UI Variable Text, Segoe UI, Microsoft YaHei UI</FontFamily>
+
+    </ResourceDictionary>
+  </Styles.Resources>
+
+</Styles>

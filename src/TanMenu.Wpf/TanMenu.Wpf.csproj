@@ -63,11 +63,10 @@
     <ProjectReference Include="..\TanMenu.Core\TanMenu.Core.csproj" />
   </ItemGroup>
 
-  <!-- Fonts ship INSIDE the executable (avares://) rather than as loose files. The old WPF settings
-       window loaded them from <exe>\fonts; Avalonia resolves an embedded font collection instead, so
-       there is no on-disk copy to go missing and no per-theme stylesheet to reference them. -->
+  <!-- No fonts are embedded. The Fluent 2 rebuild uses the system UI face (Segoe UI Variable Text →
+       Segoe UI, with Microsoft YaHei UI for CJK), which removed the four bundled TTFs and the 22.7 MB
+       they cost — a third of the shipped payload. -->
   <ItemGroup>
-    <AvaloniaResource Include="wwwroot\fonts\*.ttf" />
     <AvaloniaResource Include="wwwroot\app.ico" />
     <AvaloniaResource Include="wwwroot\app-tile.png" />
   </ItemGroup>

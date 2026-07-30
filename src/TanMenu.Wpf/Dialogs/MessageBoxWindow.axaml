@@ -5,13 +5,15 @@
         SizeToContent="WidthAndHeight"
         CanResize="False"
         ShowInTaskbar="False"
-        MinWidth="300">
+        MinWidth="300"
+        Background="{DynamicResource SurfaceBaseBrush}">
 
   <!--
-    Deliberately styled by the DEFAULT Fluent theme, not by Themes/Retro.axaml. The retro chrome is
-    the launcher's identity; a Windows 2000 alert box in front of a modern Windows would read as a
-    rendering fault rather than as period detail. Nothing here carries a retro- or tm- class, so the
-    theme cannot reach it.
+    Deliberately styled by the DEFAULT Fluent theme, not by Themes/Fluent2/Launcher.axaml, which is
+    the launcher's identity. An alert is a platform surface and should look like one; the launcher's
+    acrylic flyout chrome around a two-line question would read as decoration. Nothing here carries a
+    tm- class, so Launcher.axaml cannot reach it — and it still picks up Fluent 2's radius and UI font
+    from Tokens.axaml like every other standard control.
 
     Buttons are created in code-behind: their count, order, labels (localized) and default/cancel
     roles all depend on the MessageBoxButtons value.

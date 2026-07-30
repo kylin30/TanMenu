@@ -1,8 +1,10 @@
 using System.ComponentModel;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using Microsoft.Extensions.DependencyInjection;
 using TanMenu.Wpf.Services;
 using TanMenu.Wpf.ViewModels;
@@ -12,7 +14,8 @@ namespace TanMenu.Wpf;
 /// <summary>
 /// The launcher popup. All state lives in <see cref="LauncherViewModel"/>; this class is the thin
 /// view layer: it wires clicks and keys to the view model, performs the one-shot reveal, and owns the
-/// deferred search-box focus (both of which need the visual tree, so neither belongs in the VM).
+/// three things that genuinely need the visual tree — deferred search focus, the acrylic fallback,
+/// and geometric keyboard navigation across the tile grid.
 /// </summary>
 public partial class MainWindow : Window
 {
@@ -37,6 +40,8 @@ public partial class MainWindow : Window
     {
         base.OnOpened(e);
 
+        ApplyBackdrop();
+
         // The host owns show/hide/size/place and needs the window once its HWND exists. The DI
         // registration deliberately hands out the same instance for IWindowHost and WindowHost.
         (_host as WindowHost)?.Attach(this);
@@ -51,6 +56,18 @@ public partial class MainWindow : Window
         _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
         _viewModel.Dispose();
         base.OnClosed(e);
+    }
+
+    /// <summary>
+    /// Acrylic is a request, not a guarantee: remote desktop, "show transparency" turned off, and
+    /// some GPU paths all refuse it, and the window would then be a hole rather than a surface. When
+    /// the platform did not grant transparency, paint the opaque Fluent surface colour instead.
+    /// </summary>
+    private void ApplyBackdrop()
+    {
+        var granted = ActualTransparencyLevel != WindowTransparencyLevel.None;
+        Acrylic.IsVisible = granted;
+        OpaqueFallback.IsVisible = !granted;
     }
 
     // ══════════════════════════════════════════════════════════════════════════════════════════
@@ -80,10 +97,9 @@ public partial class MainWindow : Window
             _host.ShowAndActivate();
         }
 
-        // The search box lives inside the groups branch, so on a cold start it isn't rendered until
-        // the build completes. Focusing here covers that race. The flag is deliberately left set when
-        // there are no groups, so a later build that produces some still focuses it.
-        if (_viewModel.PendingFocus && _viewModel.HasGroups)
+        // Unlike the retro layout, the search box is now in the header and therefore always present,
+        // so this no longer has to wait for groups to exist.
+        if (_viewModel.PendingFocus)
         {
             _viewModel.PendingFocus = false;
             try
@@ -98,17 +114,12 @@ public partial class MainWindow : Window
     }
 
     // ══════════════════════════════════════════════════════════════════════════════════════════
-    // Title bar
+    // Header
     // ══════════════════════════════════════════════════════════════════════════════════════════
 
-    // Minimize and Close are the same action: hide. The launcher is shown/hidden, never closed.
-    private void OnMinimizeClick(object? sender, RoutedEventArgs e) => _viewModel.HideWindow();
-
+    // The launcher is shown/hidden, never closed. There is no minimize any more: on a fixed-size
+    // popup it did exactly what close did.
     private void OnCloseClick(object? sender, RoutedEventArgs e) => _viewModel.HideWindow();
-
-    // ══════════════════════════════════════════════════════════════════════════════════════════
-    // Menu bar
-    // ══════════════════════════════════════════════════════════════════════════════════════════
 
     private void OnOpenRootClick(object? sender, RoutedEventArgs e) => _viewModel.OpenRoot();
 
@@ -124,9 +135,19 @@ public partial class MainWindow : Window
     // Search box
     // ══════════════════════════════════════════════════════════════════════════════════════════
 
-    /// <summary>Enter and Escape, handled ONLY while the search box has focus — there is no
-    /// window-level key handler, and deliberately no arrow-key navigation, no Tab handling and no
-    /// selection cursor. The launcher has no concept of a "current item".</summary>
+    /// <summary>Focus is drawn on the FIELD (the bordered box), not on the bare TextBox inside it, so
+    /// the accent outline frames the glyph too. The TextBox has no border of its own to light up.</summary>
+    private void OnSearchFocusChanged(object? sender, RoutedEventArgs e) =>
+        SearchField.Classes.Set("focused", SearchBox.IsFocused);
+
+    private void OnClearFilterClick(object? sender, RoutedEventArgs e)
+    {
+        _viewModel.ClearFilter();
+        SearchBox.Focus();
+    }
+
+    /// <summary>Enter launches the first match, Escape clears then hides, Down enters the tile grid.
+    /// Everything else is left to the TextBox.</summary>
     private void OnSearchKeyDown(object? sender, KeyEventArgs e)
     {
         switch (e.Key)
@@ -139,11 +160,123 @@ public partial class MainWindow : Window
                 _viewModel.HandleSearchEscape();
                 e.Handled = true;
                 break;
+            case Key.Down:
+                e.Handled = FocusFirstTile();
+                break;
         }
     }
 
     // ══════════════════════════════════════════════════════════════════════════════════════════
-    // Items, groups, update notice, overlays
+    // Keyboard navigation across the tile grid
+    // ══════════════════════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Arrow keys move by GEOMETRY, not by index. The tiles wrap, so "the tile below" depends on the
+    /// rendered row the WrapPanel produced at the current width — an index step of "one row" would be
+    /// wrong the moment the window is a different size. Enter and Space are left alone: a focused
+    /// Avalonia Button already handles both.
+    /// </summary>
+    protected override void OnKeyDown(KeyEventArgs e)
+    {
+        base.OnKeyDown(e);
+        if (e.Handled)
+            return;
+
+        // Escape works anywhere in the window, not only in the search box, so a user who tabbed into
+        // the grid is never stuck.
+        if (e.Key == Key.Escape)
+        {
+            _viewModel.HandleSearchEscape();
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key is not (Key.Left or Key.Right or Key.Up or Key.Down))
+            return;
+        if (FocusManager?.GetFocusedElement() is not Button current || !IsTile(current))
+            return;
+
+        var next = FindAdjacentTile(current, e.Key);
+        if (next is not null)
+        {
+            next.Focus(NavigationMethod.Directional);
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Up)
+        {
+            // Off the top of the grid: back to where typing goes.
+            SearchBox.Focus();
+            e.Handled = true;
+        }
+    }
+
+    private static bool IsTile(Control c) => c.Classes.Contains("tm-tile");
+
+    private bool FocusFirstTile()
+    {
+        var first = Tiles().FirstOrDefault();
+        if (first is null)
+            return false;
+        first.Focus(NavigationMethod.Directional);
+        return true;
+    }
+
+    /// <summary>Every focusable tile currently rendered, in document order (section by section).</summary>
+    private List<Button> Tiles() =>
+        Body.GetVisualDescendants()
+            .OfType<Button>()
+            .Where(b => IsTile(b) && b.IsEffectivelyVisible && b.IsEffectivelyEnabled)
+            .ToList();
+
+    private Button? FindAdjacentTile(Button current, Key direction)
+    {
+        var origin = CenterOf(current);
+        if (origin is not { } from)
+            return null;
+
+        Button? best = null;
+        var bestScore = double.MaxValue;
+
+        foreach (var candidate in Tiles())
+        {
+            if (ReferenceEquals(candidate, current))
+                continue;
+            if (CenterOf(candidate) is not { } to)
+                continue;
+
+            var dx = to.X - from.X;
+            var dy = to.Y - from.Y;
+            // Same row when the vertical centres are within half a tile of each other. Tiles in one
+            // row all share a height, so this is a reliable row test without asking the panel.
+            var sameRow = Math.Abs(dy) < current.Bounds.Height / 2;
+
+            double score;
+            switch (direction)
+            {
+                case Key.Right when sameRow && dx > 0: score = dx; break;
+                case Key.Left when sameRow && dx < 0: score = -dx; break;
+                // Vertical moves prefer the nearest row, then the nearest column within it, so
+                // crossing a section boundary lands under the finger rather than at the row start.
+                case Key.Down when dy > 0: score = dy * 1000 + Math.Abs(dx); break;
+                case Key.Up when dy < 0: score = -dy * 1000 + Math.Abs(dx); break;
+                default: continue;
+            }
+
+            if (score < bestScore)
+            {
+                bestScore = score;
+                best = candidate;
+            }
+        }
+
+        return best;
+    }
+
+    private Point? CenterOf(Visual v) =>
+        v.TranslatePoint(new Point(v.Bounds.Width / 2, v.Bounds.Height / 2), Body);
+
+    // ══════════════════════════════════════════════════════════════════════════════════════════
+    // Tiles, sections, update notice, overlays
     // ══════════════════════════════════════════════════════════════════════════════════════════
 
     private void OnItemClick(object? sender, RoutedEventArgs e)
@@ -165,8 +298,7 @@ public partial class MainWindow : Window
     private void OnGroupTitlePressed(object? sender, PointerPressedEventArgs e)
     {
         // Primary button only. PointerPressed fires for EVERY button, so without this guard a
-        // right-click on a group's title opened Explorer — the CSS build's click handler was
-        // left-button-only and had no context menu of its own to shadow.
+        // right-click on a section heading opened Explorer.
         if (sender is not Control control ||
             !e.GetCurrentPoint(control).Properties.IsLeftButtonPressed)
             return;

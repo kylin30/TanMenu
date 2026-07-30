@@ -1,4 +1,5 @@
 using TanMenu.Core.Models;
+using TanMenu.Core.Services;
 using Xunit;
 
 namespace TanMenu.Core.Tests.Models;
@@ -26,7 +27,10 @@ public class AppConfigTests
         Assert.Equal(8, general.PositionOffset);
         Assert.Equal(10, general.ColButtonCount);
         Assert.Equal(AppConfig.CanonicalTheme, general.ThemeName);
-        Assert.Equal("Alibaba PuHuiTi", general.FontFamily);
+        Assert.Equal(AppAppearance.System, general.Appearance);
+        // "" = the app's own default (the system UI face). No font ships inside the executable any
+        // more, so a non-empty default here would name a family that may not be installed.
+        Assert.Equal("", general.FontFamily);
         Assert.True(general.ShowDefaultTools);
         Assert.NotEmpty(general.DefaultTools);
     }

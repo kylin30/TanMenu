@@ -27,6 +27,10 @@ public partial class App : Application
     /// <summary>Owned by <see cref="Program.Main"/>; released by <see cref="ExitApp"/>.</summary>
     internal static Mutex? SingleInstanceMutex { get; set; }
 
+    /// <summary>Unsubscriber for the OS accent/colour subscription. Held for the process lifetime —
+    /// the app is tray-resident, so this is released only by exit.</summary>
+    private IDisposable? _platformColors;
+
     private bool _taskbarPinPromptActive;
 
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
@@ -127,13 +131,23 @@ public partial class App : Application
                     ? new VelopackAppUpdateService()
                     : new FixedAppUpdateService(AppUpdateStatus.Disabled));
         // NOTE: ThemeService and the BlazorWebView registrations are gone with the CSS theme system
-        // and the WebView. There is exactly one theme now (Themes/Retro.axaml, applied in App.axaml).
+        // and the WebView. There is exactly one look now (Themes/Fluent2, applied in App.axaml),
+        // rendered in a light or dark variant chosen by AppTheme.
 
         Services = services.BuildServiceProvider();
 
         // Load config before the UI renders. NOTE: must await (not block) — blocking the UI thread
         // here deadlocks, because the continuation posts to a dispatcher that isn't pumping yet.
         await Services.GetRequiredService<ConfigService>().LoadAsync();
+
+        // Light/dark before the first window is constructed, so a dark-mode user never sees a light
+        // launcher paint and then flip. ThemeVariant.Default (the "System" setting) makes Avalonia
+        // track the OS itself, so there is nothing to re-apply on an OS theme change.
+        AppTheme.Apply(this, Services.GetRequiredService<ConfigService>().Config.General.Appearance);
+        // The real Windows accent, replacing FluentTheme's hardcoded #0078D7. Platform settings hang
+        // off Application in Avalonia 12, so this needs no window to exist yet.
+        AppTheme.PublishAccent(this);
+        _platformColors = AppTheme.TrackPlatformChanges(this);
         Services.GetRequiredService<SoundService>()
             .Initialize(Path.Combine(AppContext.BaseDirectory, "wwwroot", "sounds"));
 

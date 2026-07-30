@@ -53,10 +53,9 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
     private static readonly string AppVersion =
         Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "1.0.0";
 
-    /// <summary>Chrome font used when <c>General.FontFamily</c> is blank — the single definition of
-    /// the theme's own font. Tahoma is what Windows 2000 used; the two fallbacks cover CJK and any
-    /// system where Tahoma is absent.</summary>
-    private static readonly FontFamily ThemeChromeFont = new("Tahoma, Microsoft YaHei, Segoe UI");
+    /// <summary>Font used when <c>General.FontFamily</c> is blank. Defined once by
+    /// <see cref="AppFonts.Default"/> so the launcher and the standard controls agree.</summary>
+    private static FontFamily ThemeChromeFont => AppFonts.Default;
 
     public LauncherViewModel(
         MenuService menu,
@@ -176,19 +175,39 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
 
     /// <summary>Matches on <see cref="MenuItemVm.Name"/> only — substring, ordinal, case-insensitive.
     /// No fuzzy matching, no pinyin, no accent folding, no word boundaries.</summary>
+    /// <remarks>The filter genuinely removes non-matches and the grid reflows; sections that end up
+    /// empty take their heading with them. Notifying <see cref="HasVisibleItems"/> here is what
+    /// swaps the launcher between the section list and the "no matches" state.</remarks>
     private void ApplyFilter()
     {
-        var active = _filterTrimmed.Length > 0;
         foreach (var group in Groups)
+            group.ApplyFilter(_filterTrimmed);
+
+        RaisePropertyChanged(nameof(HasVisibleItems));
+        RaisePropertyChanged(nameof(ShowNoMatches));
+    }
+
+    /// <summary>True when at least one section still has something to show. Distinct from
+    /// <see cref="HasGroups"/>, which asks whether any groups were BUILT — the difference is exactly
+    /// the case where a filter matched nothing.</summary>
+    public bool HasVisibleItems
+    {
+        get
         {
-            foreach (var item in group.Items)
+            foreach (var group in Groups)
             {
-                var hit = item.Matches(_filterTrimmed);
-                item.IsHit = hit;
-                item.IsDimmed = active && !hit;
+                if (group.HasVisibleItems)
+                    return true;
             }
+            return false;
         }
     }
+
+    /// <summary>There are shortcuts, but the current filter matched none of them.</summary>
+    public bool ShowNoMatches => HasGroups && !HasVisibleItems;
+
+    /// <summary>Clear the filter from the "no matches" state's button.</summary>
+    public void ClearFilter() => Filter = "";
 
     /// <summary>The first ENABLED item whose name matches, in group-then-item order (type-and-Enter).</summary>
     private MenuItemVm? FirstMatch()
@@ -236,10 +255,15 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
     public string MenuRefreshText => L("MenuRefresh");
     public string MenuAboutText => L("MenuAbout");
     public string MenuExitText => L("MenuExit");
+    public string MenuMoreText => L("MenuMore");
+    public string MenuHideText => L("MenuHide");
     public string SearchPlaceholderText => L("SearchPlaceholder");
     public string EmptyTitleText => L("EmptyTitle");
     public string EmptyHelpText => L("EmptyHelp");
     public string OpenOptionsText => L("OpenOptions");
+    public string NoMatchTitleText => L("NoMatchTitle");
+    public string NoMatchHelpText => L("NoMatchHelp");
+    public string ClearFilterText => L("ClearFilter");
     public string ClickToDismissText => AppLanguage.Text("ClickToDismiss", _cfg.General.Language);
 
     public string VersionText => "TanMenu v" + AppVersion;
@@ -254,10 +278,15 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
         RaisePropertyChanged(nameof(MenuRefreshText));
         RaisePropertyChanged(nameof(MenuAboutText));
         RaisePropertyChanged(nameof(MenuExitText));
+        RaisePropertyChanged(nameof(MenuMoreText));
+        RaisePropertyChanged(nameof(MenuHideText));
         RaisePropertyChanged(nameof(SearchPlaceholderText));
         RaisePropertyChanged(nameof(EmptyTitleText));
         RaisePropertyChanged(nameof(EmptyHelpText));
         RaisePropertyChanged(nameof(OpenOptionsText));
+        RaisePropertyChanged(nameof(NoMatchTitleText));
+        RaisePropertyChanged(nameof(NoMatchHelpText));
+        RaisePropertyChanged(nameof(ClearFilterText));
         RaisePropertyChanged(nameof(ClickToDismissText));
         RaisePropertyChanged(nameof(CopyrightText));
         RaisePropertyChanged(nameof(UpdateNoticeText));
@@ -356,8 +385,8 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
         // nothing else would re-measure, leaving the row drawn outside the window. Bump ContentVersion
         // rather than resizing here: its setter already posts a resize when the window is visible, and
         // routing through it keeps the cached-size invalidation in one place.
-        // Deliberately NOT on progress-percentage changes — the text is width-stable by design
-        // (RetroUpdateMinWidth), so re-measuring on every progress tick would be pure churn.
+        // Deliberately NOT on progress-percentage changes — the notice carries a MinWidth precisely
+        // so its text is width-stable, and re-measuring on every progress tick would be pure churn.
         if (ShowUpdateNotice != noticeWasVisible || IsUpdateDownloading != progressWasVisible)
             _host.ContentVersion = HashCode.Combine(_host.ContentVersion, ShowUpdateNotice, IsUpdateDownloading);
     }
@@ -635,7 +664,7 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
         else
         {
             // The folder scan was skipped, not the render: a settings-only change still has to
-            // re-chunk the columns and relabel the tooltips on the groups we already hold.
+            // relabel the tooltips on the groups we already hold.
             ApplyGroupSettings();
         }
 
@@ -645,11 +674,11 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
         // Must change whenever the rendered SIZE could change — content (fingerprint) OR a
         // size-affecting setting — so a settings-only change forces a fresh measurement instead of
         // reusing a stale cached size. ThemeName is gone from the hash: there is exactly one theme now
-        // and ConfigService coerces the field to a constant, so it can no longer vary.
+        // and ConfigService coerces the field to a constant, so it can no longer vary. ColButtonCount
+        // is gone too: tiles wrap now, so the column count no longer shapes anything.
         _host.ContentVersion = HashCode.Combine(
             _menuFingerprint ?? 0,
             _cfg.General.ButtonSize,
-            _cfg.General.ColButtonCount,
             _cfg.General.FontFamily,
             _cfg.General.Language);
 
@@ -663,7 +692,12 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
             Groups.Add(group);
 
         ApplyGroupSettings();
-        ApplyFilter(); // the filter survives a rebuild; the new items need their emphasis applied
+        // The filter survives a rebuild, so the fresh items have to be filtered before they render.
+        // The groups are new objects whose memoized filter is unset, but an existing group reused by
+        // a partial rebuild would otherwise think it had already applied this text.
+        foreach (var group in Groups)
+            group.InvalidateFilter();
+        ApplyFilter();
 
         RaisePropertyChanged(nameof(HasGroups));
         RaisePropertyChanged(nameof(ShowSplash));
@@ -672,13 +706,9 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
 
     private void ApplyGroupSettings()
     {
-        var columns = _cfg.General.ColButtonCount;
         var tooltip = L("OpenFolderTooltip");
         foreach (var group in Groups)
-        {
-            group.Rechunk(columns);
             group.TitleTooltip = group.IsDirectoryClickable ? tooltip : null;
-        }
     }
 
     /// <summary>

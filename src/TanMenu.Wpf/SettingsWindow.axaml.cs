@@ -25,38 +25,27 @@ namespace TanMenu.Wpf;
 /// </summary>
 public partial class SettingsWindow : Window
 {
-    /// <summary>
-    /// TanMenu now has exactly one look (Themes/Retro.axaml — Windows 2000), so the dropdown has a
-    /// single entry. The persisted id is <see cref="AppConfig.CanonicalTheme"/>, which
-    /// <c>ConfigService.Normalize</c> already coerces every historical value to on load — this must
-    /// not hardcode a different id, or the settings window and the loader would disagree about what
-    /// is stored. The key is opaque to the user; the label says what it really is.
-    /// </summary>
-    private const string SingleThemeKey = AppConfig.CanonicalTheme;
-    private const string SingleThemeLabel = "Windows 2000";
-
     private static readonly string[] ButtonSizes = { "Small", "Medium", "Large" };
     private static readonly string[] LanguageSettings = { AppLanguage.Auto, AppLanguage.ZhHans, AppLanguage.EnUs };
 
+    private static readonly string[] AppearanceSettings =
+        { AppAppearance.System, AppAppearance.Light, AppAppearance.Dark };
+
     /// <summary>One row of the font dropdown. <see cref="Family"/> is the value written to config
-    /// ("" = the app's own default font); <see cref="IsHeader"/> marks the 内置字体 / 系统字体 group
-    /// captions, which are rendered as rows because Avalonia's ComboBox has no GroupStyle.</summary>
+    /// ("" = the app's own default font); <see cref="IsHeader"/> marks the group caption, which is
+    /// rendered as a row because Avalonia's ComboBox has no GroupStyle.</summary>
     private sealed record FontItem(string Name, string Family, bool IsHeader);
 
     /// <summary>#777777 — the group-header grey the WPF GroupStyle header template used.</summary>
     private static readonly IBrush GroupHeaderBrush = new SolidColorBrush(Color.FromRgb(0x77, 0x77, 0x77));
 
-    /// <summary>App-bundled fonts first (default sentinel + the three embedded families), then every
-    /// installed system font family, sorted. Each group is preceded by its header row.</summary>
+    /// <summary>The default sentinel, then every installed system font family, sorted. The 内置字体
+    /// group is gone with the bundled TTFs — every selectable family is now an installed one.</summary>
     private static List<FontItem> BuildFontItems(string language)
     {
         var items = new List<FontItem>
         {
-            new(AppLanguage.Text("BuiltInFonts", language), "", true),
             new(AppLanguage.Text("DefaultFont", language), "", false),
-            new("阿里巴巴普惠体", "Alibaba PuHuiTi", false),
-            new("Fusion Pixel 像素", "Pixel", false),
-            new("Press Start 2P", "Press Start 2P", false),
             new(AppLanguage.Text("SystemFonts", language), "", true),
         };
         foreach (var fam in FontManager.Current.SystemFonts
@@ -92,7 +81,6 @@ public partial class SettingsWindow : Window
     /// <summary>The font row currently selected, so a click on a group header can be bounced back to it.</summary>
     private ComboBoxItem? _selectedFontRow;
     private bool _fontSelectionGuard;
-    private bool _colTextGuard;
 
     private string UiLanguage => _working?.General.Language ?? _config.Config.General.Language;
     private string L(string key, params object?[] args) => AppLanguage.Format(key, UiLanguage, args);
@@ -209,13 +197,13 @@ public partial class SettingsWindow : Window
         _loaded = false;
         var g = _working.General;
 
-        // The CSS theme system is gone. A stored WinXP/Windows11/Pixel/user:<name>/junk value is
+        // The theme system is gone. A stored WinXP/Windows11/Pixel/Classic/user:<name>/junk value is
         // canonicalized on the WORKING copy only, so it is rewritten on the next Apply without
         // discarding anything else the user has configured. This is a defensive UI-side fallback:
-        // the migration itself belongs in ConfigService.Normalize (TanMenu.Core), which still carries
-        // the old Fluent2/Win98/Win31/Win2000 renames.
-        if (!string.Equals(g.ThemeName, SingleThemeKey, StringComparison.Ordinal))
-            g.ThemeName = SingleThemeKey;
+        // the migration itself belongs in ConfigService.Normalize (TanMenu.Core).
+        if (!string.Equals(g.ThemeName, AppConfig.CanonicalTheme, StringComparison.Ordinal))
+            g.ThemeName = AppConfig.CanonicalTheme;
+        g.Appearance = AppAppearance.NormalizeSetting(g.Appearance);
 
         RootBox.Text = _working.RootFolder;
         DataBox.Text = _paths.LocalFolder; // the LIVE data root (may differ from the registry pointer)
@@ -228,12 +216,12 @@ public partial class SettingsWindow : Window
             s => string.Equals(s, AppLanguage.NormalizeSetting(g.Language), StringComparison.OrdinalIgnoreCase));
         LanguageCombo.SelectedIndex = langIdx < 0 ? 0 : langIdx;
 
-        ThemeCombo.ItemsSource = new List<string> { SingleThemeLabel };
-        ThemeCombo.SelectedIndex = 0;
+        AppearanceCombo.ItemsSource = AppearanceSettings.Select(AppearanceLabelFor).ToList();
+        var appearanceIdx = Array.FindIndex(AppearanceSettings,
+            s => string.Equals(s, g.Appearance, StringComparison.OrdinalIgnoreCase));
+        AppearanceCombo.SelectedIndex = appearanceIdx < 0 ? 0 : appearanceIdx;
 
         PopulateFontCombo(g.FontFamily ?? string.Empty);
-
-        SetColumnCountText(g.ColButtonCount.ToString());
 
         SizeCombo.ItemsSource = ButtonSizes.Select(SizeLabel).ToList();
         var sizeIdx = Array.FindIndex(ButtonSizes, s => s == g.ButtonSize);
@@ -270,9 +258,8 @@ public partial class SettingsWindow : Window
         ToolsTab.Header = L("CommonTools");
         UpdatesTab.Header = L("Updates");
         LanguageLabel.Text = L("Language");
-        ThemeLabel.Text = L("Theme");
+        AppearanceLabel.Text = L("AppearanceMode");
         FontLabel.Text = L("Font");
-        ColumnCountLabel.Text = L("ColumnCount");
         ButtonSizeLabel.Text = L("ButtonSize");
         AutoCloseCb.Content = L("AutoClose");
         TopMostCb.Content = L("TopMost");
@@ -495,59 +482,26 @@ public partial class SettingsWindow : Window
         SetDirty(true);
     }
 
-    private void SetColumnCountText(string text)
+    /// <summary>The launcher applies light/dark LIVE, before Apply is pressed: the dropdown is a
+    /// preview of a whole-app appearance, and staging it would leave the user choosing 深色 while
+    /// still looking at a light window. The value is still staged into the working copy, so Cancel
+    /// restores the previous appearance.</summary>
+    private void Appearance_Changed(object? sender, SelectionChangedEventArgs e)
     {
-        _colTextGuard = true;
-        try { ColCount.Text = text; }
-        finally { _colTextGuard = false; }
+        if (!_loaded || AppearanceCombo.SelectedIndex < 0)
+            return;
+        _working.General.Appearance = AppearanceSettings[AppearanceCombo.SelectedIndex];
+        if (Application.Current is { } app)
+            AppTheme.Apply(app, _working.General.Appearance);
+        SetDirty(true);
     }
 
-    /// <summary>Keep the box digits-only. WPF filtered typed characters with PreviewTextInput; Avalonia's
-    /// TextInput event cannot be intercepted ahead of the TextBox, so the text is scrubbed after the fact
-    /// — which also covers paste and IME, unlike the WPF version.</summary>
-    private void ColCount_TextChanged(object? sender, TextChangedEventArgs e)
+    private string AppearanceLabelFor(string setting) => AppAppearance.NormalizeSetting(setting) switch
     {
-        if (_colTextGuard)
-            return;
-        var text = ColCount.Text;
-        if (string.IsNullOrEmpty(text))
-            return;
-        var digits = new string(text.Where(char.IsDigit).ToArray());
-        if (digits == text)
-            return;
-        _colTextGuard = true;
-        try
-        {
-            ColCount.Text = digits;
-            ColCount.CaretIndex = digits.Length;
-        }
-        finally { _colTextGuard = false; }
-    }
-
-    private void Col_Changed(object? sender, RoutedEventArgs e) => CommitColumnCount();
-
-    /// <summary>Commit the column-count box (clamped to 1..30, unparsable text reverted). Called on
-    /// LostFocus, and again from 应用/确定 so the last-typed value can never be lost if the button click
-    /// somehow does not move focus first.</summary>
-    private void CommitColumnCount()
-    {
-        if (!_loaded)
-            return;
-        if (int.TryParse(ColCount.Text, out var n))
-        {
-            var clamped = Math.Clamp(n, 1, 30);
-            SetColumnCountText(clamped.ToString());
-            if (clamped != _working.General.ColButtonCount)
-            {
-                _working.General.ColButtonCount = clamped;
-                SetDirty(true);
-            }
-        }
-        else
-        {
-            SetColumnCountText(_working.General.ColButtonCount.ToString());
-        }
-    }
+        AppAppearance.Light => L("AppearanceLight"),
+        AppAppearance.Dark => L("AppearanceDark"),
+        _ => L("AppearanceSystem"),
+    };
 
     // ---- Apply the configured UI font to this window ----
 
@@ -754,20 +708,26 @@ public partial class SettingsWindow : Window
 
     private void Apply_Click(object? sender, RoutedEventArgs e) => RunSafely(async () =>
     {
-        CommitColumnCount();
         if (_dirty)
             await CommitAsync();
     });
 
     private void Ok_Click(object? sender, RoutedEventArgs e) => RunSafely(async () =>
     {
-        CommitColumnCount();
         if (_dirty && !await CommitAsync())
             return; // save failed (error already shown) — keep the window open so the user can retry
         Close();
     });
 
-    private void Cancel_Click(object? sender, RoutedEventArgs e) => Close(); // discard the working copy
+    /// <summary>Discard the working copy. Appearance is the one setting applied live rather than
+    /// staged, so it is the one setting Cancel has to actively undo — everything else was never
+    /// applied in the first place.</summary>
+    private void Cancel_Click(object? sender, RoutedEventArgs e)
+    {
+        if (Application.Current is { } app)
+            AppTheme.Apply(app, _config.Config.General.Appearance);
+        Close();
+    }
 
     /// <summary>Apply the working copy to the live config + autostart, save, and notify the launcher.
     /// Returns false (and rolls the in-memory swap back, telling the user) if the save fails, so a failed

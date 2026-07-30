@@ -1,0 +1,325 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!--
+    The launcher's own Fluent 2 dialect. Everything here is either an x:Key'd ControlTheme or a
+    class selector (.tm-*), so it is opt-in and cannot leak into the settings window or the shared
+    message box, both of which stay on Avalonia's own control themes by design.
+
+    There is deliberately NOT a single colour literal in this file — every brush comes from
+    Themes/Fluent2/Tokens.axaml, and Fluent2TokenTests fails the build if one appears. That is what
+    makes light/dark a property of one file instead of a hunt.
+
+    All brush references use {DynamicResource}, not {StaticResource}: the app switches
+    ThemeVariant live when the OS theme or the appearance setting changes, and a StaticResource
+    would freeze the launcher in whatever variant happened to be active at parse time.
+  -->
+
+  <Styles.Resources>
+
+    <!-- ══ Launcher item tile ═══════════════════════════════════════════════════════════════════
+         The most-repeated control in the app. Transparent at rest so the acrylic reads through;
+         the hover and pressed states are Fluent 2's subtle fills, which are alpha over whatever is
+         behind rather than opaque swatches. Unlike the retro build, pressing does NOT offset the
+         content — Fluent 2 signals press by going a shade quieter, not by moving. -->
+    <ControlTheme x:Key="TmTileButton" TargetType="Button">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+      <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
+      <Setter Property="Padding" Value="8,7" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="Cursor" Value="Hand" />
+
+      <!-- An adorner rather than a border: it draws OUTSIDE the tile, so showing focus cannot
+           reflow the grid the way a border thickness change would. -->
+      <Setter Property="FocusAdorner">
+        <Template>
+          <Border BorderBrush="{DynamicResource FocusStrokeOuterBrush}"
+                  BorderThickness="2"
+                  CornerRadius="6"
+                  Margin="-2" />
+        </Template>
+      </Setter>
+
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border x:Name="Root"
+                  Background="{TemplateBinding Background}"
+                  CornerRadius="{DynamicResource RadiusControl}"
+                  Padding="{TemplateBinding Padding}">
+            <ContentPresenter Content="{TemplateBinding Content}"
+                              ContentTemplate="{TemplateBinding ContentTemplate}"
+                              HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                              VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+          </Border>
+        </ControlTemplate>
+      </Setter>
+
+      <Style Selector="^:pointerover /template/ Border#Root">
+        <Setter Property="Background" Value="{DynamicResource SubtleFillSecondaryBrush}" />
+      </Style>
+      <Style Selector="^:pressed /template/ Border#Root">
+        <Setter Property="Background" Value="{DynamicResource SubtleFillTertiaryBrush}" />
+      </Style>
+      <!-- A tile whose shortcut target no longer exists. It stays in place and stays readable —
+           it is information, not noise — but it takes no pointer states and cannot be launched. -->
+      <Style Selector="^:disabled">
+        <Setter Property="Foreground" Value="{DynamicResource TextDisabledBrush}" />
+        <Setter Property="Cursor" Value="Arrow" />
+      </Style>
+      <Style Selector="^:disabled /template/ Border#Root">
+        <Setter Property="Background" Value="Transparent" />
+      </Style>
+      <!-- The disabled tile's ICON is dimmed by a rule in the Styles body below, not here: a
+           ControlTheme may not contain a descendant selector, and the icon lives in the launcher's
+           DataTemplate rather than in this control template. -->
+    </ControlTheme>
+
+    <!-- ══ Header icon button (⋯ overflow, ✕ close) ═════════════════════════════════════════════
+         A 32×32 square target. Same subtle-fill state model as the tile so the whole surface reads
+         as one system. -->
+    <ControlTheme x:Key="TmIconButton" TargetType="Button">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+      <Setter Property="Width" Value="32" />
+      <Setter Property="Height" Value="32" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="FocusAdorner">
+        <Template>
+          <Border BorderBrush="{DynamicResource FocusStrokeOuterBrush}"
+                  BorderThickness="2" CornerRadius="6" Margin="-2" />
+        </Template>
+      </Setter>
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border x:Name="Root"
+                  Background="{TemplateBinding Background}"
+                  CornerRadius="{DynamicResource RadiusControl}">
+            <ContentPresenter Content="{TemplateBinding Content}"
+                              HorizontalContentAlignment="Center"
+                              VerticalContentAlignment="Center" />
+          </Border>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:pointerover /template/ Border#Root">
+        <Setter Property="Background" Value="{DynamicResource SubtleFillSecondaryBrush}" />
+      </Style>
+      <Style Selector="^:pointerover">
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+      </Style>
+      <Style Selector="^:pressed /template/ Border#Root">
+        <Setter Property="Background" Value="{DynamicResource SubtleFillTertiaryBrush}" />
+      </Style>
+    </ControlTheme>
+
+  </Styles.Resources>
+
+  <!-- ══ The window surface ═════════════════════════════════════════════════════════════════════
+       Rounded, hairline-outlined, and transparent so the acrylic host behind it shows through. The
+       opaque fallback lives on the host: when the platform refuses transparency, the window paints
+       SurfaceBaseBrush instead of leaving a hole. -->
+  <Style Selector="Border.tm-surface">
+    <Setter Property="CornerRadius" Value="{DynamicResource RadiusOverlay}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BorderBrush" Value="{DynamicResource StrokeSurfaceFlyoutBrush}" />
+    <Setter Property="ClipToBounds" Value="True" />
+  </Style>
+
+  <!-- ══ Header ═══════════════════════════════════════════════════════════════════════════════ -->
+
+  <Style Selector="Border.tm-header">
+    <Setter Property="BorderThickness" Value="0,0,0,1" />
+    <Setter Property="BorderBrush" Value="{DynamicResource StrokeDividerBrush}" />
+    <Setter Property="Padding" Value="12,10" />
+  </Style>
+
+  <!-- Glyphs are geometry, not font characters: identical at every DPI, and a build that ships no
+       icon font cannot render a missing one as tofu. Open outlines are stroked, closed shapes are
+       filled, hence the two styles. -->
+  <Style Selector="Path.tm-search-glyph">
+    <Setter Property="Stroke" Value="{DynamicResource TextTertiaryBrush}" />
+    <Setter Property="StrokeThickness" Value="1.3" />
+    <Setter Property="StrokeLineCap" Value="Round" />
+    <Setter Property="Width" Value="16" />
+    <Setter Property="Height" Value="16" />
+    <Setter Property="Stretch" Value="Uniform" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+
+  <Style Selector="Path.tm-stroke-glyph">
+    <Setter Property="Stroke" Value="{DynamicResource TextSecondaryBrush}" />
+    <Setter Property="StrokeThickness" Value="1.3" />
+    <Setter Property="StrokeLineCap" Value="Round" />
+    <Setter Property="Stretch" Value="Uniform" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+
+  <!-- The search field is a plain TextBox stripped to text only; the field's own shape, fill and
+       outline are drawn by the Border it sits in (Border.tm-searchfield). Background and
+       BorderThickness are set as LOCAL values on the element in MainWindow.axaml — local values
+       outrank style setters, which is what keeps Avalonia's own :pointerover / :focus TextBox
+       styling from repainting a field we already painted. -->
+  <Style Selector="Border.tm-searchfield">
+    <Setter Property="CornerRadius" Value="{DynamicResource RadiusControl}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BorderBrush" Value="{DynamicResource StrokeControlBrush}" />
+    <Setter Property="Background" Value="{DynamicResource SurfaceLayerBrush}" />
+    <Setter Property="Padding" Value="10,0" />
+    <Setter Property="MinHeight" Value="32" />
+  </Style>
+  <Style Selector="Border.tm-searchfield:pointerover">
+    <Setter Property="BorderBrush" Value="{DynamicResource TextTertiaryBrush}" />
+  </Style>
+  <!-- Focus is signalled on the FIELD, not the bare TextBox, so the accent line frames the whole
+       control including the glyph. -->
+  <Style Selector="Border.tm-searchfield.focused">
+    <Setter Property="BorderBrush" Value="{DynamicResource AccentDefaultBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+
+  <Style Selector="TextBox.tm-search">
+    <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+    <Setter Property="CaretBrush" Value="{DynamicResource TextPrimaryBrush}" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="MinHeight" Value="30" />
+    <Setter Property="Padding" Value="0" />
+  </Style>
+
+  <!-- ══ Tile size classes 小 / 中 / 大 ═══════════════════════════════════════════════════════
+       The size setting drives three things together — tile width, icon box and type size — so a
+       larger setting reads as a genuinely larger control rather than a stretched one. A fixed tile
+       width is what lets the WrapPanel form clean columns; without it every row would be ragged. -->
+
+  <Style Selector="Panel.size-small Button.tm-tile">
+    <Setter Property="Width" Value="168" />
+    <Setter Property="Padding" Value="8,7" />
+    <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
+  </Style>
+  <Style Selector="Panel.size-small Image.tm-tile-icon">
+    <Setter Property="Width" Value="20" />
+    <Setter Property="Height" Value="20" />
+  </Style>
+
+  <Style Selector="Panel.size-medium Button.tm-tile">
+    <Setter Property="Width" Value="192" />
+    <Setter Property="Padding" Value="10,9" />
+    <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
+  </Style>
+  <Style Selector="Panel.size-medium Image.tm-tile-icon">
+    <Setter Property="Width" Value="24" />
+    <Setter Property="Height" Value="24" />
+  </Style>
+
+  <Style Selector="Panel.size-large Button.tm-tile">
+    <Setter Property="Width" Value="216" />
+    <Setter Property="Padding" Value="12,11" />
+    <Setter Property="FontSize" Value="{DynamicResource FontSizeSubtitle}" />
+  </Style>
+  <Style Selector="Panel.size-large Image.tm-tile-icon">
+    <Setter Property="Width" Value="28" />
+    <Setter Property="Height" Value="28" />
+  </Style>
+
+  <!-- A tile whose target is missing: the label greys out via the ControlTheme, and the icon fades
+       with it so the whole tile reads as unavailable rather than half-lit. -->
+  <Style Selector="Button.tm-tile:disabled Image.tm-tile-icon">
+    <Setter Property="Opacity" Value="0.4" />
+  </Style>
+
+  <!-- ══ Sections ═════════════════════════════════════════════════════════════════════════════ -->
+
+  <Style Selector="TextBlock.tm-section">
+    <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+
+  <!-- A group backed by a real folder is clickable; the built-in 常用工具 group has no Directory and
+       stays inert, which is why the affordance is a class the view sets rather than a blanket rule. -->
+  <Style Selector="Border.tm-section-head">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Padding" Value="4,3" />
+    <Setter Property="CornerRadius" Value="{DynamicResource RadiusControl}" />
+  </Style>
+  <Style Selector="Border.tm-section-head.clickable">
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+  <Style Selector="Border.tm-section-head.clickable:pointerover">
+    <Setter Property="Background" Value="{DynamicResource SubtleFillSecondaryBrush}" />
+  </Style>
+  <Style Selector="Border.tm-section-head.clickable:pointerover Path.tm-folder">
+    <Setter Property="Opacity" Value="1" />
+  </Style>
+  <Style Selector="Path.tm-folder">
+    <Setter Property="Fill" Value="{DynamicResource TextTertiaryBrush}" />
+    <Setter Property="Width" Value="14" />
+    <Setter Property="Height" Value="14" />
+    <Setter Property="Stretch" Value="Uniform" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Opacity" Value="0" />
+  </Style>
+
+  <!-- ══ Empty / no-results states ════════════════════════════════════════════════════════════ -->
+
+  <Style Selector="StackPanel.tm-empty">
+    <Setter Property="Margin" Value="24,32" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="StackPanel.tm-empty > TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+    <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
+    <Setter Property="TextAlignment" Value="Center" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+  </Style>
+  <!-- Avalonia's ContentControl defaults HorizontalContentAlignment to Left, not Center as WPF
+       does, so an ordinary Button renders its label against the left edge. -->
+  <Style Selector="StackPanel.tm-empty Button">
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="StackPanel.tm-empty > TextBlock.title">
+    <Setter Property="FontSize" Value="{DynamicResource FontSizeSubtitle}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+    <Setter Property="Margin" Value="0,0,0,6" />
+  </Style>
+
+  <!-- ══ Update notice ════════════════════════════════════════════════════════════════════════
+       Fluent 2's InfoBar shape: accent-tinted surface, left glyph, no shouting. -->
+  <Style Selector="Button.tm-update">
+    <Setter Property="Background" Value="{DynamicResource SubtleFillSecondaryBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource StrokeControlBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{DynamicResource RadiusControl}" />
+    <Setter Property="Padding" Value="12,9" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
+  </Style>
+
+  <!-- ══ Toast ════════════════════════════════════════════════════════════════════════════════
+       A transient, self-clearing error. Sits in the overlay layer and contributes no layout size,
+       so it can never resize the popup. -->
+  <Style Selector="Border.tm-toast">
+    <Setter Property="Background" Value="{DynamicResource SurfaceBaseBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource StrokeSurfaceFlyoutBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{DynamicResource RadiusControl}" />
+    <Setter Property="Padding" Value="14,10" />
+    <Setter Property="Margin" Value="16" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="VerticalAlignment" Value="Bottom" />
+    <Setter Property="BoxShadow" Value="{DynamicResource ShadowFlyout}" />
+  </Style>
+  <Style Selector="Border.tm-toast > TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+    <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
+  </Style>
+
+</Styles>

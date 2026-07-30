@@ -73,12 +73,15 @@
 
   <!-- Avalonia puts the text properties on TextElement as ATTACHED properties; a plain Border or
        Panel has no FontFamily of its own, but the attached one still inherits down the tree. -->
+  <!-- The card is accent-coloured, and the accent is the USER's: AppTheme publishes AccentColor and
+       AccentColorShaded from Windows personalization at startup, so the splash and the launcher's
+       highlights are the same blue (or pink, or green) rather than a hardcoded one. -->
   <Border Padding="24,20" ClipToBounds="True"
-          TextElement.FontFamily="Segoe UI, Microsoft YaHei, Tahoma">
+          TextElement.FontFamily="{DynamicResource AppFontFamily}">
     <Border.Background>
       <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
-        <GradientStop Offset="0" Color="#0078D4" />
-        <GradientStop Offset="1" Color="#106EBE" />
+        <GradientStop Offset="0" Color="{DynamicResource AccentColor}" />
+        <GradientStop Offset="1" Color="{DynamicResource AccentColorShaded}" />
       </LinearGradientBrush>
     </Border.Background>
 

@@ -40,6 +40,7 @@ public class JsonContractTests
         Assert.Contains("\"general\": {", json);
         Assert.Contains("\"rootFolder\":", json);
         Assert.Contains($"\"themeName\": \"{AppConfig.CanonicalTheme}\"", json);
+        Assert.Contains($"\"appearance\": \"{AppAppearance.System}\"", json);
         Assert.Contains("\"colButtonCount\": 10", json);
         Assert.Contains("\"defaultTools\": [", json);
         Assert.Contains("\n", json);

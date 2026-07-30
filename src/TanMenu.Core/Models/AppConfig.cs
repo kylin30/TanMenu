@@ -1,20 +1,23 @@
+using TanMenu.Core.Services;
+
 namespace TanMenu.Core.Models;
 
 public class AppConfig
 {
     /// <summary>
     /// The only theme id the app recognizes. The CSS theme packs (WinXP / Win7 / Windows11 / Pixel,
-    /// plus user-authored <c>user:&lt;name&gt;</c> stylesheets) went away with the WebView in the
-    /// Avalonia + NativeAOT rewrite; a single native Windows 2000 classic theme replaced them.
+    /// plus user-authored <c>user:&lt;name&gt;</c> stylesheets) went away with the WebView, the
+    /// Windows 2000 theme that briefly replaced them went away with the Fluent 2 rebuild, and what
+    /// remains is one look drawn from Themes/Fluent2.
     /// <para>
     /// The field is kept rather than deleted so an old config still round-trips, and every legacy
-    /// value is coerced to this one on load (<c>ConfigService.Normalize</c>). Deliberately NOT reusing
-    /// any historical id: "Win7" would name a theme the app no longer renders, and "Win2000" was
-    /// previously a *removed* value that migrated away — either would make the file lie about what
-    /// is on screen.
+    /// value — including the outgoing "Classic" — is coerced to this one on load
+    /// (<c>ConfigService.Normalize</c>). Light and dark are NOT theme ids: they are
+    /// <see cref="GeneralConfig.Appearance"/>, because one design language rendering in two variants
+    /// is not two themes.
     /// </para>
     /// </summary>
-    public const string CanonicalTheme = "Classic";
+    public const string CanonicalTheme = "Fluent";
 
     public GeneralConfig General { get; set; } = new();
 
@@ -49,16 +52,25 @@ public class GeneralConfig
     public string GlobalHotkey { get; set; } = "";
 
     public int PositionOffset { get; set; } = 8;
+
+    /// <summary>Legacy 0.9.x/0.10.x setting retained only so old config files deserialize cleanly.
+    /// The launcher's tiles wrap to the available width now, so nothing chunks items into columns of
+    /// a fixed count and this value shapes nothing.</summary>
     public int ColButtonCount { get; set; } = 10;
 
     /// <summary>Active theme. Exactly one theme exists — see <see cref="AppConfig.CanonicalTheme"/>.
     /// Any other value (including every historical id) is coerced on load.</summary>
     public string ThemeName { get; set; } = AppConfig.CanonicalTheme;
 
-    /// <summary>UI font family, applied to the whole launcher window (default 阿里巴巴普惠体, which
-    /// ships embedded in the executable). Empty = fall back to the theme's own chrome font.
-    /// Resolution lives in <c>TanMenu.Wpf.Services.AppFonts</c>.</summary>
-    public string FontFamily { get; set; } = "Alibaba PuHuiTi";
+    /// <summary>Light/dark: "System" (default, follows the OS) | "Light" | "Dark". Absent from every
+    /// config written before the Fluent 2 rebuild, which deserializes to the default.
+    /// See <see cref="TanMenu.Core.Services.AppAppearance"/>.</summary>
+    public string Appearance { get; set; } = AppAppearance.System;
+
+    /// <summary>UI font family, applied to the whole launcher window. Empty = the app's own default
+    /// (the system UI face). No fonts ship inside the executable any more, so a value here always
+    /// names an INSTALLED family; resolution lives in <c>TanMenu.Wpf.Services.AppFonts</c>.</summary>
+    public string FontFamily { get; set; } = "";
 
     /// <summary>Launcher button size: "Small" | "Medium" | "Large". Default Small.</summary>
     public string ButtonSize { get; set; } = "Small";

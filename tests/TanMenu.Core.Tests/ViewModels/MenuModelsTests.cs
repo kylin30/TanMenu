@@ -6,7 +6,7 @@ namespace TanMenu.Core.Tests.ViewModels;
 
 /// <summary>
 /// Guards the two launcher rules most likely to be "improved" into regressions during maintenance:
-/// what the search box considers a match, and how items are chunked into columns.
+/// what the search box considers a match, and what a section actually renders once a filter is on.
 /// </summary>
 public class MenuModelsTests
 {
@@ -41,71 +41,97 @@ public class MenuModelsTests
     [Fact]
     public void Matches_DoesNotConsiderIsDisabled()
     {
-        // A disabled item still highlights (only Enter skips it). The old ItemClass behaved this way;
-        // "fixing" it here would silently change what the user sees.
+        // A disabled item still matches, so a filter does not make a broken shortcut vanish — it is
+        // information ("this one is broken"), and hiding it would look like the item was deleted.
         Assert.True(Item("broken link", disabled: true).Matches("broken"));
     }
 
-    // ---- Column chunking -----------------------------------------------------------------------
+    // ---- Filtering -----------------------------------------------------------------------------
 
-    private static MenuGroupVm Group(int itemCount)
+    private static MenuGroupVm Group(params string[] names)
     {
         var g = new MenuGroupVm { Directory = @"C:\g", DirectoryName = "g" };
-        g.Items.AddRange(Enumerable.Range(0, itemCount).Select(i => Item("item" + i)));
+        g.Items.AddRange(names.Select(n => Item(n)));
         return g;
     }
 
     [Fact]
-    public void Rechunk_FillsColumnsSequentially_NotBalanced()
+    public void ApplyFilter_RemovesNonMatches_RatherThanDimmingThem()
     {
-        var g = Group(7);
-        g.Rechunk(3);
+        var g = Group("Visual Studio Code", "Notepad", "计算器");
+        g.ApplyFilter("note");
 
-        // 7 items at 3 per column = 3 + 3 + 1. NOT a balanced 3/2/2 split.
-        Assert.Equal(3, g.Columns.Count);
-        Assert.Equal(3, g.Columns[0].Items.Count);
-        Assert.Equal(3, g.Columns[1].Items.Count);
-        Assert.Single(g.Columns[2].Items);
-        Assert.Equal("item0", g.Columns[0].Items[0].Name);
-        Assert.Equal("item3", g.Columns[1].Items[0].Name);
-        Assert.Equal("item6", g.Columns[2].Items[0].Name);
-    }
-
-    [Theory]
-    [InlineData(0)]
-    [InlineData(-1)]
-    [InlineData(int.MinValue)]
-    public void Rechunk_ClampsNonPositiveColumnCountsToOne(int configured)
-    {
-        // Enumerable.Chunk(0) throws; the config value is user-editable and has reached 0 before.
-        var g = Group(3);
-        g.Rechunk(configured);
-
-        Assert.Equal(3, g.Columns.Count);
-        Assert.All(g.Columns, c => Assert.Single(c.Items));
+        // The retro launcher kept every item laid out and only faded the non-matches. The Fluent 2
+        // launcher genuinely filters: a non-match is ABSENT from what the section renders.
+        Assert.Single(g.VisibleItems);
+        Assert.Equal("Notepad", g.VisibleItems[0].Name);
+        Assert.Equal(3, g.Items.Count); // ...and the underlying set is untouched
     }
 
     [Fact]
-    public void Rechunk_WithMoreCapacityThanItems_ProducesOneColumn()
+    public void ApplyFilter_WithEmptyText_ShowsEverything()
     {
-        var g = Group(4);
-        g.Rechunk(10); // the default ColButtonCount
-        Assert.Single(g.Columns);
-        Assert.Equal(4, g.Columns[0].Items.Count);
+        var g = Group("a", "b", "c");
+        g.ApplyFilter("x");
+        Assert.Empty(g.VisibleItems);
+
+        g.ApplyFilter("");
+        Assert.Equal(3, g.VisibleItems.Count);
     }
 
     [Fact]
-    public void Rechunk_IsIdempotentForTheSameSize_ButReshapesOnChange()
+    public void HasVisibleItems_GoesFalseWhenAFilterEmptiesTheSection()
     {
-        var g = Group(6);
-        g.Rechunk(3);
-        var first = g.Columns;
-        g.Rechunk(3);
-        Assert.Same(first, g.Columns); // no churn when a settings change did not touch the count
+        // This is what removes a whole section heading from the layout instead of leaving an empty
+        // caption behind.
+        var g = Group("Notepad");
+        Assert.False(g.HasVisibleItems); // nothing applied yet
 
-        g.Rechunk(2);
-        Assert.NotSame(first, g.Columns);
-        Assert.Equal(3, g.Columns.Count);
+        g.ApplyFilter("");
+        Assert.True(g.HasVisibleItems);
+
+        g.ApplyFilter("zzz");
+        Assert.False(g.HasVisibleItems);
+    }
+
+    [Fact]
+    public void ApplyFilter_RepeatedWithTheSameText_DoesNotChurnTheBinding()
+    {
+        var g = Group("a", "b");
+        g.ApplyFilter("a");
+        var first = g.VisibleItems;
+        g.ApplyFilter("a");
+
+        // Typing re-applies on every keystroke; recomputing an identical list would raise
+        // PropertyChanged and re-realize the whole tile grid for nothing.
+        Assert.Same(first, g.VisibleItems);
+    }
+
+    [Fact]
+    public void InvalidateFilter_ForcesARecomputeAfterTheItemsChange()
+    {
+        var g = Group("a");
+        g.ApplyFilter("");
+        Assert.Single(g.VisibleItems);
+
+        // A rebuild replaces Items in place; without invalidation the memoized filter would decide
+        // it had already applied "" and the new item would never appear.
+        g.Items.Add(Item("b"));
+        g.InvalidateFilter();
+        g.ApplyFilter("");
+
+        Assert.Equal(2, g.VisibleItems.Count);
+    }
+
+    [Fact]
+    public void ApplyFilter_KeepsDisabledMatches()
+    {
+        var g = new MenuGroupVm { Directory = @"C:\g", DirectoryName = "g" };
+        g.Items.Add(Item("broken link", disabled: true));
+        g.ApplyFilter("broken");
+
+        Assert.Single(g.VisibleItems);
+        Assert.True(g.VisibleItems[0].IsDisabled);
     }
 
     [Fact]

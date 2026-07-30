@@ -6,7 +6,7 @@
         x:DataType="vm:LauncherViewModel"
         Title="TanMenuWpf"
         WindowDecorations="None"
-        TransparencyLevelHint="Transparent"
+        TransparencyLevelHint="AcrylicBlur"
         Background="Transparent"
         SizeToContent="WidthAndHeight"
         ShowInTaskbar="False"
@@ -14,365 +14,285 @@
         Opacity="0"
         WindowStartupLocation="Manual"
         FontFamily="{Binding WindowFontFamily}"
-        FontSize="12"
-        Foreground="{StaticResource RetroText}">
+        FontSize="14"
+        Foreground="{DynamicResource TextPrimaryBrush}">
 
   <!--
-    The launcher popup.
+    The launcher popup, in Fluent 2's flyout idiom: an acrylic surface with an 8 px radius, a
+    hairline outline and no title bar. There is no minimize and no maximize — both were duplicates
+    of "hide" on a fixed-size popup — only the close glyph, which also hides.
 
     Title is load-bearing and must stay byte-identical to "TanMenuWpf": a second instance finds this
     window by caption (FindWindow) to resurface the running one.
 
     Opacity starts at 0 and the host raises it only after the window has been sized and placed, so a
-    cold start never flashes an unsized transparent rectangle at screen top-left. The window is
-    shown/hidden, never opened/closed, and its placement is recomputed from content on every show.
+    cold start never flashes an unsized rectangle at screen top-left. The window is shown/hidden,
+    never opened/closed, and its placement is recomputed from content on every show.
 
-    There is deliberately NO drag: the old build zeroed the WPF caption hit-test, and placement is
-    derived from content every time, so a dragged position would be thrown away on the next summon.
+    Sizing: the window is content-sized, capped by MaxWidth/MaxHeight that WindowHost sets from the
+    work area, after which the body scrolls. The retro build instead shrank the whole UI with a
+    ScaleTransform to dodge a scrollbar; that was a workaround for a layout that could not scroll.
   -->
 
-  <Window.Styles>
+  <Panel x:Name="Root"
+         Classes.size-small="{Binding IsSmallButtons}"
+         Classes.size-medium="{Binding IsMediumButtons}"
+         Classes.size-large="{Binding IsLargeButtons}">
 
-    <!-- ── Button size classes 小/中/大 ─────────────────────────────────────────────────────────
-         The three CSS size classes, ported as style classes on the content root so one template
-         serves all three sizes without a per-item binding. Padding = the button element's own
-         vertical padding PLUS the inner content padding; horizontal padding was left to the theme
-         stylesheet in the CSS build, and 3px is what this theme uses. -->
-    <Style Selector="Panel.size-small Button.tm-item-button">
-      <Setter Property="FontSize" Value="13" />
-      <Setter Property="Padding" Value="6,6" />
-    </Style>
-    <Style Selector="Panel.size-small Image.tm-item-icon">
-      <Setter Property="Width" Value="20" />
-      <Setter Property="Height" Value="20" />
-    </Style>
+    <!-- The acrylic backdrop. Hit-test invisible so it never eats a click meant for the surface. -->
+    <ExperimentalAcrylicBorder x:Name="Acrylic"
+                               IsHitTestVisible="False"
+                               CornerRadius="{DynamicResource RadiusOverlay}">
+      <ExperimentalAcrylicBorder.Material>
+        <ExperimentalAcrylicMaterial BackgroundSource="Digger"
+                                     TintColor="{DynamicResource AcrylicTintColor}"
+                                     TintOpacity="1"
+                                     MaterialOpacity="{DynamicResource AcrylicTintOpacity}" />
+      </ExperimentalAcrylicBorder.Material>
+    </ExperimentalAcrylicBorder>
 
-    <Style Selector="Panel.size-medium Button.tm-item-button">
-      <Setter Property="FontSize" Value="14" />
-      <Setter Property="Padding" Value="8,11" />
-    </Style>
-    <Style Selector="Panel.size-medium Image.tm-item-icon">
-      <Setter Property="Width" Value="24" />
-      <Setter Property="Height" Value="24" />
-    </Style>
+    <!-- Shown instead of the acrylic when the platform refuses transparency (remote desktop,
+         transparency disabled, no compositor). Without it the popup would be a hole. -->
+    <Border x:Name="OpaqueFallback"
+            IsVisible="False"
+            Background="{DynamicResource SurfaceBaseBrush}"
+            CornerRadius="{DynamicResource RadiusOverlay}" />
 
-    <Style Selector="Panel.size-large Button.tm-item-button">
-      <Setter Property="FontSize" Value="16" />
-      <Setter Property="Padding" Value="10,16" />
-    </Style>
-    <Style Selector="Panel.size-large Image.tm-item-icon">
-      <Setter Property="Width" Value="30" />
-      <Setter Property="Height" Value="30" />
-    </Style>
+    <!-- First child measures the window; every later child is an overlay that contributes no size
+         (About and the toast must never re-size the popup). -->
+    <ctl:OverlayPanel>
 
-    <!-- ── Group title ────────────────────────────────────────────────────────────────────────
-         The class is present only when the group has a real Directory, so the built-in 常用工具
-         group's title has no folder glyph, no pointer cursor and no hover affordance. -->
-    <Style Selector="Border.tm-group-title">
-      <Setter Property="Cursor" Value="Hand" />
-    </Style>
-    <Style Selector="Border.tm-group-title:pointerover Path.tm-folder-closed">
-      <Setter Property="IsVisible" Value="False" />
-    </Style>
-    <Style Selector="Border.tm-group-title:pointerover Path.tm-folder-open">
-      <Setter Property="IsVisible" Value="True" />
-    </Style>
-    <Style Selector="Border.tm-group-title:pointerover TextBlock.tm-group-title-text">
-      <Setter Property="TextDecorations" Value="Underline" />
-    </Style>
+      <Border Classes="tm-surface">
+        <DockPanel>
 
-    <!-- ── Caption glyphs ─────────────────────────────────────────────────────────────────────
-         Drawn as geometry, not font glyphs, so they stay crisp at every DPI. -->
-    <Style Selector="Path.tm-caption-glyph">
-      <Setter Property="Fill" Value="{StaticResource RetroText}" />
-      <Setter Property="HorizontalAlignment" Value="Center" />
-      <Setter Property="VerticalAlignment" Value="Center" />
-    </Style>
+          <!-- ══ Header: search first, then the overflow and close glyphs ═══════════════════════ -->
+          <Border Classes="tm-header" DockPanel.Dock="Top">
+            <DockPanel>
 
-  </Window.Styles>
+              <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
+                          Spacing="2" Margin="8,0,0,0" VerticalAlignment="Center">
 
-  <LayoutTransformControl x:Name="Scaler">
-    <!-- The size classes live here so a single selector reaches every launcher button and icon. -->
-    <Panel Classes.size-small="{Binding IsSmallButtons}"
-           Classes.size-medium="{Binding IsMediumButtons}"
-           Classes.size-large="{Binding IsLargeButtons}">
-
-      <!-- Transparent gutter: keeps the drawn frame's edges away from the window's clip boundary. -->
-      <Border Padding="{StaticResource RetroGutter}" Background="Transparent">
-
-        <!-- First child measures the window; every later child is an overlay that contributes no
-             size (About and the toast must never re-size the popup). -->
-        <ctl:OverlayPanel>
-
-          <!-- ══ The window ══════════════════════════════════════════════════════════════════ -->
-          <Border Classes="retro-frame">
-            <Panel>
-              <!-- Inner bevel completing the classic raised frame. -->
-              <Border BorderThickness="1,1,0,0" BorderBrush="{StaticResource RetroHighlight3D}" />
-              <Border BorderThickness="0,0,1,1" BorderBrush="{StaticResource RetroShadow3D}" />
-
-              <DockPanel Margin="1">
-
-                <!-- ── Title bar ─────────────────────────────────────────────────────────────
-                     Minimize and Close do the SAME thing: hide the window. There is no true
-                     minimize and no application exit from the caption. -->
-                <Border Classes="retro-caption" DockPanel.Dock="Top">
-                  <DockPanel>
-                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
-                                Spacing="2" VerticalAlignment="Center">
-                      <Button Theme="{StaticResource RetroCaptionButton}"
-                              Focusable="False" Click="OnMinimizeClick">
-                        <Path Classes="tm-caption-glyph" Data="M0,0 H6 V2 H0 Z" Margin="0,6,0,0" />
-                      </Button>
-                      <!-- Windows 2000 shows all three caption buttons; a fixed-size window shows
-                           Maximize greyed and non-focusable. -->
-                      <Button Theme="{StaticResource RetroCaptionButton}"
-                              IsEnabled="False" Focusable="False" IsTabStop="False">
-                        <Path Classes="tm-caption-glyph" Data="M0,0 H9 V8 H0 Z M1,2 H8 V7 H1 Z" />
-                      </Button>
-                      <Button Theme="{StaticResource RetroCaptionButton}" Margin="2,0,0,0"
-                              Focusable="False" Click="OnCloseClick">
-                        <Path Classes="tm-caption-glyph"
-                              Data="F1 M0,0 L1,0 L7,6 L7,7 L6,7 L0,1 Z M6,0 L7,0 L7,1 L1,7 L0,7 L0,6 Z" />
-                      </Button>
-                    </StackPanel>
-
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                      <Image Source="avares://TanMenu.Wpf/wwwroot/app-tile.png"
-                             Width="16" Height="16" Margin="0,0,5,0" VerticalAlignment="Center" />
-                      <!-- Literal, not localized, not the window title, not the version. -->
-                      <TextBlock Classes="retro-caption-text" Text="TanMenu" />
-                    </StackPanel>
-                  </DockPanel>
-                </Border>
-
-                <!-- ══ Window body ═══════════════════════════════════════════════════════════ -->
-                <Border Padding="6">
-                  <StackPanel>
-
-                    <!-- ── Menu bar. The search box is the last child of the row, pushed to the
-                         far right, and exists ONLY when there is at least one group. ────────── -->
-                    <DockPanel Margin="0,0,0,7">
-                      <TextBox x:Name="SearchBox"
-                               DockPanel.Dock="Right"
-                               Theme="{StaticResource RetroTextBox}"
-                               Width="180"
-                               Margin="12,0,0,0"
-                               VerticalAlignment="Center"
-                               IsVisible="{Binding HasGroups}"
-                               PlaceholderText="{Binding SearchPlaceholderText}"
-                               Text="{Binding Filter, Mode=TwoWay}"
-                               KeyDown="OnSearchKeyDown" />
-
-                      <!-- Menu items are not focusable: they were <span>s, and clicking one must not
-                           steal focus from the search box. -->
-                      <StackPanel Orientation="Horizontal" Spacing="2">
-                        <Button Theme="{StaticResource RetroMenuItem}" Focusable="False"
-                                Content="{Binding MenuOpenRootText}" Click="OnOpenRootClick" />
-                        <Button Theme="{StaticResource RetroMenuItem}" Focusable="False"
-                                Content="{Binding MenuOptionsText}" Click="OnOpenSettingsClick" />
-                        <Button Theme="{StaticResource RetroMenuItem}" Focusable="False"
-                                Content="{Binding MenuRefreshText}" Click="OnRefreshClick" />
-                        <Button Theme="{StaticResource RetroMenuItem}" Focusable="False"
-                                Content="{Binding MenuAboutText}" Click="OnAboutClick" />
-                        <Button Theme="{StaticResource RetroMenuItem}" Focusable="False"
-                                Content="{Binding MenuExitText}" Click="OnExitClick" />
-                      </StackPanel>
-                    </DockPanel>
-
-                    <!-- ── Update notice. Only for Available / Downloading / ReadyToRestart.
-                         MinWidth 360 is deliberate anti-jitter: without it the popup's width would
-                         change as the "…42%" text grows and shrinks during a download. ───────── -->
-                    <Button Theme="{StaticResource RetroItemButton}"
-                            Classes="tm-update-notice"
-                            IsVisible="{Binding ShowUpdateNotice}"
-                            IsEnabled="{Binding !IsUpdateDownloading}"
-                            MinWidth="{StaticResource RetroUpdateMinWidth}"
-                            HorizontalAlignment="Stretch"
-                            Margin="0,0,0,8"
-                            Padding="10,7"
-                            Click="OnUpdateNoticeClick">
-                      <DockPanel>
-                        <TextBlock DockPanel.Dock="Left" Text="&#x2B07;" FontSize="16"
-                                   FontWeight="Bold" Margin="0,0,8,0" VerticalAlignment="Center" />
-                        <Border DockPanel.Dock="Right"
-                                IsVisible="{Binding IsUpdateDownloading}"
-                                Width="84" Height="7" Margin="8,0,0,0"
-                                VerticalAlignment="Center"
-                                BorderThickness="1"
-                                BorderBrush="{StaticResource RetroShadow3D}"
-                                Background="{StaticResource RetroField}">
-                          <Border Background="{StaticResource RetroSelection}"
-                                  HorizontalAlignment="Left"
-                                  Width="{Binding UpdateProgressWidth}">
-                            <Border.Transitions>
-                              <Transitions>
-                                <DoubleTransition Property="Width" Duration="0:0:0.15" />
-                              </Transitions>
-                            </Border.Transitions>
-                          </Border>
-                        </Border>
-                        <TextBlock Text="{Binding UpdateNoticeText}" FontSize="13"
-                                   TextWrapping="NoWrap" VerticalAlignment="Center" />
-                      </DockPanel>
-                    </Button>
-
-                    <!-- ══ Content, three mutually exclusive states ═══════════════════════════ -->
-
-                    <!-- 1. The groups grid: ONE horizontal row that never wraps. -->
-                    <ItemsControl IsVisible="{Binding HasGroups}" ItemsSource="{Binding Groups}">
-                      <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                          <StackPanel Orientation="Horizontal"
-                                      Spacing="{StaticResource RetroGroupGap}" />
-                        </ItemsPanelTemplate>
-                      </ItemsControl.ItemsPanel>
-                      <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="vm:MenuGroupVm">
-                          <HeaderedContentControl Theme="{StaticResource RetroGroupBox}"
-                                                  VerticalAlignment="Top">
-                            <HeaderedContentControl.Header>
-                              <!-- A null tooltip shows nothing, which is how the inert 常用工具
-                                   title stays inert. -->
-                              <Border Classes.tm-group-title="{Binding IsDirectoryClickable}"
-                                      ToolTip.Tip="{Binding TitleTooltip}"
-                                      Background="Transparent"
-                                      PointerPressed="OnGroupTitlePressed">
-                                <StackPanel Orientation="Horizontal">
-                                  <Panel Width="18" Height="15" Margin="0,0,5,0"
-                                         VerticalAlignment="Center"
-                                         IsVisible="{Binding IsDirectoryClickable}">
-                                    <Path Classes="tm-folder-closed"
-                                          Fill="#FFD24A" Stroke="#7A6420" StrokeThickness="1"
-                                          Data="M0.5,2.5 H6 L7.5,4.5 H17.5 V14.5 H0.5 Z" />
-                                    <Path Classes="tm-folder-open" IsVisible="False"
-                                          Fill="#FFD24A" Stroke="#7A6420" StrokeThickness="1"
-                                          Data="F1 M0.5,2.5 H6 L7.5,4.5 H15.5 V7 H3.5 L0.5,14.5 Z M3.5,7 H17.5 L14.5,14.5 H0.5 Z" />
-                                  </Panel>
-                                  <TextBlock Classes="tm-group-title-text"
-                                             Text="{Binding DirectoryName}"
-                                             VerticalAlignment="Center" />
-                                </StackPanel>
-                              </Border>
-                            </HeaderedContentControl.Header>
-
-                            <ItemsControl ItemsSource="{Binding Columns}">
-                              <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                  <StackPanel Orientation="Horizontal"
-                                              Spacing="{StaticResource RetroColumnGap}" />
-                                </ItemsPanelTemplate>
-                              </ItemsControl.ItemsPanel>
-                              <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="vm:MenuColumnVm">
-                                  <ItemsControl ItemsSource="{Binding Items}"
-                                                VerticalAlignment="Top"
-                                                MinWidth="{StaticResource RetroColumnMinWidth}">
-                                    <ItemsControl.ItemsPanel>
-                                      <ItemsPanelTemplate>
-                                        <StackPanel Spacing="{StaticResource RetroItemGap}" />
-                                      </ItemsPanelTemplate>
-                                    </ItemsControl.ItemsPanel>
-                                    <ItemsControl.ItemTemplate>
-                                      <DataTemplate x:DataType="vm:MenuItemVm">
-                                        <!-- Filtering only swaps these classes: matches get the gold
-                                             ring, non-matches fade. Nothing is ever hidden and the
-                                             grid never reflows, so typing never resizes the popup. -->
-                                        <ContentControl Classes="tm-item"
-                                                        Classes.tm-dim="{Binding IsDimmed}"
-                                                        Classes.tm-hit="{Binding IsHit}">
-                                          <!-- The ring WRAPS the button rather than overlaying it in a
-                                               Panel: its 2px is then reserved even while transparent,
-                                               so a match appearing cannot shift the grid by 2px, and
-                                               the ring cannot be clipped by the group box. -->
-                                          <Border Classes="tm-hit-ring">
-                                            <Button Classes="tm-item-button"
-                                                    Theme="{StaticResource RetroItemButton}"
-                                                    IsEnabled="{Binding !IsDisabled}"
-                                                    Click="OnItemClick"
-                                                    PointerEntered="OnItemPointerEntered">
-                                              <DockPanel>
-                                                <!-- The icon slot is always occupied (the build
-                                                     always assigns at least a fallback), which is
-                                                     why the async icon fill never reflows. -->
-                                                <Image Classes="tm-item-icon"
-                                                       DockPanel.Dock="Left"
-                                                       Source="{Binding Icon}"
-                                                       Margin="0,0,8,0"
-                                                       Stretch="Uniform"
-                                                       VerticalAlignment="Center" />
-                                                <TextBlock Text="{Binding Name}"
-                                                           TextWrapping="NoWrap"
-                                                           TextTrimming="CharacterEllipsis"
-                                                           VerticalAlignment="Center" />
-                                              </DockPanel>
-                                            </Button>
-                                          </Border>
-                                        </ContentControl>
-                                      </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                  </ItemsControl>
-                                </DataTemplate>
-                              </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                          </HeaderedContentControl>
-                        </DataTemplate>
-                      </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-
-                    <!-- 2. Loading. ShowLoading tracks visibility so the spinner's infinite animation
-                         stops for the rest of the (tray-resident) session once the menu arrives. -->
-                    <ctl:SplashPanel IsVisible="{Binding ShowSplash}"
-                                     ShowLoading="{Binding ShowSplash}"
-                                     VersionText="{Binding VersionText}"
-                                     CopyrightText="{Binding CopyrightText}"
-                                     HintText="{Binding ClickToDismissText}" />
-
-                    <!-- 3. Loaded, but nothing to show. -->
-                    <StackPanel Classes="tm-empty" IsVisible="{Binding ShowEmpty}">
-                      <TextBlock Classes="title" Text="{Binding EmptyTitleText}" />
-                      <TextBlock Text="{Binding EmptyHelpText}" MaxWidth="360" />
-                      <StackPanel Orientation="Horizontal" Spacing="8"
-                                  HorizontalAlignment="Center" Margin="0,12,0,0">
-                        <Button Theme="{StaticResource RetroItemButton}"
-                                HorizontalAlignment="Center" Padding="12,4"
-                                Content="{Binding OpenOptionsText}" Click="OnOpenSettingsClick" />
-                        <Button Theme="{StaticResource RetroItemButton}"
-                                HorizontalAlignment="Center" Padding="12,4"
-                                Content="{Binding MenuRefreshText}" Click="OnRefreshClick" />
-                      </StackPanel>
-                    </StackPanel>
-
+                <!-- AutomationProperties.Name is required, not decoration: these buttons have a
+                     geometry glyph and no text, so without it a screen reader announces "button"
+                     and UI Automation cannot address them at all. -->
+                <Button x:Name="OverflowButton"
+                        Theme="{StaticResource TmIconButton}"
+                        Focusable="False"
+                        AutomationProperties.Name="{Binding MenuMoreText}"
+                        ToolTip.Tip="{Binding MenuMoreText}">
+                  <StackPanel Orientation="Horizontal" Spacing="3">
+                    <Ellipse Width="3" Height="3" Fill="{DynamicResource TextSecondaryBrush}" />
+                    <Ellipse Width="3" Height="3" Fill="{DynamicResource TextSecondaryBrush}" />
+                    <Ellipse Width="3" Height="3" Fill="{DynamicResource TextSecondaryBrush}" />
                   </StackPanel>
-                </Border>
-              </DockPanel>
-            </Panel>
+                  <Button.Flyout>
+                    <MenuFlyout Placement="BottomEdgeAlignedRight">
+                      <MenuItem Header="{Binding MenuOpenRootText}" Click="OnOpenRootClick" />
+                      <MenuItem Header="{Binding MenuRefreshText}" Click="OnRefreshClick" />
+                      <Separator />
+                      <MenuItem Header="{Binding MenuOptionsText}" Click="OnOpenSettingsClick" />
+                      <MenuItem Header="{Binding MenuAboutText}" Click="OnAboutClick" />
+                      <Separator />
+                      <MenuItem Header="{Binding MenuExitText}" Click="OnExitClick" />
+                    </MenuFlyout>
+                  </Button.Flyout>
+                </Button>
+
+                <Button Theme="{StaticResource TmIconButton}"
+                        Focusable="False"
+                        Click="OnCloseClick"
+                        AutomationProperties.Name="{Binding MenuHideText}"
+                        ToolTip.Tip="{Binding MenuHideText}">
+                  <Path Classes="tm-stroke-glyph" Width="10" Height="10"
+                        Data="M0,0 L10,10 M10,0 L0,10" />
+                </Button>
+              </StackPanel>
+
+              <Border Classes="tm-searchfield" x:Name="SearchField">
+                <DockPanel>
+                  <Path DockPanel.Dock="Left" Classes="tm-search-glyph" Margin="0,0,8,0"
+                        Data="M6.4,1.2 A5.2,5.2 0 1 0 6.4,11.6 A5.2,5.2 0 1 0 6.4,1.2 Z M10.4,10.4 L14.6,14.6" />
+                  <!-- Background and BorderThickness are LOCAL values on purpose: a local value
+                       outranks a style setter, which is what stops Avalonia's own :pointerover and
+                       :focus TextBox styling from repainting a field the Border already paints. -->
+                  <TextBox x:Name="SearchBox"
+                           Classes="tm-search"
+                           AutomationProperties.Name="{Binding SearchPlaceholderText}"
+                           Background="Transparent"
+                           BorderThickness="0"
+                           PlaceholderText="{Binding SearchPlaceholderText}"
+                           Text="{Binding Filter, Mode=TwoWay}"
+                           KeyDown="OnSearchKeyDown"
+                           GotFocus="OnSearchFocusChanged"
+                           LostFocus="OnSearchFocusChanged" />
+                </DockPanel>
+              </Border>
+
+            </DockPanel>
           </Border>
 
-          <!-- ══ Overlays (no layout size) ═══════════════════════════════════════════════════ -->
+          <!-- ══ Body ═════════════════════════════════════════════════════════════════════════ -->
+          <ScrollViewer x:Name="Body"
+                        HorizontalScrollBarVisibility="Disabled"
+                        VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="{DynamicResource SurfacePadding}" Spacing="14">
 
-          <!-- Transient error. Click anywhere on it to dismiss; otherwise it self-clears. -->
-          <Border Classes="tm-toast"
-                  IsVisible="{Binding HasToast}"
-                  PointerPressed="OnToastPressed">
-            <TextBlock Text="{Binding ToastText}" FontSize="13"
-                       TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
-          </Border>
+              <!-- Update notice. Only for Available / Downloading / ReadyToRestart. MinWidth is
+                   deliberate anti-jitter: without it the popup's width would change as the "…42%"
+                   text grows and shrinks during a download. -->
+              <Button Classes="tm-update"
+                      IsVisible="{Binding ShowUpdateNotice}"
+                      IsEnabled="{Binding !IsUpdateDownloading}"
+                      MinWidth="360"
+                      Click="OnUpdateNoticeClick">
+                <DockPanel>
+                  <Path DockPanel.Dock="Left" Classes="tm-stroke-glyph" Width="14" Height="14"
+                        Margin="0,0,10,0"
+                        Data="M7,0 L7,10 M3,6.5 L7,10.5 L11,6.5 M0.5,13.5 L13.5,13.5" />
+                  <Border DockPanel.Dock="Right"
+                          IsVisible="{Binding IsUpdateDownloading}"
+                          Width="84" Height="4" Margin="10,0,0,0"
+                          VerticalAlignment="Center"
+                          CornerRadius="2"
+                          Background="{DynamicResource SubtleFillTertiaryBrush}">
+                    <Border Background="{DynamicResource AccentDefaultBrush}"
+                            CornerRadius="2"
+                            HorizontalAlignment="Left"
+                            Width="{Binding UpdateProgressWidth}">
+                      <Border.Transitions>
+                        <Transitions>
+                          <DoubleTransition Property="Width" Duration="0:0:0.15" />
+                        </Transitions>
+                      </Border.Transitions>
+                    </Border>
+                  </Border>
+                  <TextBlock Text="{Binding UpdateNoticeText}"
+                             TextWrapping="NoWrap" VerticalAlignment="Center" />
+                </DockPanel>
+              </Button>
 
-          <!-- "关于": the splash on demand. Clicking ANYWHERE on it closes it — there is no close
-               button and no Escape handler, which is what the original did too. -->
-          <Border IsVisible="{Binding ShowAbout}"
-                  Background="Transparent"
-                  ClipToBounds="True"
-                  PointerPressed="OnAboutPressed">
-            <ctl:SplashPanel ShowLoading="False"
-                             VersionText="{Binding VersionText}"
-                             CopyrightText="{Binding CopyrightText}"
-                             HintText="{Binding ClickToDismissText}" />
-          </Border>
+              <!-- 1. The sections. Each is a heading plus a wrapping run of tiles; a section with no
+                   visible items after filtering removes itself. -->
+              <ItemsControl IsVisible="{Binding HasVisibleItems}" ItemsSource="{Binding Groups}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <StackPanel Orientation="Vertical" Spacing="14" />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:MenuGroupVm">
+                    <StackPanel Spacing="6" IsVisible="{Binding HasVisibleItems}">
 
-        </ctl:OverlayPanel>
+                      <!-- A null tooltip shows nothing, which is how the inert 常用工具 heading
+                           stays inert. The folder glyph only fades in for a real directory. -->
+                      <Border Classes="tm-section-head"
+                              Classes.clickable="{Binding IsDirectoryClickable}"
+                              ToolTip.Tip="{Binding TitleTooltip}"
+                              PointerPressed="OnGroupTitlePressed"
+                              HorizontalAlignment="Left">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                          <TextBlock Classes="tm-section" Text="{Binding DirectoryName}" />
+                          <Path Classes="tm-folder"
+                                IsVisible="{Binding IsDirectoryClickable}"
+                                Data="M0.5,2 H5 L6.5,4 H15.5 V13 H0.5 Z" />
+                        </StackPanel>
+                      </Border>
+
+                      <ItemsControl ItemsSource="{Binding VisibleItems}">
+                        <ItemsControl.ItemsPanel>
+                          <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal" />
+                          </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="vm:MenuItemVm">
+                            <Button Classes="tm-tile"
+                                    Theme="{StaticResource TmTileButton}"
+                                    Margin="0,0,4,4"
+                                    IsEnabled="{Binding !IsDisabled}"
+                                    Click="OnItemClick"
+                                    PointerEntered="OnItemPointerEntered">
+                              <DockPanel>
+                                <!-- The icon slot is always occupied (the build always assigns at
+                                     least a fallback), which is why the async icon fill never
+                                     reflows the grid. -->
+                                <Image Classes="tm-tile-icon"
+                                       DockPanel.Dock="Left"
+                                       Source="{Binding Icon}"
+                                       Margin="0,0,10,0"
+                                       Stretch="Uniform"
+                                       VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding Name}"
+                                           TextWrapping="NoWrap"
+                                           TextTrimming="CharacterEllipsis"
+                                           VerticalAlignment="Center" />
+                              </DockPanel>
+                            </Button>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+
+                    </StackPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+
+              <!-- 2. Loading. ShowLoading tracks visibility so the spinner's infinite animation
+                   stops for the rest of the (tray-resident) session once the menu arrives. -->
+              <ctl:SplashPanel IsVisible="{Binding ShowSplash}"
+                               ShowLoading="{Binding ShowSplash}"
+                               VersionText="{Binding VersionText}"
+                               CopyrightText="{Binding CopyrightText}"
+                               HintText="{Binding ClickToDismissText}" />
+
+              <!-- 3. Loaded, but there is genuinely nothing configured. -->
+              <StackPanel Classes="tm-empty" IsVisible="{Binding ShowEmpty}">
+                <TextBlock Classes="title" Text="{Binding EmptyTitleText}" />
+                <TextBlock Text="{Binding EmptyHelpText}" MaxWidth="360" />
+                <StackPanel Orientation="Horizontal" Spacing="8"
+                            HorizontalAlignment="Center" Margin="0,14,0,0">
+                  <Button Content="{Binding OpenOptionsText}" Click="OnOpenSettingsClick" Padding="14,6" />
+                  <Button Content="{Binding MenuRefreshText}" Click="OnRefreshClick" Padding="14,6" />
+                </StackPanel>
+              </StackPanel>
+
+              <!-- 4. There ARE shortcuts, but the filter matched none of them. -->
+              <StackPanel Classes="tm-empty" IsVisible="{Binding ShowNoMatches}">
+                <TextBlock Classes="title" Text="{Binding NoMatchTitleText}" />
+                <TextBlock Text="{Binding NoMatchHelpText}" MaxWidth="360" />
+                <Button Content="{Binding ClearFilterText}" Click="OnClearFilterClick"
+                        Padding="14,6" HorizontalAlignment="Center" Margin="0,14,0,0" />
+              </StackPanel>
+
+            </StackPanel>
+          </ScrollViewer>
+
+        </DockPanel>
       </Border>
-    </Panel>
-  </LayoutTransformControl>
+
+      <!-- ══ Overlays (no layout size) ════════════════════════════════════════════════════════ -->
+
+      <!-- Transient error. Click anywhere on it to dismiss; otherwise it self-clears. -->
+      <Border Classes="tm-toast"
+              IsVisible="{Binding HasToast}"
+              PointerPressed="OnToastPressed">
+        <TextBlock Text="{Binding ToastText}"
+                   TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+      </Border>
+
+      <!-- "关于": the splash on demand. Clicking ANYWHERE on it closes it — there is no close
+           button and no Escape handler, which is what the original did too. -->
+      <Border IsVisible="{Binding ShowAbout}"
+              Background="{DynamicResource SurfaceBaseBrush}"
+              CornerRadius="{DynamicResource RadiusOverlay}"
+              ClipToBounds="True"
+              PointerPressed="OnAboutPressed">
+        <ctl:SplashPanel ShowLoading="False"
+                         VersionText="{Binding VersionText}"
+                         CopyrightText="{Binding CopyrightText}"
+                         HintText="{Binding ClickToDismissText}" />
+      </Border>
+
+    </ctl:OverlayPanel>
+  </Panel>
 </Window>

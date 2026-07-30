@@ -2,6 +2,13 @@
 
 > Written after the migration, from the code as it stands. Every number here was measured, not
 > estimated. Where this file and the code disagree, the code wins — and this file is the bug.
+>
+> **Partly superseded (0.11.0).** This records the 0.10.0 move off WPF + BlazorWebView, and the
+> engine half of it — NativeAOT, source-generated COM, the JSON contracts, the build environment —
+> is still current. The **"One theme" section below is history**: the Windows 2000 theme it
+> describes was itself replaced by the Fluent 2 design language in 0.11.0, which also deleted the
+> bundled fonts and added light/dark. See
+> [`docs/superpowers/specs/2026-07-30-fluent2-redesign-design.md`](../superpowers/specs/2026-07-30-fluent2-redesign-design.md).
 
 ## Why
 

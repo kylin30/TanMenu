@@ -1,8 +1,13 @@
 <!--
-  The settings window is deliberately a PLAIN Fluent-themed window, exactly as it was under WPF:
-  Themes/Retro.axaml styles the LAUNCHER only. A settings dialog is a place where users expect the
-  platform's own controls (native focus rings, scrollbars, IME candidate placement, high-contrast),
-  and the Windows 2000 chrome would have to reimplement all of it to break even.
+  The settings window is deliberately a PLAIN Fluent-themed window: Themes/Fluent2/Launcher.axaml
+  styles the LAUNCHER only. A settings dialog is a place where users expect the platform's own
+  controls (native focus rings, scrollbars, IME candidate placement, high-contrast), and
+  reimplementing all of that to gain a slightly different grey would not break even.
+
+  It still reads as Fluent 2 because Themes/Fluent2/Tokens.axaml overrides the three Avalonia theme
+  keys that measurably propagate — ControlCornerRadius, OverlayCornerRadius and
+  ContentControlThemeFontFamily — so these standard controls get Fluent 2's 4 px radius and the
+  system UI face without a single control template being rewritten.
 
   There are no bindings here on purpose. Every string is localized imperatively from code-behind
   (AppLanguage has no change notification and must re-label a LIVE window when the language dropdown
@@ -15,7 +20,12 @@
         Title="TanMenu 设置"
         Width="540" Height="540" MinWidth="480" MinHeight="460"
         WindowStartupLocation="Manual" CanResize="True"
-        FontSize="13" ShowInTaskbar="True">
+        FontSize="13" ShowInTaskbar="True"
+        Background="{DynamicResource SurfaceBaseBrush}"><!--
+        Background is the one colour this window does NOT leave to Avalonia. Its Fluent 1 dark
+        palette paints a dialog pure #000000, which is both harsher than Fluent 2 (#202020) and a
+        visible mismatch next to the launcher's surface. Everything else — controls, focus, scroll,
+        IME — stays platform-default on purpose. -->
 
   <Window.Styles>
     <!-- Fluent's TabItem theme hardcodes a 24px header, which does not inherit the window's 13px and
@@ -32,10 +42,16 @@
 
     <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right"
                 Spacing="8" Margin="0,12,0,0">
-      <Button x:Name="OkBtn" Content="确定" Click="Ok_Click" Width="80" Padding="0,5"/>
-      <Button x:Name="CancelBtn" Content="取消" Click="Cancel_Click" Width="80" Padding="0,5"/>
+      <!-- HorizontalContentAlignment is explicit because Avalonia's ContentControl defaults it to
+           Left, not Center as WPF does — without it these fixed-width buttons render their labels
+           jammed against the left edge. (MessageBoxWindow sets the same thing in code-behind.) -->
+      <Button x:Name="OkBtn" Content="确定" Click="Ok_Click" Width="80" Padding="0,5"
+              HorizontalContentAlignment="Center"/>
+      <Button x:Name="CancelBtn" Content="取消" Click="Cancel_Click" Width="80" Padding="0,5"
+              HorizontalContentAlignment="Center"/>
       <!-- Starts disabled: 应用 is enabled exactly while there are unapplied staged edits. -->
-      <Button x:Name="ApplyBtn" Content="应用" Click="Apply_Click" Width="80" Padding="0,5" IsEnabled="False"/>
+      <Button x:Name="ApplyBtn" Content="应用" Click="Apply_Click" Width="80" Padding="0,5"
+              HorizontalContentAlignment="Center" IsEnabled="False"/>
     </StackPanel>
 
     <TabControl>
@@ -47,9 +63,11 @@
             <ComboBox x:Name="LanguageCombo" Width="220" SelectionChanged="Language_Changed"/>
           </StackPanel>
           <StackPanel Orientation="Horizontal" Margin="0,6" VerticalAlignment="Center">
-            <TextBlock x:Name="ThemeLabel" Text="主题：" Width="90" VerticalAlignment="Center"/>
-            <!-- One built-in look; no SelectionChanged handler because there is nothing to change to. -->
-            <ComboBox x:Name="ThemeCombo" Width="220"/>
+            <!-- Replaces the old single-entry 主题 dropdown, which could never change anything.
+                 There is one design language and it renders in two variants, so the choice users
+                 actually have is light/dark. -->
+            <TextBlock x:Name="AppearanceLabel" Text="外观：" Width="90" VerticalAlignment="Center"/>
+            <ComboBox x:Name="AppearanceCombo" Width="220" SelectionChanged="Appearance_Changed"/>
           </StackPanel>
           <StackPanel Orientation="Horizontal" Margin="0,6" VerticalAlignment="Center">
             <TextBlock x:Name="FontLabel" Text="字体：" Width="90" VerticalAlignment="Center"/>
@@ -61,11 +79,8 @@
                       IsTextSearchEnabled="True"
                       SelectionChanged="Font_SelectionChanged"/>
           </StackPanel>
-          <StackPanel Orientation="Horizontal" Margin="0,6" VerticalAlignment="Center">
-            <TextBlock x:Name="ColumnCountLabel" Text="每列按钮数：" Width="90" VerticalAlignment="Center"/>
-            <TextBox x:Name="ColCount" Width="60"
-                     TextChanged="ColCount_TextChanged" LostFocus="Col_Changed"/>
-          </StackPanel>
+          <!-- 每列按钮数 is gone: tiles wrap to the available width now, so a fixed column count
+               shapes nothing. The stored value is still round-tripped for older configs. -->
           <StackPanel Orientation="Horizontal" Margin="0,6" VerticalAlignment="Center">
             <TextBlock x:Name="ButtonSizeLabel" Text="按钮大小：" Width="90" VerticalAlignment="Center"/>
             <ComboBox x:Name="SizeCombo" Width="220" SelectionChanged="Size_Changed"/>

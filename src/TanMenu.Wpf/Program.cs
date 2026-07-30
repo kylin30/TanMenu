@@ -86,9 +86,6 @@ public static partial class Program
     public static AppBuilder BuildAvaloniaApp() =>
         AppBuilder.Configure<App>()
             .UsePlatformDetect()
-            // The bundled TTFs live inside the exe, so they are not installed system fonts and must be
-            // registered as a font collection before any text is measured.
-            .WithBundledFonts()
             .LogToTrace();
 
     /// <summary>Best-effort: ask an already-running instance to resurface. If the first instance is

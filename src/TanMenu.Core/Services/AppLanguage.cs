@@ -24,17 +24,21 @@ public static class AppLanguage
             ["Folders"] = ("文件夹", "Folders"),
             ["CommonTools"] = ("常用工具", "Common Tools"),
             ["Language"] = ("语言：", "Language:"),
-            ["Theme"] = ("主题：", "Theme:"),
-            // "ThemeFolder" / "ThemeFolderTooltip" removed with the user-authored .css theme feature:
-            // there is no themes folder to open any more (one natively drawn theme, Themes/Retro.axaml).
+            // "Theme" / "ThemeFolder" / "ThemeFolderTooltip" all went with the theme system. The
+            // Fluent 2 rebuild has one look rendered in two variants, so the row offers light/dark.
+            // NOTE the key is AppearanceMode, not Appearance — "Appearance" is already the tab header.
+            ["AppearanceMode"] = ("外观：", "Appearance:"),
+            ["AppearanceSystem"] = ("跟随系统", "Use system setting"),
+            ["AppearanceLight"] = ("浅色", "Light"),
+            ["AppearanceDark"] = ("深色", "Dark"),
             ["Font"] = ("字体：", "Font:"),
-            ["ColumnCount"] = ("每列按钮数：", "Buttons per column:"),
             ["ButtonSize"] = ("按钮大小：", "Button size:"),
             ["SizeSmall"] = ("小", "Small"),
             ["SizeMedium"] = ("中", "Medium"),
             ["SizeLarge"] = ("大", "Large"),
-            ["DefaultFont"] = ("默认（主题字体）", "Default (theme font)"),
-            ["BuiltInFonts"] = ("内置字体", "Built-in fonts"),
+            // "BuiltInFonts" went with the four embedded TTFs — every selectable family is installed
+            // now, so there is no second group to caption.
+            ["DefaultFont"] = ("默认（系统字体）", "Default (system font)"),
             ["SystemFonts"] = ("系统字体", "System fonts"),
             ["AutoClose"] = ("失焦自动隐藏", "Auto-hide when focus is lost"),
             ["TopMost"] = ("窗口置顶", "Always on top"),
@@ -140,6 +144,11 @@ public static class AppLanguage
             ["MenuRefresh"] = ("刷新", "Refresh"),
             ["MenuAbout"] = ("关于", "About"),
             ["MenuExit"] = ("退出", "Exit"),
+            ["MenuMore"] = ("更多", "More"),
+            ["MenuHide"] = ("隐藏", "Hide"),
+            ["NoMatchTitle"] = ("未找到匹配项", "No matches"),
+            ["NoMatchHelp"] = ("没有名称包含该关键词的快捷方式。", "No shortcut's name contains that text."),
+            ["ClearFilter"] = ("清除搜索", "Clear search"),
             ["SearchPlaceholder"] = ("搜索快捷方式…", "Search shortcuts..."),
             ["EmptyTitle"] = ("还没有任何快捷方式", "No shortcuts yet"),
             ["EmptyHelp"] = ("在「选项 → 文件夹」里设置主文件夹，或开启「常用工具」分类。", "Set a main folder in Options -> Folders, or enable the Common Tools group."),

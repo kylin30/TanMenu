@@ -9,44 +9,51 @@ using TanMenu.Core.Services;
 namespace TanMenu.Wpf.Services;
 
 /// <summary>
-/// Owns the launcher window. Measures the rendered content's natural size, fits an oversized
-/// horizontal menu into the monitor work area with a uniform layout scale, places the window
-/// bottom-center on the primary monitor, and handles show/hide/toggle + hide-on-blur.
+/// Owns the launcher window. Measures the rendered content against the width the launcher is allowed
+/// to occupy, clamps the result to the monitor work area, places the window bottom-center on the
+/// primary monitor, and handles show/hide/toggle + hide-on-blur.
 /// </summary>
 /// <remarks>
+/// <para>
 /// The WPF build got its size from a browser-side <c>ResizeObserver</c> over WebView2's message
 /// channel, which is why the old code had a request/response protocol with a 500 ms timeout and a
 /// TaskCompletionSource identity guard. Native layout is synchronous, so all of that collapses into
-/// <see cref="TryMeasureNaturalSize"/>. Everything downstream of "we now know the natural content
-/// size" — the fit algorithm, its constants, the physical-pixel placement and the reveal state
-/// machine — is unchanged.
+/// <see cref="TryMeasureNaturalSize"/>.
+/// </para>
+/// <para>
+/// The Fluent 2 rebuild also removed the fit-to-work-area <c>ScaleTransform</c> this class used to
+/// apply. Shrinking the entire UI was a workaround for a grid that could not wrap or scroll: the
+/// retro layout was one non-wrapping row of group boxes, so an oversized menu could only be made to
+/// fit by zooming it out. Tiles wrap and the body scrolls now, so oversize is handled by the layout
+/// itself and the window simply clamps.
+/// </para>
 /// </remarks>
 public sealed partial class WindowHost : IWindowHost
 {
     private const int MinWidthDip = 200;
     private const int MinHeightDip = 100;
-    private const double MinAutoZoom = 0.25;
+
+    /// <summary>The widest the launcher is allowed to get, regardless of how much room the monitor
+    /// has. Past roughly this width a wrapping tile grid stops reading as columns and starts reading
+    /// as a wall, and the eye has to travel the whole screen to scan one section.</summary>
+    private const double ContentMaxWidthDip = 1100;
+
+    /// <summary>Fraction of the work-area height the popup may occupy before the body scrolls.</summary>
+    private const double MaxHeightFraction = 0.72;
+
     private const uint SwpNoZOrder = 0x0004;
     private const uint SwpNoActivate = 0x0010;
     private const uint SwpNoOwnerZOrder = 0x0200;
 
-    /// <summary>Name the launcher's XAML may give its <see cref="LayoutTransformControl"/>. When it
-    /// is absent the host wraps the window content in one itself, so the launcher does not have to
-    /// know that fit-to-work-area scaling exists.</summary>
-    private const string ScalerName = "Scaler";
-
     private readonly ConfigService _config;
     private readonly AppEvents _events;
     private Window? _window;
-    private LayoutTransformControl? _scaler;
     private int _suppressDepth;
 
     private int _contentVersion;
     private int _reportedW;
     private int _reportedH;
-    private int _loggedFitVersion = int.MinValue;
     private int _revealVersion;
-    private double _layoutScale = 1d;
     private bool _applyingPlacement;
 
     public WindowHost(ConfigService config, AppEvents events)
@@ -90,8 +97,8 @@ public sealed partial class WindowHost : IWindowHost
 
         _window = window;
 
-        // The fit algorithm assigns explicit Width/Height, which SizeToContent would immediately
-        // overwrite. Natural sizing is done by measuring the content directly instead.
+        // Placement assigns explicit Width/Height, which SizeToContent would immediately overwrite.
+        // Natural sizing is done by measuring the content directly instead.
         window.SizeToContent = SizeToContent.Manual;
         // The permanent taskbar entry is a stable launcher shortcut; this popup must never add a
         // second, temporary button. Re-forced on every placement pass as well.
@@ -101,8 +108,6 @@ public sealed partial class WindowHost : IWindowHost
         // the screen's top-left. CompleteReveal sets it to 1 and never puts it back.
         if (_revealVersion == 0)
             window.Opacity = 0;
-
-        EnsureScaler();
 
         window.Deactivated += (_, _) =>
         {
@@ -122,7 +127,13 @@ public sealed partial class WindowHost : IWindowHost
 
         try
         {
-            if (TryMeasureNaturalSize(out var width, out var height))
+            // Measure against the width the launcher may actually occupy — the smaller of the app's
+            // own cap and what this monitor offers — so the WrapPanel wraps exactly as it will render.
+            var availableWidth = ContentMaxWidthDip;
+            if (TryGetPrimaryDisplay(out var display, out var displayScale))
+                availableWidth = Math.Min(availableWidth, Math.Max(MinWidthDip, display.Width / displayScale - 16));
+
+            if (TryMeasureNaturalSize(availableWidth, out var width, out var height))
             {
                 _reportedW = width;
                 _reportedH = height;
@@ -144,57 +155,36 @@ public sealed partial class WindowHost : IWindowHost
         }
     }
 
-    /// <summary>Resolve the <see cref="LayoutTransformControl"/> the fit scale is applied to, wrapping
-    /// the window's content in one if the launcher did not provide it. Called before every measure
-    /// because the content may still be null when <see cref="Attach"/> runs.</summary>
-    private void EnsureScaler()
-    {
-        if (_scaler is not null || _window is null)
-            return;
-
-        if (_window.Content is LayoutTransformControl direct)
-        {
-            _scaler = direct;
-            return;
-        }
-
-        _scaler = _window.FindControl<LayoutTransformControl>(ScalerName);
-        if (_scaler is not null)
-            return;
-
-        if (_window.Content is not Control content)
-            return;
-
-        // A layout (not render) transform is required: it changes the space the content asks for, so
-        // the whole retro window shrinks uniformly and no scrollbar appears — exactly what WebView2's
-        // ZoomFactor did for the HTML build.
-        _window.Content = null;
-        _scaler = new LayoutTransformControl { Child = content };
-        _window.Content = _scaler;
-    }
-
-    /// <summary>The natural (unconstrained, unscaled) size of the launcher content, in DIPs.</summary>
-    private bool TryMeasureNaturalSize(out int width, out int height)
+    /// <summary>
+    /// The natural size of the launcher content in DIPs, measured against the width it is actually
+    /// allowed to use.
+    /// </summary>
+    /// <remarks>
+    /// The available width is NOT infinite, and that is load-bearing: the tiles live in a
+    /// <c>WrapPanel</c>, which given unbounded width lays every tile out on one line and reports a
+    /// natural width of "all of them side by side". Measuring against the real cap is what makes the
+    /// reported height the height of the wrapped grid.
+    /// </remarks>
+    private bool TryMeasureNaturalSize(double availableWidth, out int width, out int height)
     {
         width = 0;
         height = 0;
         if (_window is null)
             return false;
 
-        EnsureScaler();
-        var root = _scaler?.Child ?? _window.Content as Control;
+        var root = _window.Content as Control;
         if (root is null)
             return false;
 
         // Force a real layout pass first: templates and styles have to be applied before a measure
         // means anything, and a cold start can reach here on the very first frame. UpdateLayout is
-        // synchronous and complete, so the nested ItemsControls (groups → columns → items) are all
-        // realized by the time the measure below runs — no repeated passes are needed.
+        // synchronous and complete, so the nested ItemsControls (sections → tiles) are all realized
+        // by the time the measure below runs — no repeated passes are needed.
         _window.UpdateLayout();
-        root.Measure(Size.Infinity);
+        root.Measure(new Size(availableWidth, double.PositiveInfinity));
         var desired = root.DesiredSize;
         // The child was just measured against an availableSize the real pass will not use; invalidate
-        // so the next pass re-measures under the LayoutTransformControl's own constraint.
+        // so the next pass re-measures under the window's own constraint.
         root.InvalidateMeasure();
 
         if (double.IsNaN(desired.Width) || double.IsNaN(desired.Height) ||
@@ -237,27 +227,17 @@ public sealed partial class WindowHost : IWindowHost
             // another monitor.
             var workWidthDip = work.Width / scale;
             var workHeightDip = work.Height / scale;
-            var maxW = Math.Max(1, (int)Math.Floor(workWidthDip - edgeMargin * 2));
-            var maxH = Math.Max(1, (int)Math.Floor(workHeightDip - edgeMargin * 2));
+            var maxW = Math.Max(1, (int)Math.Floor(
+                Math.Min(workWidthDip - edgeMargin * 2, ContentMaxWidthDip)));
+            // Height is capped well below the work area on purpose: a launcher that fills the screen
+            // stops feeling like a popup. Past this the body scrolls.
+            var maxH = Math.Max(1, (int)Math.Floor(
+                Math.Min(workHeightDip - edgeMargin * 2, workHeightDip * MaxHeightFraction)));
 
-            // Clamping the window alone would leave the no-wrap menu at its natural width and simply
-            // cut off its right side. A uniform layout scale shrinks the whole retro window instead,
-            // preserving the requested single-row layout and avoiding scrollbars. Keep a practical
-            // lower bound for pathological folder counts.
-            var fitScale = Math.Min(1d, Math.Min(maxW / (double)w, maxH / (double)h));
-            fitScale = Math.Max(MinAutoZoom, fitScale);
-            ApplyLayoutScale(fitScale);
-
-            w = Math.Clamp((int)Math.Ceiling(w * fitScale), 1, maxW);
-            h = Math.Clamp((int)Math.Ceiling(h * fitScale), 1, maxH);
-            if (fitScale < 0.999 && _loggedFitVersion != ContentVersion)
-            {
-                Serilog.Log.Information(
-                    "Fitted launcher {NaturalWidth}x{NaturalHeight} at zoom {Zoom:F3} to {Width}x{Height} " +
-                    "inside work area {WorkWidth}x{WorkHeight}",
-                    naturalWidth, naturalHeight, fitScale, w, h, maxW, maxH);
-                _loggedFitVersion = ContentVersion; // once per content version, not per resize event
-            }
+            // Clamp only. Content that does not fit wraps (width) or scrolls (height); nothing is
+            // scaled down any more.
+            w = Math.Clamp(w, 1, maxW);
+            h = Math.Clamp(h, 1, maxH);
 
             _window.MaxWidth = maxW;
             _window.MaxHeight = maxH;
@@ -302,35 +282,19 @@ public sealed partial class WindowHost : IWindowHost
 
     /// <summary>Fallback for the (practically unreachable) case where no screen can be enumerated at
     /// all. Avalonia has no logical-units equivalent of WPF's <c>SystemParameters.WorkArea</c>, so
-    /// there is nothing to fit to: apply the natural size unscaled and leave the window where it is.
-    /// The next reveal retries the real primary-monitor placement.</summary>
+    /// there is nothing to clamp to: apply the natural size and leave the window where it is. The
+    /// next reveal retries the real primary-monitor placement.</summary>
     private void ApplyWithoutScreenInfo(int width, int height)
     {
         if (_window is null)
             return;
 
-        ApplyLayoutScale(1d);
-        _window.MaxWidth = double.PositiveInfinity;
+        _window.MaxWidth = ContentMaxWidthDip;
         _window.MaxHeight = double.PositiveInfinity;
-        _window.Width = width;
+        _window.Width = Math.Min(width, ContentMaxWidthDip);
         _window.Height = height;
         _window.Topmost = _config.Config.General.TopMost;
         _window.ShowInTaskbar = false;
-    }
-
-    /// <summary>Apply the fit factor as a uniform layout transform, with the same 0.001 epsilon the
-    /// WebView2 ZoomFactor write used, so a redundant scale never triggers a relayout.</summary>
-    private void ApplyLayoutScale(double scale)
-    {
-        if (Math.Abs(_layoutScale - scale) <= 0.001)
-            return;
-
-        _layoutScale = scale;
-        if (_scaler is null)
-            return;
-
-        // Clearing the transform at 1.0 keeps the common case out of the transform code path entirely.
-        _scaler.LayoutTransform = scale >= 0.999 ? null : new ScaleTransform(scale, scale);
     }
 
     /// <summary>Physical work-area rectangle and DPI scale of the primary monitor.</summary>

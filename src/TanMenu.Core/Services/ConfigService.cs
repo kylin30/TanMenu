@@ -102,6 +102,13 @@ public class ConfigService
 
         config.General.Language = AppLanguage.NormalizeSetting(config.General.Language);
         config.General.ThemeName = AppConfig.CanonicalTheme;
+        config.General.Appearance = AppAppearance.NormalizeSetting(config.General.Appearance);
+
+        // The four bundled TTFs went away with the Fluent 2 rebuild. Left alone, a config naming one
+        // would ask the text stack for a family that does not exist and silently get an arbitrary
+        // substitute; "" means the app's own default, which is what the user now actually gets.
+        if (AppAppearance.IsRetiredFontName(config.General.FontFamily))
+            config.General.FontFamily = "";
     }
 
     public async Task SaveAsync()
