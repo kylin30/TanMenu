@@ -7,6 +7,29 @@
 > `.superpowers/sdd/2026-07-31-win11-shell-redesign/final-fix-report.md`). Every section below now
 > describes shipped behaviour, not a plan.
 >
+> **Outstanding human verification.** Five behaviours could not be exercised by any automated session:
+> the execution environment delivers no real keyboard or mouse input (raw `SendInput`, `SetCursorPos`
+> and `SetForegroundWindow` all silently no-op, proven with a Notepad control test) and has no
+> foreground window at all (`GetForegroundWindow()` returns 0 unconditionally). They need a person at
+> the machine:
+>
+> 1. **Tray left-click while TanMenu is the foreground window must HIDE it.** `WindowHost.Toggle`
+>    gates the hide on `GetForegroundWindow() == our HWND`; if clicking the notification area makes
+>    `Shell_TrayWnd` foreground first, the gate reads false and the click re-raises instead of
+>    hiding. This is the one plausible functional regression left in the branch. If it misbehaves,
+>    the remedy is a "was foreground immediately before this click" latch rather than a live query.
+> 2. Geometric arrow-key navigation across tiles: `Down` from the search box into the grid,
+>    `Left`/`Right` across column and category boundaries, `Up` back to the search box.
+> 3. The tile hover sound, and that a disabled tile stays silent.
+> 4. Physical key-combo capture into the 热键 box, and a registered hotkey summoning the window from
+>    another application.
+> 5. Restoring onto a secondary monitor by actually dragging the window there, exiting and relaunching
+>    (the saved-rectangle path was verified by writing the coordinates into `config.json` directly).
+>
+> Verified by the controller against the running app: NativeAOT `dotnet publish -c Release` produces a
+> 28.6 MB native executable with 0 warnings and 0 errors, and a cold start with
+> `windowMaximized: true` restores maximized.
+>
 > Design spec, 2026-07-31. Every claim about the current code was grep/read-verified against the
 > tree at `ef79481`, and every Avalonia claim against the `Avalonia 12.1.0` reference assembly
 > documentation in the local NuGet cache — not recalled. Where this file and the code disagree, the
