@@ -1,14 +1,18 @@
 # TanMenu (Avalonia + NativeAOT)
 
-A Windows desktop launcher: a borderless, content-sized popup that sits bottom-center above the
-taskbar, scans configured folders for apps / `.lnk` shortcuts, and launches them. Pin its permanent
-taskbar entry for one-click recall, or use the tray fallback.
+A Windows desktop launcher: an ordinary Windows 11 application window — Task Manager's shape, with a
+system title bar over a Mica backdrop and a fixed navigation rail (应用 / 设置) on the left. The 应用
+page scans configured folders for apps / `.lnk` shortcuts and lays them out as horizontally-scrolling
+categories; the 设置 page holds every setting as a Windows 11 setting card, applied immediately, with
+no separate settings window any more. Pin its permanent taskbar entry for one-click recall, or use the
+tray fallback.
 
-The UI is drawn with native Avalonia controls in the **Fluent 2** design language — acrylic surface,
-8 px radius, the system UI face, the user's Windows accent colour, and light/dark that follows the
-OS — and published with NativeAOT. Earlier versions hosted an HTML/CSS UI in a `BlazorWebView`
-inside a WPF window, with switchable CSS theme packs; that whole stack was removed, briefly replaced
-by a natively drawn Windows 2000 theme, and then by the current one.
+The UI is drawn with native Avalonia controls in the **Fluent 2** design language — a Mica backdrop
+(an opaque Fluent 2 surface colour where the OS refuses it), a 4 px control radius, the system UI
+face, the user's Windows accent colour, and light/dark that follows the OS — and published with
+NativeAOT. Earlier versions hosted an HTML/CSS UI in a `BlazorWebView` inside a WPF window with
+switchable CSS theme packs, then a light-dismiss acrylic flyout with a separate settings dialog; both
+were replaced by the current shell.
 
 ## Architecture
 
@@ -16,8 +20,8 @@ by a natively drawn Windows 2000 theme, and then by the current one.
   `.lnk` resolution (source-generated COM), Win32 icon extraction (→ PNG bytes), launching, sounds,
   AppData paths, and the source-generated `System.Text.Json` contracts.
 - **`src/TanMenu.Wpf`** — the Avalonia application: window host and placement, tray icon, global
-  hotkey, settings window, launcher UI, and the app-level services (menu build, updates, autostart,
-  taskbar pin, data location).
+  hotkey, the nav-rail shell (应用/设置 pages), the settings page's card groups, launcher UI, and the
+  app-level services (menu build, updates, autostart, taskbar pin, data location).
 - **`tests/TanMenu.Core.Tests`** — xUnit. Covers the on-disk JSON contracts (config, link cache, icon
   cache), the source-generated shell-link COM, the launcher's match/filter rules, and the Fluent 2
   token layer (no colour literals outside `Tokens.axaml`; every referenced token defined in both
@@ -36,21 +40,26 @@ source-generated `System.Text.Json`, `Microsoft.Extensions.DependencyInjection`,
 
 ## Features
 
-- **Fluent 2** UI drawn natively: acrylic surface with an opaque fallback, section headings over a
-  wrapping tile grid, and one look rendered **light or dark** (following the OS by default). Colour
-  comes from one token file; the accent is read from Windows personalization.
+- **Fluent 2** UI drawn natively: a Mica backdrop with an opaque fallback, categories laid out as
+  horizontally-scrolling groups with column-filling tiles, and one look rendered **light or dark**
+  (following the OS by default). Colour comes from one token file; the accent is read from Windows
+  personalization.
 - **Search-first**: the search box owns the header and typing genuinely filters — non-matches are
   removed and empty sections disappear. `↑↓←→` walk the tile grid, `Enter` launches, `Esc` clears
   then hides.
 - Folder scanning + `.lnk` resolution + real Win32 icon extraction. A shortcut whose target is gone
   stays visible but greyed and unlaunchable.
-- Content-sized window capped at 1100 px wide and 72 % of the work area, locked bottom-center on the
-  primary display, scrolling past that, and hidden automatically when focus is lost.
+- A resizable, system-decorated application window (1000×640 initial, 760×520 minimum) with a fixed
+  200 px navigation rail; size, position and maximized state are restored from config and clamped
+  back onto the visible work area (e.g. after a monitor is disconnected).
 - Recall: permanent taskbar pin, system tray (left-click toggle, show/exit menu), single instance.
 - Optional **autostart** (per-user registry Run entry; deliberately unavailable in portable mode).
-- Native **settings** window grouped by function: root folder, appearance (system/light/dark), font,
-  button size, hide-on-blur/TopMost, one-click taskbar pinning, autostart, and a relocatable data
-  folder.
+- A **settings page** (not a separate window) grouped into Windows 11 setting cards — appearance
+  (language/light-dark/font/button size), behavior (auto-hide-on-blur and always-on-top, both off by
+  default; autostart; taskbar pinning; a configurable global hotkey), folders (main folder, a
+  relocatable data folder, cache/backup/restore), common tools, and updates. Every control applies
+  immediately; only the three actions that move or overwrite real data (change/reset the data folder,
+  restore from backup) still confirm first.
 - **No bundled fonts.** The UI uses Segoe UI Variable Text → Segoe UI, with Microsoft YaHei UI for
   CJK, which is both the Fluent 2 typeface and a third of the payload saved.
 
@@ -129,6 +138,8 @@ if you want the space back.
 
 ## Single-instance note
 
-Uses the mutex/window name `TanMenuWpf` so it does **not** collide with the original WinForms
-TanMenu (which uses `TanMenu`). Both can run side by side. The name is unrelated to the UI
-framework — it is on-disk/runtime identity that must not change.
+Uses the mutex name `TanMenuWpf` and a matching broadcast window message
+(`TanMenuWpf.ShowFirstInstance`, via `RegisterWindowMessageW`) so it does **not** collide with the
+original WinForms TanMenu (which uses `TanMenu`). Both can run side by side. The window's own visible
+title (taskbar, Alt+Tab) is `TanMenu` — only the mutex/message identity string stays `TanMenuWpf`; it
+is on-disk/runtime identity that must not change and is unrelated to the UI framework.
