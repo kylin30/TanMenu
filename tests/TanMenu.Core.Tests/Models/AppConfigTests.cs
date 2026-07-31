@@ -20,9 +20,9 @@ public class AppConfigTests
     {
         var general = new GeneralConfig();
 
-        Assert.True(general.AutoClose);
+        Assert.False(general.AutoClose);
         Assert.Equal("Auto", general.Language);
-        Assert.True(general.TopMost);
+        Assert.False(general.TopMost);
         Assert.False(general.ShowInTaskbar);
         Assert.Equal(8, general.PositionOffset);
         Assert.Equal(10, general.ColButtonCount);
@@ -33,5 +33,21 @@ public class AppConfigTests
         Assert.Equal("", general.FontFamily);
         Assert.True(general.ShowDefaultTools);
         Assert.NotEmpty(general.DefaultTools);
+    }
+
+    [Fact]
+    public void Defaults_AreAppWindowNotFlyout()
+    {
+        var general = new GeneralConfig();
+
+        Assert.False(general.AutoClose);
+        Assert.False(general.TopMost);
+        Assert.Equal(0, general.SchemaVersion); // 0 = "not yet stamped"; see ConfigService.Normalize
+        Assert.Equal(1000, general.WindowWidth);
+        Assert.Equal(640, general.WindowHeight);
+        Assert.Equal(-1, general.WindowLeft);
+        Assert.Equal(-1, general.WindowTop);
+        Assert.False(general.WindowMaximized);
+        Assert.False(general.TaskbarPinPromptDismissed);
     }
 }

@@ -19,6 +19,11 @@ public class AppConfig
     /// </summary>
     public const string CanonicalTheme = "Fluent";
 
+    /// <summary>Schema the CURRENT build writes. <see cref="GeneralConfig.SchemaVersion"/> carries the
+    /// version a config file was last normalized to; <c>ConfigService.Normalize</c> migrates anything
+    /// lower and stamps this value.</summary>
+    public const int CurrentSchemaVersion = 1;
+
     public GeneralConfig General { get; set; } = new();
 
     // Defaults are intentionally EMPTY — no hardcoded personal paths.
@@ -36,8 +41,38 @@ public class GeneralConfig
     /// <summary>UI language: "Auto" follows the OS UI language; explicit values: "zh-Hans", "en-US".</summary>
     public string Language { get; set; } = "Auto";
 
-    public bool AutoClose { get; set; } = true;
-    public bool TopMost { get; set; } = true;
+    /// <summary>Hide the window when it loses focus. Default OFF since 0.12: this is a taskbar-resident
+    /// application window, and a window that vanishes when you click elsewhere reads as a crash. The
+    /// 0.11 flyout defaulted it ON — see the schema-1 migration in <c>ConfigService.Normalize</c>.</summary>
+    public bool AutoClose { get; set; } = false;
+
+    /// <summary>Keep the window above others. Default OFF since 0.12, for the same reason as
+    /// <see cref="AutoClose"/>: an ordinary app window does not float over everything.</summary>
+    public bool TopMost { get; set; } = false;
+
+    /// <summary>Schema this config was last normalized to. MUST default to 0, not
+    /// <see cref="AppConfig.CurrentSchemaVersion"/>: System.Text.Json leaves an absent property at its
+    /// initializer value, so a non-zero default would make a pre-0.12 file — which has no
+    /// <c>schemaVersion</c> key — indistinguishable from an already-migrated one and skip the
+    /// migration. Zero therefore means "old config OR brand-new config", and the migration is written
+    /// to be a no-op on the latter.</summary>
+    public int SchemaVersion { get; set; } = 0;
+
+    /// <summary>Restored window size, in DIPs.</summary>
+    public double WindowWidth { get; set; } = 1000;
+    public double WindowHeight { get; set; } = 640;
+
+    /// <summary>Restored window position, in DIPs. -1 on either axis means "centre on the primary work
+    /// area", which is what a first run and a restore onto a disconnected monitor both get.</summary>
+    public double WindowLeft { get; set; } = -1;
+    public double WindowTop { get; set; } = -1;
+
+    public bool WindowMaximized { get; set; } = false;
+
+    /// <summary>The user chose 不再提示 on the in-app taskbar-pin notice. The 行为 settings card keeps an
+    /// always-available 固定到任务栏 button regardless of this flag.</summary>
+    public bool TaskbarPinPromptDismissed { get; set; } = false;
+
     /// <summary>Legacy 0.9.x setting retained only so old config files deserialize cleanly.
     /// The launcher popup no longer creates a transient taskbar button; users pin the stable
     /// application shortcut instead.</summary>

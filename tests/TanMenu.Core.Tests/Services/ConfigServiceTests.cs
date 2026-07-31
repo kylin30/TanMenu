@@ -417,4 +417,86 @@ public class ConfigServiceTests
             if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
         }
     }
+
+    [Fact]
+    public async Task Load_PreSchemaConfig_MigratesFlyoutBehaviourToAppWindowDefaults()
+    {
+        var paths = NewPaths(out var root);
+        try
+        {
+            // A 0.11-era config: flyout behaviour written explicitly, no schemaVersion at all.
+            var json = """
+                {"general":{"autoClose":true,"topMost":true,"colButtonCount":6},"folders":[],"rootFolder":"C:\\"}
+                """;
+            await File.WriteAllTextAsync(paths.ConfigFilePath, json);
+
+            var svc = new ConfigService(paths, NullLogger<ConfigService>.Instance);
+            await svc.LoadAsync();
+
+            Assert.False(svc.Config.General.AutoClose);
+            Assert.False(svc.Config.General.TopMost);
+            Assert.Equal(AppConfig.CurrentSchemaVersion, svc.Config.General.SchemaVersion);
+            Assert.Equal(6, svc.Config.General.ColButtonCount); // untouched by the migration
+        }
+        finally
+        {
+            try { Directory.Delete(root, true); } catch { }
+        }
+    }
+
+    [Fact]
+    public async Task Load_MigratedConfig_KeepsDeliberateAutoCloseChoice()
+    {
+        var paths = NewPaths(out var root);
+        try
+        {
+            // Already migrated, and the user has since re-enabled the flyout behaviour on purpose.
+            var json = $$"""
+                {"general":{"schemaVersion":{{AppConfig.CurrentSchemaVersion}},"autoClose":true,"topMost":true},"folders":[]}
+                """;
+            await File.WriteAllTextAsync(paths.ConfigFilePath, json);
+
+            var svc = new ConfigService(paths, NullLogger<ConfigService>.Instance);
+            await svc.LoadAsync();
+
+            Assert.True(svc.Config.General.AutoClose);
+            Assert.True(svc.Config.General.TopMost);
+        }
+        finally
+        {
+            try { Directory.Delete(root, true); } catch { }
+        }
+    }
+
+    [Fact]
+    public async Task SaveThenLoad_RoundTripsWindowPlacement()
+    {
+        var paths = NewPaths(out var root);
+        try
+        {
+            var svc1 = new ConfigService(paths, NullLogger<ConfigService>.Instance);
+            await svc1.LoadAsync();
+            svc1.Config.General.WindowWidth = 1234;
+            svc1.Config.General.WindowHeight = 777;
+            svc1.Config.General.WindowLeft = 42;
+            svc1.Config.General.WindowTop = 24;
+            svc1.Config.General.WindowMaximized = true;
+            svc1.Config.General.TaskbarPinPromptDismissed = true;
+            await svc1.SaveAsync();
+
+            var svc2 = new ConfigService(paths, NullLogger<ConfigService>.Instance);
+            await svc2.LoadAsync();
+
+            Assert.Equal(1234, svc2.Config.General.WindowWidth);
+            Assert.Equal(777, svc2.Config.General.WindowHeight);
+            Assert.Equal(42, svc2.Config.General.WindowLeft);
+            Assert.Equal(24, svc2.Config.General.WindowTop);
+            Assert.True(svc2.Config.General.WindowMaximized);
+            Assert.True(svc2.Config.General.TaskbarPinPromptDismissed);
+        }
+        finally
+        {
+            try { Directory.Delete(root, true); } catch { }
+        }
+    }
 }

@@ -109,6 +109,17 @@ public class ConfigService
         // substitute; "" means the app's own default, which is what the user now actually gets.
         if (AppAppearance.IsRetiredFontName(config.General.FontFamily))
             config.General.FontFamily = "";
+
+        // Schema 1: the 0.11 flyout wrote AutoClose/TopMost = true because it hid on blur and floated
+        // above everything. This build is a taskbar-resident application window, where both are wrong.
+        // A brand-new config also arrives here with SchemaVersion 0, which is harmless: its AutoClose
+        // and TopMost already ARE false, so the migration only stamps the version.
+        if (config.General.SchemaVersion < AppConfig.CurrentSchemaVersion)
+        {
+            config.General.AutoClose = false;
+            config.General.TopMost = false;
+            config.General.SchemaVersion = AppConfig.CurrentSchemaVersion;
+        }
     }
 
     public async Task SaveAsync()
