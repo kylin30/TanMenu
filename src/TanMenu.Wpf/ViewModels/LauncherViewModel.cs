@@ -155,8 +155,9 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
     // Search / filter
     // ══════════════════════════════════════════════════════════════════════════════════════════
 
-    /// <summary>The raw text in the search box. Setting it only changes per-item emphasis — never
-    /// visibility, never layout — so the popup is deliberately NOT re-measured while typing.
+    /// <summary>The raw text in the search box. Setting it filters which tiles are visible and
+    /// reflows the grid within the window's existing bounds — it never touches the window's own size
+    /// or position, which are fixed and user-owned now rather than derived from content.
     /// Nullable to match <c>TextBox.Text</c>, which pushes null for an emptied box.</summary>
     public string? Filter
     {
@@ -541,8 +542,10 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
     // Lifecycle: initial build, summon, settings change
     // ══════════════════════════════════════════════════════════════════════════════════════════
 
-    /// <summary>The startup build. Runs after the window is opened; the window reveals itself once
-    /// <see cref="LoadedOnce"/> flips and the resulting layout pass has run.</summary>
+    /// <summary>The startup build. Runs after the window is already shown — <c>App.ShowLauncherWindow</c>
+    /// is what put it on screen, and there is no reveal to wait for any more. <see cref="LoadedOnce"/>
+    /// flipping just swaps the splash for the real content or the empty state, wherever this build
+    /// lands.</summary>
     public async Task InitializeAsync()
     {
         try

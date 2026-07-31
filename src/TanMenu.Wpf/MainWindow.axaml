@@ -33,8 +33,9 @@
          Classes.size-medium="{Binding IsMediumButtons}"
          Classes.size-large="{Binding IsLargeButtons}">
 
-    <!-- First child measures the window; every later child is an overlay that contributes no size
-         (About and the toast must never re-size the popup). -->
+    <!-- First child (the main surface) is what the overlays measure against; every later child is an
+         overlay that contributes no layout size of its own (About and the toast never affect the
+         window, which has fixed, user-owned geometry now). -->
     <ctl:OverlayPanel>
 
       <Border Classes="tm-surface">

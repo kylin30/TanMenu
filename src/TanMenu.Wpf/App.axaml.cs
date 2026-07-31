@@ -211,6 +211,15 @@ public partial class App : Application
                 Services.GetRequiredService<ConfigService>(),
                 Services.GetRequiredService<AppEvents>());
             Tray.Create();
+
+            // A cold start must produce the same LauncherShown a tray or hotkey summon does: the
+            // search box takes focus from it, and so does the taskbar-pin check. Raised here (rather
+            // than from Show()) because the window's HWND already exists by the time Opened fires —
+            // RestorePlacement/InitializeAsync still run afterward, in MainWindow.OnOpened's own
+            // continuation below this event, but every LauncherShown consequence (PendingFocus's
+            // deferred Loaded-priority focus, the taskbar-pin prompt's dispatcher post) is itself put
+            // off to a later dispatcher pass, so each one still observes the window already placed.
+            Services.GetRequiredService<AppEvents>().RaiseLauncherShown();
         }
         catch (Exception ex)
         {
@@ -241,8 +250,8 @@ public partial class App : Application
             return;
 
         _taskbarPinPromptActive = true;
-        // Fire-and-forget on the dispatcher so RaiseLauncherShown returns immediately and
-        // CompleteReveal is never blocked by a modal dialog.
+        // Fire-and-forget on the dispatcher so the RaiseLauncherShown caller (ShowAndActivate, or a
+        // cold start's OnLauncherOpened) returns immediately and is never blocked by a modal dialog.
         Dispatcher.UIThread.Post(async () =>
         {
             try
@@ -398,6 +407,12 @@ public partial class App : Application
         // Set BEFORE the lifetime is shut down: Shutdown() below synchronously closes MainWindow,
         // whose OnClosing checks this flag to tell a real exit from the close button (which hides).
         IsExiting = true;
+
+        // 退出 must flush placement synchronously: without this, geometry changed inside the 500ms
+        // debounce is lost, and Services.Dispose() below could run while a fire-and-forget SaveAsync
+        // from the debounce timer is still holding the semaphore it is about to dispose.
+        Services.GetRequiredService<WindowHost>().FlushPlacement();
+
         Tray?.Dispose();
         (Services as IDisposable)?.Dispose(); // disposes singletons (unregisters the global hotkey, etc.)
         try { SingleInstanceMutex?.ReleaseMutex(); } catch { /* ignore: not owned / already released */ }
