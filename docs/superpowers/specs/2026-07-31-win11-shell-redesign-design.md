@@ -3,9 +3,7 @@
 > **Status: implemented in `28158a8`..`e7f4797`, corrected by `41c6529`** (Task 13 of 13 deletes
 > `SettingsWindow` and finishes the wiring this spec describes; `e7f4797` is a `MenuService`
 > null-safety fix found while verifying it; `41c6529` is the single fix wave clearing the
-> whole-branch review — see
-> `.superpowers/sdd/2026-07-31-win11-shell-redesign/final-fix-report.md`). Every section below now
-> describes shipped behaviour, not a plan.
+> whole-branch review). Every section below now describes shipped behaviour, not a plan.
 >
 > **Outstanding human verification.** Five behaviours could not be exercised by any automated session:
 > the execution environment delivers no real keyboard or mouse input (raw `SendInput`, `SetCursorPos`
