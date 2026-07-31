@@ -65,7 +65,7 @@ Every task leaves the application buildable and runnable. Tasks 8–12 add setti
 
 **Interfaces:**
 - Consumes: nothing.
-- Produces: `AppConfig.CurrentSchemaVersion` (const int = 1); `GeneralConfig.SchemaVersion` (int), `.WindowWidth` / `.WindowHeight` (double), `.WindowLeft` / `.WindowTop` (double), `.WindowMaximized` (bool), `.TaskbarPinPromptDismissed` (bool); `GeneralConfig.AutoClose` and `.TopMost` now default to `false`.
+- Produces: `AppConfig.CurrentSchemaVersion` (const int = 1); `GeneralConfig.SchemaVersion` (int), `.WindowWidth` / `.WindowHeight` (double), `.WindowLeft` / `.WindowTop` (**`double?`**, null = no remembered position), `.WindowMaximized` (bool), `.TaskbarPinPromptDismissed` (bool); `GeneralConfig.AutoClose` and `.TopMost` now default to `false`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -361,7 +361,7 @@ public class WindowPlacementTests
     {
         var tiny = new PlacementRect(0, 0, 640, 400);
 
-        var r = WindowPlacement.Resolve(-1, -1, 1000, 640, tiny, 760, 520);
+        var r = WindowPlacement.Resolve(null, null, 1000, 640, tiny, 760, 520);
 
         Assert.Equal(640, r.Width);
         Assert.Equal(400, r.Height);
@@ -375,7 +375,7 @@ public class WindowPlacementTests
         // A left-hand secondary monitor: the work area does not start at the origin.
         var offset = new PlacementRect(-1920, 0, 1920, 1040);
 
-        var r = WindowPlacement.Resolve(-1, -1, 1000, 640, offset, 760, 520);
+        var r = WindowPlacement.Resolve(null, null, 1000, 640, offset, 760, 520);
 
         Assert.Equal(-1460, r.Left);  // -1920 + (1920 - 1000) / 2
         Assert.Equal(200, r.Top);
