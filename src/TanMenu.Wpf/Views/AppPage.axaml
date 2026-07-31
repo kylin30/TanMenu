@@ -86,56 +86,75 @@
           </DockPanel>
         </Border>
 
-        <!-- ══ Body ═════════════════════════════════════════════════════════════════════════ -->
+        <!-- Update notice. Docked above the body rather than inside its scrolling StackPanel: the
+             notice is a page-wide banner, not a category, so it must not become a sibling in the
+             horizontal row of groups. Only for Available / Downloading / ReadyToRestart. MinWidth is
+             deliberate anti-jitter: without it the page's width would change as the "…42%" text grows
+             and shrinks during a download. The bottom margin is 0 because the body ScrollViewer's own
+             content margin (SurfacePadding) supplies the gap to whatever renders below. -->
+        <Button Classes="tm-update"
+                DockPanel.Dock="Top"
+                Margin="16,16,16,0"
+                IsVisible="{Binding ShowUpdateNotice}"
+                IsEnabled="{Binding !IsUpdateDownloading}"
+                MinWidth="360"
+                Click="OnUpdateNoticeClick">
+          <DockPanel>
+            <TextBlock DockPanel.Dock="Left" Classes="tm-icon small"
+                       Text="&#xE896;" Margin="0,0,10,0" />
+            <Border DockPanel.Dock="Right"
+                    IsVisible="{Binding IsUpdateDownloading}"
+                    Width="84" Height="4" Margin="10,0,0,0"
+                    VerticalAlignment="Center"
+                    CornerRadius="2"
+                    Background="{DynamicResource SubtleFillTertiaryBrush}">
+              <Border Background="{DynamicResource AccentDefaultBrush}"
+                      CornerRadius="2"
+                      HorizontalAlignment="Left"
+                      Width="{Binding UpdateProgressWidth}">
+                <Border.Transitions>
+                  <Transitions>
+                    <DoubleTransition Property="Width" Duration="0:0:0.15" />
+                  </Transitions>
+                </Border.Transitions>
+              </Border>
+            </Border>
+            <TextBlock Text="{Binding UpdateNoticeText}"
+                       TextWrapping="NoWrap" VerticalAlignment="Center" />
+          </DockPanel>
+        </Button>
+
+        <!-- ══ Body ═════════════════════════════════════════════════════════════════════════
+             Horizontal-only: categories run left to right and the window scrolls sideways when
+             they overflow, not up and down. -->
         <ScrollViewer x:Name="Body"
-                      HorizontalScrollBarVisibility="Disabled"
-                      VerticalScrollBarVisibility="Auto">
-          <StackPanel Margin="{DynamicResource SurfacePadding}" Spacing="14">
+                      HorizontalScrollBarVisibility="Auto"
+                      VerticalScrollBarVisibility="Disabled">
+          <StackPanel Orientation="Horizontal"
+                      Margin="{DynamicResource SurfacePadding}"
+                      Spacing="14">
 
-            <!-- Update notice. Only for Available / Downloading / ReadyToRestart. MinWidth is
-                 deliberate anti-jitter: without it the page's width would change as the "…42%"
-                 text grows and shrinks during a download. -->
-            <Button Classes="tm-update"
-                    IsVisible="{Binding ShowUpdateNotice}"
-                    IsEnabled="{Binding !IsUpdateDownloading}"
-                    MinWidth="360"
-                    Click="OnUpdateNoticeClick">
-              <DockPanel>
-                <TextBlock DockPanel.Dock="Left" Classes="tm-icon small"
-                           Text="&#xE896;" Margin="0,0,10,0" />
-                <Border DockPanel.Dock="Right"
-                        IsVisible="{Binding IsUpdateDownloading}"
-                        Width="84" Height="4" Margin="10,0,0,0"
-                        VerticalAlignment="Center"
-                        CornerRadius="2"
-                        Background="{DynamicResource SubtleFillTertiaryBrush}">
-                  <Border Background="{DynamicResource AccentDefaultBrush}"
-                          CornerRadius="2"
-                          HorizontalAlignment="Left"
-                          Width="{Binding UpdateProgressWidth}">
-                    <Border.Transitions>
-                      <Transitions>
-                        <DoubleTransition Property="Width" Duration="0:0:0.15" />
-                      </Transitions>
-                    </Border.Transitions>
-                  </Border>
-                </Border>
-                <TextBlock Text="{Binding UpdateNoticeText}"
-                           TextWrapping="NoWrap" VerticalAlignment="Center" />
-              </DockPanel>
-            </Button>
-
-            <!-- 1. The sections. Each is a heading plus a wrapping run of tiles; a section with no
-                 visible items after filtering removes itself. -->
+            <!-- 1. The categories, running left to right. Each is a heading plus a column of tiles
+                 that fills downward and wraps into the next column at the bottom edge; a category
+                 with no visible items after filtering removes itself. -->
             <ItemsControl IsVisible="{Binding HasVisibleItems}" ItemsSource="{Binding Groups}">
               <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
-                  <StackPanel Orientation="Vertical" Spacing="14" />
+                  <StackPanel Orientation="Horizontal" Spacing="24" />
                 </ItemsPanelTemplate>
               </ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:MenuGroupVm">
-                  <StackPanel Spacing="6" IsVisible="{Binding HasVisibleItems}">
+                  <!-- DockPanel, NOT a vertical StackPanel: a vertical StackPanel measures every
+                       stacked child with INFINITE height (that is how stacking works — each child is
+                       free to be as tall as it wants), so the items WrapPanel below would never see a
+                       real height budget and would never wrap into a second column; the category
+                       would render as one endless, uncapped column with the overflow invisible past
+                       the window edge (there is no vertical scrollbar to reach it). A DockPanel gives
+                       the heading its own Top-docked slot and hands the items ItemsControl the
+                       GENUINELY REMAINING, finite height — which is what lets the WrapPanel below wrap
+                       at the actual bottom edge instead of never wrapping at all. -->
+                  <DockPanel Classes="tm-group" IsVisible="{Binding HasVisibleItems}">
 
                     <!-- A null tooltip shows nothing, which is how the inert 常用工具 heading
                          stays inert. The folder glyph only fades in for a real directory. -->
@@ -143,6 +162,8 @@
                             Classes.clickable="{Binding IsDirectoryClickable}"
                             ToolTip.Tip="{Binding TitleTooltip}"
                             PointerPressed="OnGroupTitlePressed"
+                            DockPanel.Dock="Top"
+                            Margin="0,0,0,6"
                             HorizontalAlignment="Left">
                       <StackPanel Orientation="Horizontal" Spacing="6">
                         <TextBlock Classes="tm-section" Text="{Binding DirectoryName}" />
@@ -152,10 +173,13 @@
                       </StackPanel>
                     </Border>
 
+                    <!-- Items fill a column top-to-bottom and wrap into the NEXT COLUMN when they
+                         reach the bottom of the window — the pre-Avalonia layout, except that items
+                         per column follow the window height instead of a fixed ColButtonCount. -->
                     <ItemsControl ItemsSource="{Binding VisibleItems}">
                       <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
-                          <WrapPanel Orientation="Horizontal" />
+                          <WrapPanel Orientation="Vertical" />
                         </ItemsPanelTemplate>
                       </ItemsControl.ItemsPanel>
                       <ItemsControl.ItemTemplate>
@@ -186,46 +210,53 @@
                       </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
-                  </StackPanel>
+                  </DockPanel>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
-
-            <!-- 2. Loading. ShowLoading tracks visibility so the spinner's infinite animation
-                 stops for the rest of the (tray-resident) session once the menu arrives. -->
-            <ctl:SplashPanel IsVisible="{Binding ShowSplash}"
-                             ShowLoading="{Binding ShowSplash}"
-                             VersionText="{Binding VersionText}"
-                             CopyrightText="{Binding CopyrightText}"
-                             HintText="{Binding ClickToDismissText}" />
-
-            <!-- 3. Loaded, but there is genuinely nothing configured. -->
-            <StackPanel Classes="tm-empty" IsVisible="{Binding ShowEmpty}">
-              <TextBlock Classes="title" Text="{Binding EmptyTitleText}"
-                         FontFamily="{Binding TitleFontFamily}" />
-              <TextBlock Text="{Binding EmptyHelpText}" MaxWidth="360" />
-              <StackPanel Orientation="Horizontal" Spacing="8"
-                          HorizontalAlignment="Center" Margin="0,14,0,0">
-                <Button Content="{Binding OpenOptionsText}" Click="OnOpenSettingsClick" Padding="14,6" />
-                <Button Content="{Binding MenuRefreshText}" Click="OnRefreshClick" Padding="14,6" />
-              </StackPanel>
-            </StackPanel>
-
-            <!-- 4. There ARE shortcuts, but the filter matched none of them. -->
-            <StackPanel Classes="tm-empty" IsVisible="{Binding ShowNoMatches}">
-              <TextBlock Classes="title" Text="{Binding NoMatchTitleText}"
-                         FontFamily="{Binding TitleFontFamily}" />
-              <TextBlock Text="{Binding NoMatchHelpText}" MaxWidth="360" />
-              <Button Content="{Binding ClearFilterText}" Click="OnClearFilterClick"
-                      Padding="14,6" HorizontalAlignment="Center" Margin="0,14,0,0" />
-            </StackPanel>
 
           </StackPanel>
         </ScrollViewer>
 
       </DockPanel>
 
-      <!-- ══ Overlays (no layout size) ════════════════════════════════════════════════════════ -->
+      <!-- ══ Non-menu states (no layout size) ═════════════════════════════════════════════════
+           Loading, "nothing configured" and "nothing matched" are page-wide states, not categories,
+           so they are NOT siblings inside the horizontal row above — they are centred overlays here,
+           measured against the main content's size the same way the toast and About panel below are. -->
+
+      <!-- 2. Loading. ShowLoading tracks visibility so the spinner's infinite animation stops for
+           the rest of the (tray-resident) session once the menu arrives. -->
+      <ctl:SplashPanel IsVisible="{Binding ShowSplash}"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       ShowLoading="{Binding ShowSplash}"
+                       VersionText="{Binding VersionText}"
+                       CopyrightText="{Binding CopyrightText}"
+                       HintText="{Binding ClickToDismissText}" />
+
+      <!-- 3. Loaded, but there is genuinely nothing configured. -->
+      <StackPanel Classes="tm-empty" IsVisible="{Binding ShowEmpty}"
+                  HorizontalAlignment="Center" VerticalAlignment="Center">
+        <TextBlock Classes="title" Text="{Binding EmptyTitleText}"
+                   FontFamily="{Binding TitleFontFamily}" />
+        <TextBlock Text="{Binding EmptyHelpText}" MaxWidth="360" />
+        <StackPanel Orientation="Horizontal" Spacing="8"
+                    HorizontalAlignment="Center" Margin="0,14,0,0">
+          <Button Content="{Binding OpenOptionsText}" Click="OnOpenSettingsClick" Padding="14,6" />
+          <Button Content="{Binding MenuRefreshText}" Click="OnRefreshClick" Padding="14,6" />
+        </StackPanel>
+      </StackPanel>
+
+      <!-- 4. There ARE shortcuts, but the filter matched none of them. -->
+      <StackPanel Classes="tm-empty" IsVisible="{Binding ShowNoMatches}"
+                  HorizontalAlignment="Center" VerticalAlignment="Center">
+        <TextBlock Classes="title" Text="{Binding NoMatchTitleText}"
+                   FontFamily="{Binding TitleFontFamily}" />
+        <TextBlock Text="{Binding NoMatchHelpText}" MaxWidth="360" />
+        <Button Content="{Binding ClearFilterText}" Click="OnClearFilterClick"
+                Padding="14,6" HorizontalAlignment="Center" Margin="0,14,0,0" />
+      </StackPanel>
 
       <!-- Transient error. Click anywhere on it to dismiss; otherwise it self-clears. -->
       <Border Classes="tm-toast"

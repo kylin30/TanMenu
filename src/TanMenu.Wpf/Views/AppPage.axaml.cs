@@ -155,10 +155,10 @@ public partial class AppPage : UserControl, IDisposable
     // ══════════════════════════════════════════════════════════════════════════════════════════
 
     /// <summary>
-    /// Arrow keys move by GEOMETRY, not by index. The tiles wrap, so "the tile below" depends on the
-    /// rendered row the WrapPanel produced at the current width — an index step of "one row" would be
-    /// wrong the moment the window is a different size. Enter and Space are left alone: a focused
-    /// Avalonia Button already handles both.
+    /// Arrow keys move by GEOMETRY, not by index. Items now fill columns and categories sit side by
+    /// side, so "the tile to the right" can be the next column of the same category OR the first
+    /// column of the next one — an index step could not express either. Enter and Space are left
+    /// alone: a focused Avalonia Button already handles both.
     /// </summary>
     protected override void OnKeyDown(KeyEventArgs e)
     {

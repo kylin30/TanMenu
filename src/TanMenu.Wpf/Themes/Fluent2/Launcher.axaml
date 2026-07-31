@@ -341,4 +341,13 @@
     <Setter Property="BorderThickness" Value="3,0,0,0" />
   </Style>
 
+  <!-- A group is as wide as its content but never wider than a comfortable reading column; without
+       the cap a single long shortcut name would stretch its whole category. DockPanel, not
+       StackPanel: see the comment on the group's DataTemplate in AppPage.axaml for why the group root
+       has to be a DockPanel for the items WrapPanel to receive a real (finite) height to wrap within. -->
+  <Style Selector="DockPanel.tm-group">
+    <Setter Property="MaxWidth" Value="560" />
+    <Setter Property="VerticalAlignment" Value="Top" />
+  </Style>
+
 </Styles>
