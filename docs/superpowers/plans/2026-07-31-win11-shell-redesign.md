@@ -552,6 +552,7 @@ public sealed partial class WindowHost : IWindowHost
 
     private readonly ConfigService _config;
     private readonly AppEvents _events;
+    private readonly DispatcherTimer _saveDebounce;
     private Window? _window;
     private int _suppressDepth;
     private bool _restoring;
@@ -560,6 +561,10 @@ public sealed partial class WindowHost : IWindowHost
     {
         _config = config;
         _events = events;
+
+        // Coalesces the PositionChanged/size storm a single drag produces into one disk write.
+        _saveDebounce = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
+        _saveDebounce.Tick += (_, _) => FlushPlacement();
     }
 
     public Window? Window => _window;
@@ -632,6 +637,12 @@ public sealed partial class WindowHost : IWindowHost
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// Updates the in-memory config immediately but DEBOUNCES the disk write. A single window drag
+    /// raises PositionChanged on every mouse move, and persisting each one would rewrite config.json
+    /// hundreds of times per drag. <see cref="Hide"/> flushes synchronously so the common
+    /// hide-then-exit path never loses the last position.
+    /// </remarks>
     public void SavePlacement()
     {
         if (_window is null || _restoring)
@@ -653,12 +664,20 @@ public sealed partial class WindowHost : IWindowHost
                 g.WindowTop = _window.Position.Y / _scale;
             }
 
-            _ = _config.SaveAsync();
+            _saveDebounce.Stop();
+            _saveDebounce.Start();
         }
         catch (Exception ex)
         {
-            Serilog.Log.Warning(ex, "Failed to save window placement");
+            Serilog.Log.Warning(ex, "Failed to record window placement");
         }
+    }
+
+    /// <summary>Write the recorded placement to disk now, cancelling any pending debounced write.</summary>
+    private void FlushPlacement()
+    {
+        _saveDebounce.Stop();
+        _ = _config.SaveAsync();
     }
 
     private double _scale = 1.0;
@@ -682,6 +701,7 @@ public sealed partial class WindowHost : IWindowHost
     public void Hide()
     {
         SavePlacement();
+        FlushPlacement(); // hiding is often the last thing before exit; do not leave it to the timer
         _window?.Hide();
     }
 
