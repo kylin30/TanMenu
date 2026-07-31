@@ -1408,9 +1408,14 @@ In `AppPage.axaml`, the body `ScrollViewer` becomes horizontal-only, and the gro
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:MenuGroupVm">
-                    <StackPanel Classes="tm-group" Spacing="6" IsVisible="{Binding HasVisibleItems}">
+                    <!-- DockPanel, NOT StackPanel: a vertical StackPanel measures its children with
+                         infinite height, so the WrapPanel below would never learn where the bottom of
+                         the window is and would never wrap into a second column — items just overflow
+                         past the edge with no way to reach them. Docking the heading Top leaves the
+                         WrapPanel filling the real remaining height. -->
+                    <DockPanel Classes="tm-group" IsVisible="{Binding HasVisibleItems}">
 
-                      <Border Classes="tm-section-head"
+                      <Border DockPanel.Dock="Top" Classes="tm-section-head"
                               Classes.clickable="{Binding IsDirectoryClickable}"
                               ToolTip.Tip="{Binding TitleTooltip}"
                               PointerPressed="OnGroupTitlePressed"
@@ -1439,7 +1444,7 @@ In `AppPage.axaml`, the body `ScrollViewer` becomes horizontal-only, and the gro
                         </ItemsControl.ItemTemplate>
                       </ItemsControl>
 
-                    </StackPanel>
+                    </DockPanel>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
@@ -1458,9 +1463,9 @@ Append to `Themes/Fluent2/Launcher.axaml`:
 ```xml
   <!-- A group is as wide as its content but never wider than a comfortable reading column; without
        the cap a single long shortcut name would stretch its whole category. -->
-  <Style Selector="StackPanel.tm-group">
+  <Style Selector="DockPanel.tm-group">
     <Setter Property="MaxWidth" Value="560" />
-    <Setter Property="VerticalAlignment" Value="Top" />
+    <Setter Property="VerticalAlignment" Value="Stretch" />
   </Style>
 ```
 
