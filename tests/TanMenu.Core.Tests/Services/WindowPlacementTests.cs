@@ -16,9 +16,9 @@ public class WindowPlacementTests
     }
 
     [Fact]
-    public void Resolve_NegativePosition_CentresOnWorkArea()
+    public void Resolve_UnsetPosition_CentresOnWorkArea()
     {
-        var r = WindowPlacement.Resolve(-1, -1, 1000, 640, Work, 760, 520);
+        var r = WindowPlacement.Resolve(null, null, 1000, 640, Work, 760, 520);
 
         Assert.Equal(460, r.Left);   // (1920 - 1000) / 2
         Assert.Equal(200, r.Top);    // (1040 - 640) / 2
@@ -59,7 +59,7 @@ public class WindowPlacementTests
     {
         var tiny = new PlacementRect(0, 0, 640, 400);
 
-        var r = WindowPlacement.Resolve(-1, -1, 1000, 640, tiny, 760, 520);
+        var r = WindowPlacement.Resolve(null, null, 1000, 640, tiny, 760, 520);
 
         Assert.Equal(640, r.Width);
         Assert.Equal(400, r.Height);
@@ -73,9 +73,23 @@ public class WindowPlacementTests
         // A left-hand secondary monitor: the work area does not start at the origin.
         var offset = new PlacementRect(-1920, 0, 1920, 1040);
 
-        var r = WindowPlacement.Resolve(-1, -1, 1000, 640, offset, 760, 520);
+        var r = WindowPlacement.Resolve(null, null, 1000, 640, offset, 760, 520);
 
         Assert.Equal(-1460, r.Left);  // -1920 + (1920 - 1000) / 2
         Assert.Equal(200, r.Top);
+    }
+
+    [Fact]
+    public void Resolve_RealNegativePosition_OnLeftHandMonitor_IsKept()
+    {
+        // A monitor to the LEFT of the primary occupies negative coordinates. This position is
+        // remembered, not unset, and must survive: a negative-sentinel design would centre it on the
+        // primary monitor instead, teleporting the window on every restart.
+        var leftMonitor = new PlacementRect(-1920, 0, 1920, 1040);
+
+        var r = WindowPlacement.Resolve(-1500, 120, 1000, 640, leftMonitor, 760, 520);
+
+        Assert.Equal(-1500, r.Left);
+        Assert.Equal(120, r.Top);
     }
 }

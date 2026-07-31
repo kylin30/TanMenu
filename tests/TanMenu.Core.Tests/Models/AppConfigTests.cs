@@ -45,8 +45,8 @@ public class AppConfigTests
         Assert.Equal(0, general.SchemaVersion); // 0 = "not yet stamped"; see ConfigService.Normalize
         Assert.Equal(1000, general.WindowWidth);
         Assert.Equal(640, general.WindowHeight);
-        Assert.Equal(-1, general.WindowLeft);
-        Assert.Equal(-1, general.WindowTop);
+        Assert.Null(general.WindowLeft);
+        Assert.Null(general.WindowTop);
         Assert.False(general.WindowMaximized);
         Assert.False(general.TaskbarPinPromptDismissed);
     }

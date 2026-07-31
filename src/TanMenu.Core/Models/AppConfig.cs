@@ -62,10 +62,16 @@ public class GeneralConfig
     public double WindowWidth { get; set; } = 1000;
     public double WindowHeight { get; set; } = 640;
 
-    /// <summary>Restored window position, in DIPs. -1 on either axis means "centre on the primary work
-    /// area", which is what a first run and a restore onto a disconnected monitor both get.</summary>
-    public double WindowLeft { get; set; } = -1;
-    public double WindowTop { get; set; } = -1;
+    /// <summary>Restored window position, in DIPs. Null means "no remembered position — centre me",
+    /// which is what a first run gets.
+    /// <para>
+    /// Deliberately nullable rather than a negative sentinel: a monitor to the LEFT of the primary one
+    /// occupies negative coordinates, so a genuinely remembered position can be negative and must not
+    /// be mistaken for "unset". Treating `&lt; 0` as the sentinel would teleport such a window to the
+    /// primary monitor's centre on every restart.
+    /// </para></summary>
+    public double? WindowLeft { get; set; }
+    public double? WindowTop { get; set; }
 
     public bool WindowMaximized { get; set; } = false;
 

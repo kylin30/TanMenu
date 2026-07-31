@@ -499,4 +499,28 @@ public class ConfigServiceTests
             try { Directory.Delete(root, true); } catch { }
         }
     }
+
+    [Fact]
+    public async Task SaveThenLoad_KeepsNegativeWindowPositionFromALeftHandMonitor()
+    {
+        var paths = NewPaths(out var root);
+        try
+        {
+            var svc1 = new ConfigService(paths, NullLogger<ConfigService>.Instance);
+            await svc1.LoadAsync();
+            svc1.Config.General.WindowLeft = -1500;
+            svc1.Config.General.WindowTop = 120;
+            await svc1.SaveAsync();
+
+            var svc2 = new ConfigService(paths, NullLogger<ConfigService>.Instance);
+            await svc2.LoadAsync();
+
+            Assert.Equal(-1500, svc2.Config.General.WindowLeft);
+            Assert.Equal(120, svc2.Config.General.WindowTop);
+        }
+        finally
+        {
+            try { Directory.Delete(root, true); } catch { }
+        }
+    }
 }
