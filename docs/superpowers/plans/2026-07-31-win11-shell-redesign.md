@@ -168,8 +168,8 @@ Append to `tests/TanMenu.Core.Tests/Models/AppConfigTests.cs`, inside the existi
         Assert.Equal(0, general.SchemaVersion); // 0 = "not yet stamped"; see ConfigService.Normalize
         Assert.Equal(1000, general.WindowWidth);
         Assert.Equal(640, general.WindowHeight);
-        Assert.Equal(-1, general.WindowLeft);
-        Assert.Equal(-1, general.WindowTop);
+        Assert.Null(general.WindowLeft);
+        Assert.Null(general.WindowTop);
         Assert.False(general.WindowMaximized);
         Assert.False(general.TaskbarPinPromptDismissed);
     }
@@ -219,10 +219,16 @@ In `GeneralConfig`, change the two behaviour defaults and add the new fields:
     public double WindowWidth { get; set; } = 1000;
     public double WindowHeight { get; set; } = 640;
 
-    /// <summary>Restored window position, in DIPs. -1 on either axis means "centre on the primary work
-    /// area", which is what a first run and a restore onto a disconnected monitor both get.</summary>
-    public double WindowLeft { get; set; } = -1;
-    public double WindowTop { get; set; } = -1;
+    /// <summary>Restored window position, in DIPs. Null means "no remembered position — centre me",
+    /// which is what a first run gets.
+    /// <para>
+    /// Deliberately nullable rather than a negative sentinel: a monitor to the LEFT of the primary one
+    /// occupies negative coordinates, so a genuinely remembered position can be negative and must not
+    /// be mistaken for "unset". Treating `&lt; 0` as the sentinel would teleport such a window to the
+    /// primary monitor's centre on every restart.
+    /// </para></summary>
+    public double? WindowLeft { get; set; }
+    public double? WindowTop { get; set; }
 
     public bool WindowMaximized { get; set; } = false;
 
@@ -273,7 +279,7 @@ git commit -m "feat(config): add window placement fields and the schema-1 app-wi
 
 **Interfaces:**
 - Consumes: nothing.
-- Produces: `record struct PlacementRect(double Left, double Top, double Width, double Height)` and `static class WindowPlacement` with `PlacementRect Resolve(double savedLeft, double savedTop, double savedWidth, double savedHeight, PlacementRect workArea, double minWidth, double minHeight)`. Task 3's `WindowHost.RestorePlacement` calls it.
+- Produces: `record struct PlacementRect(double Left, double Top, double Width, double Height)` and `static class WindowPlacement` with `PlacementRect Resolve(double? savedLeft, double? savedTop, double savedWidth, double savedHeight, PlacementRect workArea, double minWidth, double minHeight)`. Task 3's `WindowHost.RestorePlacement` calls it. The position parameters are **nullable, not negative-sentinel**: monitors left of the primary have negative coordinates, so `< 0` cannot mean "unset".
 
 - [ ] **Step 1: Write the failing test**
 
@@ -298,12 +304,26 @@ public class WindowPlacementTests
     }
 
     [Fact]
-    public void Resolve_NegativePosition_CentresOnWorkArea()
+    public void Resolve_UnsetPosition_CentresOnWorkArea()
     {
-        var r = WindowPlacement.Resolve(-1, -1, 1000, 640, Work, 760, 520);
+        var r = WindowPlacement.Resolve(null, null, 1000, 640, Work, 760, 520);
 
         Assert.Equal(460, r.Left);   // (1920 - 1000) / 2
         Assert.Equal(200, r.Top);    // (1040 - 640) / 2
+    }
+
+    [Fact]
+    public void Resolve_RealNegativePosition_OnLeftHandMonitor_IsKept()
+    {
+        // A monitor to the LEFT of the primary occupies negative coordinates. This position is
+        // remembered, not unset, and must survive: a negative-sentinel design would centre it on the
+        // primary monitor instead, teleporting the window on every restart.
+        var leftMonitor = new PlacementRect(-1920, 0, 1920, 1040);
+
+        var r = WindowPlacement.Resolve(-1500, 120, 1000, 640, leftMonitor, 760, 520);
+
+        Assert.Equal(-1500, r.Left);
+        Assert.Equal(120, r.Top);
     }
 
     [Fact]
@@ -390,18 +410,30 @@ public readonly record struct PlacementRect(double Left, double Top, double Widt
 /// be visible on the supplied work area.</summary>
 public static class WindowPlacement
 {
-    /// <param name="savedLeft">Saved X, or a negative value meaning "centre me".</param>
-    /// <param name="savedTop">Saved Y, or a negative value meaning "centre me".</param>
-    /// <param name="workArea">The target monitor's work area (excludes the taskbar).</param>
+    /// <param name="savedLeft">Remembered X, or null when there is none — centre instead.</param>
+    /// <param name="savedTop">Remembered Y, or null when there is none — centre instead.</param>
+    /// <param name="savedWidth">Remembered width; clamped into [min, work area].</param>
+    /// <param name="savedHeight">Remembered height; clamped into [min, work area].</param>
+    /// <param name="workArea">The target monitor's work area (excludes the taskbar). Its origin is
+    /// NOT assumed to be (0,0): a monitor left of or above the primary one has negative coordinates.</param>
+    /// <param name="minWidth">Floor for the resolved width, unless the work area is narrower.</param>
+    /// <param name="minHeight">Floor for the resolved height, unless the work area is shorter.</param>
     /// <remarks>
+    /// <para>
     /// Size is resolved first, because position depends on it. A saved size is clamped to
     /// [min, work-area]; when the work area itself is smaller than the minimum, FITTING THE SCREEN
     /// wins — a window larger than the display cannot be moved back into view, whereas one below the
     /// nominal minimum is merely cramped.
+    /// </para>
+    /// <para>
+    /// "No remembered position" is null, NOT a negative number. A monitor to the left of the primary
+    /// occupies negative coordinates, so a real remembered X can be negative; a negative sentinel
+    /// would silently discard it and re-centre the window on every restart.
+    /// </para>
     /// </remarks>
     public static PlacementRect Resolve(
-        double savedLeft,
-        double savedTop,
+        double? savedLeft,
+        double? savedTop,
         double savedWidth,
         double savedHeight,
         PlacementRect workArea,
@@ -411,12 +443,12 @@ public static class WindowPlacement
         var width = Clamp(savedWidth, Math.Min(minWidth, workArea.Width), workArea.Width);
         var height = Clamp(savedHeight, Math.Min(minHeight, workArea.Height), workArea.Height);
 
-        var left = savedLeft < 0
-            ? workArea.Left + (workArea.Width - width) / 2
-            : Clamp(savedLeft, workArea.Left, workArea.Right - width);
-        var top = savedTop < 0
-            ? workArea.Top + (workArea.Height - height) / 2
-            : Clamp(savedTop, workArea.Top, workArea.Bottom - height);
+        var left = savedLeft is { } l
+            ? Clamp(l, workArea.Left, workArea.Right - width)
+            : workArea.Left + (workArea.Width - width) / 2;
+        var top = savedTop is { } t
+            ? Clamp(t, workArea.Top, workArea.Bottom - height)
+            : workArea.Top + (workArea.Height - height) / 2;
 
         return new PlacementRect(left, top, width, height);
     }

@@ -223,7 +223,7 @@ New fields on `GeneralConfig`:
 |---|---|---|
 | `SchemaVersion` | `0` | Migration marker; the current schema is `1` |
 | `WindowWidth` / `WindowHeight` | `1000` / `640` | Restored window size |
-| `WindowLeft` / `WindowTop` | `-1` | Restored position; `-1` = centre on the primary work area |
+| `WindowLeft` / `WindowTop` | `null` | Restored position; `null` = no remembered position, centre instead. Nullable rather than a negative sentinel: monitors left of the primary have negative coordinates, so `< 0` cannot mean "unset" |
 | `WindowMaximized` | `false` | Restored maximized state |
 | `TaskbarPinPromptDismissed` | `false` | §4's 不再提示 |
 
