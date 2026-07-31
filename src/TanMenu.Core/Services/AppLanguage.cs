@@ -54,8 +54,13 @@ public static class AppLanguage
             ["PinToTaskbar"] = ("固定到任务栏", "Pin to taskbar"),
             ["PinToTaskbarManual"] = ("打开固定位置", "Open pin location"),
             ["PinnedToTaskbar"] = ("已固定到任务栏", "Pinned to taskbar"),
-            ["TaskbarPinRequiredPrompt"] = ("TanMenu 的主要使用方式是点击任务栏图标显示主界面，并在失去焦点后自动隐藏。\n\n当前尚未固定到任务栏。点击“确定”开始固定：系统支持时请在 Windows 提示中确认；Windows 10 若不支持应用内固定，将打开 TanMenu 快捷方式，请右键选择“固定到任务栏”。", "TanMenu is designed to open from its taskbar icon and hide when focus is lost.\n\nIt is not pinned yet. Select OK to start: approve the Windows confirmation when available; if Windows 10 does not support in-app pinning, TanMenu opens its shortcut so you can right-click it and choose Pin to taskbar."),
-            ["PinToTaskbarHelp"] = ("固定后，点击任务栏图标显示主界面；失去焦点自动隐藏。支持时由 Windows 确认，否则打开快捷方式供手动固定。", "Once pinned, click the taskbar icon to show TanMenu; it hides when focus is lost. Windows confirms when supported; otherwise TanMenu opens its shortcut for manual pinning."),
+            // The in-page InfoBar's message (AppPage.RefreshPinNoticeAsync). Its buttons are 固定 /
+            // 不再提示 plus a close glyph — there is no 确定, because this stopped being a modal
+            // MessageBox in 0.12 — and the window no longer hides on blur unless the user opts in, so
+            // neither claim may appear here. Kept to two short sentences: an InfoBar sits above the
+            // categories and a wall of text pushes the launcher's own content off screen.
+            ["TaskbarPinRequiredPrompt"] = ("TanMenu 尚未固定到任务栏。固定后，点击任务栏图标即可显示主界面。\n点击“固定”开始：系统支持时请在 Windows 提示中确认，否则将打开 TanMenu 快捷方式，请右键选择“固定到任务栏”。", "TanMenu is not pinned to the taskbar yet. Once pinned, click its taskbar icon to show the launcher.\nSelect Pin to start: approve the Windows confirmation when it appears, otherwise TanMenu opens its shortcut so you can right-click it and choose Pin to taskbar."),
+            ["PinToTaskbarHelp"] = ("固定后，点击任务栏图标即可显示主界面。系统支持时由 Windows 确认，否则打开快捷方式供手动固定。", "Once pinned, click the taskbar icon to show TanMenu. Windows confirms when supported; otherwise TanMenu opens its shortcut for manual pinning."),
             ["PinnedToTaskbarHelp"] = ("TanMenu 已永久固定。点击任务栏图标可随时显示主界面。", "TanMenu is permanently pinned. Click its taskbar icon whenever you want to show the launcher."),
             ["PinToTaskbarWorking"] = ("正在请求 Windows 固定 TanMenu…", "Asking Windows to pin TanMenu…"),
             ["PinToTaskbarNotAllowed"] = ("Windows 当前不允许应用发起固定。点击上方按钮打开 TanMenu 快捷方式，再右键选择“固定到任务栏”。", "Windows is not allowing an app-initiated pin. Use the button above to open the TanMenu shortcut, then right-click it and choose Pin to taskbar."),

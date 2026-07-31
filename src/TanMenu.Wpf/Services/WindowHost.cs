@@ -27,15 +27,17 @@ public sealed partial class WindowHost : IWindowHost
 
     private readonly ConfigService _config;
     private readonly AppEvents _events;
+    private readonly IShellNavigator _navigator;
     private readonly DispatcherTimer _saveDebounce;
     private Window? _window;
     private int _suppressDepth;
     private bool _restoring;
 
-    public WindowHost(ConfigService config, AppEvents events)
+    public WindowHost(ConfigService config, AppEvents events, IShellNavigator navigator)
     {
         _config = config;
         _events = events;
+        _navigator = navigator;
 
         // Coalesces the PositionChanged/size storm a single drag produces into one disk write.
         _saveDebounce = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
@@ -89,8 +91,17 @@ public sealed partial class WindowHost : IWindowHost
             _window.Topmost = _config.Config.General.TopMost;
     }
 
+    /// <summary>Last-resort work area when the platform reports no screens at all. Only reachable on a
+    /// headless/remote session where <see cref="Screens"/> is empty.</summary>
+    private static readonly PlacementRect UnknownWorkArea = new(0, 0, 1920, 1040);
+
     /// <summary>The screen the window currently sits on, falling back to the primary screen and then to
     /// the first enumerated one. Null when no screen information is available yet.</summary>
+    /// <remarks>
+    /// For SAVING only. Do NOT use this to restore: at restore time the window has not been placed
+    /// yet, so this reports wherever Win32 cascaded it (the primary) rather than the monitor the saved
+    /// rectangle belongs to. <see cref="ResolveTargetScreen"/> is the restore-side answer.
+    /// </remarks>
     private Screen? CurrentScreen()
     {
         var screens = _window?.Screens;
@@ -108,17 +119,58 @@ public sealed partial class WindowHost : IWindowHost
         return scaling <= 0 ? 1.0 : scaling;
     }
 
-    /// <summary>The work area of the screen the window currently sits on, in DIPs, falling back to a
-    /// 1920×1040 guess when no screen information is available.</summary>
-    private PlacementRect ResolveWorkArea()
-    {
-        var screen = CurrentScreen();
-        if (screen is null)
-            return new PlacementRect(0, 0, 1920, 1040);
+    private static double SafeScale(Screen screen) => screen.Scaling <= 0 ? 1.0 : screen.Scaling;
 
-        var scale = screen.Scaling <= 0 ? 1.0 : screen.Scaling;
+    /// <summary>A screen's work area in DIPs, converted with THAT screen's own scaling — the exact
+    /// inverse of what <see cref="SavePlacement"/> records.</summary>
+    private static PlacementRect WorkAreaOf(Screen screen)
+    {
+        var scale = SafeScale(screen);
         var w = screen.WorkingArea;
         return new PlacementRect(w.X / scale, w.Y / scale, w.Width / scale, w.Height / scale);
+    }
+
+    /// <summary>
+    /// Choose the monitor a SAVED placement should be restored onto, and hand back both its work area
+    /// (DIPs) and its scaling. Falls back to a 1920×1040 guess at scale 1 when the platform reports no
+    /// screens.
+    /// </summary>
+    /// <remarks>
+    /// The choice is driven by the saved rectangle, never by the window's current position: the window
+    /// has not been placed yet when this runs, so its position is whatever Win32 cascaded it to. The
+    /// decision itself lives in <see cref="WindowPlacement.ChooseWorkArea"/> so it can be unit-tested
+    /// without a display; this method only translates Avalonia's screen list into and out of it. The
+    /// scaling returned is the TARGET screen's, not the current one's — converting a saved DIP position
+    /// with the wrong monitor's scale lands the window off by the ratio between the two.
+    /// </remarks>
+    private (PlacementRect Work, double Scale) ResolveTargetScreen(PlacementRect? saved)
+    {
+        var all = _window?.Screens?.All;
+        if (all is null || all.Count == 0)
+            return (UnknownWorkArea, 1.0);
+
+        var areas = new PlacementRect[all.Count];
+        var primaryIndex = 0;
+        for (var i = 0; i < all.Count; i++)
+        {
+            areas[i] = WorkAreaOf(all[i]);
+            if (all[i].IsPrimary)
+                primaryIndex = i;
+        }
+
+        var index = WindowPlacement.ChooseWorkArea(saved, areas, primaryIndex);
+        return index < 0 ? (UnknownWorkArea, 1.0) : (areas[index], SafeScale(all[index]));
+    }
+
+    /// <summary>The remembered window rectangle in DIPs, or null when no POSITION is remembered (a
+    /// fresh config). Null is what tells <see cref="WindowPlacement.ChooseWorkArea"/> to centre on the
+    /// primary rather than hunt for a monitor.</summary>
+    private PlacementRect? SavedRect()
+    {
+        var g = _config.Config.General;
+        return g.WindowLeft is { } left && g.WindowTop is { } top
+            ? new PlacementRect(left, top, g.WindowWidth, g.WindowHeight)
+            : null;
     }
 
     /// <summary>
@@ -139,8 +191,14 @@ public sealed partial class WindowHost : IWindowHost
     /// </remarks>
     private void SchedulePlacementSave() => Dispatcher.UIThread.Post(SavePlacement);
 
-    /// <summary>Apply the saved placement, clamped to the work area the window will actually appear on.
-    /// Never throws: a failure here must not prevent the window from being shown.</summary>
+    /// <summary>Apply the saved placement, clamped to the work area of the monitor the SAVED rectangle
+    /// belongs to. Never throws: a failure here must not prevent the window from being shown.</summary>
+    /// <remarks>
+    /// Called BEFORE <see cref="Window.Show"/> on a cold start (<c>App.ShowLauncherWindow</c>) and
+    /// before every un-hide (<see cref="ShowAndActivate"/>), never afterwards: applying geometry to a
+    /// window that is already on screen paints it once at the OS cascade position and then jumps it,
+    /// which is exactly what deleting the flyout's <c>Opacity="0"</c> assumed could not happen.
+    /// </remarks>
     public void RestorePlacement()
     {
         if (_window is null)
@@ -150,8 +208,7 @@ public sealed partial class WindowHost : IWindowHost
         try
         {
             var g = _config.Config.General;
-            var work = ResolveWorkArea();
-            var scale = CurrentScale();
+            var (work, scale) = ResolveTargetScreen(SavedRect());
 
             var placement = WindowPlacement.Resolve(
                 g.WindowLeft, g.WindowTop, g.WindowWidth, g.WindowHeight,
@@ -164,6 +221,15 @@ public sealed partial class WindowHost : IWindowHost
                 (int)Math.Round(placement.Top * scale));
             _window.WindowState = g.WindowMaximized ? WindowState.Maximized : WindowState.Normal;
             ApplyTopmost();
+
+            // Logged at Information, not Debug: this is the only externally visible record of WHICH
+            // monitor was chosen and at what scale, and it is what proves the placement was applied
+            // before the window was shown (the "Launcher window shown" line follows it).
+            Serilog.Log.Information(
+                "Window placement applied: {Left},{Top} {Width}x{Height} DIP on work area " +
+                "{WorkLeft},{WorkTop} {WorkWidth}x{WorkHeight} at scale {Scale}",
+                placement.Left, placement.Top, placement.Width, placement.Height,
+                work.Left, work.Top, work.Width, work.Height, scale);
         }
         catch (Exception ex)
         {
@@ -179,8 +245,9 @@ public sealed partial class WindowHost : IWindowHost
     /// <remarks>
     /// Updates the in-memory config immediately but DEBOUNCES the disk write. A single window drag
     /// raises PositionChanged on every mouse move, and persisting each one would rewrite config.json
-    /// hundreds of times per drag. <see cref="Hide"/> flushes synchronously so the common
-    /// hide-then-exit path never loses the last position.
+    /// hundreds of times per drag. <see cref="Hide"/> cancels the debounce and starts the write
+    /// immediately (still asynchronously) so a hide does not sit on an unwritten position;
+    /// <see cref="FlushPlacementBlocking"/> is the variant 退出 uses, which also WAITS for it.
     /// </remarks>
     public void SavePlacement()
     {
@@ -220,13 +287,46 @@ public sealed partial class WindowHost : IWindowHost
         }
     }
 
-    /// <summary>Write the recorded placement to disk now, cancelling any pending debounced write.
-    /// Public so <see cref="App.ExitApp"/> can force a synchronous flush before the config service
-    /// (and the semaphore a fire-and-forget <c>SaveAsync</c> may still be holding) is disposed.</summary>
-    public void FlushPlacement()
+    /// <summary>Start writing the recorded placement to disk, cancelling any pending debounced write.
+    /// FIRE-AND-FORGET — the returned write may still be in flight when this returns. Use
+    /// <see cref="FlushPlacementBlocking"/> on any path that is about to end the process.</summary>
+    public void FlushPlacement() => _ = FlushPlacementAsync();
+
+    private Task FlushPlacementAsync()
     {
         _saveDebounce.Stop();
-        _ = _config.SaveAsync();
+        try
+        {
+            return _config.SaveAsync();
+        }
+        catch (Exception ex)
+        {
+            // SaveAsync only throws synchronously if serialization itself fails; a disk failure comes
+            // back on the task. Either way a placement write must never take a caller down.
+            Serilog.Log.Warning(ex, "Failed to start a window placement flush");
+            return Task.CompletedTask;
+        }
+    }
+
+    /// <summary>Flush the recorded placement and BLOCK until the write has finished. For
+    /// <see cref="App.ExitApp"/> only: the fire-and-forget form yields at the first await inside
+    /// <c>SaveAsync</c>, and <c>desktop.Shutdown()</c> then ends the dispatcher loop out from under it,
+    /// losing any geometry change made inside the 500 ms debounce window and potentially stranding an
+    /// orphan <c>config.json.tmp</c>. Blocking here is only deadlock-free because <c>SaveAsync</c>
+    /// awaits with <c>ConfigureAwait(false)</c> throughout — see its remarks.</summary>
+    public void FlushPlacementBlocking()
+    {
+        try
+        {
+            // Bounded rather than indefinite: the data folder can be a network share, and 退出 must
+            // still end the process if that share is wedged. A few-KB write never approaches this.
+            if (!FlushPlacementAsync().Wait(TimeSpan.FromSeconds(5)))
+                Serilog.Log.Warning("Timed out flushing the window placement on exit");
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "Failed to flush the window placement on exit");
+        }
     }
 
     public void Hide()
@@ -234,6 +334,15 @@ public sealed partial class WindowHost : IWindowHost
         SavePlacement();
         FlushPlacement(); // hiding is often the last thing before exit; do not leave it to the timer
         _window?.Hide();
+
+        // Reset the shell to 应用 AFTER the window is off screen, so the page swap is never visible.
+        // Spec §2: "the window always opens on 应用". ShellNavigator.Current is process-lifetime state
+        // that survives hide/show, so without this a session that visited 设置 re-summons onto 设置 —
+        // with AppPage detached, which also silently kills the search box's type-to-filter focus.
+        // Done on HIDE rather than inside ShowAndActivate deliberately: SettingsLauncher.OpenCore
+        // navigates to 设置 and THEN calls ShowAndActivate, so resetting on show would break the tray's
+        // 选项 entry.
+        _navigator.Navigate(ShellPage.App);
     }
 
     public void ShowAndActivate()
@@ -256,7 +365,7 @@ public sealed partial class WindowHost : IWindowHost
         _window.Activate();
 
         // Activate() alone is unreliable when the foreground window belongs to another process.
-        var handle = _window.TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
+        var handle = WindowHandle();
         if (handle != IntPtr.Zero)
             SetForegroundWindow(handle);
 
@@ -264,14 +373,44 @@ public sealed partial class WindowHost : IWindowHost
         _events.RaiseLauncherShown(); // lets the app page clear + focus the search box
     }
 
+    /// <summary>
+    /// The hotkey / tray-click gesture: dismiss the launcher if it is what you are looking at, summon
+    /// it otherwise.
+    /// </summary>
+    /// <remarks>
+    /// "Visible" is NOT "focused". Under the flyout, 失焦自动隐藏 defaulted to true, so a visible window
+    /// was always the foreground one and the two were interchangeable. Since 0.12 the window is an
+    /// ordinary taskbar-resident app with hide-on-blur OFF by default, so it routinely sits visible
+    /// behind whatever the user is working in — and treating that as "dismiss" made the global hotkey
+    /// and the tray left-click HIDE the launcher the user was trying to summon. Ask Windows who is
+    /// actually in front instead.
+    /// </remarks>
     public void Toggle()
     {
         if (_window is null)
             return;
-        if (_window.IsVisible && _window.WindowState != WindowState.Minimized)
+
+        if (!_window.IsVisible || _window.WindowState == WindowState.Minimized)
+        {
+            ShowAndActivate();
+            return;
+        }
+
+        if (IsForeground())
             Hide();
         else
-            ShowAndActivate();
+            ShowAndActivate(); // visible but buried: raise it, do not dismiss it
+    }
+
+    private IntPtr WindowHandle() => _window?.TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
+
+    /// <summary>True when our window is the system's foreground window. A modal we own (a MessageBox,
+    /// a folder picker) is a DIFFERENT HWND, so it reads as "not foreground" and Toggle raises rather
+    /// than hides — which is the right answer while a dialog is up.</summary>
+    private bool IsForeground()
+    {
+        var handle = WindowHandle();
+        return handle != IntPtr.Zero && GetForegroundWindow() == handle;
     }
 
     /// <summary>
@@ -291,4 +430,7 @@ public sealed partial class WindowHost : IWindowHost
     [LibraryImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static partial bool SetForegroundWindow(IntPtr hWnd);
+
+    [LibraryImport("user32.dll")]
+    private static partial IntPtr GetForegroundWindow();
 }

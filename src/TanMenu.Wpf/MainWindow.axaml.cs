@@ -53,17 +53,23 @@ public partial class MainWindow : Window
 
         ApplyBackdrop();
 
-        // The host owns show/hide/placement and needs the window once its HWND exists. The DI
-        // registration deliberately hands out the same instance for IWindowHost and WindowHost.
-        var host = _host as WindowHost;
-        host?.Attach(this);
-        host?.RestorePlacement();
+        // The host owns show/hide/placement and needs the window once its HWND exists. Idempotent, and
+        // App.ShowLauncherWindow has already attached on the cold-start path; kept so a window opened
+        // by any other route is still owned. The DI registration deliberately hands out the same
+        // instance for IWindowHost and WindowHost.
+        //
+        // RestorePlacement is deliberately NOT called here any more. It ran here until 0.12, which
+        // meant the window was painted at the OS cascade position and then jumped ~30 ms later to its
+        // restored geometry. App.ShowLauncherWindow now applies the placement between Attach and
+        // Show(), i.e. before the window is ever on screen.
+        (_host as WindowHost)?.Attach(this);
 
         // The startup build begins here, after the window is actually shown — never from AppPage's
         // own constructor, which runs earlier (as MainWindow's field initializer, before Show()) and
         // would make the first-summon gate in LauncherViewModel.InitializeAsync/HandleLauncherShownAsync
         // timing-dependent on whether the build finishes before Show() instead of strictly ordered
-        // after it, as it was before this class existed.
+        // after it, as it was before this class existed. It also has to precede the cold start's
+        // LauncherShown, which App raises once Show() has returned — see ShowLauncherWindow's remarks.
         _appPage.BeginInitialize();
     }
 

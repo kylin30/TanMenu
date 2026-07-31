@@ -79,6 +79,55 @@ public class WindowPlacementTests
         Assert.Equal(200, r.Top);
     }
 
+    // ══════════════════════════════════════════════════════════════════════════════════════════
+    // ChooseWorkArea — WHICH monitor a saved placement belongs to, decided before Resolve clamps
+    // ══════════════════════════════════════════════════════════════════════════════════════════
+
+    // The real three-display desktop this was found on: a 7680x2160 primary, a portrait panel far to
+    // its right at x=9216, and a third below. Work areas are DIPs, taskbar already excluded.
+    private static readonly PlacementRect[] ThreeMonitors =
+    [
+        new(9216, -689, 2592, 4536),  // secondary, to the right of the primary
+        new(0, 0, 7680, 2088),        // PRIMARY (index 1 — the platform does not enumerate it first)
+        new(2285, 2592, 2304, 1368),  // third, below the primary
+    ];
+
+    [Fact]
+    public void ChooseWorkArea_SavedRectOnSecondaryMonitor_ReturnsThatMonitor()
+    {
+        // The bug this exists for: asking the WINDOW which screen it is on returns the primary, because
+        // at restore time the window is still wherever Win32 cascaded it. A rectangle saved at x=9500
+        // would then be clamped against the primary's work area and yanked back onto it, making a
+        // secondary monitor impossible to restore onto at all.
+        var saved = new PlacementRect(9500, 100, 1000, 640);
+
+        var index = WindowPlacement.ChooseWorkArea(saved, ThreeMonitors, primaryIndex: 1);
+
+        Assert.Equal(0, index);
+    }
+
+    [Fact]
+    public void ChooseWorkArea_SavedRectOnDisconnectedMonitor_FallsBackToPrimary()
+    {
+        // The monitor that used to live at x=9216 has been unplugged, so nothing contains this centre.
+        var saved = new PlacementRect(9500, 100, 1000, 640);
+        PlacementRect[] primaryOnly = [new(0, 0, 7680, 2088)];
+
+        var index = WindowPlacement.ChooseWorkArea(saved, primaryOnly, primaryIndex: 0);
+
+        Assert.Equal(0, index);
+    }
+
+    [Fact]
+    public void ChooseWorkArea_NoSavedPosition_ReturnsPrimary()
+    {
+        // A fresh config remembers a size but no position, which means "centre me" — and centring
+        // belongs on the primary, not on whichever monitor happens to be enumerated first.
+        var index = WindowPlacement.ChooseWorkArea(null, ThreeMonitors, primaryIndex: 1);
+
+        Assert.Equal(1, index);
+    }
+
     [Fact]
     public void Resolve_RealNegativePosition_OnLeftHandMonitor_IsKept()
     {

@@ -42,6 +42,7 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
     private bool _loadedOnce;        // first build finished → distinguishes "loading" from "empty"
     private bool _pendingFocus;      // focus the search box on the next layout where it actually exists
     private bool _firstShownHandled; // skip the redundant rescan on the first summon (startup just built it)
+    private Task? _initialBuild;     // the startup build, so the first summon can await it, not race it
     private int? _menuFingerprint;   // last build's folder/tools fingerprint; null = none yet
     private int _iconFillEpoch;      // bumped per build so a superseded async icon-fill is ignored
     private int _toastVersion;       // latest-wins guard for the auto-clearing toast
@@ -530,7 +531,15 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
     /// is what put it on screen, and there is no reveal to wait for any more. <see cref="LoadedOnce"/>
     /// flipping just swaps the splash for the real content or the empty state, wherever this build
     /// lands.</summary>
-    public async Task InitializeAsync()
+    /// <remarks>
+    /// Memoized, and the task is kept: <see cref="HandleLauncherShownAsync"/> awaits it rather than
+    /// racing it. The cold start's LauncherShown arrives while this build is still in flight, and a
+    /// guard that only tested the fingerprint therefore always saw null and started a SECOND full
+    /// build one millisecond later.
+    /// </remarks>
+    public Task InitializeAsync() => _initialBuild ??= InitializeCoreAsync();
+
+    private async Task InitializeCoreAsync()
     {
         try
         {
@@ -568,11 +577,21 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
             // ONLY if that build actually succeeded (fingerprint set). If it FAILED, fall through and
             // rebuild now, so a transient startup fault doesn't strand the user in the empty state
             // until a second summon.
+            //
+            // AWAIT the startup build before testing the fingerprint. On a cold start this handler runs
+            // while that build is still in flight (App raises LauncherShown as soon as Show() returns;
+            // the build is several disk scans long), so testing the fingerprint immediately always saw
+            // null and fell through to a second, concurrent, full rebuild of the same menu — visible in
+            // the shipped log as two "Launcher built" lines a millisecond apart on every cold start.
             if (!_firstShownHandled)
             {
                 _firstShownHandled = true;
-                if (_menuFingerprint != null)
-                    return;
+                if (_initialBuild is { } startupBuild)
+                {
+                    await startupBuild; // InitializeCoreAsync swallows its own faults; this cannot throw
+                    if (_menuFingerprint != null)
+                        return;
+                }
             }
 
             // Pick up shortcuts added/removed/renamed since the last build. The fingerprint gate makes

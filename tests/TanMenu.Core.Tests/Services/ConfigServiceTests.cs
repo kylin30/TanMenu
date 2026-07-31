@@ -1,4 +1,5 @@
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging.Abstractions;
 using TanMenu.Core.Infrastructure;
@@ -461,6 +462,93 @@ public class ConfigServiceTests
 
             Assert.True(svc.Config.General.AutoClose);
             Assert.True(svc.Config.General.TopMost);
+        }
+        finally
+        {
+            try { Directory.Delete(root, true); } catch { }
+        }
+    }
+
+    /// <summary>A SynchronizationContext that only runs posted callbacks when someone explicitly pumps
+    /// it — the essential property of a UI thread that is blocked inside a synchronous wait.</summary>
+    private sealed class NeverPumpedContext : SynchronizationContext
+    {
+        public int Posted { get; private set; }
+
+        public override void Post(SendOrPostCallback d, object? state) => Posted++;
+        public override void Send(SendOrPostCallback d, object? state) => Posted++;
+    }
+
+    [Fact]
+    public void SaveAsync_WaitedOnFromABlockedUiThread_DoesNotDeadlock()
+    {
+        // App.ExitApp BLOCKS the UI thread on this save (WindowHost.FlushPlacementBlocking) so 退出
+        // cannot lose a geometry change still inside the 500 ms debounce window. That is only safe
+        // while SaveAsync awaits with ConfigureAwait(false): a continuation posted back to the blocked
+        // thread would never run, _saveLock would never be released, and 退出 would hang instead of
+        // exiting. This reproduces exactly that hazard — a context that records posts but never runs
+        // them — so removing a ConfigureAwait(false) from SaveAsync fails here rather than in the
+        // field.
+        var paths = NewPaths(out var root);
+        var previous = SynchronizationContext.Current;
+        var context = new NeverPumpedContext();
+        try
+        {
+            SynchronizationContext.SetSynchronizationContext(context);
+            var svc = new ConfigService(paths, NullLogger<ConfigService>.Instance);
+            svc.Config.General.WindowLeft = 9500;
+
+            // xUnit1031 warns that blocking on a task in a test can deadlock. Blocking is precisely
+            // what is under test here (it is what App.ExitApp does), and the bounded Wait turns a
+            // regression into a clean failure rather than a hung run — so the rule is suppressed for
+            // this one call, deliberately, not silenced project-wide.
+#pragma warning disable xUnit1031
+            var completed = svc.SaveAsync().Wait(TimeSpan.FromSeconds(10));
+#pragma warning restore xUnit1031
+
+            Assert.True(completed, "SaveAsync did not complete while the calling thread was blocked");
+            Assert.Equal(0, context.Posted);
+            Assert.True(File.Exists(paths.ConfigFilePath));
+            Assert.False(File.Exists(paths.ConfigFilePath + ".tmp")); // no orphan temp left behind
+        }
+        finally
+        {
+            SynchronizationContext.SetSynchronizationContext(previous);
+            try { Directory.Delete(root, true); } catch { }
+        }
+    }
+
+    [Fact]
+    public async Task RestoreFrom_PreSchemaBackup_MigratesFlyoutBehaviour()
+    {
+        var paths = NewPaths(out var root);
+        try
+        {
+            var svc = new ConfigService(paths, NullLogger<ConfigService>.Instance);
+            await svc.LoadAsync();
+
+            // A backup file taken from 0.11: flyout behaviour written explicitly, no schemaVersion.
+            // Normalize runs from BOTH LoadAsync and RestoreFromAsync and both want the migration —
+            // restoring a 0.11-era backup must produce app-window behaviour just as loading a 0.11-era
+            // config does. Only the load path was pinned by a test before this one.
+            var backup = Path.Combine(root, "0.11-backup.json");
+            await File.WriteAllTextAsync(backup, """
+                {"general":{"autoClose":true,"topMost":true,"colButtonCount":6},"folders":[],"rootFolder":"C:\\"}
+                """);
+
+            Assert.True(await svc.RestoreFromAsync(backup));
+
+            Assert.False(svc.Config.General.AutoClose);
+            Assert.False(svc.Config.General.TopMost);
+            Assert.Equal(AppConfig.CurrentSchemaVersion, svc.Config.General.SchemaVersion);
+            Assert.Equal(6, svc.Config.General.ColButtonCount);  // untouched by the migration
+            Assert.Equal(@"C:\", svc.Config.RootFolder);         // the restore itself still happened
+
+            // ...and the migrated values are what a fresh process reads back, not just what is in memory.
+            var reload = new ConfigService(paths, NullLogger<ConfigService>.Instance);
+            await reload.LoadAsync();
+            Assert.False(reload.Config.General.AutoClose);
+            Assert.False(reload.Config.General.TopMost);
         }
         finally
         {

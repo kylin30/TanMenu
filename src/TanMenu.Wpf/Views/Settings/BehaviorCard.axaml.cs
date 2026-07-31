@@ -67,17 +67,50 @@ public partial class BehaviorCard : UserControl, ISettingsCard
         // constructor-only query would go stale for the rest of the session (see its remarks).
     }
 
-    /// <summary>The pin can be changed from entirely outside this app (right-click the taskbar icon,
-    /// Start-menu 固定到任务栏), so <see cref="_taskbarPinState"/> is only trustworthy at the moment it
-    /// was queried. <c>SettingsWindow</c> re-queried on every <c>Opened</c>; this card is constructed
-    /// once and kept alive for the app's whole life (<c>SettingsPage</c> is cached — see
-    /// <c>MainWindow.ShowPage</c>) — so there is no per-visit "window opened" moment to hook. Navigating
-    /// between 应用 and 设置 swaps <c>PageHost.Content</c>, detaching and re-attaching this control each
-    /// time, so re-query here instead — on every re-attach, including the first.</summary>
+    /// <summary>Re-read the two rows whose real state lives in the OS, not in <c>AppConfig</c>: the
+    /// taskbar pin and 开机自启. Both can be changed from entirely outside this app — right-click the
+    /// taskbar icon / Start-menu 固定到任务栏 for the pin, Task Manager → 启动应用 → 禁用 for autostart —
+    /// so both are only trustworthy at the moment they were queried. <c>SettingsWindow</c> re-queried on
+    /// every <c>Opened</c>; this card is constructed once and kept alive for the app's whole life
+    /// (<c>SettingsPage</c> is cached — see <c>MainWindow.ShowPage</c>), so there is no per-visit
+    /// "window opened" moment to hook. Navigating between 应用 and 设置 swaps <c>PageHost.Content</c>,
+    /// detaching and re-attaching this control each time, so re-query here instead — on every
+    /// re-attach, including the first.</summary>
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
+        RefreshAutoStartState();
         RunSafely(RefreshTaskbarPinStateAsync);
+    }
+
+    /// <summary>Push the LIVE OS autostart state onto the toggle. Synchronous because
+    /// <see cref="IAutoStartService.IsEnabled"/> is (a registry read, or a blocking WinRT call on the
+    /// packaged build), unlike the pin's async COM query.</summary>
+    /// <remarks>
+    /// The <c>_loading</c> guard is saved and RESTORED rather than simply cleared, because
+    /// <see cref="ReloadFromConfig"/> calls this from inside its own guarded block — clearing it would
+    /// un-guard the rest of that repopulation and let it write the values it is loading straight back
+    /// to config.
+    /// </remarks>
+    private void RefreshAutoStartState()
+    {
+        var wasLoading = _loading;
+        _loading = true;
+        try
+        {
+            AutoStartToggle.IsEnabled = !_isPortable;
+            AutoStartToggle.IsChecked = !_isPortable && _autoStart.IsEnabled();
+        }
+        catch (Exception ex)
+        {
+            // A registry/WinRT read can fail (locked hive, policy). Leave the toggle showing whatever
+            // it last showed rather than lying with a hard false.
+            Serilog.Log.Error(ex, "读取开机自启状态失败");
+        }
+        finally
+        {
+            _loading = wasLoading;
+        }
     }
 
     /// <summary>Populate every control from the live config. Sets a guard so the change handlers do not
@@ -104,8 +137,7 @@ public partial class BehaviorCard : UserControl, ISettingsCard
             AutoStartSub.Text = _isPortable
                 ? AppLanguage.Text("AutoStartPortableHelp", lang)
                 : AppLanguage.Text("AutoStartCardSub", lang);
-            AutoStartToggle.IsEnabled = !_isPortable;
-            AutoStartToggle.IsChecked = !_isPortable && _autoStart.IsEnabled();
+            RefreshAutoStartState();
 
             PinTaskbarTitle.Text = AppLanguage.Text("PinToTaskbar", lang);
             ApplyTaskbarPinState(_taskbarPinState); // re-label the button/status text; never re-query here
@@ -187,9 +219,7 @@ public partial class BehaviorCard : UserControl, ISettingsCard
 
         // Unconditional re-verification (success or failure): this is the only way to catch
         // StartupTaskAutoStartService silently no-op-ing on the packaged build (see above).
-        _loading = true;
-        try { AutoStartToggle.IsChecked = _autoStart.IsEnabled(); }
-        finally { _loading = false; }
+        RefreshAutoStartState();
     }
 
     // No _loading check here (unlike every other handler in this file) — that is deliberate, not an

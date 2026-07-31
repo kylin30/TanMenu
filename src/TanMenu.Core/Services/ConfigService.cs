@@ -35,11 +35,11 @@ public class ConfigService
         _logger.LogInformation("Config path: {ConfigPath}", _configPath);
     }
 
-    /// <summary>Deep clone of the current config — used by the settings window's edit-then-apply
-    /// workflow so changes only take effect on "应用/确定", not immediately.</summary>
-    public AppConfig CloneConfig() =>
-        JsonSerializer.Deserialize(JsonSerializer.Serialize(Config, ConfigType), ConfigType)
-        ?? new AppConfig();
+    // NOTE: CloneConfig() lived here until 0.12. Its only consumer was SettingsWindow's staged-edit
+    // model (mutate a clone, apply it on 确定/应用), and the settings PAGE that replaced that window
+    // writes through to Config immediately — so the clone had no caller left. Deleted rather than
+    // kept "in case": a deep-clone helper on the live config service invites exactly the staged-edit
+    // workflow the redesign removed.
 
     public async Task LoadAsync()
     {
@@ -122,11 +122,21 @@ public class ConfigService
         }
     }
 
+    /// <remarks>
+    /// EVERY await inside this method is <c>ConfigureAwait(false)</c>, which is load-bearing rather
+    /// than stylistic: <c>App.ExitApp</c> BLOCKS the UI thread on this task so 退出 cannot lose a
+    /// placement change still inside the debounce window (see <c>WindowHost.FlushPlacementBlocking</c>).
+    /// If the continuations resumed on the captured UI context they would be queued behind that block
+    /// and <c>_saveLock</c> would never be released — a deadlock on exit. Nothing in here touches the
+    /// UI, so there is no context worth capturing; the caller's own await still resumes on its own
+    /// context, which is why <c>SettingsWrite.CommitAsync</c> can still raise SettingsChanged on the
+    /// UI thread afterwards.
+    /// </remarks>
     public async Task SaveAsync()
     {
         // Serialize concurrent saves: all callers write the same _configPath+".tmp", so two overlapping
-        // saves (e.g. a double-click on 应用/确定) would otherwise race on that temp file.
-        await _saveLock.WaitAsync();
+        // saves (e.g. two settings cards committing back to back) would otherwise race on that temp file.
+        await _saveLock.WaitAsync().ConfigureAwait(false);
         string? tempPath = null;
         try
         {
@@ -137,7 +147,7 @@ public class ConfigService
             // Atomic write: serialize to a temp file in the same folder, then swap it into place,
             // so a crash mid-write can never leave a truncated/empty config.json behind.
             tempPath = _configPath + ".tmp";
-            await File.WriteAllTextAsync(tempPath, jsonContent);
+            await File.WriteAllTextAsync(tempPath, jsonContent).ConfigureAwait(false);
             try
             {
                 if (File.Exists(_configPath))
@@ -153,7 +163,7 @@ public class ConfigService
                 // but BackupToAsync already accepts exactly this tradeoff for portable targets. (On failure
                 // here File.Replace leaves the original config.json intact, so the overwrite is safe.)
                 _logger.LogWarning(ex, "Atomic config swap unsupported here; falling back to a plain write");
-                await File.WriteAllTextAsync(_configPath, jsonContent);
+                await File.WriteAllTextAsync(_configPath, jsonContent).ConfigureAwait(false);
             }
 
             HasValidConfig = true;

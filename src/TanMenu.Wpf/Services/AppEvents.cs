@@ -1,9 +1,16 @@
 namespace TanMenu.Wpf.Services;
 
 /// <summary>
-/// App-wide UI events bridging the settings window and the launcher window (separate windows sharing
-/// the singleton ConfigService).
+/// App-wide UI notifications for state that has no change notification of its own — the singleton
+/// <c>ConfigService</c>'s contents, and "the window was just summoned".
 /// </summary>
+/// <remarks>
+/// This existed to bridge two separate top-level windows. There is one window now (设置 became a page
+/// inside it in 0.12), but the events are not redundant: the publishers and subscribers are still
+/// unrelated — a settings card commits, and the shell, the tray, the launcher view model, the window
+/// host's 窗口置顶 and the taskbar-pin notice all have to react without any of them knowing about
+/// each other.
+/// </remarks>
 /// <remarks>
 /// THREAD-AFFINITY CONTRACT: both events are raised SYNCHRONOUSLY on the caller's thread, and every
 /// raise site is on the UI thread. Subscribers rely on that — the taskbar-pin subscriber, for

@@ -10,6 +10,7 @@ using TanMenu.Core.Services;
 using TanMenu.Wpf.Dialogs;
 using TanMenu.Wpf.Services;
 using TanMenu.Wpf.ViewModels;
+using TanMenu.Wpf.Views.Settings;
 
 namespace TanMenu.Wpf.Views;
 
@@ -97,19 +98,36 @@ public partial class AppPage : UserControl, IDisposable
         Dispatcher.UIThread.Post(ConsumePendingViewWork, DispatcherPriority.Loaded);
     }
 
+    /// <summary>The rail can swap this whole page out of the page host, so a LauncherShown that arrives
+    /// while 设置 is on screen finds nothing focusable. <see cref="LauncherViewModel.PendingFocus"/> is
+    /// left SET in that case (see <see cref="ConsumePendingViewWork"/>) and consumed here instead, the
+    /// next time this page is actually in the tree — the same "refresh what needs the visual tree on
+    /// re-attach" rule the settings cards follow.</summary>
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        Dispatcher.UIThread.Post(ConsumePendingViewWork, DispatcherPriority.Loaded);
+    }
+
     private void ConsumePendingViewWork()
     {
-        if (_viewModel.PendingFocus)
+        if (!_viewModel.PendingFocus)
+            return;
+
+        // Detached: Focus() on a control outside the visual tree fails silently, so consuming the flag
+        // here would throw the request away and leave type-to-filter dead. Keep it pending instead —
+        // OnAttachedToVisualTree above retries it when this page is next shown.
+        if (!this.IsAttachedToVisualTree())
+            return;
+
+        _viewModel.PendingFocus = false;
+        try
         {
-            _viewModel.PendingFocus = false;
-            try
-            {
-                SearchBox.Focus();
-            }
-            catch
-            {
-                /* focus is a nicety; never let it take startup down */
-            }
+            SearchBox.Focus();
+        }
+        catch
+        {
+            /* focus is a nicety; never let it take startup down */
         }
     }
 
@@ -184,12 +202,30 @@ public partial class AppPage : UserControl, IDisposable
 
     private void OnPinNoticeDismissed(object? sender, EventArgs e) => PinNotice.IsOpen = false;
 
+    /// <summary>不再提示 is a config write like any other, so it goes through the same
+    /// <see cref="SettingsWrite.CommitAsync"/> contract the five settings card groups use: a failed
+    /// save rolls the flag back, re-evaluates the notice from the restored config, and reports the
+    /// error. A bare <c>SaveAsync()</c> here would dismiss the bar on screen while the flag never
+    /// reached disk, and the InfoBar would silently return on the next launch.</summary>
     private async void OnPinNeverClick(object? sender, RoutedEventArgs e)
     {
-        var cfg = App.Services.GetRequiredService<ConfigService>();
-        cfg.Config.General.TaskbarPinPromptDismissed = true;
-        await cfg.SaveAsync();
-        PinNotice.IsOpen = false;
+        try
+        {
+            var cfg = App.Services.GetRequiredService<ConfigService>();
+            var previous = cfg.Config.General.TaskbarPinPromptDismissed;
+            cfg.Config.General.TaskbarPinPromptDismissed = true;
+            PinNotice.IsOpen = false; // immediate feedback; the reload below puts it back on failure
+
+            await SettingsWrite.CommitAsync(cfg, _events, _host, this,
+                rollback: () => cfg.Config.General.TaskbarPinPromptDismissed = previous,
+                reload: () => _ = RefreshPinNoticeAsync());
+        }
+        catch (Exception ex)
+        {
+            // Avalonia has no global unhandled-exception hook for an escaping async void, so this is
+            // the floor. CommitAsync already handles the save failure itself.
+            Serilog.Log.Error(ex, "Failed to persist the taskbar-pin dismissal");
+        }
     }
 
     private async void OnPinNowClick(object? sender, RoutedEventArgs e)

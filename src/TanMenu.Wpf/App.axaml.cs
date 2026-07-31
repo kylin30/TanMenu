@@ -169,23 +169,58 @@ public partial class App : Application
         _ = CheckForUpdatesAfterStartupAsync();
     }
 
-    /// <summary>Create the main window and show it. It is an ordinary application window now — no
-    /// reveal sequence: <see cref="Window.Show"/> below is what puts it on screen, sized and placed by
-    /// <see cref="WindowHost.RestorePlacement"/> from <see cref="MainWindow.OnOpened"/>.</summary>
+    /// <summary>
+    /// Create the main window and show it. It is an ordinary application window now — no reveal
+    /// sequence.
+    /// </summary>
+    /// <remarks>
+    /// The cold-start order below is the whole startup contract, and each step has to be where it is:
+    /// <list type="number">
+    /// <item>ATTACH, so the host owns the window before anything can move it.</item>
+    /// <item>RESTORE PLACEMENT, while the window is still off screen. Avalonia realizes the native
+    /// window in <c>Window</c>'s constructor, so the HWND — and therefore <c>Screens</c> — already
+    /// exists here; if the platform reported no screens the host falls back to a centred default
+    /// rather than throwing. Doing this after <c>Show()</c> (as it was until 0.12, from
+    /// <c>MainWindow.OnOpened</c>) paints one frame at the OS cascade position and then jumps,
+    /// measured at ~30 ms.</item>
+    /// <item>SHOW, which synchronously runs <c>MainWindow.OnOpened</c>: the tray/hotkey wiring below
+    /// and then <c>AppPage.BeginInitialize()</c>, the startup menu build.</item>
+    /// <item>RAISE LauncherShown, last. It must follow the startup build, not precede it: the view
+    /// model's first-summon guard exists to suppress the redundant rescan the startup build already
+    /// covers, and when the event arrived first (raised from <c>OnLauncherOpened</c>, i.e. inside
+    /// <c>base.OnOpened</c>) the guard saw no fingerprint yet, skipped itself, and every cold start
+    /// built the entire menu twice.</item>
+    /// </list>
+    /// </remarks>
     private static void ShowLauncherWindow()
     {
         var window = new MainWindow();
 
         var host = Services.GetRequiredService<WindowHost>();
         host.Attach(window);
+        host.RestorePlacement();
 
         // The HWND-dependent wiring (message hook, global hotkey, tray) needs a realized window, so it
         // runs from Opened — the Avalonia analogue of WPF's SourceInitialized.
         window.Opened += OnLauncherOpened;
         window.Show();
+        Log.Information("Launcher window shown");
 
         if (Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             desktop.MainWindow = window;
+
+        // A cold start must produce the same LauncherShown a tray or hotkey summon does: the search
+        // box takes focus from it, and so does AppPage's taskbar-pin InfoBar refresh. Guarded like the
+        // tray wiring above — losing the pin notice or the initial focus is bad but survivable, and
+        // must not turn into StartupAsync's fatal-error-and-exit path.
+        try
+        {
+            Services.GetRequiredService<AppEvents>().RaiseLauncherShown();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "LauncherShown handlers faulted on cold start");
+        }
     }
 
     private static void OnLauncherOpened(object? sender, EventArgs e)
@@ -210,15 +245,10 @@ public partial class App : Application
                 Services.GetRequiredService<AppEvents>());
             Tray.Create();
 
-            // A cold start must produce the same LauncherShown a tray or hotkey summon does: the
-            // search box takes focus from it, and so does AppPage's taskbar-pin InfoBar refresh.
-            // Raised here (rather than from Show()) because the window's HWND already exists by the
-            // time Opened fires — RestorePlacement/InitializeAsync still run afterward, in
-            // MainWindow.OnOpened's own continuation below this event, but every LauncherShown
-            // consequence (PendingFocus's deferred Loaded-priority focus, the pin-notice refresh's
-            // await) is itself put off to a later dispatcher pass, so each one still observes the
-            // window already placed.
-            Services.GetRequiredService<AppEvents>().RaiseLauncherShown();
+            // NOTE: LauncherShown is deliberately NOT raised here. This handler runs from inside
+            // base.OnOpened — i.e. BEFORE MainWindow.OnOpened has started the menu build — and raising
+            // it here made the view model's first-summon guard useless, so every cold start built the
+            // whole menu twice. ShowLauncherWindow raises it after Show() returns instead.
         }
         catch (Exception ex)
         {
@@ -325,10 +355,13 @@ public partial class App : Application
         // whose OnClosing checks this flag to tell a real exit from the close button (which hides).
         IsExiting = true;
 
-        // 退出 must flush placement synchronously: without this, geometry changed inside the 500ms
-        // debounce is lost, and Services.Dispose() below could run while a fire-and-forget SaveAsync
-        // from the debounce timer is still holding the semaphore it is about to dispose.
-        Services.GetRequiredService<WindowHost>().FlushPlacement();
+        // 退出 must WAIT for the placement write, not merely start it: desktop.Shutdown() below ends
+        // the dispatcher loop, so a fire-and-forget save's continuation would never run — losing any
+        // geometry change made inside the 500 ms debounce window and potentially leaving an orphan
+        // config.json.tmp behind. This blocks the UI thread for the duration of a few-KB write
+        // (bounded at 5 s inside), which is safe only because ConfigService.SaveAsync awaits with
+        // ConfigureAwait(false) throughout; see its remarks.
+        Services.GetRequiredService<WindowHost>().FlushPlacementBlocking();
 
         Tray?.Dispose();
         (Services as IDisposable)?.Dispose(); // disposes singletons (unregisters the global hotkey, etc.)

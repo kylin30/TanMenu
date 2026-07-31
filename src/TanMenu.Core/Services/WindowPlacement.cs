@@ -55,6 +55,70 @@ public static class WindowPlacement
         return new PlacementRect(left, top, width, height);
     }
 
+    /// <summary>
+    /// Pick WHICH monitor a saved placement belongs to, before <see cref="Resolve"/> clamps against it.
+    /// </summary>
+    /// <param name="saved">The remembered window rectangle in DIPs, or null when there is no
+    /// remembered POSITION (a fresh config, or one carrying only a size) — that always means the
+    /// primary, because a centred window is centred on the primary.</param>
+    /// <param name="workAreas">Every connected monitor's work area in DIPs, in the platform's own
+    /// enumeration order.</param>
+    /// <param name="primaryIndex">Index of the primary monitor within <paramref name="workAreas"/>.
+    /// Out of range is treated as 0.</param>
+    /// <returns>An index into <paramref name="workAreas"/>, or -1 when the list is empty.</returns>
+    /// <remarks>
+    /// <para>
+    /// Exists because the obvious source for "which monitor" — asking the window itself — is WRONG at
+    /// restore time. The window has not been placed yet; it is wherever Win32 cascaded it, which is
+    /// normally the primary. Clamping a rectangle saved at x=9500 against the PRIMARY's work area
+    /// yanks it back onto the primary, and a window can then never be restored onto a secondary
+    /// monitor at all. The saved rectangle is the only thing that knows where the window belongs.
+    /// </para>
+    /// <para>
+    /// The test is the saved rectangle's CENTRE, not its origin: a window the user dragged so its
+    /// left edge hangs slightly off a monitor still belongs to that monitor, and an origin test would
+    /// hand it to the neighbour (or to the primary) and move it on the next launch.
+    /// </para>
+    /// <para>
+    /// A saved rectangle whose centre is on no connected monitor — unplugged, or the desktop
+    /// rearranged — falls back to the primary, where <see cref="Resolve"/> then clamps it into view.
+    /// </para>
+    /// <para>
+    /// Mixed-DPI caveat: the caller converts each monitor's work area with THAT monitor's own scaling,
+    /// which is exactly how the position was recorded, so a rectangle saved on monitor N matches
+    /// monitor N's converted work area. It does not make the converted rectangles a globally
+    /// consistent coordinate space — with different scalings they can overlap, in which case the
+    /// first match wins. That is a heuristic, not a proof; it is still strictly better than always
+    /// asking the primary.
+    /// </para>
+    /// </remarks>
+    public static int ChooseWorkArea(
+        PlacementRect? saved,
+        IReadOnlyList<PlacementRect> workAreas,
+        int primaryIndex = 0)
+    {
+        if (workAreas.Count == 0)
+            return -1;
+
+        var primary = primaryIndex >= 0 && primaryIndex < workAreas.Count ? primaryIndex : 0;
+        if (saved is not { } rect)
+            return primary;
+
+        var centreX = rect.Left + rect.Width / 2;
+        var centreY = rect.Top + rect.Height / 2;
+
+        for (var i = 0; i < workAreas.Count; i++)
+        {
+            var w = workAreas[i];
+            // Half-open on the far edges so two abutting monitors never both claim a centre that
+            // lands exactly on the seam.
+            if (centreX >= w.Left && centreX < w.Right && centreY >= w.Top && centreY < w.Bottom)
+                return i;
+        }
+
+        return primary;
+    }
+
     private static double Clamp(double value, double min, double max) =>
         max < min ? min : Math.Min(Math.Max(value, min), max);
 }

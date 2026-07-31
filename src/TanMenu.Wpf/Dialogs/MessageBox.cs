@@ -75,10 +75,12 @@ public static class MessageBox
         // InvalidOperationException("Cannot show window with non-visible owner."), and the main window
         // is routinely hidden at this point — closed to the tray, toggled off by the hotkey or tray
         // icon, or (only if the user opted into 失焦自动隐藏, off by default now) hidden on blur.
-        // Callers routinely pass IWindowHost.Window — e.g. the hotkey-registration warning raised from
-        // the settings window opened via the tray, while the main window sits hidden. WPF's owner
-        // overload tolerated a hidden owner, so without this the warning silently disappeared into a
-        // discarded Task and the user was left believing a rejected hotkey had bound.
+        // Callers routinely pass IWindowHost.Window — e.g. App's hotkey-registration warning, which is
+        // posted asynchronously and can land after a startup hotkey conflict while the window is
+        // already hidden to the tray. (There is no separate settings window any more; 设置 is a page
+        // inside this same window.) WPF's owner overload tolerated a hidden owner, so without this the
+        // warning silently disappeared into a discarded Task and the user was left believing a
+        // rejected hotkey had bound.
         var effectiveOwner = owner is { IsVisible: true } ? owner : null;
 
         window.WindowStartupLocation = effectiveOwner is null
