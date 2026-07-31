@@ -1547,8 +1547,14 @@ Create `src/TanMenu.Wpf/Controls/InfoBar.axaml`:
              x:Class="TanMenu.Wpf.Controls.InfoBar">
 
   <!-- Fluent 2's informational InfoBar: accent-tinted surface, leading glyph, message, then whatever
-       actions the host puts in Content, then a close glyph. Avalonia has no InfoBar of its own. -->
-  <Border Classes="tm-infobar" IsVisible="{Binding IsOpen, RelativeSource={RelativeSource AncestorType=UserControl}}">
+       actions the host puts in ActionContent, then a close glyph. Avalonia has no InfoBar of its own.
+
+       NOTE: the action slot is a separate ActionContent property, NOT the UserControl's own Content.
+       A UserControl's XAML root IS its Content, so binding a ContentPresenter inside it back to
+       Content would be self-referential. Every value below is wired from code-behind rather than
+       with RelativeSource bindings, because compiled bindings are on by default and this control
+       deliberately has no x:DataType. -->
+  <Border x:Name="Surface" Classes="tm-infobar" IsVisible="False">
     <DockPanel LastChildFill="True">
       <TextBlock DockPanel.Dock="Left" Classes="tm-icon small" Text="&#xE946;"
                  Margin="0,0,10,0" VerticalAlignment="Center" />
@@ -1558,7 +1564,6 @@ Create `src/TanMenu.Wpf/Controls/InfoBar.axaml`:
         <TextBlock Classes="tm-icon small" Text="&#xE8BB;" />
       </Button>
       <ContentPresenter DockPanel.Dock="Right" x:Name="ActionHost"
-                        Content="{Binding $parent[UserControl].Content}"
                         VerticalAlignment="Center" Margin="12,0,0,0" />
       <TextBlock x:Name="MessageText" TextWrapping="Wrap" VerticalAlignment="Center" />
     </DockPanel>
@@ -1576,8 +1581,9 @@ using Avalonia.Interactivity;
 namespace TanMenu.Wpf.Controls;
 
 /// <summary>An informational bar the page can raise inline instead of showing a modal dialog. The host
-/// owns the actions (they go in <see cref="ContentControl.Content"/>); this control owns the surface,
-/// the icon, the message and the close glyph.</summary>
+/// owns the actions (they go in <see cref="ActionContent"/>, deliberately NOT the control's own
+/// Content, which for a UserControl is its XAML root); this control owns the surface, the icon, the
+/// message and the close glyph.</summary>
 public partial class InfoBar : UserControl
 {
     public static readonly StyledProperty<string?> MessageProperty =
@@ -1585,6 +1591,9 @@ public partial class InfoBar : UserControl
 
     public static readonly StyledProperty<bool> IsOpenProperty =
         AvaloniaProperty.Register<InfoBar, bool>(nameof(IsOpen));
+
+    public static readonly StyledProperty<object?> ActionContentProperty =
+        AvaloniaProperty.Register<InfoBar, object?>(nameof(ActionContent));
 
     public string? Message
     {
@@ -1598,6 +1607,14 @@ public partial class InfoBar : UserControl
         set => SetValue(IsOpenProperty, value);
     }
 
+    /// <summary>Buttons the host wants on the bar's trailing edge.</summary>
+    [Content]
+    public object? ActionContent
+    {
+        get => GetValue(ActionContentProperty);
+        set => SetValue(ActionContentProperty, value);
+    }
+
     /// <summary>Raised when the user clicks the close glyph. The host decides what dismissal means —
     /// this control never hides itself, so a host that persists the decision stays in control of it.</summary>
     public event EventHandler? Dismissed;
@@ -1605,7 +1622,12 @@ public partial class InfoBar : UserControl
     public InfoBar()
     {
         InitializeComponent();
+
+        // Wired here rather than with RelativeSource bindings in XAML: compiled bindings are on by
+        // default and this control has no x:DataType to resolve them against.
         MessageText.Bind(TextBlock.TextProperty, this.GetObservable(MessageProperty));
+        Surface.Bind(IsVisibleProperty, this.GetObservable(IsOpenProperty));
+        ActionHost.Bind(ContentPresenter.ContentProperty, this.GetObservable(ActionContentProperty));
     }
 
     private void OnCloseClick(object? sender, RoutedEventArgs e) => Dismissed?.Invoke(this, EventArgs.Empty);
