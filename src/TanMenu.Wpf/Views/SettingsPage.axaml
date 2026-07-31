@@ -4,8 +4,8 @@
              x:Class="TanMenu.Wpf.Views.SettingsPage">
 
   <!-- Windows 11 Settings' shape: one scrolling column of grouped cards, no tabs and no
-       OK/Cancel/Apply. Every control writes through to config the moment it changes. Tasks 10-12 add
-       the remaining three card groups below Behavior, each implementing ISettingsCard — SettingsPage
+       OK/Cancel/Apply. Every control writes through to config the moment it changes. Tasks 11-12 add
+       the remaining two card groups below Folders, each implementing ISettingsCard — SettingsPage
        finds and reloads every ISettingsCard among CardStack's children itself (see ApplyStaticText in
        the code-behind), so adding a group here is the only step needed; there is no separate call to
        remember. -->
@@ -15,6 +15,7 @@
       <TextBlock x:Name="PageTitle" Classes="tm-group-head" Margin="0,0,0,8" />
       <cards:AppearanceCard x:Name="Appearance" />
       <cards:BehaviorCard x:Name="Behavior" />
+      <cards:FoldersCard x:Name="Folders" />
     </StackPanel>
   </ScrollViewer>
 </UserControl>

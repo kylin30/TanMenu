@@ -1,0 +1,536 @@
+using System.Collections.Generic;
+using System.IO;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Interactivity;
+using Avalonia.Platform.Storage;
+using Avalonia.VisualTree;
+using Microsoft.Extensions.DependencyInjection;
+using TanMenu.Core.Infrastructure;
+using TanMenu.Core.Services;
+using TanMenu.Wpf.Dialogs;
+using TanMenu.Wpf.Services;
+
+namespace TanMenu.Wpf.Views.Settings;
+
+/// <summary>
+/// 文件夹 card group: the main folder (whose subfolders become launcher groups), the data folder
+/// (config + caches + logs), and a maintenance row (清理缓存 / 备份… / 恢复…). Ported from
+/// <c>SettingsWindow</c>'s 文件夹 tab, minus the staging — every handler here writes straight to
+/// <see cref="ConfigService.Config"/> or the data-folder pointer, instead of a working clone applied
+/// later on 应用/确定. 更改数据文件夹, 重置为默认 and 恢复 keep their confirm-before-acting dialogs even
+/// though every other control on this page applies immediately: they move or overwrite the user's real
+/// data, not just a setting.
+/// </summary>
+/// <remarks>
+/// No <c>_loading</c> guard, unlike every other card group: every control here is either read-only
+/// display text or a Button, and a Click (unlike SelectionChanged/IsCheckedChanged) is never re-entered
+/// by <see cref="ReloadFromConfig"/> repopulating a value — there is nothing for a guard to protect
+/// against. Same reasoning as <c>BehaviorCard.OnPinTaskbarClick</c>; do not "fix" this by adding one.
+/// </remarks>
+public partial class FoldersCard : UserControl, ISettingsCard
+{
+    private readonly ConfigService _config;
+    private readonly AppEvents _events;
+    private readonly IWindowHost _host;
+    private readonly ILaunchService _launch;
+    private readonly IShortcutResolver _resolver;
+    private readonly MenuService _menu;
+    private readonly IAppDataPaths _paths;
+    private readonly bool _isPackaged;
+    private readonly bool _isPortable;
+
+    /// <summary>The data folder's on-disk size as of the last <see cref="RefreshDataInfoAsync"/> run;
+    /// -1 until the first measurement completes. <see cref="ReloadFromConfig"/> only ever re-labels this
+    /// cached value (see <see cref="ApplyDataInfoLabel"/>) — re-measuring on every SettingsChanged (which
+    /// any card's commit, anywhere on the page, can re-fire) would walk the data folder far more often
+    /// than its size could plausibly change.</summary>
+    private long _dataSizeBytes = -1;
+
+    /// <summary>Guards <see cref="RefreshDataInfoAsync"/> against stacking: a fast detach/re-attach
+    /// (e.g. quick nav-rail clicks) could start a second walk before an in-flight one returns.</summary>
+    private bool _dataInfoRefreshing;
+
+    private string UiLanguage => _config.Config.General.Language;
+    private string L(string key, params object?[] args) => AppLanguage.Format(key, UiLanguage, args);
+
+    public FoldersCard()
+    {
+        InitializeComponent();
+        _config = App.Services.GetRequiredService<ConfigService>();
+        _events = App.Services.GetRequiredService<AppEvents>();
+        _host = App.Services.GetRequiredService<IWindowHost>();
+        _launch = App.Services.GetRequiredService<ILaunchService>();
+        _resolver = App.Services.GetRequiredService<IShortcutResolver>();
+        _menu = App.Services.GetRequiredService<MenuService>();
+        _paths = App.Services.GetRequiredService<IAppDataPaths>();
+        _isPackaged = PackageRuntime.HasPackageIdentity;
+        _isPortable = App.IsPortable;
+
+        // The data-folder size query itself is kicked off from OnAttachedToVisualTree, not here — a
+        // constructor-only query would go stale for the rest of the session (see its remarks).
+    }
+
+    /// <summary>The data folder can change size — or even be moved — entirely outside this app (files
+    /// dropped in via Explorer, another running instance relocating it), so the size this card shows is
+    /// only trustworthy at the moment it was measured. This card is constructed once and kept alive for
+    /// the app's whole life (<c>SettingsPage</c> is cached — see <c>MainWindow.ShowPage</c>), so there is
+    /// no per-visit "window opened" moment to hook the way <c>SettingsWindow</c> had. Navigating between
+    /// 应用 and 设置 swaps <c>PageHost.Content</c>, detaching and re-attaching this control each time —
+    /// re-measure here instead, on every re-attach including the first. Same pattern as
+    /// <c>BehaviorCard.RefreshTaskbarPinStateAsync</c>.</summary>
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        RunSafely(RefreshDataInfoAsync);
+    }
+
+    /// <summary>Populate every control from the live config. Cheap and side-effect-free: it never walks
+    /// the data folder (see <see cref="ApplyDataInfoLabel"/>) and never shows a dialog, so it is always
+    /// safe to call from <c>SettingsPage.ApplyStaticText</c>'s SettingsChanged handler.</summary>
+    public void ReloadFromConfig()
+    {
+        var lang = UiLanguage;
+
+        GroupHead.Text = AppLanguage.Text("Folders", lang);
+
+        MainFolderTitle.Text = AppLanguage.Text("MainFolder", lang);
+        MainFolderSub.Text = AppLanguage.Text("MainFolderHelp", lang);
+        OpenRootBtn.Content = AppLanguage.Text("Open", lang);
+        PickRootBtn.Content = AppLanguage.Text("Choose", lang);
+        RootPathText.Text = _config.Config.RootFolder;
+        ToolTip.SetTip(RootPathText, _config.Config.RootFolder); // full path on hover; the label itself ellipsizes
+
+        DataFolderTitle.Text = AppLanguage.Text("DataFolder", lang);
+        DataFolderSub.Text = _isPortable
+            ? AppLanguage.Text("DataFolderPortableHelp", lang)
+            : _isPackaged
+                ? AppLanguage.Text("DataFolderPackagedHelp", lang)
+                : AppLanguage.Text("DataFolderHelp", lang);
+        OpenDataBtn.Content = AppLanguage.Text("Open", lang);
+        ChangeDataBtn.Content = AppLanguage.Text("Change", lang);
+        ChangeDataBtn.IsEnabled = !_isPortable && !_isPackaged;
+        ResetDataBtn.Content = AppLanguage.Text("ResetDefault", lang);
+        ApplyDataInfoLabel(); // re-label from the last measurement; ResetDataBtn.IsEnabled is set inside
+
+        MaintenanceTitle.Text = AppLanguage.Text("Maintenance", lang);
+        MaintenanceSub.Text = AppLanguage.Text("MaintenanceCardSub", lang);
+        ClearCacheBtn.Content = AppLanguage.Text("ClearCache", lang);
+        BackupBtn.Content = AppLanguage.Text("Backup", lang);
+        RestoreBtn.Content = AppLanguage.Text("Restore", lang);
+    }
+
+    /// <summary>Re-render the data-folder path/kind/size lines from <see cref="_dataSizeBytes"/> (the
+    /// last measurement <see cref="RefreshDataInfoAsync"/> took) without touching the disk.</summary>
+    private void ApplyDataInfoLabel()
+    {
+        var lang = UiLanguage;
+        var root = _paths.LocalFolder;
+        var isDefault = !_isPackaged && !_isPortable && DataLocation.IsDefaultLocation(root);
+        var kind = _isPortable
+            ? AppLanguage.Text("DataKindPortable", lang)
+            : _isPackaged
+                ? AppLanguage.Text("DataKindApp", lang)
+                : isDefault ? AppLanguage.Text("DataKindDefault", lang) : AppLanguage.Text("DataKindCustom", lang);
+
+        ResetDataBtn.IsEnabled = !_isPackaged && !_isPortable && !isDefault;
+        DataPathText.Text = root;
+        ToolTip.SetTip(DataPathText, root); // full path on hover; the label itself ellipsizes
+        DataInfoText.Text = _dataSizeBytes < 0
+            ? AppLanguage.Format("CurrentDataPending", lang, kind)
+            : AppLanguage.Format("CurrentDataSize", lang, kind, FormatSize(_dataSizeBytes));
+    }
+
+    /// <summary>Re-measure the data folder's on-disk size and re-apply the path/kind/size lines. The
+    /// cached walk is dropped unconditionally (see <see cref="DataLocation.GetFolderSizeCached"/>) rather
+    /// than trusted from a previous visit — see <see cref="OnAttachedToVisualTree"/>'s remarks.</summary>
+    private async Task RefreshDataInfoAsync()
+    {
+        if (_dataInfoRefreshing)
+            return; // a query from a very-close attach/re-attach (or an explicit caller) is already in flight
+
+        _dataInfoRefreshing = true;
+        try
+        {
+            var root = _paths.LocalFolder;
+            DataLocation.InvalidateFolderSizeCache();
+            var bytes = await Task.Run(() => DataLocation.GetFolderSizeCached(root));
+
+            if (!this.IsAttachedToVisualTree())
+                return; // detached while the walk was running; the next re-attach measures again
+
+            _dataSizeBytes = bytes;
+            ApplyDataInfoLabel();
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "刷新数据文件夹大小失败");
+        }
+        finally
+        {
+            _dataInfoRefreshing = false;
+        }
+    }
+
+    /// <summary>Re-read the data-folder size after a delay (fire-and-forget). Swallows faults — incl. a
+    /// write to a since-closed page — so they never surface as an unobserved task fault.</summary>
+    private async Task RefreshSizeLabelAfterAsync(int delayMs)
+    {
+        try
+        {
+            await Task.Delay(delayMs);
+            await RefreshDataInfoAsync();
+        }
+        catch (Exception ex) { Serilog.Log.Warning(ex, "延迟刷新数据大小标签失败"); }
+    }
+
+    // ---- 主文件夹 ----
+
+    private void OnOpenRootClick(object? sender, RoutedEventArgs e) => RunSafely(async () =>
+    {
+        var folder = _config.Config.RootFolder;
+        if (string.IsNullOrWhiteSpace(folder) || !Directory.Exists(folder))
+        {
+            await ShowInfoAsync(L("RootNotSet"));
+            return;
+        }
+        _launch.OpenFolder(folder);
+    });
+
+    private void OnPickRootClick(object? sender, RoutedEventArgs e) => RunSafely(async () =>
+    {
+        var options = new FolderPickerOpenOptions { Title = L("SelectRootFolder"), AllowMultiple = false };
+        var current = _config.Config.RootFolder;
+        if (!string.IsNullOrEmpty(current) && Directory.Exists(current))
+        {
+            var topLevel = TopLevel.GetTopLevel(this);
+            if (topLevel is not null)
+                options.SuggestedStartLocation = await topLevel.StorageProvider.TryGetFolderFromPathAsync(current);
+        }
+
+        var picked = await PickFolderAsync(options);
+        if (picked is null)
+            return;
+
+        // Applies immediately, like every other control on this page — AppPage rebuilds its categories
+        // the moment SettingsChanged fires below.
+        var previous = _config.Config.RootFolder;
+        _config.Config.RootFolder = picked;
+        RootPathText.Text = picked; // immediate feedback before the save round-trip
+        ToolTip.SetTip(RootPathText, picked);
+        await SettingsWrite.CommitAsync(_config, _events, _host, this,
+            rollback: () => _config.Config.RootFolder = previous,
+            reload: ReloadFromConfig);
+    });
+
+    // ---- 数据文件夹 ----
+
+    private void OnOpenDataClick(object? sender, RoutedEventArgs e) => _launch.OpenFolder(_paths.LocalFolder);
+
+    private void OnChangeDataClick(object? sender, RoutedEventArgs e) => RunSafely(async () =>
+    {
+        // Defence in depth: this button is already disabled in portable/packaged builds (ReloadFromConfig).
+        if (_isPortable)
+        {
+            await ShowInfoAsync(L("PortableDataCannotChange"));
+            return;
+        }
+
+        if (_isPackaged)
+        {
+            await ShowInfoAsync(L("PackagedDataCannotChange"));
+            return;
+        }
+
+        var picked = await PickFolderAsync(new FolderPickerOpenOptions
+        {
+            Title = L("SelectDataFolder"),
+            AllowMultiple = false,
+        });
+        if (picked is null)
+            return;
+
+        // 更改数据文件夹 moves/adopts the user's real data — confirm before acting, like 重置为默认 and 恢复.
+        if (!await ConfirmAsync(L("ChangeDataConfirm", picked), MessageBoxIcon.Warning))
+            return;
+
+        await RelocateDataTo(picked);
+    });
+
+    private void OnResetDataClick(object? sender, RoutedEventArgs e) => RunSafely(async () =>
+    {
+        if (_isPortable)
+        {
+            await ShowInfoAsync(L("PortableDataCannotChange"));
+            return;
+        }
+
+        if (_isPackaged)
+        {
+            await ShowInfoAsync(L("PackagedDataCannotReset"));
+            return;
+        }
+
+        if (DataLocation.IsDefaultLocation(_paths.LocalFolder))
+        {
+            await ShowInfoAsync(L("DataAlreadyDefault"));
+            return;
+        }
+
+        var def = DataLocation.DefaultRoot;
+        if (File.Exists(Path.Combine(def, "config.json")))
+        {
+            // The default location already has a (leftover) config — don't silently adopt it; let the
+            // user choose between using it and overwriting it with the current data.
+            var r = await ShowDialogAsync(L("DefaultDataExists", def), L("ResetToDefault"),
+                MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
+            if (r == MessageBoxResult.Cancel)
+                return;
+            if (r == MessageBoxResult.No)
+            {
+                // Overwrite: remove the leftover config so RelocateDataTo MOVES the current data in.
+                try { File.Delete(Path.Combine(def, "config.json")); }
+                catch (Exception ex)
+                {
+                    await ShowErrorAsync(L("UnableCleanDefaultConfig", ex.Message));
+                    return;
+                }
+            }
+            await RelocateDataTo(def);
+            return;
+        }
+
+        if (!await ConfirmAsync(L("MoveDataConfirm", def), MessageBoxIcon.Question, title: L("ResetToDefault")))
+            return;
+        await RelocateDataTo(def);
+    });
+
+    /// <summary>Move/adopt the data folder at <paramref name="folder"/>, re-point the live paths,
+    /// reload + rebind, and notify the launcher. Shared by 更改… and 重置为默认 — both already confirmed
+    /// with the user before calling this.</summary>
+    private async Task RelocateDataTo(string folder)
+    {
+        bool changed;
+        bool usedExisting;
+        try
+        {
+            changed = DataLocation.Relocate(folder, _paths.LocalFolder, out usedExisting, UiLanguage);
+        }
+        catch (Exception ex)
+        {
+            await ShowErrorAsync(L("ChangeDataFailed", ex.Message));
+            return;
+        }
+
+        if (!changed)
+            return; // same folder
+
+        // Re-point the live data paths, reload config from the new location, rebind, and notify.
+        if (_paths is MutableAppDataPaths mutablePaths)
+            mutablePaths.SetRoot(folder);
+        DataLocation.InvalidateFolderSizeCache(); // data root changed → drop the cached size for the old root
+        await _config.LoadAsync();
+        _events.RaiseSettingsChanged(); // reload every card, incl. this one, from the newly loaded config
+
+        await RefreshDataInfoAsync(); // measure the NEW root's actual size now, not just re-label the old one
+
+        var msg = usedExisting ? L("DataSwitchedExisting") : L("DataMoved");
+        await ShowInfoAsync(msg + "\n\n" + L("EffectiveNow"));
+    }
+
+    // ---- 维护 ----
+
+    private void OnClearCacheClick(object? sender, RoutedEventArgs e) => RunSafely(async () =>
+    {
+        _resolver.ClearCache();
+        _menu.ClearIconCache();
+        _events.RaiseSettingsChanged(); // rebuild the menu: re-resolve links + re-extract icons
+
+        // The link-cache file was just deleted, so the on-disk size shrank — measure and show it now,
+        // then again after the delay below once the rebuild's ~800ms-debounced timer has written it back.
+        await RefreshDataInfoAsync();
+        _ = RefreshSizeLabelAfterAsync(1800);
+
+        await ShowInfoAsync(L("CacheCleared"));
+    });
+
+    private void OnBackupConfigClick(object? sender, RoutedEventArgs e) => RunSafely(async () =>
+    {
+        // No "unapplied changes" warning here (unlike SettingsWindow's BackupConfig_Click): every
+        // control on this page writes straight to the live config, so the saved config IS what is on
+        // screen — there is no staged/unsaved gap for the backup to miss.
+        var path = await PickSaveFileAsync(new FilePickerSaveOptions
+        {
+            Title = L("BackupConfig"),
+            SuggestedFileName = L("BackupFileName"),
+            DefaultExtension = "json",
+            FileTypeChoices = ParseFilter(L("JsonConfigFilter")),
+        });
+        if (string.IsNullOrEmpty(path))
+            return;
+
+        try
+        {
+            await _config.BackupToAsync(path);
+            await ShowInfoAsync(L("BackupSaved", path));
+        }
+        catch (Exception ex)
+        {
+            await ShowErrorAsync(L("BackupFailed", ex.Message));
+        }
+    });
+
+    private void OnRestoreConfigClick(object? sender, RoutedEventArgs e) => RunSafely(async () =>
+    {
+        var path = await PickOpenFileAsync(new FilePickerOpenOptions
+        {
+            Title = L("RestoreConfig"),
+            AllowMultiple = false,
+            FileTypeFilter = ParseFilter(L("AllFilesFilter")),
+        });
+        if (string.IsNullOrEmpty(path))
+            return;
+
+        // 恢复 overwrites the live config wholesale — confirm before acting, like 更改数据文件夹 and 重置为默认.
+        // The dialog's title is the literal product name, not the picker's title (ported verbatim).
+        if (!await ConfirmAsync(L("RestoreConfirm"), MessageBoxIcon.Warning))
+            return;
+
+        if (await _config.RestoreFromAsync(path))
+        {
+            _events.RaiseSettingsChanged(); // reload every card, incl. this one, from the restored config
+            await ShowInfoAsync(L("RestoreSucceeded"));
+        }
+        else
+        {
+            // An IO failure and an invalid file deliberately produce the same message.
+            await ShowErrorAsync(L("RestoreInvalid"));
+        }
+    });
+
+    // ---- Shared plumbing ----
+
+    /// <summary>Run a folder picker and return the chosen local path, or null if cancelled / the chosen
+    /// item has no filesystem path (a shell location such as "This PC"). Brackets the picker with
+    /// SuppressHide — it takes focus, and a user with 失焦自动隐藏 on would otherwise lose the window.</summary>
+    private async Task<string?> PickFolderAsync(FolderPickerOpenOptions options)
+    {
+        var topLevel = TopLevel.GetTopLevel(this);
+        if (topLevel is null)
+            return null;
+
+        _host.SuppressHide(true);
+        try
+        {
+            var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(options);
+            if (folders.Count == 0)
+                return null;
+            var path = folders[0].TryGetLocalPath();
+            return string.IsNullOrEmpty(path) ? null : path;
+        }
+        finally
+        {
+            _host.SuppressHide(false);
+        }
+    }
+
+    /// <summary>Run a save-file picker and return the chosen local path, or null if cancelled. Brackets
+    /// with SuppressHide for the same reason as <see cref="PickFolderAsync"/>.</summary>
+    private async Task<string?> PickSaveFileAsync(FilePickerSaveOptions options)
+    {
+        var topLevel = TopLevel.GetTopLevel(this);
+        if (topLevel is null)
+            return null;
+
+        _host.SuppressHide(true);
+        try
+        {
+            var file = await topLevel.StorageProvider.SaveFilePickerAsync(options);
+            return file?.TryGetLocalPath();
+        }
+        finally
+        {
+            _host.SuppressHide(false);
+        }
+    }
+
+    /// <summary>Run an open-file picker and return the chosen local path, or null if cancelled. Brackets
+    /// with SuppressHide for the same reason as <see cref="PickFolderAsync"/>.</summary>
+    private async Task<string?> PickOpenFileAsync(FilePickerOpenOptions options)
+    {
+        var topLevel = TopLevel.GetTopLevel(this);
+        if (topLevel is null)
+            return null;
+
+        _host.SuppressHide(true);
+        try
+        {
+            var files = await topLevel.StorageProvider.OpenFilePickerAsync(options);
+            return files.Count > 0 ? files[0].TryGetLocalPath() : null;
+        }
+        finally
+        {
+            _host.SuppressHide(false);
+        }
+    }
+
+    /// <summary>Turn a legacy Win32 filter resource ("名称 (*.json)|*.json|所有文件 (*.*)|*.*") into
+    /// Avalonia's structured picker types, so the localized filter strings keep working verbatim.</summary>
+    private static List<FilePickerFileType> ParseFilter(string filter)
+    {
+        var parts = filter.Split('|');
+        var types = new List<FilePickerFileType>();
+        for (var i = 0; i + 1 < parts.Length; i += 2)
+        {
+            types.Add(new FilePickerFileType(parts[i].Trim())
+            {
+                Patterns = parts[i + 1].Split(';',
+                    StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
+            });
+        }
+        return types;
+    }
+
+    private static string FormatSize(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:0.#} KB";
+        return $"{bytes / (1024.0 * 1024):0.#} MB";
+    }
+
+    /// <summary>Show a modal message box, bracketed with SuppressHide — it takes focus, and a user with
+    /// 失焦自动隐藏 on would otherwise lose the window out from under the dialog. Every info/error/confirm
+    /// helper below routes through this one method so the bracket can never be forgotten at a call site.</summary>
+    private async Task<MessageBoxResult> ShowDialogAsync(string message, string title,
+        MessageBoxButtons buttons, MessageBoxIcon icon)
+    {
+        _host.SuppressHide(true);
+        try
+        {
+            return await MessageBox.ShowAsync(TopLevel.GetTopLevel(this) as Window, message, title, buttons, icon);
+        }
+        finally
+        {
+            _host.SuppressHide(false);
+        }
+    }
+
+    private Task<MessageBoxResult> ShowInfoAsync(string message) =>
+        ShowDialogAsync(message, "TanMenu", MessageBoxButtons.Ok, MessageBoxIcon.Info);
+
+    private Task<MessageBoxResult> ShowErrorAsync(string message) =>
+        ShowDialogAsync(message, "TanMenu", MessageBoxButtons.Ok, MessageBoxIcon.Error);
+
+    private async Task<bool> ConfirmAsync(string message, MessageBoxIcon icon, string? title = null) =>
+        await ShowDialogAsync(message, title ?? "TanMenu", MessageBoxButtons.OkCancel, icon) == MessageBoxResult.Ok;
+
+    /// <summary>Run an async click handler without letting a fault escape the event — same rationale as
+    /// <c>SettingsWindow.RunSafely</c> / <c>BehaviorCard.RunSafely</c>: Avalonia has no WPF-style global
+    /// DispatcherUnhandledException hook, so an escaping async-void fault would tear the process down,
+    /// and logging is the floor.</summary>
+    private static async void RunSafely(Func<Task> action)
+    {
+        try { await action(); }
+        catch (Exception ex) { Serilog.Log.Error(ex, "文件夹设置操作失败"); }
+    }
+}

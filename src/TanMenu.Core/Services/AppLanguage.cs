@@ -93,6 +93,11 @@ public static class AppLanguage
             ["ClearCache"] = ("清理缓存", "Clear Cache"),
             ["Backup"] = ("备份…", "Back Up..."),
             ["Restore"] = ("恢复…", "Restore..."),
+            // The 设置 page's 文件夹 group (Task 10) gives 清理缓存/备份/恢复 their own labelled card —
+            // the old TabItem-based dialog just floated these three buttons at the bottom of its 文件夹
+            // tab with no heading, so this pair is new wording rather than ported text.
+            ["Maintenance"] = ("维护", "Maintenance"),
+            ["MaintenanceCardSub"] = ("清理菜单缓存，或备份、恢复配置文件", "Clear the menu cache, or back up and restore your config file"),
             ["DataKindApp"] = ("应用数据", "App data"),
             ["DataKindPortable"] = ("绿色版", "Portable"),
             ["DataKindDefault"] = ("默认", "Default"),
@@ -138,6 +143,11 @@ public static class AppLanguage
             ["ResetToDefault"] = ("重置为默认", "Reset to Default"),
             ["UnableCleanDefaultConfig"] = ("无法清理默认位置的现有配置：{0}", "Could not clean existing config at the default location: {0}"),
             ["MoveDataConfirm"] = ("将把当前数据移回默认位置：\n{0}\n\n确定？", "Move current data back to the default location:\n{0}\n\nContinue?"),
+            // 更改数据文件夹 has no pre-action confirmation in the old TabItem-based dialog (it picks a
+            // folder and relocates immediately, only informing after the fact) — the 设置 page (Task 10)
+            // adds one deliberately, since 更改/重置/恢复 are the three actions on this page that move or
+            // overwrite real user data rather than just a setting.
+            ["ChangeDataConfirm"] = ("将把数据文件夹更改到：\n{0}\n\n配置和缓存会移动到新位置，且立即生效。确定？", "The data folder will change to:\n{0}\n\nConfig and caches will move to the new location, effective immediately. Continue?"),
             ["ChangeDataFailed"] = ("更改数据文件夹失败：{0}", "Failed to change data folder: {0}"),
             ["DataSwitchedExisting"] = ("已切换到目标文件夹中的现有数据。", "Switched to the existing data in the target folder."),
             ["DataMoved"] = ("已将当前数据移动到新文件夹。", "Moved current data to the new folder."),
