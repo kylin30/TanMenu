@@ -1,0 +1,49 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="TanMenu.Wpf.Views.Settings.UpdatesCard">
+  <!-- Two Windows 11 Settings-style cards, last in the page: 当前版本 (icon, a bold version line, and a
+       channel-specific help line — portable/Store/disabled, ported verbatim from SettingsWindow's
+       UpdateHelpText), and an update-status card whose title IS the dynamic status line itself — there
+       is no separate static title the way every other card's Grid.Column=1 stack has one, because
+       SettingsWindow's own 更新 tab never had one either, just UpdateStatusText. The ProgressBar and the
+       检查更新/下载更新 buttons sit on their own full-width rows below, indented 30px (the icon column's
+       width + its right margin) to align under the title — same below-row placement FoldersCard's
+       maintenance row uses, for the same reason: two buttons plus a progress bar leave no room in a
+       shared trailing column at the app's documented minimum width. Column 2 is therefore deliberately
+       empty on the status card's Grid.
+
+       Icons: &#xE946; (info) matches InfoBar's own info glyph; &#xE896; is the exact glyph AppPage's
+       update-notice banner uses, reused here so both update entry points read as the same feature. -->
+  <StackPanel>
+    <TextBlock x:Name="GroupHead" Classes="tm-group-head" />
+
+    <Border Classes="tm-card">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <TextBlock Grid.Column="0" Classes="tm-icon" Text="&#xE946;" Margin="0,0,14,0" VerticalAlignment="Center" />
+        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,12,0">
+          <TextBlock x:Name="CurrentVersionText" Classes="tm-card-title" />
+          <TextBlock x:Name="UpdateHelpText" Classes="tm-card-sub" />
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <Border Classes="tm-card">
+      <StackPanel>
+        <Grid ColumnDefinitions="Auto,*,Auto">
+          <TextBlock Grid.Column="0" Classes="tm-icon" Text="&#xE896;" Margin="0,0,14,0" VerticalAlignment="Center" />
+          <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,12,0">
+            <TextBlock x:Name="UpdateStatusText" Classes="tm-card-title" TextWrapping="Wrap" />
+          </StackPanel>
+          <!-- Column 2 deliberately empty here — see the class-level remark above. -->
+        </Grid>
+        <ProgressBar x:Name="UpdateProgress" Height="4" Minimum="0" Maximum="100" IsVisible="False"
+                     Margin="30,10,0,0" />
+        <StackPanel Orientation="Horizontal" Spacing="8" Margin="30,10,0,0">
+          <Button x:Name="CheckUpdateBtn" Click="OnCheckUpdateClick" Padding="14,5" VerticalAlignment="Center" />
+          <Button x:Name="UpdateActionBtn" Click="OnUpdateActionClick" Padding="14,5" VerticalAlignment="Center"
+                  IsVisible="False" />
+        </StackPanel>
+      </StackPanel>
+    </Border>
+  </StackPanel>
+</UserControl>

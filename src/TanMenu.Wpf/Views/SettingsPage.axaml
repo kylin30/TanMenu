@@ -16,6 +16,7 @@
       <cards:BehaviorCard x:Name="Behavior" />
       <cards:FoldersCard x:Name="Folders" />
       <cards:ToolsCard x:Name="Tools" />
+      <cards:UpdatesCard x:Name="Updates" />
     </StackPanel>
   </ScrollViewer>
 </UserControl>
