@@ -6,8 +6,8 @@
              x:DataType="vm:LauncherViewModel">
 
   <!-- The launcher proper. The window shell owns the title bar and the navigation rail; everything
-       here is the 应用 page: search, the taskbar-pin notice (Task 7), the categories, and the three
-       non-menu states (loading, nothing configured, nothing matched). -->
+       here is the 应用 page: search, the overflow menu, the update notice, the categories, and the
+       three non-menu states (loading, nothing configured, nothing matched). -->
 
   <Panel x:Name="Root"
          Background="Transparent"
@@ -93,7 +93,7 @@
           <StackPanel Margin="{DynamicResource SurfacePadding}" Spacing="14">
 
             <!-- Update notice. Only for Available / Downloading / ReadyToRestart. MinWidth is
-                 deliberate anti-jitter: without it the popup's width would change as the "…42%"
+                 deliberate anti-jitter: without it the page's width would change as the "…42%"
                  text grows and shrinks during a download. -->
             <Button Classes="tm-update"
                     IsVisible="{Binding ShowUpdateNotice}"

@@ -53,10 +53,6 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
     private static readonly string AppVersion =
         Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "1.0.0";
 
-    /// <summary>Font used when <c>General.FontFamily</c> is blank. Defined once by
-    /// <see cref="AppFonts.Default"/> so the launcher and the standard controls agree.</summary>
-    private static FontFamily ThemeChromeFont => AppFonts.Default;
-
     public LauncherViewModel(
         MenuService menu,
         ConfigService configService,
@@ -298,15 +294,6 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
     // ══════════════════════════════════════════════════════════════════════════════════════════
 
     /// <summary>
-    /// The configured font, applied to the whole window. In Avalonia the family is inherited by every
-    /// text-bearing control, so unlike the CSS build there is no per-control override to fight — but
-    /// the requirement is the same: the setting must reach the launcher BUTTON text, not just the
-    /// chrome. A blank setting falls back to the theme's own chrome font; a garbage name degrades
-    /// through the trailing fallbacks rather than rendering as tofu.
-    /// </summary>
-    public FontFamily WindowFontFamily => AppFonts.Resolve(_cfg.General.FontFamily, whenBlank: ThemeChromeFont);
-
-    /// <summary>
     /// The face for Subtitle-sized text (20 px). Windows 11 switches Segoe UI Variable to its
     /// Display optical size at 18 px and up — but only when the user has NOT chosen a font of their
     /// own, because a font setting that stopped applying to headings would look like a bug.
@@ -328,7 +315,6 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
 
     private void RaiseAppearanceChanged()
     {
-        RaisePropertyChanged(nameof(WindowFontFamily));
         RaisePropertyChanged(nameof(TitleFontFamily));
         RaisePropertyChanged(nameof(IsSmallButtons));
         RaisePropertyChanged(nameof(IsMediumButtons));

@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Media;
 using Microsoft.Extensions.DependencyInjection;
 using TanMenu.Core.Services;
@@ -17,8 +18,14 @@ namespace TanMenu.Wpf;
 public partial class MainWindow : Window
 {
     private readonly IWindowHost _host;
+    private readonly AppEvents _events;
     private readonly AppPage _appPage = new();
     private Control? _settingsPage;
+
+    // Guards OnNavSelectionChanged against the SelectionChanged events XAML's own SelectedIndex="0"
+    // (and Attach's own ShowPage call, if a navigation arrived before the window existed) raise
+    // synchronously WHILE this constructor is still running — see OnNavSelectionChanged.
+    private bool _navReady;
 
     public MainWindow()
     {
@@ -30,11 +37,13 @@ public partial class MainWindow : Window
         // AppLanguage/AppFonts have no change notification of their own, so both the rail labels and
         // the window font are re-applied on every SettingsChanged — the same imperative approach
         // SettingsWindow already uses for its own font.
-        var events = App.Services.GetRequiredService<AppEvents>();
-        events.SettingsChanged += ApplyWindowFont;
-        events.SettingsChanged += ApplyRailText;
+        _events = App.Services.GetRequiredService<AppEvents>();
+        _events.SettingsChanged += ApplyWindowFont;
+        _events.SettingsChanged += ApplyRailText;
         ApplyWindowFont();
         ApplyRailText();
+
+        _navReady = true;
     }
 
     protected override void OnOpened(EventArgs e)
@@ -48,15 +57,43 @@ public partial class MainWindow : Window
         var host = _host as WindowHost;
         host?.Attach(this);
         host?.RestorePlacement();
+
+        // The startup build begins here, after the window is actually shown — never from AppPage's
+        // own constructor, which runs earlier (as MainWindow's field initializer, before Show()) and
+        // would make the first-summon gate in LauncherViewModel.InitializeAsync/HandleLauncherShownAsync
+        // timing-dependent on whether the build finishes before Show() instead of strictly ordered
+        // after it, as it was before this class existed.
+        _appPage.BeginInitialize();
     }
 
     protected override void OnClosed(EventArgs e)
     {
+        _events.SettingsChanged -= ApplyWindowFont;
+        _events.SettingsChanged -= ApplyRailText;
+
         // AppPage's view model is disposed here, not on the page's own Unloaded: OnClosed only fires
         // at real application exit (OnClosing below cancels every other close), while the app page
         // itself is a field kept alive and reattached every time the rail switches back to 应用.
         _appPage.Dispose();
         base.OnClosed(e);
+    }
+
+    /// <summary>
+    /// Escape reaches here only when focus was NOT inside <see cref="AppPage"/> — e.g. a nav-rail row.
+    /// AppPage's own <c>OnKeyDown</c> already handles Escape (and marks it handled) for the search box
+    /// and the tile grid, matching the clear-then-hide behaviour it always had. Before the rail existed,
+    /// this window's own OnKeyDown handled Escape identically regardless of where focus was — routing
+    /// this fallback through the same view-model call (rather than an unconditional Hide) keeps that
+    /// behaviour rather than merely approximating it.
+    /// </summary>
+    protected override void OnKeyDown(KeyEventArgs e)
+    {
+        base.OnKeyDown(e);
+        if (e.Handled || e.Key != Key.Escape)
+            return;
+
+        _appPage.HandleGlobalEscape();
+        e.Handled = true;
     }
 
     /// <summary>Mica is a request, not a guarantee: Windows 10, "show transparency" turned off and
@@ -82,9 +119,12 @@ public partial class MainWindow : Window
         base.OnClosing(e);
     }
 
-    /// <summary>Swap the page host's content. Both pages are constructed lazily and then kept alive:
-    /// the app page holds the built menu and the settings page holds staged control state, and
-    /// rebuilding either on every rail click would be visible.</summary>
+    /// <summary>Swap the page host's content. <see cref="_appPage"/> is built eagerly (a field
+    /// initializer, before this constructor even runs) since it holds the launcher's real state; the
+    /// settings placeholder — a bare <see cref="TextBlock"/> until Task 8 replaces it with a real
+    /// settings page — is built lazily, the first time it is shown. Both are then kept alive rather
+    /// than rebuilt on every rail click, which matters once the placeholder becomes a real page with
+    /// its own staged control state.</summary>
     public void ShowPage(ShellPage page)
     {
         NavRail.SelectedIndex = page == ShellPage.Settings ? 1 : 0;
@@ -95,10 +135,17 @@ public partial class MainWindow : Window
 
     private void OnNavSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
-        // MUST read SelectedIndex off the sender, not the NavRail field: XAML's SelectedIndex="0"
-        // raises this SAME event synchronously during InitializeComponent's EndInit, before the
-        // generated populate code has assigned this.NavRail — reading the field there null-refs.
-        if (sender is not ListBox rail)
+        // Ignored until the constructor finishes (_navReady): XAML's SelectedIndex="0" — and,
+        // once a real navigation can arrive before the window exists (Task 13's tray path),
+        // Attach's own ShowPage call — both raise this event synchronously during construction.
+        // ShowPage already applies NavRail.SelectedIndex and PageHost.Content directly, so nothing
+        // is lost by discarding a SelectionChanged that fires before the shell is ready; letting it
+        // through would instead let Navigate(App) (this event's own read of a freshly-defaulted
+        // SelectedIndex="0") clobber a Current a pre-construction Navigate(Settings) had already set.
+        //
+        // MUST read SelectedIndex off the sender, not the NavRail field: this event can fire before
+        // the generated populate code has assigned this.NavRail — reading the field there null-refs.
+        if (!_navReady || sender is not ListBox rail)
             return;
 
         App.Services.GetRequiredService<ShellNavigator>()

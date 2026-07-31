@@ -19,21 +19,34 @@ namespace TanMenu.Wpf.Views;
 public partial class AppPage : UserControl, IDisposable
 {
     private readonly LauncherViewModel _viewModel;
-    private readonly IWindowHost _host;
+
+    // Not yet consumed anywhere in THIS task — the brief's own constructor snippet wires it up
+    // verbatim ahead of the tasks that will actually call it (the settings entry points Task 8+ add).
     private readonly IShellNavigator _navigator;
 
     public AppPage()
     {
         InitializeComponent();
 
-        _host = App.Services.GetRequiredService<IWindowHost>();
         _navigator = App.Services.GetRequiredService<IShellNavigator>();
         _viewModel = LauncherViewModel.Create(App.Services);
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
         DataContext = _viewModel;
-
-        _ = _viewModel.InitializeAsync();
     }
+
+    /// <summary>Kick off the menu build. Deliberately NOT done in the constructor: this control is
+    /// constructed while the shell is still being built — MainWindow's own field initializer runs
+    /// before <c>InitializeComponent</c>, before <c>Show()</c> — and the launcher's startup contract
+    /// is that the build begins strictly after the window is shown. Called once, from
+    /// <c>MainWindow.OnOpened</c>, in the same position the pre-split window called
+    /// <c>LauncherViewModel.InitializeAsync</c> from.</summary>
+    public void BeginInitialize() => _ = _viewModel.InitializeAsync();
+
+    /// <summary>Escape from anywhere in the shell that this control's own <see cref="OnKeyDown"/> never
+    /// sees — currently, a focused nav-rail row — still needs the exact clear-then-hide semantic the
+    /// search box's Escape uses, since the pre-split window applied that same logic regardless of
+    /// where focus was. Called from <c>MainWindow.OnKeyDown</c>'s fallback.</summary>
+    public void HandleGlobalEscape() => _viewModel.HandleSearchEscape();
 
     /// <summary>Dispose the owned view model. Called exactly once, from <c>MainWindow.OnClosed</c> —
     /// the only path that fires at real application exit, since <c>MainWindow.OnClosing</c> hides to
