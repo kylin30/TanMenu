@@ -62,10 +62,12 @@ public sealed partial class GlobalHotkeyService : IDisposable
             return IntPtr.Zero;
         }
 
-        if (msg == unchecked((uint)Program.WmShowFirstInstance))
+        // Registered messages are never zero when registration succeeded; guarding against zero stops
+        // a failed registration from turning every stray message into a show request.
+        if (Program.ShowFirstInstanceMessage != 0 && msg == Program.ShowFirstInstanceMessage)
         {
-            // Deliberately SHOW, never toggle: clicking the taskbar pin again must not hide the
-            // launcher the user just asked for.
+            // Deliberately SHOW, never toggle: clicking the taskbar pin again must not hide the window
+            // the user just asked for.
             _host.ShowAndActivate();
             handled = true;
         }

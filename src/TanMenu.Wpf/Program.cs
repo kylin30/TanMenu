@@ -15,15 +15,7 @@ namespace TanMenu.Wpf;
 /// </summary>
 public static partial class Program
 {
-    /// <summary>Custom message a second instance posts to resurface the first (<c>WM_APP + 1</c>).</summary>
-    public const int WmShowFirstInstance = 0x8000 + 1;
-
     private const string SingleInstanceMutexName = "TanMenuWpf";
-
-    /// <summary>Window title the launcher must carry. <see cref="SignalFirstInstance"/> locates the
-    /// running instance with <c>FindWindow(null, title)</c>, so this string is protocol, not cosmetics:
-    /// renaming it silently breaks second-instance activation (i.e. clicking the taskbar pin).</summary>
-    public const string MainWindowTitle = "TanMenuWpf";
 
     [STAThread]
     public static int Main(string[] args)
@@ -88,20 +80,35 @@ public static partial class Program
             .UsePlatformDetect()
             .LogToTrace();
 
-    /// <summary>Best-effort: ask an already-running instance to resurface. If the first instance is
-    /// still starting and its window does not exist yet the signal is silently dropped — no retry, no
-    /// error dialog; this second process simply exits.</summary>
+    /// <summary>Broadcast message a second instance posts to resurface the first.
+    /// <para>
+    /// Registered by NAME rather than addressed to a window found by caption. The caption used to be
+    /// protocol (<c>FindWindow(null, "TanMenuWpf")</c>), which forced the visible window title to be
+    /// the internal name; now that the window lives in the taskbar and Alt+Tab that title is
+    /// user-visible, and matching "TanMenu" by caption would be unsafe because the data folder is also
+    /// called TanMenu and an Explorer window could match first.
+    /// </para></summary>
+    private const string ShowFirstInstanceMessageName = "TanMenuWpf.ShowFirstInstance";
+
+    /// <summary>The registered message id, identical in every process that registers the same string.
+    /// Zero if registration failed, in which case second-instance activation degrades to a no-op.</summary>
+    public static uint ShowFirstInstanceMessage { get; } = RegisterWindowMessageW(ShowFirstInstanceMessageName);
+
+    private const int HwndBroadcast = 0xFFFF;
+
+    /// <summary>Best-effort: ask an already-running instance to resurface. If the first instance has not
+    /// installed its message hook yet the broadcast is silently dropped — no retry, no error dialog;
+    /// this second process simply exits.</summary>
     private static void SignalFirstInstance()
     {
-        var existing = FindWindowW(null, MainWindowTitle);
-        if (existing != IntPtr.Zero)
-            PostMessageW(existing, WmShowFirstInstance, IntPtr.Zero, IntPtr.Zero);
+        if (ShowFirstInstanceMessage != 0)
+            PostMessageW((IntPtr)HwndBroadcast, ShowFirstInstanceMessage, IntPtr.Zero, IntPtr.Zero);
     }
 
-    [LibraryImport("user32.dll", EntryPoint = "FindWindowW", StringMarshalling = StringMarshalling.Utf16)]
-    private static partial IntPtr FindWindowW(string? lpClassName, string? lpWindowName);
+    [LibraryImport("user32.dll", EntryPoint = "RegisterWindowMessageW", StringMarshalling = StringMarshalling.Utf16)]
+    private static partial uint RegisterWindowMessageW(string lpString);
 
     [LibraryImport("user32.dll", EntryPoint = "PostMessageW")]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static partial bool PostMessageW(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+    private static partial bool PostMessageW(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
 }
