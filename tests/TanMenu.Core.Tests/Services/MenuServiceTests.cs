@@ -88,6 +88,51 @@ public sealed class MenuServiceTests
         }
     }
 
+    /// <summary>
+    /// A hand-edited <c>config.json</c> can contain <c>"defaultTools": [null, {...}]</c> — the
+    /// source-generated JSON context does not enforce non-null on deserialization despite
+    /// <c>DefaultTools</c>'s C# element type being non-nullable — and before the Task 13 hardening this
+    /// null-forgiving <c>!</c> stands in for exactly that deserialization gap. Both
+    /// <c>MenuService.ComputeFingerprint</c> and <c>BuildDefaultToolsGroup</c> used to
+    /// <see cref="NullReferenceException"/> on the null element; this pins that the build instead skips
+    /// it and still renders every valid entry.
+    /// </summary>
+    [Fact]
+    public async Task BuildMenuAsync_SkipsNullDefaultToolsElementInsteadOfThrowing()
+    {
+        var testRoot = CreateTempDirectory();
+        try
+        {
+            var menuRoot = Path.Combine(testRoot, "menu");
+            Directory.CreateDirectory(menuRoot); // no subfolders — isolates this test to the tools group
+
+            var paths = new AppDataPaths(
+                Path.Combine(testRoot, "data"),
+                Path.Combine(testRoot, "cache"));
+            paths.EnsureCreated();
+
+            using var service = CreateService(paths, new FakeIconProvider([1]));
+            var general = new GeneralConfig
+            {
+                ShowDefaultTools = true,
+                DefaultTools = new List<DefaultTool>
+                {
+                    null!,
+                    new() { Name = "计算器", Command = "calc.exe" },
+                },
+            };
+
+            var result = await service.BuildMenuAsync(menuRoot, general, null);
+
+            var toolsGroup = Assert.Single(result.Groups);
+            Assert.Single(toolsGroup.Items); // the null element is skipped; calc.exe still renders
+        }
+        finally
+        {
+            Directory.Delete(testRoot, true);
+        }
+    }
+
     private static MenuService CreateService(IAppDataPaths paths, IIconProvider icons)
     {
         var data = new MenuDataService(new FakeShortcutResolver(), NullLogger<MenuDataService>.Instance);

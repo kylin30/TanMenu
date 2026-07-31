@@ -453,7 +453,9 @@ public sealed class MenuService : IDisposable
         var items = new List<MenuItemVm>();
         foreach (var t in tools)
         {
-            if (!t.Show || string.IsNullOrWhiteSpace(t.Command))
+            // A null element (see ComputeFingerprint's matching remark) would otherwise NullReferenceException
+            // on t.Show below; skip it exactly like an unresolvable/blank Command already is.
+            if (t is null || !t.Show || string.IsNullOrWhiteSpace(t.Command))
                 continue;
 
             var resolved = ResolveCommandPath(t.Command);
@@ -545,6 +547,16 @@ public sealed class MenuService : IDisposable
         hc.Add(AppLanguage.Resolve(language));
         foreach (var t in tools)
         {
+            // A null element is reachable from a hand-edited config.json ("defaultTools": [null, {...}])
+            // despite the non-nullable C# element type — the source-generated JSON context does not
+            // enforce non-null on deserialization. Folded as a stable marker rather than skipped
+            // silently: a config edit that removes/adds the malformed entry must still change the
+            // fingerprint, or the rebuild it needs would be gated out by "nothing changed".
+            if (t is null)
+            {
+                hc.Add(0);
+                continue;
+            }
             hc.Add(t.Name);
             hc.Add(t.Command);
             hc.Add(t.Show);
