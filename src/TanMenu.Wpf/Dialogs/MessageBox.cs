@@ -72,12 +72,13 @@ public static class MessageBox
         window.Configure(message, title, buttons, icon, ResolveLanguage());
 
         // A HIDDEN owner is treated as no owner. Avalonia's ShowDialog throws
-        // InvalidOperationException("Cannot show window with non-visible owner."), and the launcher's
-        // resting state IS hidden (hide-on-blur, General.AutoClose defaults true). Callers routinely
-        // pass IWindowHost.Window — e.g. the hotkey-registration warning raised from the settings
-        // window opened via the tray, when the launcher was never shown. WPF's owner overload
-        // tolerated a hidden owner, so without this the warning silently disappeared into a discarded
-        // Task and the user was left believing a rejected hotkey had bound.
+        // InvalidOperationException("Cannot show window with non-visible owner."), and the main window
+        // is routinely hidden at this point — closed to the tray, toggled off by the hotkey or tray
+        // icon, or (only if the user opted into 失焦自动隐藏, off by default now) hidden on blur.
+        // Callers routinely pass IWindowHost.Window — e.g. the hotkey-registration warning raised from
+        // the settings window opened via the tray, while the main window sits hidden. WPF's owner
+        // overload tolerated a hidden owner, so without this the warning silently disappeared into a
+        // discarded Task and the user was left believing a rejected hotkey had bound.
         var effectiveOwner = owner is { IsVisible: true } ? owner : null;
 
         window.WindowStartupLocation = effectiveOwner is null

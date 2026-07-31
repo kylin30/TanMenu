@@ -7,16 +7,18 @@ namespace TanMenu.Wpf.Controls;
 /// A stacking panel whose FIRST child alone determines the desired size; every later child is an
 /// overlay measured against that size and arranged over the whole panel.
 /// <para>
-/// This exists because the launcher window is content-sized (<c>SizeToContent</c>): the About panel
-/// and the error toast must be able to cover the window without ever changing what the window
-/// measures to. The old WebView build got this for free — both were <c>position:fixed</c>, which
-/// contributes no layout size (launcher spec §7 and §9). A plain <see cref="Panel"/> would take the
-/// MAX of all children, so opening About or showing a toast would resize and re-place the popup.
+/// Written for the content-sized (<c>SizeToContent</c>) launcher popup: the About panel and the error
+/// toast had to cover the window without ever changing what the window measured to (a plain
+/// <see cref="Panel"/> would take the MAX of all children, so opening About or showing a toast would
+/// resize and re-place the popup). The old WebView build got this for free — both were
+/// <c>position:fixed</c>, which contributes no layout size (launcher spec §7 and §9).
 /// </para>
 /// <para>
-/// Overlays are measured against the first child's desired size rather than the raw (often infinite)
-/// constraint so that width-dependent behavior still works — e.g. the toast's single-line text
-/// ellipsises against the real content width instead of growing without bound.
+/// The window has been a fixed, user-resized application window since 0.12 and no longer sizes
+/// itself from content, so this panel's own DesiredSize no longer feeds back into the window. It stays
+/// in place because it still shapes how the OVERLAYS themselves measure: they see the first child's
+/// (the main surface's) desired width rather than the raw available size, so the toast's single-line
+/// text still ellipsises against the real content width instead of an unconstrained one.
 /// </para>
 /// </summary>
 public sealed class OverlayPanel : Panel

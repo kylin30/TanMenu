@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,21 +13,15 @@ using TanMenu.Wpf.ViewModels;
 namespace TanMenu.Wpf;
 
 /// <summary>
-/// The launcher popup. All state lives in <see cref="LauncherViewModel"/>; this class is the thin
-/// view layer: it wires clicks and keys to the view model, performs the one-shot reveal, and owns the
-/// three things that genuinely need the visual tree — deferred search focus, the acrylic fallback,
-/// and geometric keyboard navigation across the tile grid.
+/// The main launcher window. All state lives in <see cref="LauncherViewModel"/>; this class is the
+/// thin view layer: it wires clicks and keys to the view model, and owns the three things that
+/// genuinely need the visual tree — deferred search focus, the Mica fallback, and geometric keyboard
+/// navigation across the tile grid.
 /// </summary>
 public partial class MainWindow : Window
 {
-    // partial so the source-generated LibraryImport stub below can live here (NativeAOT: no
-    // marshalling IL is generated at run time).
     private readonly LauncherViewModel _viewModel;
     private readonly IWindowHost _host;
-
-    // One-shot latch: the reveal happens on the first layout pass in which the REAL content exists
-    // (the menu, or the empty state after a failed build) — never on the loading splash.
-    private bool _revealed;
 
     public MainWindow()
     {
@@ -43,14 +38,13 @@ public partial class MainWindow : Window
         base.OnOpened(e);
 
         ApplyBackdrop();
-        ApplyRoundedCorners();
 
-        // The host owns show/hide/size/place and needs the window once its HWND exists. The DI
+        // The host owns show/hide/placement and needs the window once its HWND exists. The DI
         // registration deliberately hands out the same instance for IWindowHost and WindowHost.
-        (_host as WindowHost)?.Attach(this);
+        var host = _host as WindowHost;
+        host?.Attach(this);
+        host?.RestorePlacement();
 
-        // The build runs on a background STA worker; the window stays fully transparent until it
-        // finishes and the reveal below runs.
         _ = _viewModel.InitializeAsync();
     }
 
@@ -61,82 +55,46 @@ public partial class MainWindow : Window
         base.OnClosed(e);
     }
 
-    /// <summary>
-    /// Acrylic is a request, not a guarantee: remote desktop, "show transparency" turned off, and
-    /// some GPU paths all refuse it, and the window would then be a hole rather than a surface. When
-    /// the platform did not grant transparency, paint the opaque Fluent surface colour instead.
-    /// </summary>
+    /// <summary>Mica is a request, not a guarantee: Windows 10, "show transparency" turned off and
+    /// remote desktop all refuse it, and the window would then be a hole rather than a surface. Paint
+    /// the opaque Fluent surface colour when it was not granted. (Same guard SettingsWindow used.)</summary>
     private void ApplyBackdrop()
     {
-        var granted = ActualTransparencyLevel != WindowTransparencyLevel.None;
-        Acrylic.IsVisible = granted;
-        OpaqueFallback.IsVisible = !granted;
+        if (ActualTransparencyLevel != WindowTransparencyLevel.Mica)
+            Background = this.FindResource("SurfaceBaseBrush") as IBrush ?? Brushes.White;
     }
 
-    /// <summary>
-    /// Ask DWM to round the window, which is what makes this a Windows 11 window rather than a
-    /// rectangle with rounded paint inside it.
-    /// </summary>
-    /// <remarks>
-    /// Windows 11 rounds ordinary windows automatically, but NOT a borderless one — and this window
-    /// has no decorations at all. Without the attribute the drawn 8 px surface would sit inside
-    /// square window edges, and the shadow DWM casts would be square too. Windows 10 does not know
-    /// the attribute and fails the call harmlessly, which is why the result is ignored.
-    /// </remarks>
-    private void ApplyRoundedCorners()
+    /// <summary>Closing hides to the tray; the app exits only through 退出 (tray menu or overflow
+    /// menu), which calls <see cref="App.ExitApp"/> and shuts the lifetime down explicitly.</summary>
+    protected override void OnClosing(WindowClosingEventArgs e)
     {
-        try
+        if (!App.IsExiting)
         {
-            var handle = TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
-            if (handle == IntPtr.Zero)
-                return;
+            e.Cancel = true;
+            _host.Hide();
+            return;
+        }
 
-            var preference = DwmWindowCornerPreferenceRound;
-            _ = DwmSetWindowAttribute(handle, DwmWindowCornerPreference, ref preference, sizeof(int));
-        }
-        catch (DllNotFoundException)
-        {
-            // dwmapi.dll is present on every supported Windows; guard anyway rather than let a
-            // decoration concern take the launcher down.
-        }
+        base.OnClosing(e);
     }
-
-    private const int DwmWindowCornerPreference = 33; // DWMWA_WINDOW_CORNER_PREFERENCE
-    private const int DwmWindowCornerPreferenceRound = 2; // DWMWCP_ROUND
-
-    [System.Runtime.InteropServices.LibraryImport("dwmapi.dll")]
-    private static partial int DwmSetWindowAttribute(
-        IntPtr hwnd, int attribute, ref int value, int size);
 
     // ══════════════════════════════════════════════════════════════════════════════════════════
-    // Reveal + deferred focus
+    // Deferred focus
     // ══════════════════════════════════════════════════════════════════════════════════════════
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is not (nameof(LauncherViewModel.LoadedOnce)
-            or nameof(LauncherViewModel.HasGroups)
-            or nameof(LauncherViewModel.PendingFocus)))
+        if (e.PropertyName is not nameof(LauncherViewModel.PendingFocus))
             return;
 
         // Loaded priority sits one step below the priority Avalonia runs layout at, so by the time
         // this callback fires the property change has already been measured and arranged — i.e. the
-        // window has its final desired size and the search box exists if it is going to.
+        // search box exists if it is going to.
         Dispatcher.UIThread.Post(ConsumePendingViewWork, DispatcherPriority.Loaded);
     }
 
     private void ConsumePendingViewWork()
     {
-        if (!_revealed && _viewModel.LoadedOnce)
-        {
-            _revealed = true;
-            // Size + place happen inside, BEFORE the window becomes visually present, so a cold start
-            // never flashes an unsized rectangle at screen top-left.
-            _host.ShowAndActivate();
-        }
-
-        // Unlike the retro layout, the search box is now in the header and therefore always present,
-        // so this no longer has to wait for groups to exist.
         if (_viewModel.PendingFocus)
         {
             _viewModel.PendingFocus = false;
@@ -146,7 +104,7 @@ public partial class MainWindow : Window
             }
             catch
             {
-                /* focus is a nicety; never let it take the reveal down */
+                /* focus is a nicety; never let it take startup down */
             }
         }
     }
@@ -155,8 +113,9 @@ public partial class MainWindow : Window
     // Header
     // ══════════════════════════════════════════════════════════════════════════════════════════
 
-    // The launcher is shown/hidden, never closed. There is no minimize any more: on a fixed-size
-    // popup it did exactly what close did.
+    // The header's own hide glyph. Minimize and the system Close button are real OS window
+    // operations now (system title bar); this button and the system Close both hide to the tray
+    // rather than exiting — see MainWindow.OnClosing.
     private void OnCloseClick(object? sender, RoutedEventArgs e) => _viewModel.HideWindow();
 
     private void OnOpenRootClick(object? sender, RoutedEventArgs e) => _viewModel.OpenRoot();

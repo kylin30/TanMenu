@@ -27,6 +27,10 @@ public partial class App : Application
     /// <summary>Owned by <see cref="Program.Main"/>; released by <see cref="ExitApp"/>.</summary>
     internal static Mutex? SingleInstanceMutex { get; set; }
 
+    /// <summary>Set by <see cref="ExitApp"/> before the lifetime is shut down, so MainWindow.OnClosing
+    /// can tell a real exit from the close button (which hides to the tray).</summary>
+    public static bool IsExiting { get; private set; }
+
     /// <summary>Unsubscriber for the OS accent/colour subscription. Held for the process lifetime —
     /// the app is tray-resident, so this is released only by exit.</summary>
     private IDisposable? _platformColors;
@@ -167,17 +171,12 @@ public partial class App : Application
         _ = CheckForUpdatesAfterStartupAsync();
     }
 
-    /// <summary>Create the launcher shell and bring it up transparent-but-shown, exactly as the WPF
-    /// build did. The real reveal happens later from the UI layer via
-    /// <see cref="IWindowHost.ShowAndActivate"/>, once the menu structure has actually rendered.</summary>
+    /// <summary>Create the main window and show it. It is an ordinary application window now — no
+    /// reveal sequence: <see cref="Window.Show"/> below is what puts it on screen, sized and placed by
+    /// <see cref="WindowHost.RestorePlacement"/> from <see cref="MainWindow.OnOpened"/>.</summary>
     private static void ShowLauncherWindow()
     {
-        var window = new MainWindow
-        {
-            // Protocol, not cosmetics: a second instance finds us with FindWindow(null, title).
-            // Forced here so the handshake cannot be broken by an edit to the window's XAML.
-            Title = Program.MainWindowTitle,
-        };
+        var window = new MainWindow();
 
         var host = Services.GetRequiredService<WindowHost>();
         host.Attach(window);
@@ -396,6 +395,9 @@ public partial class App : Application
     /// unregisters the global hotkey, stops the icon-cache timer and flushes Serilog.</summary>
     public void ExitApp()
     {
+        // Set BEFORE the lifetime is shut down: Shutdown() below synchronously closes MainWindow,
+        // whose OnClosing checks this flag to tell a real exit from the close button (which hides).
+        IsExiting = true;
         Tray?.Dispose();
         (Services as IDisposable)?.Dispose(); // disposes singletons (unregisters the global hotkey, etc.)
         try { SingleInstanceMutex?.ReleaseMutex(); } catch { /* ignore: not owned / already released */ }

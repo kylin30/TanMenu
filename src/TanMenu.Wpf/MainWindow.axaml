@@ -4,59 +4,34 @@
         xmlns:ctl="using:TanMenu.Wpf.Controls"
         x:Class="TanMenu.Wpf.MainWindow"
         x:DataType="vm:LauncherViewModel"
-        Title="TanMenuWpf"
-        WindowDecorations="None"
-        TransparencyLevelHint="AcrylicBlur"
-        Background="Transparent"
-        SizeToContent="WidthAndHeight"
-        ShowInTaskbar="False"
-        CanResize="False"
-        Opacity="0"
+        Title="TanMenu"
+        Width="1000" Height="640" MinWidth="760" MinHeight="520"
         WindowStartupLocation="Manual"
+        TransparencyLevelHint="Mica"
+        Background="Transparent"
+        Icon="/wwwroot/app.ico"
         FontFamily="{Binding WindowFontFamily}"
         FontSize="14"
         Foreground="{DynamicResource TextPrimaryBrush}">
 
   <!--
-    The launcher popup, in Fluent 2's flyout idiom: an acrylic surface with an 8 px radius, a
-    hairline outline and no title bar. There is no minimize and no maximize — both were duplicates
-    of "hide" on a fixed-size popup — only the close glyph, which also hides.
+    The main application window: an ordinary decorated, resizable Windows 11 window with a Mica
+    backdrop and the system title bar (the default WindowDecorations="Full" — nothing overrides it).
+    There is no acrylic and no custom-drawn surface behind the content any more; Mica is requested via
+    TransparencyLevelHint and, when the platform refuses it, MainWindow.ApplyBackdrop paints the
+    opaque Fluent surface colour instead so the window is never a hole.
 
-    Title is load-bearing and must stay byte-identical to "TanMenuWpf": a second instance finds this
-    window by caption (FindWindow) to resurface the running one.
-
-    Opacity starts at 0 and the host raises it only after the window has been sized and placed, so a
-    cold start never flashes an unsized rectangle at screen top-left. The window is shown/hidden,
-    never opened/closed, and its placement is recomputed from content on every show.
-
-    Sizing: the window is content-sized, capped by MaxWidth/MaxHeight that WindowHost sets from the
-    work area, after which the body scrolls. The retro build instead shrank the whole UI with a
-    ScaleTransform to dodge a scrollbar; that was a workaround for a layout that could not scroll.
+    Placement (size + position + maximized state) is restored by WindowHost from GeneralConfig on
+    every show, and persisted back as the user moves/resizes/maximizes the window. The window is
+    shown/hidden (closing hides to the tray) rather than opened/closed for real, so nothing here needs
+    to re-measure or re-place on content changes any more — the user owns the window's geometry.
   -->
 
   <Panel x:Name="Root"
+         Background="Transparent"
          Classes.size-small="{Binding IsSmallButtons}"
          Classes.size-medium="{Binding IsMediumButtons}"
          Classes.size-large="{Binding IsLargeButtons}">
-
-    <!-- The acrylic backdrop. Hit-test invisible so it never eats a click meant for the surface. -->
-    <ExperimentalAcrylicBorder x:Name="Acrylic"
-                               IsHitTestVisible="False"
-                               CornerRadius="{DynamicResource RadiusOverlay}">
-      <ExperimentalAcrylicBorder.Material>
-        <ExperimentalAcrylicMaterial BackgroundSource="Digger"
-                                     TintColor="{DynamicResource AcrylicTintColor}"
-                                     TintOpacity="1"
-                                     MaterialOpacity="{DynamicResource AcrylicTintOpacity}" />
-      </ExperimentalAcrylicBorder.Material>
-    </ExperimentalAcrylicBorder>
-
-    <!-- Shown instead of the acrylic when the platform refuses transparency (remote desktop,
-         transparency disabled, no compositor). Without it the popup would be a hole. -->
-    <Border x:Name="OpaqueFallback"
-            IsVisible="False"
-            Background="{DynamicResource SurfaceBaseBrush}"
-            CornerRadius="{DynamicResource RadiusOverlay}" />
 
     <!-- First child measures the window; every later child is an overlay that contributes no size
          (About and the toast must never re-size the popup). -->

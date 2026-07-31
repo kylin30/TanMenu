@@ -371,25 +371,14 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
 
     private void ApplyUpdateState(AppUpdateState state)
     {
-        var noticeWasVisible = ShowUpdateNotice;
-        var progressWasVisible = IsUpdateDownloading;
-
+        // The notice is a whole extra row (and the progress track a whole extra column) when it
+        // appears, but the window no longer re-measures or re-places itself for a content change: it
+        // is a fixed, user-sized application window now, and the body simply scrolls further.
         _updateState = state;
         RaisePropertyChanged(nameof(ShowUpdateNotice));
         RaisePropertyChanged(nameof(IsUpdateDownloading));
         RaisePropertyChanged(nameof(UpdateNoticeText));
         RaisePropertyChanged(nameof(UpdateProgressWidth));
-
-        // The notice is a whole extra row (and the progress track a whole extra column), so it changes
-        // the launcher's natural size. Unlike every other content change this one arrives on the
-        // update service's own schedule — it can land while the popup is already on screen — and
-        // nothing else would re-measure, leaving the row drawn outside the window. Bump ContentVersion
-        // rather than resizing here: its setter already posts a resize when the window is visible, and
-        // routing through it keeps the cached-size invalidation in one place.
-        // Deliberately NOT on progress-percentage changes — the notice carries a MinWidth precisely
-        // so its text is width-stable, and re-measuring on every progress tick would be pure churn.
-        if (ShowUpdateNotice != noticeWasVisible || IsUpdateDownloading != progressWasVisible)
-            _host.ContentVersion = HashCode.Combine(_host.ContentVersion, ShowUpdateNotice, IsUpdateDownloading);
     }
 
     /// <summary>Click on the update notice. Both actions require a native confirmation; declining
@@ -487,8 +476,9 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
     // Commands from the window
     // ══════════════════════════════════════════════════════════════════════════════════════════
 
-    /// <summary>Both the title bar's Minimize AND Close do this — there is no true minimize and no
-    /// application exit from the caption.</summary>
+    /// <summary>The header's own hide glyph (not the system title bar — Minimize and the system Close
+    /// button are real OS operations now; the system Close hides too, via MainWindow.OnClosing). There
+    /// is still no application exit from either.</summary>
     public void HideWindow() => _host.Hide();
 
     public void OpenSettings() => _settings.Open();
@@ -533,14 +523,12 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
         }
     }
 
-    /// <summary>The 刷新 menu action: an unconditional rescan, then re-measure + re-place.</summary>
+    /// <summary>The 刷新 menu action: an unconditional rescan.</summary>
     public async Task RefreshAsync()
     {
         try
         {
             await ReloadAsync(force: true); // the user explicitly asked to rescan
-            await WaitForLayoutAsync();
-            await ResizeWithRetryAsync();
         }
         catch (Exception ex)
         {
@@ -601,12 +589,8 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
             }
 
             // Pick up shortcuts added/removed/renamed since the last build. The fingerprint gate makes
-            // this nearly free when nothing changed; only a real change costs a re-render + re-fit.
-            if (await ReloadAsync(force: false))
-            {
-                await WaitForLayoutAsync();
-                await ResizeWithRetryAsync();
-            }
+            // this nearly free when nothing changed; only a real change costs a re-render.
+            await ReloadAsync(force: false);
         }
         catch (Exception ex)
         {
@@ -628,10 +612,8 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
         {
             // force:false — picks up the new config and rebuilds the groups only if the folders or
             // tools actually changed; a size/column/font-only change skips the folder rescan but still
-            // re-renders and re-measures.
+            // re-renders.
             await ReloadAsync(force: false);
-            await WaitForLayoutAsync();
-            await ResizeWithRetryAsync();
         }
         catch (Exception ex)
         {
@@ -643,7 +625,7 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
     /// (Re)build the menu. <paramref name="force"/> rebuilds unconditionally (startup, settings,
     /// manual refresh); otherwise the build is skipped when the folder/tools fingerprint is unchanged.
     /// Returns true when the groups were actually rebuilt. Always re-reads the config and refreshes
-    /// everything derived from it, so a settings-only change still re-renders and re-measures.
+    /// everything derived from it, so a settings-only change still re-renders.
     /// </summary>
     private async Task<bool> ReloadAsync(bool force)
     {
@@ -671,17 +653,6 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
 
         RaiseLocalizedTextChanged();
         RaiseAppearanceChanged();
-
-        // Must change whenever the rendered SIZE could change — content (fingerprint) OR a
-        // size-affecting setting — so a settings-only change forces a fresh measurement instead of
-        // reusing a stale cached size. ThemeName is gone from the hash: there is exactly one theme now
-        // and ConfigService coerces the field to a constant, so it can no longer vary. ColButtonCount
-        // is gone too: tiles wrap now, so the column count no longer shapes anything.
-        _host.ContentVersion = HashCode.Combine(
-            _menuFingerprint ?? 0,
-            _cfg.General.ButtonSize,
-            _cfg.General.FontFamily,
-            _cfg.General.Language);
 
         return result.Changed;
     }
@@ -739,28 +710,6 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
             // during Dispose, and an unobserved Task exception would crash the process at GC time.
             .ContinueWith(static t => { _ = t.Exception; },
                 CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
-    }
-
-    /// <summary>
-    /// Wait until the pending layout pass has produced a final desired size. Avalonia runs layout at
-    /// <see cref="DispatcherPriority.Render"/>; a continuation queued one step below therefore resumes
-    /// after measure/arrange. This replaces the old WebView <c>tmWaitForLayout</c> round-trip (fonts
-    /// ready + two animation frames + an 800 ms safety cap) — a native layout pass cannot fail to
-    /// complete, so there is nothing to time out.
-    /// </summary>
-    private static async Task WaitForLayoutAsync() =>
-        await Dispatcher.UIThread.InvokeAsync(static () => { }, DispatcherPriority.Loaded);
-
-    /// <summary>Size + place the window, retrying once if the first attempt found no usable size.
-    /// Without the retry, a content/settings change while the window is visible could keep the stale
-    /// size until the next full hide+show cycle.</summary>
-    private async Task ResizeWithRetryAsync()
-    {
-        if (!await _host.ResizeToContentAndPlaceAsync())
-        {
-            await Task.Delay(60);
-            await _host.ResizeToContentAndPlaceAsync();
-        }
     }
 
     /// <summary>Mandatory: the services are singletons and this view model lives as long as the
