@@ -20,7 +20,7 @@ public partial class MainWindow : Window
     private readonly IWindowHost _host;
     private readonly AppEvents _events;
     private readonly AppPage _appPage = new();
-    private Control? _settingsPage;
+    private SettingsPage? _settingsPage;
 
     // Guards OnNavSelectionChanged against the SelectionChanged events XAML's own SelectedIndex="0"
     // (and Attach's own ShowPage call, if a navigation arrived before the window existed) raise
@@ -75,6 +75,9 @@ public partial class MainWindow : Window
         // at real application exit (OnClosing below cancels every other close), while the app page
         // itself is a field kept alive and reattached every time the rail switches back to 应用.
         _appPage.Dispose();
+        // _settingsPage may be null: it is built lazily, the first time 设置 is shown, so a session
+        // that never visited it has nothing to unsubscribe.
+        _settingsPage?.Dispose();
         base.OnClosed(e);
     }
 
@@ -120,16 +123,15 @@ public partial class MainWindow : Window
     }
 
     /// <summary>Swap the page host's content. <see cref="_appPage"/> is built eagerly (a field
-    /// initializer, before this constructor even runs) since it holds the launcher's real state; the
-    /// settings placeholder — a bare <see cref="TextBlock"/> until Task 8 replaces it with a real
-    /// settings page — is built lazily, the first time it is shown. Both are then kept alive rather
-    /// than rebuilt on every rail click, which matters once the placeholder becomes a real page with
-    /// its own staged control state.</summary>
+    /// initializer, before this constructor even runs) since it holds the launcher's real state;
+    /// <see cref="_settingsPage"/> is built lazily, the first time 设置 is shown. Both are then kept
+    /// alive rather than rebuilt on every rail click, since each card group owns its own live control
+    /// state (e.g. the font combo's selection guard).</summary>
     public void ShowPage(ShellPage page)
     {
         NavRail.SelectedIndex = page == ShellPage.Settings ? 1 : 0;
         PageHost.Content = page == ShellPage.Settings
-            ? _settingsPage ??= new TextBlock { Text = "…", Margin = new Thickness(24) } // Task 8 replaces this with SettingsPage
+            ? _settingsPage ??= new SettingsPage()
             : _appPage;
     }
 

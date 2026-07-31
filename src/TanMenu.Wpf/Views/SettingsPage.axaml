@@ -1,0 +1,16 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:cards="using:TanMenu.Wpf.Views.Settings"
+             x:Class="TanMenu.Wpf.Views.SettingsPage">
+
+  <!-- Windows 11 Settings' shape: one scrolling column of grouped cards, no tabs and no
+       OK/Cancel/Apply. Every control writes through to config the moment it changes. Tasks 9-12 add
+       the remaining four card groups below Appearance, against the same ReloadFromConfig contract. -->
+
+  <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="24,16,24,24">
+    <StackPanel MaxWidth="720" HorizontalAlignment="Left">
+      <TextBlock x:Name="PageTitle" Classes="tm-group-head" Margin="0,0,0,8" />
+      <cards:AppearanceCard x:Name="Appearance" />
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

@@ -362,4 +362,30 @@
     <Setter Property="VerticalAlignment" Value="Top" />
   </Style>
 
+  <!-- ══ 设置 cards ═══════════════════════════════════════════════════════════════════════════
+       Windows 11 Settings' row card: a layered surface with a hairline outline, an icon, a title +
+       secondary line, and the control itself trailing. -->
+  <Style Selector="Border.tm-card">
+    <Setter Property="Background" Value="{DynamicResource SurfaceLayerBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource StrokeControlBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{DynamicResource RadiusControl}" />
+    <Setter Property="Padding" Value="16,12" />
+    <Setter Property="Margin" Value="0,0,0,4" />
+  </Style>
+  <Style Selector="TextBlock.tm-card-title">
+    <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
+  </Style>
+  <Style Selector="TextBlock.tm-card-sub">
+    <Setter Property="FontSize" Value="{DynamicResource FontSizeCaption}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+    <!-- Wrap rather than overflow: the middle column is whatever is left after the leading icon and
+         the trailing control, which is narrower than several of these descriptions' natural width. -->
+    <Setter Property="TextWrapping" Value="Wrap" />
+  </Style>
+  <Style Selector="TextBlock.tm-group-head">
+    <Setter Property="FontSize" Value="{DynamicResource FontSizeSubtitle}" />
+    <Setter Property="Margin" Value="0,20,0,8" />
+  </Style>
+
 </Styles>

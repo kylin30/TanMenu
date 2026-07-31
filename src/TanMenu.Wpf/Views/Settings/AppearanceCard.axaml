@@ -1,0 +1,69 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="TanMenu.Wpf.Views.Settings.AppearanceCard">
+  <!-- Four Windows 11 Settings-style rows: an icon, a title + secondary line, and the control
+       trailing. Populated by ReloadFromConfig — see the code-behind for the ReloadFromConfig
+       contract every settings card group follows.
+
+       Each row is a Grid (Auto,*,Auto), not a DockPanel: a DockPanel's last-child-fill measures
+       that child against the space remaining BEFORE the other docked children are actually laid
+       out, so it can measure wider than the rect it is later arranged into — the middle column's
+       wrapped subtitle text then gets clipped rather than wrapping, because from its own measure
+       pass it never needed to. A Grid's star column is sized identically in both passes. -->
+  <StackPanel>
+    <TextBlock x:Name="GroupHead" Classes="tm-group-head" />
+
+    <Border Classes="tm-card">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <TextBlock Grid.Column="0" Classes="tm-icon" Text="&#xE774;" Margin="0,0,14,0" VerticalAlignment="Center" />
+        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,12,0">
+          <TextBlock x:Name="LanguageTitle" Classes="tm-card-title" />
+          <TextBlock x:Name="LanguageSub" Classes="tm-card-sub" />
+        </StackPanel>
+        <ComboBox Grid.Column="2" x:Name="LanguageCombo" Width="220" VerticalAlignment="Center"
+                  SelectionChanged="OnLanguageChanged" />
+      </Grid>
+    </Border>
+
+    <Border Classes="tm-card">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <TextBlock Grid.Column="0" Classes="tm-icon" Text="&#xE793;" Margin="0,0,14,0" VerticalAlignment="Center" />
+        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,12,0">
+          <TextBlock x:Name="AppearanceTitle" Classes="tm-card-title" />
+          <TextBlock x:Name="AppearanceSub" Classes="tm-card-sub" />
+        </StackPanel>
+        <ComboBox Grid.Column="2" x:Name="AppearanceCombo" Width="220" VerticalAlignment="Center"
+                  SelectionChanged="OnAppearanceChanged" />
+      </Grid>
+    </Border>
+
+    <Border Classes="tm-card">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <TextBlock Grid.Column="0" Classes="tm-icon" Text="&#xE8D2;" Margin="0,0,14,0" VerticalAlignment="Center" />
+        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,12,0">
+          <TextBlock x:Name="FontTitle" Classes="tm-card-title" />
+          <TextBlock x:Name="FontSub" Classes="tm-card-sub" />
+        </StackPanel>
+        <!-- IsTextSearchEnabled restores the WPF list's type-ahead: with hundreds of installed
+             families, typing the first letters is how the list is actually navigated. The rows are
+             ComboBoxItems whose Content is the display name, so no TextSearch.TextPath is needed, and
+             the disabled group-header rows are skipped because they are not selectable. -->
+        <ComboBox Grid.Column="2" x:Name="FontCombo" Width="220" MaxDropDownHeight="320"
+                  IsTextSearchEnabled="True" VerticalAlignment="Center"
+                  SelectionChanged="OnFontChanged" />
+      </Grid>
+    </Border>
+
+    <Border Classes="tm-card">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <TextBlock Grid.Column="0" Classes="tm-icon" Text="&#xE8A9;" Margin="0,0,14,0" VerticalAlignment="Center" />
+        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,12,0">
+          <TextBlock x:Name="SizeTitle" Classes="tm-card-title" />
+          <TextBlock x:Name="SizeSub" Classes="tm-card-sub" />
+        </StackPanel>
+        <ComboBox Grid.Column="2" x:Name="SizeCombo" Width="220" VerticalAlignment="Center"
+                  SelectionChanged="OnSizeChanged" />
+      </Grid>
+    </Border>
+  </StackPanel>
+</UserControl>

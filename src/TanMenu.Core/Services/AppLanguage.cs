@@ -36,6 +36,13 @@ public static class AppLanguage
             ["SizeSmall"] = ("小", "Small"),
             ["SizeMedium"] = ("中", "Medium"),
             ["SizeLarge"] = ("大", "Large"),
+            // Secondary lines for the 设置 page's 外观 cards (Task 8). The old TabItem-based dialog
+            // never had room for a description under each row, so these are new wording rather than
+            // ported text.
+            ["LanguageCardSub"] = ("应用界面显示所使用的语言", "The language used across the app interface"),
+            ["AppearanceCardSub"] = ("选择浅色、深色，或跟随系统设置", "Choose light or dark, or match the system setting"),
+            ["FontCardSub"] = ("应用界面使用的字体", "The font used across the app interface"),
+            ["SizeCardSub"] = ("调整“应用”页面上快捷方式图块的大小", "Adjust the size of shortcut tiles on the Apps page"),
             // "BuiltInFonts" went with the four embedded TTFs — every selectable family is installed
             // now, so there is no second group to caption.
             ["DefaultFont"] = ("默认（系统字体）", "Default (system font)"),
