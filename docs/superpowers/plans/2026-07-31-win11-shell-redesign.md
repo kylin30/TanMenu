@@ -1553,7 +1553,12 @@ Create `src/TanMenu.Wpf/Controls/InfoBar.axaml`:
        A UserControl's XAML root IS its Content, so binding a ContentPresenter inside it back to
        Content would be self-referential. Every value below is wired from code-behind rather than
        with RelativeSource bindings, because compiled bindings are on by default and this control
-       deliberately has no x:DataType. -->
+       deliberately has no x:DataType.
+
+       The explicit <UserControl.Content> wrapper is REQUIRED, not stylistic: ActionContent carries
+       [Content], so an implicit child here would be assigned to ActionContent instead of Content and
+       then overwritten by the host's own action buttons — the bar renders with zero height. -->
+  <UserControl.Content>
   <Border x:Name="Surface" Classes="tm-infobar" IsVisible="False">
     <DockPanel LastChildFill="True">
       <TextBlock DockPanel.Dock="Left" Classes="tm-icon small" Text="&#xE946;"
@@ -1568,6 +1573,7 @@ Create `src/TanMenu.Wpf/Controls/InfoBar.axaml`:
       <TextBlock x:Name="MessageText" TextWrapping="Wrap" VerticalAlignment="Center" />
     </DockPanel>
   </Border>
+  </UserControl.Content>
 </UserControl>
 ```
 
