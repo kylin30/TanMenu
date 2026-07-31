@@ -73,6 +73,13 @@ public static class AppLanguage
             ["Clear"] = ("清除", "Clear"),
             ["HotkeyHelp"] = ("默认无热键。点击上方输入框并按下组合键来自定义。", "No hotkey by default. Click the box above and press a key combo to customize it."),
             ["None"] = ("(无)", "(None)"),
+            // Secondary lines for the 设置 page's 行为 cards (Task 9) — same rationale as the 外观
+            // cards' *CardSub keys: the old TabItem-based dialog had no room for a description under
+            // each row, so this wording is new rather than ported text.
+            ["AutoCloseCardSub"] = ("窗口失去焦点时自动隐藏", "Hide the window automatically when it loses focus"),
+            ["TopMostCardSub"] = ("使窗口始终显示在其它窗口之上", "Keep the window above other windows"),
+            ["AutoStartCardSub"] = ("随 Windows 启动自动运行 TanMenu", "Launch TanMenu automatically when Windows starts"),
+            ["HotkeyEnabledCardSub"] = ("开启后可通过下方的组合键呼出或隐藏窗口", "When enabled, use the shortcut below to show or hide the window"),
             ["MainFolder"] = ("主文件夹", "Main Folder"),
             ["MainFolderHelp"] = ("显示该文件夹下的子文件夹（例如设为桌面，桌面上的文件夹就会成为分组）。", "Shows subfolders under this folder. For example, use Desktop to turn desktop folders into groups."),
             ["Open"] = ("打开", "Open"),
