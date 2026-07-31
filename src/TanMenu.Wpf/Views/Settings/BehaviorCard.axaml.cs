@@ -1,6 +1,8 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.VisualTree;
 using Microsoft.Extensions.DependencyInjection;
 using TanMenu.Core.Services;
 using TanMenu.Wpf.Dialogs;
@@ -31,13 +33,17 @@ public partial class BehaviorCard : UserControl, ISettingsCard
     /// value straight back to config as if the user had just flipped it.</summary>
     private bool _loading;
 
-    /// <summary>The last taskbar-pin state this card knows about. Queried once, from the constructor
-    /// (the closest analog to <c>SettingsWindow</c>'s per-open <c>Opened</c> query: <c>SettingsPage</c>
-    /// is built once and cached for the app's life — see <c>MainWindow.ShowPage</c> — so there is no
-    /// per-visit "window opened" moment to hook here), then only ever re-labelled (never re-queried)
-    /// by <see cref="ReloadFromConfig"/>, which the shared SettingsChanged event can trigger far more
-    /// often than a real pin-state change (any card's commit, anywhere on the page, re-fires it).</summary>
+    /// <summary>The last taskbar-pin state this card knows about, re-queried on every
+    /// <see cref="OnAttachedToVisualTree"/> (see its remarks) and otherwise only ever re-labelled —
+    /// never re-queried — by <see cref="ReloadFromConfig"/>, which the shared SettingsChanged event can
+    /// trigger far more often than a real pin-state change (any card's commit, anywhere on the page,
+    /// re-fires it).</summary>
     private TaskbarPinState _taskbarPinState = new(TaskbarPinStatus.Available);
+
+    /// <summary>Guards <see cref="RefreshTaskbarPinStateAsync"/> against stacking: a fast detach/
+    /// re-attach (e.g. quick nav-rail clicks) could start a second query before an in-flight one's
+    /// <c>GetStateAsync</c> COM call returns.</summary>
+    private bool _taskbarPinRefreshing;
 
     private string UiLanguage => _config.Config.General.Language;
     private string L(string key, params object?[] args) => AppLanguage.Format(key, UiLanguage, args);
@@ -57,6 +63,20 @@ public partial class BehaviorCard : UserControl, ISettingsCard
         // arrives as the real key plus KeyModifiers.Alt.
         HotkeyBox.AddHandler(InputElement.KeyDownEvent, OnHotkeyKeyDown, RoutingStrategies.Tunnel);
 
+        // The taskbar-pin query itself is kicked off from OnAttachedToVisualTree, not here — a
+        // constructor-only query would go stale for the rest of the session (see its remarks).
+    }
+
+    /// <summary>The pin can be changed from entirely outside this app (right-click the taskbar icon,
+    /// Start-menu 固定到任务栏), so <see cref="_taskbarPinState"/> is only trustworthy at the moment it
+    /// was queried. <c>SettingsWindow</c> re-queried on every <c>Opened</c>; this card is constructed
+    /// once and kept alive for the app's whole life (<c>SettingsPage</c> is cached — see
+    /// <c>MainWindow.ShowPage</c>) — so there is no per-visit "window opened" moment to hook. Navigating
+    /// between 应用 and 设置 swaps <c>PageHost.Content</c>, detaching and re-attaching this control each
+    /// time, so re-query here instead — on every re-attach, including the first.</summary>
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
         RunSafely(RefreshTaskbarPinStateAsync);
     }
 
@@ -140,12 +160,16 @@ public partial class BehaviorCard : UserControl, ISettingsCard
 
     /// <summary>开机自启 has no field in <c>AppConfig</c> — the OS (Run key or MSIX StartupTask)
     /// IS the state, so there is no config to save and no <see cref="SettingsWrite.CommitAsync"/> call
-    /// here. A failed registry/StartupTask write is logged rather than shown as a save-failed dialog —
+    /// here. A failed registry write throws and is logged rather than shown as a save-failed dialog —
     /// the same contract <c>SettingsWindow.CommitAsync</c> had: there, <c>_autoStart.SetEnabled</c> ran
     /// OUTSIDE the try/catch that wrapped <c>_config.SaveAsync</c>, so a thrown exception only ever hit
-    /// the window's top-level <c>RunSafely</c> log-and-swallow, never a dialog. What must NOT happen is
-    /// the toggle being left showing the click that failed: on an exception, it is reset to what
-    /// <see cref="IAutoStartService.IsEnabled"/> actually reports, not just flipped back.</summary>
+    /// the window's top-level <c>RunSafely</c> log-and-swallow, never a dialog. The packaged/MSIX
+    /// <c>StartupTaskAutoStartService</c> never throws at all — it swallows every exception internally
+    /// and never inspects the <c>StartupTaskState</c> its own WinRT call returns, so a silent Windows/
+    /// policy refusal leaves <c>SetEnabled</c> looking like it succeeded. Either way, the toggle must
+    /// never be left showing the click rather than the truth: re-verify unconditionally, on both the
+    /// success and failure paths, against what <see cref="IAutoStartService.IsEnabled"/> actually
+    /// reports — not just flipped back on a caught exception.</summary>
     private void OnAutoStartChanged(object? sender, RoutedEventArgs e)
     {
         if (_loading || _isPortable)
@@ -159,12 +183,19 @@ public partial class BehaviorCard : UserControl, ISettingsCard
         catch (Exception ex)
         {
             Serilog.Log.Error(ex, "开机自启注册表/计划任务写入失败");
-            _loading = true;
-            try { AutoStartToggle.IsChecked = _autoStart.IsEnabled(); }
-            finally { _loading = false; }
         }
+
+        // Unconditional re-verification (success or failure): this is the only way to catch
+        // StartupTaskAutoStartService silently no-op-ing on the packaged build (see above).
+        _loading = true;
+        try { AutoStartToggle.IsChecked = _autoStart.IsEnabled(); }
+        finally { _loading = false; }
     }
 
+    // No _loading check here (unlike every other handler in this file) — that is deliberate, not an
+    // oversight: a Click cannot be re-entered by ReloadFromConfig repopulating a control the way
+    // setting a ToggleSwitch/TextBox's value re-enters a Changed handler, so there is nothing to guard
+    // against. Do not "fix" this by copying the _loading pattern from elsewhere in this file.
     private void OnPinTaskbarClick(object? sender, RoutedEventArgs e) => RunSafely(async () =>
     {
         PinTaskbarBtn.IsEnabled = false;
@@ -204,8 +235,30 @@ public partial class BehaviorCard : UserControl, ISettingsCard
 
     private async Task RefreshTaskbarPinStateAsync()
     {
-        PinTaskbarBtn.IsEnabled = false; // dead while the async query runs
-        ApplyTaskbarPinState(await _taskbarPin.GetStateAsync());
+        if (_taskbarPinRefreshing)
+            return; // a query from a very-close attach/re-attach is already in flight
+
+        _taskbarPinRefreshing = true;
+        try
+        {
+            PinTaskbarBtn.IsEnabled = false; // dead while the async query runs
+            var state = await _taskbarPin.GetStateAsync();
+
+            // TaskbarPinService.GetStateAsync itself only logs on exception, so this is the one place
+            // that proves a re-query actually ran on this visit rather than reusing the cached state —
+            // load-bearing for verifying the fix for the "pin status goes stale" defect, not just a
+            // debugging nicety.
+            Serilog.Log.Information("固定到任务栏状态已重新查询: {Status}", state.Status);
+
+            if (!this.IsAttachedToVisualTree())
+                return; // detached while the query was in flight; the next re-attach queries again
+
+            ApplyTaskbarPinState(state);
+        }
+        finally
+        {
+            _taskbarPinRefreshing = false;
+        }
     }
 
     private void ApplyTaskbarPinState(TaskbarPinState state)
