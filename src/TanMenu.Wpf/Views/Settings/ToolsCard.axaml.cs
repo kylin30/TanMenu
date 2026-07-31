@@ -75,17 +75,29 @@ public partial class ToolsCard : UserControl, ISettingsCard
 
     /// <summary>Rebuild the per-tool checkbox list from <paramref name="tools"/>, which
     /// <c>config.json</c> lets the user edit directly: it can be null (an old/hand-edited config with
-    /// the key omitted), empty, or contain an entry whose Command no longer resolves on this machine.
-    /// None of that is special-cased — a null/empty list just renders an empty (still bordered) panel,
-    /// and an unresolved Command is still a valid Show toggle to persist even though MenuService can't
-    /// launch it. Each CheckBox's Click handler is attached AFTER its initial IsChecked is set from
-    /// config (ported verbatim from SettingsWindow.BuildToolCheckboxes) so construction can never look
-    /// like a user click even in principle.</summary>
+    /// the key omitted), empty, contain a null element (<c>"defaultTools": [null, {...}]</c>), or an
+    /// entry whose <see cref="DefaultTool.Command"/> is null/unresolvable — the source-generated JSON
+    /// context does not enforce non-null on deserialization, so both a null element and a null
+    /// <c>Command</c> are reachable here despite the non-nullable C# types. A null element or a null
+    /// Command is skipped (logged once, not per-occurrence, to avoid flooding the log from one bad
+    /// config) rather than rewriting the user's file — a missing checkbox for one malformed entry is
+    /// recoverable; corrupting <c>config.json</c> underneath the user is not. An unresolved-but-non-null
+    /// Command is still rendered and still a valid Show toggle to persist, exactly as before, even
+    /// though MenuService can't launch it. Each CheckBox's Click handler is attached AFTER its initial
+    /// IsChecked is set from config (ported verbatim from SettingsWindow.BuildToolCheckboxes) so
+    /// construction can never look like a user click even in principle.</summary>
     private void BuildToolCheckboxes(List<DefaultTool>? tools, string? lang)
     {
         ToolsPanel.Children.Clear();
+        var skipped = 0;
         foreach (var tool in tools ?? Enumerable.Empty<DefaultTool>())
         {
+            if (tool is null || tool.Command is null)
+            {
+                skipped++;
+                continue;
+            }
+
             // Show the launch command (not just the name) so a tampered/roamed config that repoints an
             // innocuous-looking tool at an arbitrary command is visible before the user enables it.
             var displayName = AppLanguage.LocalizeToolName(tool.Command, tool.Name, lang);
@@ -100,6 +112,10 @@ public partial class ToolsCard : UserControl, ISettingsCard
             cb.Click += OnToolChanged;
             ToolsPanel.Children.Add(cb);
         }
+
+        if (skipped > 0)
+            Serilog.Log.Warning(
+                "常用工具配置中有 {Count} 个条目缺少必要字段（null 元素或 command 为空），已跳过", skipped);
     }
 
     private void OnShowToolsChanged(object? sender, RoutedEventArgs e) => RunSafely(async () =>

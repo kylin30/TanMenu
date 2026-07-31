@@ -21,11 +21,6 @@ namespace TanMenu.Wpf.Views;
 public partial class AppPage : UserControl, IDisposable
 {
     private readonly LauncherViewModel _viewModel;
-
-    // Not yet consumed anywhere in THIS task — the brief's own constructor snippet wires it up
-    // verbatim ahead of the tasks that will actually call it (the settings entry points Task 8+ add).
-    private readonly IShellNavigator _navigator;
-
     private readonly IWindowHost _host;
     private readonly AppEvents _events;
 
@@ -45,7 +40,6 @@ public partial class AppPage : UserControl, IDisposable
     {
         InitializeComponent();
 
-        _navigator = App.Services.GetRequiredService<IShellNavigator>();
         _host = App.Services.GetRequiredService<IWindowHost>();
         _events = App.Services.GetRequiredService<AppEvents>();
         _viewModel = LauncherViewModel.Create(App.Services);
@@ -130,10 +124,10 @@ public partial class AppPage : UserControl, IDisposable
 
     private void OnOpenRootClick(object? sender, RoutedEventArgs e) => _viewModel.OpenRoot();
 
-    // The empty state's "打开选项…" recovery button — not the overflow menu's old 选项 entry, which
-    // is gone now that the rail's 设置 entry is the way to reach settings. This one still opens the
-    // legacy SettingsWindow via ISettingsLauncher (LauncherViewModel.OpenSettings); rewiring it to
-    // _navigator is Task 8's job, once the rail's Settings page is real rather than a placeholder.
+    // The empty state's "打开设置…" recovery button — not the overflow menu's old 选项 entry, which is
+    // gone now that the rail's 设置 entry is the way to reach settings. Goes through
+    // LauncherViewModel.OpenSettings -> ISettingsLauncher, which (since Task 13) navigates to the 设置
+    // page and brings the window forward rather than opening a separate window.
     private void OnOpenSettingsClick(object? sender, RoutedEventArgs e) => _viewModel.OpenSettings();
 
     private void OnRefreshClick(object? sender, RoutedEventArgs e) => _ = _viewModel.RefreshAsync();
@@ -175,6 +169,7 @@ public partial class AppPage : UserControl, IDisposable
             PinNotice.Message = AppLanguage.Text("TaskbarPinRequiredPrompt", lang);
             PinNowButton.Content = AppLanguage.Text("PinNow", lang);
             PinNeverButton.Content = AppLanguage.Text("PinDontAskAgain", lang);
+            PinNotice.CloseButtonAutomationName = AppLanguage.Text("Dismiss", lang);
             PinNotice.IsOpen = state.Status != TaskbarPinStatus.Pinned;
         }
         catch (Exception ex)

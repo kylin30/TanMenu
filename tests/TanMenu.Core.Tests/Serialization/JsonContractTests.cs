@@ -94,7 +94,11 @@ public class JsonContractTests
             Assert.False(svc.Config.General.TopMost);
             Assert.True(svc.Config.General.GlobalHotkeyEnabled);
             Assert.Equal("Ctrl+Alt+Space", svc.Config.General.GlobalHotkey);
-            Assert.Equal(12, svc.Config.General.PositionOffset);
+            // "positionOffset" is a real key from a pre-0.12 file (GeneralConfig.PositionOffset was
+            // removed in Task 13 as dead — its only reader was the deleted popup placement code) and is
+            // deliberately left in this legacy fixture unchanged: System.Text.Json ignores unrecognized
+            // properties by default, so this also pins that an old file with a since-removed key still
+            // loads cleanly rather than failing to deserialize.
             Assert.Equal(6, svc.Config.General.ColButtonCount);
             // The stored value was "WinXP". Every setting around it survives the upgrade untouched;
             // only the theme is coerced, because that theme no longer exists.

@@ -1,47 +1,51 @@
 using Avalonia.Threading;
-using TanMenu.Core.Services;
-using TanMenu.Wpf.Dialogs;
 
 namespace TanMenu.Wpf.Services;
 
-/// <summary>Opens the native settings window (single instance; reused if already open).</summary>
+/// <summary>Shows the 设置 page (Task 13 absorbed the old standalone settings window into the shell).</summary>
 public interface ISettingsLauncher
 {
-    /// <summary>Asynchronous because the failure path shows a modal dialog, and Avalonia modals cannot
-    /// block the caller. The window itself is still opened modelessly, exactly as before.</summary>
+    /// <summary>Asynchronous for the callers that want to know the navigation actually landed — the
+    /// implementation itself cannot fail in any way worth reporting (there is no window construction,
+    /// font enumeration or resource load on this path any more), but the signature is kept so every
+    /// existing call site (tray menu, launcher menu bar) needs no change.</summary>
     Task OpenAsync();
 
-    /// <summary>Fire-and-forget form for the many call sites (tray menu, launcher menu bar) that only
-    /// want the window on screen and have no result to wait for.</summary>
+    /// <summary>Fire-and-forget form for the many call sites that only want the settings page on screen
+    /// and have no result to wait for.</summary>
     void Open();
 }
 
 public sealed class SettingsLauncher : ISettingsLauncher
 {
     private readonly IWindowHost _host;
-    private readonly ConfigService _config;
-    private SettingsWindow? _window;
+    private readonly IShellNavigator _navigator;
 
-    public SettingsLauncher(IWindowHost host, ConfigService config)
+    public SettingsLauncher(IWindowHost host, IShellNavigator navigator)
     {
         _host = host;
-        _config = config;
+        _navigator = navigator;
     }
 
     public void Open() => _ = OpenAsync();
 
+    /// <summary>Settings is a PAGE now, not a window: this selects it and brings the main window
+    /// forward. Still async and still marshalled to the UI thread — the tray menu calls it from a
+    /// shell thread.</summary>
     public Task OpenAsync()
     {
         if (Dispatcher.UIThread.CheckAccess())
-            return OpenCoreAsync();
+        {
+            OpenCore();
+            return Task.CompletedTask;
+        }
 
-        // Callable from any thread (tray menu, launcher UI, settings-driven flows).
         var marshalled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        Dispatcher.UIThread.Post(async () =>
+        Dispatcher.UIThread.Post(() =>
         {
             try
             {
-                await OpenCoreAsync();
+                OpenCore();
                 marshalled.TrySetResult();
             }
             catch (Exception ex)
@@ -52,51 +56,9 @@ public sealed class SettingsLauncher : ISettingsLauncher
         return marshalled.Task;
     }
 
-    private async Task OpenCoreAsync()
+    private void OpenCore()
     {
-        if (_window is not null)
-        {
-            _window.Activate(); // single-instance reuse
-            return;
-        }
-
-        // Keep the launcher visible while settings is open (it would otherwise hide-on-blur). The
-        // suppression is released on Closed, not here: the settings window is modeless and has no
-        // owner, so it can outlive this method by minutes.
-        _host.SuppressHide(true);
-        try
-        {
-            _window = new SettingsWindow();
-            _window.Closed += (_, _) =>
-            {
-                _window = null;
-                _host.SuppressHide(false);
-            };
-            _window.Show();
-            _window.Activate();
-        }
-        catch (Exception ex)
-        {
-            // If the window can't be built (e.g. font enumeration / resource fault), undo the
-            // hide-suppression — otherwise the launcher would never hide-on-blur again this
-            // session — and tell the user instead of leaving a half-applied state.
-            _host.SuppressHide(false);
-            _window = null;
-            Serilog.Log.Error(ex, "Failed to open settings window");
-
-            // Re-suppressed only for the duration of the error dialog, which would otherwise steal
-            // focus from the launcher and hide it behind itself.
-            _host.SuppressHide(true);
-            try
-            {
-                await MessageBox.ShowAsync(_host.Window,
-                    AppLanguage.Text("OpenSettingsFailed", _config.Config.General.Language),
-                    "TanMenu", MessageBoxButtons.Ok, MessageBoxIcon.Error);
-            }
-            finally
-            {
-                _host.SuppressHide(false);
-            }
-        }
+        _navigator.Navigate(ShellPage.Settings);
+        _host.ShowAndActivate();
     }
 }

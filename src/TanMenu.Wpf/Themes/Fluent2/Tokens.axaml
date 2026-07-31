@@ -63,9 +63,6 @@
           <!-- Raw Colors too: a GradientStop takes a Color, not a Brush (the splash card). -->
           <Color x:Key="AccentColor">#0078D4</Color>
           <Color x:Key="AccentColorShaded">#00629F</Color>
-          <!-- The acrylic tint. Light acrylic is a light tint at low opacity over the desktop. -->
-          <Color x:Key="AcrylicTintColor">#F3F3F3</Color>
-          <x:Double x:Key="AcrylicTintOpacity">0.85</x:Double>
           <!-- Fluent 2 flyout elevation. Softer in light, deeper in dark where there is less
                contrast between the surface and what is behind it. -->
           <BoxShadows x:Key="ShadowFlyout">0 4 16 0 #33000000</BoxShadows>
@@ -95,9 +92,6 @@
           <SolidColorBrush x:Key="TextOnAccentBrush"         Color="#FF000000" />
           <Color x:Key="AccentColor">#4CC2FF</Color>
           <Color x:Key="AccentColorShaded">#3E9FD1</Color>
-          <!-- Acrylic -->
-          <Color x:Key="AcrylicTintColor">#2C2C2C</Color>
-          <x:Double x:Key="AcrylicTintOpacity">0.80</x:Double>
           <BoxShadows x:Key="ShadowFlyout">0 4 16 0 #66000000</BoxShadows>
         </ResourceDictionary>
 
@@ -148,7 +142,7 @@
 
       <!-- ══ Overrides that reach Avalonia's own control templates ═════════════════════════════
            These three keys are read with {DynamicResource} by FluentTheme's templates, so setting
-           them here re-proportions every standard control — the settings window's tabs, dropdowns,
+           them here re-proportions every standard control — the settings page's dropdowns,
            checkboxes, text boxes and scrollbars, and the shared message box — from Avalonia's
            defaults (3 px radius, bundled Inter) to Fluent 2's. Verified by measurement; colour keys
            do NOT work this way (see the header). -->

@@ -4,10 +4,10 @@
              x:Class="TanMenu.Wpf.Views.SettingsPage">
 
   <!-- Windows 11 Settings' shape: one scrolling column of grouped cards, no tabs and no
-       OK/Cancel/Apply. Every control writes through to config the moment it changes. Task 12 adds the
-       last card group below Tools, implementing ISettingsCard — SettingsPage finds and reloads every
-       ISettingsCard among CardStack's children itself (see ApplyStaticText in the code-behind), so
-       adding a group here is the only step needed; there is no separate call to remember. -->
+       OK/Cancel/Apply. Every control writes through to config the moment it changes. Every card group
+       below implements ISettingsCard — SettingsPage finds and reloads every ISettingsCard among
+       CardStack's children itself (see ApplyStaticText in the code-behind), so adding a new group here
+       is the only step needed; there is no separate call to remember. -->
 
   <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="24,16,24,24">
     <StackPanel x:Name="CardStack" MaxWidth="720" HorizontalAlignment="Left">

@@ -92,8 +92,6 @@ public class GeneralConfig
     /// when <see cref="GlobalHotkeyEnabled"/> is true.</summary>
     public string GlobalHotkey { get; set; } = "";
 
-    public int PositionOffset { get; set; } = 8;
-
     /// <summary>Legacy 0.9.x/0.10.x setting retained only so old config files deserialize cleanly.
     /// The launcher's tiles wrap to the available width now, so nothing chunks items into columns of
     /// a fixed count and this value shapes nothing.</summary>

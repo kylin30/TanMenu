@@ -15,24 +15,26 @@ public static class AppLanguage
             ["LanguageZhHans"] = ("中文（简体）", "Chinese (Simplified)"),
             ["LanguageEnUs"] = ("英语（美国）", "English (United States)"),
 
-            ["SettingsTitle"] = ("TanMenu 设置", "TanMenu Settings"),
             ["Ok"] = ("确定", "OK"),
             ["Cancel"] = ("取消", "Cancel"),
-            ["Apply"] = ("应用", "Apply"),
             ["Appearance"] = ("外观", "Appearance"),
             ["Behavior"] = ("行为", "Behavior"),
             ["Folders"] = ("文件夹", "Folders"),
             ["CommonTools"] = ("常用工具", "Common Tools"),
-            ["Language"] = ("语言：", "Language:"),
+            // No trailing colon: these are Windows 11 settings-card titles (an icon + title/subtitle
+            // stack, with the control on its own trailing edge), not the fixed-width "label: control"
+            // rows the pre-Fluent-2 dialog used. Only SettingsWindow (deleted in Task 13) ever paired
+            // these with an adjacent control on the SAME line, which is the one layout a colon suited.
+            ["Language"] = ("语言", "Language"),
             // "Theme" / "ThemeFolder" / "ThemeFolderTooltip" all went with the theme system. The
             // Fluent 2 rebuild has one look rendered in two variants, so the row offers light/dark.
             // NOTE the key is AppearanceMode, not Appearance — "Appearance" is already the tab header.
-            ["AppearanceMode"] = ("外观：", "Appearance:"),
+            ["AppearanceMode"] = ("外观", "Appearance"),
             ["AppearanceSystem"] = ("跟随系统", "Use system setting"),
             ["AppearanceLight"] = ("浅色", "Light"),
             ["AppearanceDark"] = ("深色", "Dark"),
-            ["Font"] = ("字体：", "Font:"),
-            ["ButtonSize"] = ("按钮大小：", "Button size:"),
+            ["Font"] = ("字体", "Font"),
+            ["ButtonSize"] = ("按钮大小", "Button size"),
             ["SizeSmall"] = ("小", "Small"),
             ["SizeMedium"] = ("中", "Medium"),
             ["SizeLarge"] = ("大", "Large"),
@@ -52,7 +54,6 @@ public static class AppLanguage
             ["PinToTaskbar"] = ("固定到任务栏", "Pin to taskbar"),
             ["PinToTaskbarManual"] = ("打开固定位置", "Open pin location"),
             ["PinnedToTaskbar"] = ("已固定到任务栏", "Pinned to taskbar"),
-            ["TaskbarPinRequiredTitle"] = ("固定 TanMenu 到任务栏", "Pin TanMenu to the taskbar"),
             ["TaskbarPinRequiredPrompt"] = ("TanMenu 的主要使用方式是点击任务栏图标显示主界面，并在失去焦点后自动隐藏。\n\n当前尚未固定到任务栏。点击“确定”开始固定：系统支持时请在 Windows 提示中确认；Windows 10 若不支持应用内固定，将打开 TanMenu 快捷方式，请右键选择“固定到任务栏”。", "TanMenu is designed to open from its taskbar icon and hide when focus is lost.\n\nIt is not pinned yet. Select OK to start: approve the Windows confirmation when available; if Windows 10 does not support in-app pinning, TanMenu opens its shortcut so you can right-click it and choose Pin to taskbar."),
             ["PinToTaskbarHelp"] = ("固定后，点击任务栏图标显示主界面；失去焦点自动隐藏。支持时由 Windows 确认，否则打开快捷方式供手动固定。", "Once pinned, click the taskbar icon to show TanMenu; it hides when focus is lost. Windows confirms when supported; otherwise TanMenu opens its shortcut for manual pinning."),
             ["PinnedToTaskbarHelp"] = ("TanMenu 已永久固定。点击任务栏图标可随时显示主界面。", "TanMenu is permanently pinned. Click its taskbar icon whenever you want to show the launcher."),
@@ -68,7 +69,7 @@ public static class AppLanguage
             ["AutoStart"] = ("开机自启", "Start with Windows"),
             ["AutoStartPortableHelp"] = ("绿色版不会写入注册表，因此不提供开机自启。", "The portable edition does not write to the registry, so startup is unavailable."),
             ["EnableHotkey"] = ("启用全局热键（呼出 / 隐藏）", "Enable global hotkey (show / hide)"),
-            ["Hotkey"] = ("热键：", "Hotkey:"),
+            ["Hotkey"] = ("热键", "Hotkey"),
             ["HotkeyTooltip"] = ("点击后按下组合键来设置（需包含 Ctrl/Alt/Shift/Win）", "Click and press a key combo including Ctrl/Alt/Shift/Win"),
             ["Clear"] = ("清除", "Clear"),
             ["HotkeyHelp"] = ("默认无热键。点击上方输入框并按下组合键来自定义。", "No hotkey by default. Click the box above and press a key combo to customize it."),
@@ -155,19 +156,22 @@ public static class AppLanguage
             ["RootNotSet"] = ("主文件夹未设置或不存在。", "The main folder is not set or does not exist."),
             ["CacheCleared"] = ("缓存已清理，菜单将重新加载。", "Cache cleared. The menu will reload."),
             ["BackupConfig"] = ("备份配置", "Back Up Config"),
-            ["BackupQuestion"] = ("有未应用的修改；备份的是已保存的配置（不含这些修改）。\n继续备份？", "There are unapplied changes. The backup will include saved config only, not these changes.\nContinue?"),
             ["JsonConfigFilter"] = ("JSON 配置 (*.json)|*.json", "JSON config (*.json)|*.json"),
             ["AllFilesFilter"] = ("JSON 配置 (*.json)|*.json|所有文件 (*.*)|*.*", "JSON config (*.json)|*.json|All files (*.*)|*.*"),
             ["BackupFileName"] = ("TanMenu-config-备份.json", "TanMenu-config-backup.json"),
             ["BackupSaved"] = ("配置已备份到：\n{0}", "Config backed up to:\n{0}"),
             ["BackupFailed"] = ("备份失败：{0}", "Backup failed: {0}"),
             ["RestoreConfig"] = ("从备份恢复配置", "Restore Config from Backup"),
-            ["RestoreConfirm"] = ("将用所选备份覆盖当前配置（未应用的修改会丢失）。\n确定？", "The selected backup will overwrite current config. Unapplied changes will be lost.\nContinue?"),
+            // Every control on the 设置 page applies immediately, so there is no staged/unsaved edit for
+            // a restore to discard — unlike the old TabItem-based dialog's edit-then-apply model, which
+            // is why this key's wording no longer warns about "unapplied changes". What IS still true,
+            // and what this warns about instead, is that restoring replaces the ENTIRE current config
+            // (RootFolder, all of General) with the backup's contents and cannot be undone.
+            ["RestoreConfirm"] = ("将用所选备份覆盖当前的全部配置，此操作无法撤销。\n确定？", "The selected backup will overwrite your entire current config. This cannot be undone.\nContinue?"),
             ["RestoreSucceeded"] = ("配置已恢复并生效。", "Config restored and applied."),
             ["RestoreInvalid"] = ("恢复失败：所选文件不是有效的 TanMenu 配置。", "Restore failed: the selected file is not a valid TanMenu config."),
 
             ["MenuOpenRoot"] = ("打开主目录", "Open Main Folder"),
-            ["MenuOptions"] = ("选项", "Options"),
             ["MenuRefresh"] = ("刷新", "Refresh"),
             ["MenuAbout"] = ("关于", "About"),
             ["MenuExit"] = ("退出", "Exit"),
@@ -180,8 +184,10 @@ public static class AppLanguage
             ["ClearFilter"] = ("清除搜索", "Clear search"),
             ["SearchPlaceholder"] = ("搜索快捷方式…", "Search shortcuts..."),
             ["EmptyTitle"] = ("还没有任何快捷方式", "No shortcuts yet"),
-            ["EmptyHelp"] = ("在「选项 → 文件夹」里设置主文件夹，或开启「常用工具」分类。", "Set a main folder in Options -> Folders, or enable the Common Tools group."),
-            ["OpenOptions"] = ("打开选项…", "Open Options..."),
+            // "选项 → 文件夹" named the old overflow-menu entry the nav rail's 设置 page replaced (§2 of
+            // the shell redesign spec: the rail is the entry point now, and the overflow menu lost 选项).
+            ["EmptyHelp"] = ("在「设置 → 文件夹」里设置主文件夹，或开启「常用工具」分类。", "Set a main folder in Settings -> Folders, or enable the Common Tools group."),
+            ["OpenOptions"] = ("打开设置…", "Open Settings..."),
             ["LaunchFailed"] = ("无法启动：{0}", "Could not launch: {0}"),
             ["RefreshFailed"] = ("刷新失败", "Refresh failed"),
             ["ClickToDismiss"] = ("点击任意处关闭", "Click anywhere to close"),
@@ -190,7 +196,6 @@ public static class AppLanguage
             ["TrayShow"] = ("显示", "Show"),
             ["TraySettings"] = ("设置", "Settings"),
             ["TrayExit"] = ("退出", "Exit"),
-            ["OpenSettingsFailed"] = ("无法打开设置窗口。", "Could not open the settings window."),
             ["StartupFailed"] = ("TanMenu 启动失败：\n{0}", "TanMenu failed to start:\n{0}"),
             ["HotkeyRegistrationFailed"] = ("全局热键「{0}」注册失败，可能已被其它程序占用。\n请在设置里改用其它组合键。", "Global hotkey \"{0}\" could not be registered. It may already be used by another app.\nChoose another shortcut in Settings."),
             ["DataFolderInsideItself"] = ("不能把数据文件夹移动到当前数据文件夹的子目录中。", "The data folder cannot be moved into one of its own subfolders."),
@@ -245,10 +250,21 @@ public static class AppLanguage
             _ => Text("LanguageAuto", displayLanguage),
         };
 
-    public static string LocalizeToolName(string command, string? currentName, string? language)
+    /// <summary>
+    /// <paramref name="command"/> is nullable even though <see cref="Models.DefaultTool.Command"/> is
+    /// not: <c>DefaultTools</c> is documented as user-editable via <c>config.json</c>, and the
+    /// source-generated JSON context does not enforce non-null on deserialization, so a hand-edited
+    /// <c>"command": null</c> reaches this method as a real null despite the C# type. Returning early
+    /// avoids <c>Path.GetFileName</c> producing a null <c>key</c>, which would otherwise throw
+    /// <see cref="ArgumentNullException"/> out of the <see cref="Dictionary{TKey,TValue}"/> lookup below
+    /// (reference-type keys are not allowed to be null) — reachable from <c>ReloadFromConfig</c>, which
+    /// runs from <c>SettingsPage</c>'s constructor and on every <c>SettingsChanged</c> broadcast, and
+    /// Avalonia has no global unhandled-exception hook to catch it.
+    /// </summary>
+    public static string LocalizeToolName(string? command, string? currentName, string? language)
     {
-        var key = Path.GetFileName(command);
-        if (!BuiltInToolNames.TryGetValue(key, out var names))
+        var key = string.IsNullOrEmpty(command) ? null : Path.GetFileName(command);
+        if (key is null || !BuiltInToolNames.TryGetValue(key, out var names))
             return currentName ?? "";
 
         if (string.IsNullOrWhiteSpace(currentName) ||

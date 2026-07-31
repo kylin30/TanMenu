@@ -24,7 +24,6 @@ public class AppConfigTests
         Assert.Equal("Auto", general.Language);
         Assert.False(general.TopMost);
         Assert.False(general.ShowInTaskbar);
-        Assert.Equal(8, general.PositionOffset);
         Assert.Equal(10, general.ColButtonCount);
         Assert.Equal(AppConfig.CanonicalTheme, general.ThemeName);
         Assert.Equal(AppAppearance.System, general.Appearance);

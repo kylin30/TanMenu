@@ -35,8 +35,9 @@ public partial class MainWindow : Window
         App.Services.GetRequiredService<ShellNavigator>().Attach(this);
 
         // AppLanguage/AppFonts have no change notification of their own, so both the rail labels and
-        // the window font are re-applied on every SettingsChanged — the same imperative approach
-        // SettingsWindow already uses for its own font.
+        // the window font are re-applied on every SettingsChanged — the same imperative approach every
+        // settings card group uses for its own labels (AppLanguage has no change notification there
+        // either).
         _events = App.Services.GetRequiredService<AppEvents>();
         _events.SettingsChanged += ApplyWindowFont;
         _events.SettingsChanged += ApplyRailText;

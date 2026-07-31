@@ -248,7 +248,6 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
         AppLanguage.Format(key, _cfg.General.Language, args);
 
     public string MenuOpenRootText => L("MenuOpenRoot");
-    public string MenuOptionsText => L("MenuOptions");
     public string MenuRefreshText => L("MenuRefresh");
     public string MenuAboutText => L("MenuAbout");
     public string MenuExitText => L("MenuExit");
@@ -271,7 +270,6 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
     private void RaiseLocalizedTextChanged()
     {
         RaisePropertyChanged(nameof(MenuOpenRootText));
-        RaisePropertyChanged(nameof(MenuOptionsText));
         RaisePropertyChanged(nameof(MenuRefreshText));
         RaisePropertyChanged(nameof(MenuAboutText));
         RaisePropertyChanged(nameof(MenuExitText));
