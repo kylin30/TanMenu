@@ -5,11 +5,15 @@
        trailing. Populated by ReloadFromConfig — see the code-behind for the ReloadFromConfig
        contract every settings card group follows.
 
-       Each row is a Grid (Auto,*,Auto), not a DockPanel: a DockPanel's last-child-fill measures
-       that child against the space remaining BEFORE the other docked children are actually laid
-       out, so it can measure wider than the rect it is later arranged into — the middle column's
-       wrapped subtitle text then gets clipped rather than wrapping, because from its own measure
-       pass it never needed to. A Grid's star column is sized identically in both passes. -->
+       Each row is a Grid (Auto,*,Auto), not a DockPanel. Built first with a DockPanel per row (icon
+       docked left, control docked right, a plain StackPanel as the fill child), the longest subtitle
+       (按钮大小's, and the even longer English wording) clipped mid-glyph against the ComboBox's left
+       edge instead of wrapping onto a second line — confirmed by screenshot, not by inspection. The
+       exact DockPanel measure/arrange interaction that produced the clipping was not isolated, so no
+       claim is made about it here. Switching to a Grid fixed it: a Grid's star column is guaranteed to
+       resolve to the same width at both measure and arrange time, so the middle TextBlock always wraps
+       against the width it is actually given, regardless of column order or which sibling is docked
+       where. Re-verified by screenshot in both Chinese and English after the change. -->
   <StackPanel>
     <TextBlock x:Name="GroupHead" Classes="tm-group-head" />
 

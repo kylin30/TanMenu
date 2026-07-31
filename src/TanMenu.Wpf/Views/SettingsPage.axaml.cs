@@ -1,7 +1,9 @@
+using System.Linq;
 using Avalonia.Controls;
 using Microsoft.Extensions.DependencyInjection;
 using TanMenu.Core.Services;
 using TanMenu.Wpf.Services;
+using TanMenu.Wpf.Views.Settings;
 
 namespace TanMenu.Wpf.Views;
 
@@ -26,12 +28,15 @@ public partial class SettingsPage : UserControl, IDisposable
     }
 
     /// <summary>AppLanguage has no change notification, so labels are applied imperatively. A language
-    /// change calls this and every group's own ReloadFromConfig.</summary>
+    /// change calls this and, for every ISettingsCard among CardStack's children, its ReloadFromConfig —
+    /// found structurally rather than through one hardcoded call per group, so a group added to the XAML
+    /// without wiring it in here (there is nothing to wire) can never be left stale.</summary>
     public void ApplyStaticText()
     {
         var lang = App.Services.GetRequiredService<ConfigService>().Config.General.Language;
         PageTitle.Text = AppLanguage.Text("NavSettings", lang);
-        Appearance.ReloadFromConfig();
+        foreach (var card in CardStack.Children.OfType<ISettingsCard>())
+            card.ReloadFromConfig();
     }
 
     /// <summary>Unsubscribe from the shared AppEvents singleton. Called from

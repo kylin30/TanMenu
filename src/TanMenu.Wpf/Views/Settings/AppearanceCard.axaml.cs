@@ -11,10 +11,12 @@ namespace TanMenu.Wpf.Views.Settings;
 /// <summary>
 /// 外观 card group: language, light/dark appearance, UI font and button size. Ported from
 /// <c>SettingsWindow</c>'s 外观 tab, minus the staging: every handler here writes straight to
-/// <see cref="ConfigService.Config"/>, saves, and raises <see cref="AppEvents.SettingsChanged"/>
-/// instead of mutating a working clone for a later Apply.
+/// <see cref="ConfigService.Config"/>, then hands the save off to <see cref="SettingsWrite.CommitAsync"/>,
+/// which raises <see cref="AppEvents.SettingsChanged"/> on success or rolls the field (and, for
+/// Appearance, the live repaint) back and reports the error on failure — instead of mutating a working
+/// clone for a later Apply.
 /// </summary>
-public partial class AppearanceCard : UserControl
+public partial class AppearanceCard : UserControl, ISettingsCard
 {
     private static readonly string[] LanguageSettings = { AppLanguage.Auto, AppLanguage.ZhHans, AppLanguage.EnUs };
 
@@ -53,6 +55,7 @@ public partial class AppearanceCard : UserControl
 
     private readonly ConfigService _config;
     private readonly AppEvents _events;
+    private readonly IWindowHost _host;
 
     /// <summary>Guards every SelectionChanged handler against the selections ReloadFromConfig makes
     /// while it repopulates the combos — without it, populating the Language combo would write the
@@ -68,6 +71,7 @@ public partial class AppearanceCard : UserControl
         InitializeComponent();
         _config = App.Services.GetRequiredService<ConfigService>();
         _events = App.Services.GetRequiredService<AppEvents>();
+        _host = App.Services.GetRequiredService<IWindowHost>();
     }
 
     /// <summary>Populate every control from the live config. Sets a guard so the SelectionChanged
@@ -165,9 +169,11 @@ public partial class AppearanceCard : UserControl
         if (_loading || LanguageCombo.SelectedIndex < 0)
             return;
 
+        var previous = _config.Config.General.Language;
         _config.Config.General.Language = LanguageSettings[LanguageCombo.SelectedIndex];
-        await _config.SaveAsync();
-        _events.RaiseSettingsChanged();
+        await SettingsWrite.CommitAsync(_config, _events, _host, this,
+            rollback: () => _config.Config.General.Language = previous,
+            reload: ReloadFromConfig);
     });
 
     /// <summary>The whole app repaints live, before the write even reaches disk: the dropdown is a
@@ -178,11 +184,21 @@ public partial class AppearanceCard : UserControl
         if (_loading || AppearanceCombo.SelectedIndex < 0)
             return;
 
-        _config.Config.General.Appearance = AppearanceSettings[AppearanceCombo.SelectedIndex];
+        var previous = _config.Config.General.Appearance;
+        var chosen = AppearanceSettings[AppearanceCombo.SelectedIndex];
+        _config.Config.General.Appearance = chosen;
         if (Application.Current is { } app)
-            AppTheme.Apply(app, _config.Config.General.Appearance);
-        await _config.SaveAsync();
-        _events.RaiseSettingsChanged();
+            AppTheme.Apply(app, chosen);
+        await SettingsWrite.CommitAsync(_config, _events, _host, this,
+            rollback: () =>
+            {
+                _config.Config.General.Appearance = previous;
+                // The theme was already repainted live above; a failed save must repaint it back,
+                // not just revert the field, or the app is left showing a theme it never kept.
+                if (Application.Current is { } rollbackApp)
+                    AppTheme.Apply(rollbackApp, previous);
+            },
+            reload: ReloadFromConfig);
     });
 
     private void OnFontChanged(object? sender, SelectionChangedEventArgs e) => RunSafely(async () =>
@@ -208,9 +224,11 @@ public partial class AppearanceCard : UserControl
         if (fam == _config.Config.General.FontFamily)
             return;
 
+        var previous = _config.Config.General.FontFamily;
         _config.Config.General.FontFamily = fam;
-        await _config.SaveAsync();
-        _events.RaiseSettingsChanged();
+        await SettingsWrite.CommitAsync(_config, _events, _host, this,
+            rollback: () => _config.Config.General.FontFamily = previous,
+            reload: ReloadFromConfig);
     });
 
     private void OnSizeChanged(object? sender, SelectionChangedEventArgs e) => RunSafely(async () =>
@@ -218,9 +236,11 @@ public partial class AppearanceCard : UserControl
         if (_loading || SizeCombo.SelectedIndex < 0)
             return;
 
+        var previous = _config.Config.General.ButtonSize;
         _config.Config.General.ButtonSize = ButtonSizes[SizeCombo.SelectedIndex];
-        await _config.SaveAsync();
-        _events.RaiseSettingsChanged();
+        await SettingsWrite.CommitAsync(_config, _events, _host, this,
+            rollback: () => _config.Config.General.ButtonSize = previous,
+            reload: ReloadFromConfig);
     });
 
     /// <summary>Run an async change handler without letting a fault escape the SelectionChanged event —
