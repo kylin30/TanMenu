@@ -1456,16 +1456,28 @@ In `AppPage.axaml`, the body `ScrollViewer` becomes horizontal-only, and the gro
 
 The update notice, splash, empty and no-matches blocks must not be dragged into the horizontal row. Move them out of the scrolling `StackPanel` and dock them in the page's `DockPanel` instead: the update notice `DockPanel.Dock="Top"` above the body, and the three states as siblings of the `ScrollViewer` inside the existing `ctl:OverlayPanel`, each with `HorizontalAlignment="Center" VerticalAlignment="Center"`.
 
-- [ ] **Step 3: Give a group a stable column width**
+- [ ] **Step 3: Let a group report its true width, and keep the heading from inflating it**
 
-Append to `Themes/Fluent2/Launcher.axaml`:
+The heading is the one piece of unbounded content in a group: `DirectoryName` is a user-chosen folder
+name, and an unconstrained `TextBlock` widens the whole category. Trim it like the tiles already are:
+
+```xml
+                          <TextBlock Classes="tm-section" Text="{Binding DirectoryName}"
+                                     MaxWidth="320" TextTrimming="CharacterEllipsis" />
+```
+
+Then append to `Themes/Fluent2/Launcher.axaml`:
 
 ```xml
   <!-- A group is as wide as its content but never wider than a comfortable reading column; without
        the cap a single long shortcut name would stretch its whole category. -->
+  <!-- NO MaxWidth here. A cap would only clamp the width the group REPORTS to the horizontal
+       StackPanel; the inner WrapPanel keeps laying out however many columns it needs and nothing
+       clips it, so a category with more columns than the cap allows renders straight over its
+       right-hand neighbour. Tiles already have a fixed width per size class, so a group's honest
+       desired width is exactly columns × column width — bounded, and what the scroller needs. -->
   <Style Selector="DockPanel.tm-group">
-    <Setter Property="MaxWidth" Value="560" />
-    <Setter Property="VerticalAlignment" Value="Stretch" />
+    <Setter Property="VerticalAlignment" Value="Top" />
   </Style>
 ```
 
