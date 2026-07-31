@@ -1,7 +1,8 @@
 # TanMenu — Windows 11 app shell (nav + pages, replaces the flyout launcher)
 
-> **Status: implemented in `28158a8`** (Task 13 of 13 — deletes `SettingsWindow` and finishes the
-> wiring this spec describes). Every section below now describes shipped behaviour, not a plan.
+> **Status: implemented in `28158a8`..`e7f4797`** (Task 13 of 13 — deletes `SettingsWindow` and
+> finishes the wiring this spec describes; `e7f4797` is a `MenuService` null-safety fix found while
+> verifying it). Every section below now describes shipped behaviour, not a plan.
 >
 > Design spec, 2026-07-31. Every claim about the current code was grep/read-verified against the
 > tree at `ef79481`, and every Avalonia claim against the `Avalonia 12.1.0` reference assembly
