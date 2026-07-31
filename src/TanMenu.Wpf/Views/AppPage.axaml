@@ -166,7 +166,8 @@
                             Margin="0,0,0,6"
                             HorizontalAlignment="Left">
                       <StackPanel Orientation="Horizontal" Spacing="6">
-                        <TextBlock Classes="tm-section" Text="{Binding DirectoryName}" />
+                        <TextBlock Classes="tm-section" Text="{Binding DirectoryName}"
+                                   MaxWidth="320" TextTrimming="CharacterEllipsis" />
                         <TextBlock Classes="tm-icon subtle small tm-folder"
                                    IsVisible="{Binding IsDirectoryClickable}"
                                    Text="&#xE8B7;" />

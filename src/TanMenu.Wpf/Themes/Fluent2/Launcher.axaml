@@ -341,12 +341,12 @@
     <Setter Property="BorderThickness" Value="3,0,0,0" />
   </Style>
 
-  <!-- A group is as wide as its content but never wider than a comfortable reading column; without
-       the cap a single long shortcut name would stretch its whole category. DockPanel, not
-       StackPanel: see the comment on the group's DataTemplate in AppPage.axaml for why the group root
-       has to be a DockPanel for the items WrapPanel to receive a real (finite) height to wrap within. -->
+  <!-- NO MaxWidth here. A cap would only clamp the width the group REPORTS to the horizontal
+       StackPanel; the inner WrapPanel keeps laying out however many columns it needs and nothing
+       clips it, so a category with more columns than the cap allows renders straight over its
+       right-hand neighbour. Tiles already have a fixed width per size class, so a group's honest
+       desired width is exactly columns × column width — bounded, and what the scroller needs. -->
   <Style Selector="DockPanel.tm-group">
-    <Setter Property="MaxWidth" Value="560" />
     <Setter Property="VerticalAlignment" Value="Top" />
   </Style>
 
