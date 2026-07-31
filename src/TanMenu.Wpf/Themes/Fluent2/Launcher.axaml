@@ -124,17 +124,6 @@
 
   </Styles.Resources>
 
-  <!-- ══ The window surface ═════════════════════════════════════════════════════════════════════
-       Rounded, hairline-outlined, and transparent so the acrylic host behind it shows through. The
-       opaque fallback lives on the host: when the platform refuses transparency, the window paints
-       SurfaceBaseBrush instead of leaving a hole. -->
-  <Style Selector="Border.tm-surface">
-    <Setter Property="CornerRadius" Value="{DynamicResource RadiusOverlay}" />
-    <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="BorderBrush" Value="{DynamicResource StrokeSurfaceFlyoutBrush}" />
-    <Setter Property="ClipToBounds" Value="True" />
-  </Style>
-
   <!-- ══ Header ═══════════════════════════════════════════════════════════════════════════════ -->
 
   <Style Selector="Border.tm-header">
@@ -333,6 +322,23 @@
     <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
     <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
     <Setter Property="LineHeight" Value="{DynamicResource LineHeightBody}" />
+  </Style>
+
+  <!-- Navigation rail. Fluent 2's NavigationView selection idiom: a 3 px accent bar on the leading
+       edge of the selected row, a subtle fill on hover, and no border anywhere. -->
+  <Style Selector="ListBox.tm-nav ListBoxItem">
+    <Setter Property="Padding" Value="12,10" />
+    <Setter Property="Margin" Value="4,2" />
+    <Setter Property="CornerRadius" Value="{DynamicResource RadiusControl}" />
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="ListBox.tm-nav ListBoxItem:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource SubtleFillSecondaryBrush}" />
+  </Style>
+  <Style Selector="ListBox.tm-nav ListBoxItem:selected /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource SubtleFillTertiaryBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource AccentDefaultBrush}" />
+    <Setter Property="BorderThickness" Value="3,0,0,0" />
   </Style>
 
 </Styles>

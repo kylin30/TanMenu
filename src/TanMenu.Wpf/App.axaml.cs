@@ -125,6 +125,11 @@ public partial class App : Application
             TaskbarPinService.ResolveLauncherPath));
         services.AddSingleton<GlobalHotkeyService>();
         services.AddSingleton<AppEvents>();
+        services.AddSingleton<ShellNavigator>();
+        // Same singleton instance behind both registrations, matching the WindowHost/IWindowHost
+        // pair above: MainWindow's constructor needs the concrete ShellNavigator to Attach, while
+        // everything else (the tray menu, Task 8's settings entry points) only ever sees the interface.
+        services.AddSingleton<IShellNavigator>(sp => sp.GetRequiredService<ShellNavigator>());
         services.AddSingleton<ISettingsLauncher, SettingsLauncher>();
         services.AddSingleton<IShellCommands, ShellCommands>();
         services.AddSingleton<IUpdatePromptService, UpdatePromptService>();

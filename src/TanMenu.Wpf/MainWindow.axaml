@@ -1,274 +1,51 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:vm="using:TanMenu.Wpf.ViewModels"
-        xmlns:ctl="using:TanMenu.Wpf.Controls"
+        xmlns:views="using:TanMenu.Wpf.Views"
         x:Class="TanMenu.Wpf.MainWindow"
-        x:DataType="vm:LauncherViewModel"
         Title="TanMenu"
         Width="1000" Height="640" MinWidth="760" MinHeight="520"
         WindowStartupLocation="Manual"
         TransparencyLevelHint="Mica"
         Background="Transparent"
         Icon="/wwwroot/app.ico"
-        FontFamily="{Binding WindowFontFamily}"
         FontSize="14"
         Foreground="{DynamicResource TextPrimaryBrush}">
 
   <!--
-    The main application window: an ordinary decorated, resizable Windows 11 window with a Mica
-    backdrop and the system title bar (the default WindowDecorations="Full" — nothing overrides it).
-    There is no acrylic and no custom-drawn surface behind the content any more; Mica is requested via
-    TransparencyLevelHint and, when the platform refuses it, MainWindow.ApplyBackdrop paints the
-    opaque Fluent surface colour instead so the window is never a hole.
+    The shell: a system-decorated Mica window (Windows 11 rounds and shadows it for us) split into a
+    fixed navigation rail and a page host. Exactly two pages exist, so the rail is a ListBox rather
+    than anything more elaborate, and the selected page is view state — the window always opens on 应用.
 
-    Placement (size + position + maximized state) is restored by WindowHost from GeneralConfig on
-    every show, and persisted back as the user moves/resizes/maximizes the window. The window is
-    shown/hidden (closing hides to the tray) rather than opened/closed for real, so nothing here needs
-    to re-measure or re-place on content changes any more — the user owns the window's geometry.
+    There is no DataContext here any more: the launcher's state (LauncherViewModel) now belongs to
+    AppPage, not the shell. The one thing that used to reach the window through a DataContext binding
+    — the 字体 setting — is applied imperatively instead (see ApplyWindowFont in the code-behind) and
+    inherits down to whichever page is hosted, exactly as the binding used to.
   -->
 
-  <Panel x:Name="Root"
-         Background="Transparent"
-         Classes.size-small="{Binding IsSmallButtons}"
-         Classes.size-medium="{Binding IsMediumButtons}"
-         Classes.size-large="{Binding IsLargeButtons}">
+  <Grid ColumnDefinitions="200,*">
 
-    <!-- First child (the main surface) is what the overlays measure against; every later child is an
-         overlay that contributes no layout size of its own (About and the toast never affect the
-         window, which has fixed, user-owned geometry now). -->
-    <ctl:OverlayPanel>
+    <ListBox x:Name="NavRail"
+             Grid.Column="0"
+             Classes="tm-nav"
+             SelectedIndex="0"
+             SelectionChanged="OnNavSelectionChanged"
+             Background="Transparent"
+             BorderThickness="0"
+             Padding="4,12">
+      <ListBoxItem>
+        <StackPanel Orientation="Horizontal" Spacing="12">
+          <TextBlock Classes="tm-icon" Text="&#xE71D;" VerticalAlignment="Center" />
+          <TextBlock x:Name="NavAppsLabel" Text="应用" VerticalAlignment="Center" />
+        </StackPanel>
+      </ListBoxItem>
+      <ListBoxItem>
+        <StackPanel Orientation="Horizontal" Spacing="12">
+          <TextBlock Classes="tm-icon" Text="&#xE713;" VerticalAlignment="Center" />
+          <TextBlock x:Name="NavSettingsLabel" Text="设置" VerticalAlignment="Center" />
+        </StackPanel>
+      </ListBoxItem>
+    </ListBox>
 
-      <Border Classes="tm-surface">
-        <DockPanel>
-
-          <!-- ══ Header: search first, then the overflow and close glyphs ═══════════════════════ -->
-          <Border Classes="tm-header" DockPanel.Dock="Top">
-            <DockPanel>
-
-              <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
-                          Spacing="2" Margin="8,0,0,0" VerticalAlignment="Center">
-
-                <!-- AutomationProperties.Name is required, not decoration: these buttons have a
-                     geometry glyph and no text, so without it a screen reader announces "button"
-                     and UI Automation cannot address them at all. -->
-                <Button x:Name="OverflowButton"
-                        Theme="{StaticResource TmIconButton}"
-                        Focusable="False"
-                        AutomationProperties.Name="{Binding MenuMoreText}"
-                        ToolTip.Tip="{Binding MenuMoreText}">
-                  <!-- Segoe Fluent Icons code points, the same glyphs the Windows 11 shell uses:
-                       E712 More, E8BB ChromeClose, E721 Search, E8B7 Folder, E896 Download. They
-                       exist at these code points in Segoe MDL2 Assets too, which is the Windows 10
-                       fallback in IconFontFamily. -->
-                  <TextBlock Classes="tm-icon" Text="&#xE712;" />
-                  <Button.Flyout>
-                    <MenuFlyout Placement="BottomEdgeAlignedRight">
-                      <MenuItem Header="{Binding MenuOpenRootText}" Click="OnOpenRootClick" />
-                      <MenuItem Header="{Binding MenuRefreshText}" Click="OnRefreshClick" />
-                      <Separator />
-                      <MenuItem Header="{Binding MenuOptionsText}" Click="OnOpenSettingsClick" />
-                      <MenuItem Header="{Binding MenuAboutText}" Click="OnAboutClick" />
-                      <Separator />
-                      <MenuItem Header="{Binding MenuExitText}" Click="OnExitClick" />
-                    </MenuFlyout>
-                  </Button.Flyout>
-                </Button>
-
-                <Button Theme="{StaticResource TmIconButton}"
-                        Focusable="False"
-                        Click="OnCloseClick"
-                        AutomationProperties.Name="{Binding MenuHideText}"
-                        ToolTip.Tip="{Binding MenuHideText}">
-                  <TextBlock Classes="tm-icon small" Text="&#xE8BB;" />
-                </Button>
-              </StackPanel>
-
-              <Border Classes="tm-searchfield" x:Name="SearchField">
-                <DockPanel>
-                  <TextBlock DockPanel.Dock="Left" Classes="tm-icon subtle small"
-                             Text="&#xE721;" Margin="0,0,8,0" />
-                  <!-- Background and BorderThickness are LOCAL values on purpose: a local value
-                       outranks a style setter, which is what stops Avalonia's own :pointerover and
-                       :focus TextBox styling from repainting a field the Border already paints. -->
-                  <TextBox x:Name="SearchBox"
-                           Classes="tm-search"
-                           AutomationProperties.Name="{Binding SearchPlaceholderText}"
-                           Background="Transparent"
-                           BorderThickness="0"
-                           PlaceholderText="{Binding SearchPlaceholderText}"
-                           Text="{Binding Filter, Mode=TwoWay}"
-                           KeyDown="OnSearchKeyDown"
-                           GotFocus="OnSearchFocusChanged"
-                           LostFocus="OnSearchFocusChanged" />
-                </DockPanel>
-              </Border>
-
-            </DockPanel>
-          </Border>
-
-          <!-- ══ Body ═════════════════════════════════════════════════════════════════════════ -->
-          <ScrollViewer x:Name="Body"
-                        HorizontalScrollBarVisibility="Disabled"
-                        VerticalScrollBarVisibility="Auto">
-            <StackPanel Margin="{DynamicResource SurfacePadding}" Spacing="14">
-
-              <!-- Update notice. Only for Available / Downloading / ReadyToRestart. MinWidth is
-                   deliberate anti-jitter: without it the popup's width would change as the "…42%"
-                   text grows and shrinks during a download. -->
-              <Button Classes="tm-update"
-                      IsVisible="{Binding ShowUpdateNotice}"
-                      IsEnabled="{Binding !IsUpdateDownloading}"
-                      MinWidth="360"
-                      Click="OnUpdateNoticeClick">
-                <DockPanel>
-                  <TextBlock DockPanel.Dock="Left" Classes="tm-icon small"
-                             Text="&#xE896;" Margin="0,0,10,0" />
-                  <Border DockPanel.Dock="Right"
-                          IsVisible="{Binding IsUpdateDownloading}"
-                          Width="84" Height="4" Margin="10,0,0,0"
-                          VerticalAlignment="Center"
-                          CornerRadius="2"
-                          Background="{DynamicResource SubtleFillTertiaryBrush}">
-                    <Border Background="{DynamicResource AccentDefaultBrush}"
-                            CornerRadius="2"
-                            HorizontalAlignment="Left"
-                            Width="{Binding UpdateProgressWidth}">
-                      <Border.Transitions>
-                        <Transitions>
-                          <DoubleTransition Property="Width" Duration="0:0:0.15" />
-                        </Transitions>
-                      </Border.Transitions>
-                    </Border>
-                  </Border>
-                  <TextBlock Text="{Binding UpdateNoticeText}"
-                             TextWrapping="NoWrap" VerticalAlignment="Center" />
-                </DockPanel>
-              </Button>
-
-              <!-- 1. The sections. Each is a heading plus a wrapping run of tiles; a section with no
-                   visible items after filtering removes itself. -->
-              <ItemsControl IsVisible="{Binding HasVisibleItems}" ItemsSource="{Binding Groups}">
-                <ItemsControl.ItemsPanel>
-                  <ItemsPanelTemplate>
-                    <StackPanel Orientation="Vertical" Spacing="14" />
-                  </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="vm:MenuGroupVm">
-                    <StackPanel Spacing="6" IsVisible="{Binding HasVisibleItems}">
-
-                      <!-- A null tooltip shows nothing, which is how the inert 常用工具 heading
-                           stays inert. The folder glyph only fades in for a real directory. -->
-                      <Border Classes="tm-section-head"
-                              Classes.clickable="{Binding IsDirectoryClickable}"
-                              ToolTip.Tip="{Binding TitleTooltip}"
-                              PointerPressed="OnGroupTitlePressed"
-                              HorizontalAlignment="Left">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                          <TextBlock Classes="tm-section" Text="{Binding DirectoryName}" />
-                          <TextBlock Classes="tm-icon subtle small tm-folder"
-                                     IsVisible="{Binding IsDirectoryClickable}"
-                                     Text="&#xE8B7;" />
-                        </StackPanel>
-                      </Border>
-
-                      <ItemsControl ItemsSource="{Binding VisibleItems}">
-                        <ItemsControl.ItemsPanel>
-                          <ItemsPanelTemplate>
-                            <WrapPanel Orientation="Horizontal" />
-                          </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                          <DataTemplate x:DataType="vm:MenuItemVm">
-                            <Button Classes="tm-tile"
-                                    Theme="{StaticResource TmTileButton}"
-                                    Margin="0,0,4,4"
-                                    IsEnabled="{Binding !IsDisabled}"
-                                    Click="OnItemClick"
-                                    PointerEntered="OnItemPointerEntered">
-                              <DockPanel>
-                                <!-- The icon slot is always occupied (the build always assigns at
-                                     least a fallback), which is why the async icon fill never
-                                     reflows the grid. -->
-                                <Image Classes="tm-tile-icon"
-                                       DockPanel.Dock="Left"
-                                       Source="{Binding Icon}"
-                                       Margin="0,0,10,0"
-                                       Stretch="Uniform"
-                                       VerticalAlignment="Center" />
-                                <TextBlock Text="{Binding Name}"
-                                           TextWrapping="NoWrap"
-                                           TextTrimming="CharacterEllipsis"
-                                           VerticalAlignment="Center" />
-                              </DockPanel>
-                            </Button>
-                          </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                      </ItemsControl>
-
-                    </StackPanel>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-
-              <!-- 2. Loading. ShowLoading tracks visibility so the spinner's infinite animation
-                   stops for the rest of the (tray-resident) session once the menu arrives. -->
-              <ctl:SplashPanel IsVisible="{Binding ShowSplash}"
-                               ShowLoading="{Binding ShowSplash}"
-                               VersionText="{Binding VersionText}"
-                               CopyrightText="{Binding CopyrightText}"
-                               HintText="{Binding ClickToDismissText}" />
-
-              <!-- 3. Loaded, but there is genuinely nothing configured. -->
-              <StackPanel Classes="tm-empty" IsVisible="{Binding ShowEmpty}">
-                <TextBlock Classes="title" Text="{Binding EmptyTitleText}"
-                           FontFamily="{Binding TitleFontFamily}" />
-                <TextBlock Text="{Binding EmptyHelpText}" MaxWidth="360" />
-                <StackPanel Orientation="Horizontal" Spacing="8"
-                            HorizontalAlignment="Center" Margin="0,14,0,0">
-                  <Button Content="{Binding OpenOptionsText}" Click="OnOpenSettingsClick" Padding="14,6" />
-                  <Button Content="{Binding MenuRefreshText}" Click="OnRefreshClick" Padding="14,6" />
-                </StackPanel>
-              </StackPanel>
-
-              <!-- 4. There ARE shortcuts, but the filter matched none of them. -->
-              <StackPanel Classes="tm-empty" IsVisible="{Binding ShowNoMatches}">
-                <TextBlock Classes="title" Text="{Binding NoMatchTitleText}"
-                           FontFamily="{Binding TitleFontFamily}" />
-                <TextBlock Text="{Binding NoMatchHelpText}" MaxWidth="360" />
-                <Button Content="{Binding ClearFilterText}" Click="OnClearFilterClick"
-                        Padding="14,6" HorizontalAlignment="Center" Margin="0,14,0,0" />
-              </StackPanel>
-
-            </StackPanel>
-          </ScrollViewer>
-
-        </DockPanel>
-      </Border>
-
-      <!-- ══ Overlays (no layout size) ════════════════════════════════════════════════════════ -->
-
-      <!-- Transient error. Click anywhere on it to dismiss; otherwise it self-clears. -->
-      <Border Classes="tm-toast"
-              IsVisible="{Binding HasToast}"
-              PointerPressed="OnToastPressed">
-        <TextBlock Text="{Binding ToastText}"
-                   TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
-      </Border>
-
-      <!-- "关于": the splash on demand. Clicking ANYWHERE on it closes it — there is no close
-           button and no Escape handler, which is what the original did too. -->
-      <Border IsVisible="{Binding ShowAbout}"
-              Background="{DynamicResource SurfaceBaseBrush}"
-              CornerRadius="{DynamicResource RadiusOverlay}"
-              ClipToBounds="True"
-              PointerPressed="OnAboutPressed">
-        <ctl:SplashPanel ShowLoading="False"
-                         VersionText="{Binding VersionText}"
-                         CopyrightText="{Binding CopyrightText}"
-                         HintText="{Binding ClickToDismissText}" />
-      </Border>
-
-    </ctl:OverlayPanel>
-  </Panel>
+    <ContentControl x:Name="PageHost" Grid.Column="1" />
+  </Grid>
 </Window>

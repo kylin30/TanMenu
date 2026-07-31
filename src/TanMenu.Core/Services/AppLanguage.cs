@@ -146,6 +146,8 @@ public static class AppLanguage
             ["MenuExit"] = ("退出", "Exit"),
             ["MenuMore"] = ("更多", "More"),
             ["MenuHide"] = ("隐藏", "Hide"),
+            ["NavApps"] = ("应用", "Apps"),
+            ["NavSettings"] = ("设置", "Settings"),
             ["NoMatchTitle"] = ("未找到匹配项", "No matches"),
             ["NoMatchHelp"] = ("没有名称包含该关键词的快捷方式。", "No shortcut's name contains that text."),
             ["ClearFilter"] = ("清除搜索", "Clear search"),
