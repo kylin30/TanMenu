@@ -586,6 +586,12 @@ public sealed partial class WindowHost : IWindowHost
                 Hide();
         };
 
+        // 窗口置顶 has to reach a window that is already on screen. Restore applies it too, but that
+        // only runs on a cold start or an un-hidden window, so without this the checkbox would appear
+        // to do nothing until the next hide/show cycle.
+        _events.SettingsChanged += ApplyTopmost;
+        ApplyTopmost();
+
         // Persist geometry as the user changes it rather than only on exit: the process can be ended
         // by an update handoff or a hard kill, and a lost window position is a visible annoyance.
         // _restoring guards against writing back the values we are in the middle of applying.
@@ -618,13 +624,14 @@ public sealed partial class WindowHost : IWindowHost
                 g.WindowLeft, g.WindowTop, g.WindowWidth, g.WindowHeight,
                 work, MinWidthDip, MinHeightDip);
 
+            var scale = CurrentScale();
             _window.Width = placement.Width;
             _window.Height = placement.Height;
             _window.Position = new PixelPoint(
-                (int)Math.Round(placement.Left * _scale),
-                (int)Math.Round(placement.Top * _scale));
+                (int)Math.Round(placement.Left * scale),
+                (int)Math.Round(placement.Top * scale));
             _window.WindowState = g.WindowMaximized ? WindowState.Maximized : WindowState.Normal;
-            _window.Topmost = g.TopMost;
+            ApplyTopmost();
         }
         catch (Exception ex)
         {
@@ -650,18 +657,26 @@ public sealed partial class WindowHost : IWindowHost
 
         try
         {
+            var state = _window.WindowState;
+
+            // Minimized carries NO placement information: its Width/Height/Position say nothing about
+            // what to restore to, and reading it as "not maximized" would erase a maximized window's
+            // remembered state the moment the user minimizes it.
+            if (state == WindowState.Minimized)
+                return;
+
             var g = _config.Config.General;
-            var maximized = _window.WindowState == WindowState.Maximized;
-            g.WindowMaximized = maximized;
+            g.WindowMaximized = state == WindowState.Maximized;
 
             // A maximized window's Width/Height are the screen's, not the size to restore to, so the
             // remembered "normal" geometry is deliberately left alone while maximized.
-            if (!maximized && _window.WindowState == WindowState.Normal)
+            if (state == WindowState.Normal)
             {
+                var scale = CurrentScale();
                 g.WindowWidth = _window.Width;
                 g.WindowHeight = _window.Height;
-                g.WindowLeft = _window.Position.X / _scale;
-                g.WindowTop = _window.Position.Y / _scale;
+                g.WindowLeft = _window.Position.X / scale;
+                g.WindowTop = _window.Position.Y / scale;
             }
 
             _saveDebounce.Stop();
@@ -673,29 +688,52 @@ public sealed partial class WindowHost : IWindowHost
         }
     }
 
-    /// <summary>Write the recorded placement to disk now, cancelling any pending debounced write.</summary>
-    private void FlushPlacement()
+    /// <summary>Write the recorded placement to disk now, cancelling any pending debounced write.
+    /// Public so the exit path can flush before the process goes away — geometry changed inside the
+    /// debounce window would otherwise be lost.</summary>
+    public void FlushPlacement()
     {
         _saveDebounce.Stop();
         _ = _config.SaveAsync();
     }
 
-    private double _scale = 1.0;
+    /// <summary>Push the current 窗口置顶 setting onto a live window.</summary>
+    private void ApplyTopmost()
+    {
+        if (_window is not null)
+            _window.Topmost = _config.Config.General.TopMost;
+    }
 
-    /// <summary>The work area of the screen the window currently sits on, in DIPs, falling back to the
-    /// primary screen and finally to a 1920×1040 guess when no screen information is available.</summary>
-    private PlacementRect ResolveWorkArea()
+    /// <summary>The screen the window currently sits on, falling back to the primary screen and then to
+    /// the first enumerated one. Null when no screen information is available yet.</summary>
+    private Screen? CurrentScreen()
     {
         var screens = _window?.Screens;
-        var screen = (_window is not null ? screens?.ScreenFromWindow(_window) : null)
-                     ?? screens?.Primary
-                     ?? screens?.All.FirstOrDefault();
+        return (_window is not null ? screens?.ScreenFromWindow(_window) : null)
+               ?? screens?.Primary
+               ?? screens?.All.FirstOrDefault();
+    }
+
+    /// <summary>Pixels-per-DIP of the screen the window is on RIGHT NOW. Deliberately NOT cached:
+    /// dragging the window from a 100% monitor to a 150% one changes it, and converting a position with
+    /// a stale scale records a placement wrong by the ratio between the two.</summary>
+    private double CurrentScale()
+    {
+        var scaling = CurrentScreen()?.Scaling ?? 1.0;
+        return scaling <= 0 ? 1.0 : scaling;
+    }
+
+    /// <summary>The work area of the screen the window currently sits on, in DIPs, falling back to a
+    /// 1920×1040 guess when no screen information is available.</summary>
+    private PlacementRect ResolveWorkArea()
+    {
+        var screen = CurrentScreen();
         if (screen is null)
             return new PlacementRect(0, 0, 1920, 1040);
 
-        _scale = screen.Scaling <= 0 ? 1.0 : screen.Scaling;
+        var scale = screen.Scaling <= 0 ? 1.0 : screen.Scaling;
         var w = screen.WorkingArea;
-        return new PlacementRect(w.X / _scale, w.Y / _scale, w.Width / _scale, w.Height / _scale);
+        return new PlacementRect(w.X / scale, w.Y / scale, w.Width / scale, w.Height / scale);
     }
 
     public void Hide()
@@ -884,6 +922,24 @@ Add `using Avalonia.Controls;` if not present (it is).
 - [ ] **Step 5: Add the exit latch and show the window**
 
 In `src/TanMenu.Wpf/App.axaml.cs`:
+
+- `OnLauncherOpened` must raise `LauncherShown` once the window is realized. Startup used to reach it
+  through the deleted reveal latch (`ConsumePendingViewWork` → `ShowAndActivate` → `RaiseLauncherShown`),
+  and that event is what focuses the search box and evaluates the taskbar-pin state. Without this, a
+  cold start leaves a type-to-search launcher unfocused. Append to the end of `OnLauncherOpened`'s
+  `try` block:
+
+```csharp
+            // A cold start must produce the same LauncherShown a tray or hotkey summon does: the
+            // search box takes focus from it, and so does the taskbar-pin check. Raised here rather
+            // than from Show() because the window is realized and placed by the time Opened runs.
+            Services.GetRequiredService<AppEvents>().RaiseLauncherShown();
+```
+
+- `ExitApp` must flush the debounced placement write before tearing services down, or geometry changed
+  within the last 500 ms is lost and `SaveAsync` can still be in flight when `Services.Dispose()`
+  disposes the semaphore it holds. Call `Services.GetRequiredService<WindowHost>().FlushPlacement();`
+  immediately after setting `IsExiting`.
 
 - Add the latch near `SingleInstanceMutex`:
 
