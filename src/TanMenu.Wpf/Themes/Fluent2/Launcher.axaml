@@ -304,6 +304,18 @@
     <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
   </Style>
 
+  <!-- ══ Taskbar-pin InfoBar ══════════════════════════════════════════════════════════════════
+       Controls/InfoBar's surface. Same subtle-fill-plus-stroke shape as the update notice above,
+       but a Border (not a Button) — this bar's actions are its own child buttons, not the whole
+       surface. -->
+  <Style Selector="Border.tm-infobar">
+    <Setter Property="Background" Value="{DynamicResource SubtleFillSecondaryBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource StrokeControlBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{DynamicResource RadiusControl}" />
+    <Setter Property="Padding" Value="12,10" />
+  </Style>
+
   <!-- ══ Toast ════════════════════════════════════════════════════════════════════════════════
        A transient, self-clearing error. Sits in the overlay layer and contributes no layout size,
        so it can never resize the popup. -->

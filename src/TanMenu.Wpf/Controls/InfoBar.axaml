@@ -1,0 +1,37 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="TanMenu.Wpf.Controls.InfoBar">
+
+  <!-- Fluent 2's informational InfoBar: accent-tinted surface, leading glyph, message, then whatever
+       actions the host puts in ActionContent, then a close glyph. Avalonia has no InfoBar of its own.
+
+       NOTE: the action slot is a separate ActionContent property, NOT the UserControl's own Content.
+       A UserControl's XAML root IS its Content, so binding a ContentPresenter inside it back to
+       Content would be self-referential. Every value below is wired from code-behind rather than
+       with RelativeSource bindings, because compiled bindings are on by default and this control
+       deliberately has no x:DataType.
+
+       The Border below is wrapped in an explicit <UserControl.Content> property-element rather than
+       left as the implicit single child: with ActionContent marked [Content] (see InfoBar.axaml.cs),
+       an IMPLICIT child here would resolve against that SAME attribute (it is the type's one
+       content-property answer) and get assigned to ActionContent instead of Content — silently
+       discarding the Border the moment a host's own implicit child (its actions, in AppPage.axaml)
+       is parsed afterwards and overwrites it. The explicit property-element sidesteps that
+       resolution entirely and always targets the real Content. -->
+  <UserControl.Content>
+    <Border x:Name="Surface" Classes="tm-infobar" IsVisible="False">
+      <DockPanel LastChildFill="True">
+        <TextBlock DockPanel.Dock="Left" Classes="tm-icon small" Text="&#xE946;"
+                   Margin="0,0,10,0" VerticalAlignment="Center" />
+        <Button DockPanel.Dock="Right" x:Name="CloseButton"
+                Theme="{StaticResource TmIconButton}" Click="OnCloseClick"
+                Margin="8,0,0,0" VerticalAlignment="Center">
+          <TextBlock Classes="tm-icon small" Text="&#xE8BB;" />
+        </Button>
+        <ContentPresenter DockPanel.Dock="Right" x:Name="ActionHost"
+                          VerticalAlignment="Center" Margin="12,0,0,0" />
+        <TextBlock x:Name="MessageText" TextWrapping="Wrap" VerticalAlignment="Center" />
+      </DockPanel>
+    </Border>
+  </UserControl.Content>
+</UserControl>

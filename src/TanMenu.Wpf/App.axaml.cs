@@ -35,8 +35,6 @@ public partial class App : Application
     /// the app is tray-resident, so this is released only by exit.</summary>
     private IDisposable? _platformColors;
 
-    private bool _taskbarPinPromptActive;
-
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
 
     public override async void OnFrameworkInitializationCompleted()
@@ -167,11 +165,6 @@ public partial class App : Application
         Services.GetRequiredService<GlobalHotkeyService>().RegistrationFailed += combo =>
             Dispatcher.UIThread.Post(() => _ = WarnHotkeyRegistrationFailedAsync(combo));
 
-        // Taskbar recall is the primary product workflow. Check after EVERY reveal (startup, tray,
-        // hotkey, or second-instance activation), once the real window is foreground; TaskbarManager
-        // rejects requests from background UI.
-        Services.GetRequiredService<AppEvents>().LauncherShown += PromptForTaskbarPinAfterReveal;
-
         ShowLauncherWindow();
         _ = CheckForUpdatesAfterStartupAsync();
     }
@@ -199,7 +192,7 @@ public partial class App : Application
     {
         // One catch-all for the whole block, as before: a failure in an earlier step deliberately
         // skips the later ones rather than taking the process down. Losing the tray is bad but
-        // survivable — the hotkey or the taskbar pin can still resurface the launcher.
+        // survivable — the hotkey can still resurface the launcher.
         try
         {
             var window = (Window)sender!;
@@ -218,12 +211,13 @@ public partial class App : Application
             Tray.Create();
 
             // A cold start must produce the same LauncherShown a tray or hotkey summon does: the
-            // search box takes focus from it, and so does the taskbar-pin check. Raised here (rather
-            // than from Show()) because the window's HWND already exists by the time Opened fires —
-            // RestorePlacement/InitializeAsync still run afterward, in MainWindow.OnOpened's own
-            // continuation below this event, but every LauncherShown consequence (PendingFocus's
-            // deferred Loaded-priority focus, the taskbar-pin prompt's dispatcher post) is itself put
-            // off to a later dispatcher pass, so each one still observes the window already placed.
+            // search box takes focus from it, and so does AppPage's taskbar-pin InfoBar refresh.
+            // Raised here (rather than from Show()) because the window's HWND already exists by the
+            // time Opened fires — RestorePlacement/InitializeAsync still run afterward, in
+            // MainWindow.OnOpened's own continuation below this event, but every LauncherShown
+            // consequence (PendingFocus's deferred Loaded-priority focus, the pin-notice refresh's
+            // await) is itself put off to a later dispatcher pass, so each one still observes the
+            // window already placed.
             Services.GetRequiredService<AppEvents>().RaiseLauncherShown();
         }
         catch (Exception ex)
@@ -247,88 +241,6 @@ public partial class App : Application
         {
             host.SuppressHide(false);
         }
-    }
-
-    private void PromptForTaskbarPinAfterReveal()
-    {
-        if (_taskbarPinPromptActive)
-            return;
-
-        _taskbarPinPromptActive = true;
-        // Fire-and-forget on the dispatcher so the RaiseLauncherShown caller (ShowAndActivate, or a
-        // cold start's OnLauncherOpened) returns immediately and is never blocked by a modal dialog.
-        Dispatcher.UIThread.Post(async () =>
-        {
-            try
-            {
-                await PromptForTaskbarPinAsync();
-            }
-            catch (Exception ex)
-            {
-                TryLogFatal(ex, "Taskbar pin prompt failed");
-            }
-            finally
-            {
-                // A declined/failed request is checked again the next time the launcher is shown.
-                // This guard only prevents overlapping prompts during one reveal operation.
-                _taskbarPinPromptActive = false;
-            }
-        });
-    }
-
-    private static async Task PromptForTaskbarPinAsync()
-    {
-        var pin = Services.GetRequiredService<TaskbarPinService>();
-        var state = await pin.GetStateAsync();
-        if (state.Status == TaskbarPinStatus.Pinned)
-            return;
-
-        var config = Services.GetRequiredService<ConfigService>();
-        var language = config.Config.General.Language;
-        var host = Services.GetRequiredService<IWindowHost>();
-
-        // The owned prompt and the following Windows confirmation temporarily move focus away from
-        // the popup. Keep it alive until the whole pin flow completes, then restore normal blur-hide.
-        host.SuppressHide(true);
-        try
-        {
-            var choice = await MessageBox.ShowAsync(host.Window,
-                AppLanguage.Text("TaskbarPinRequiredPrompt", language),
-                AppLanguage.Text("TaskbarPinRequiredTitle", language),
-                MessageBoxButtons.OkCancel, MessageBoxIcon.Info);
-
-            if (choice != MessageBoxResult.Ok)
-                return; // Ask again the next time the launcher is shown because this is the primary entry.
-
-            // Windows 10 often cannot expose the consent-based TaskbarManager flow to an unpackaged
-            // desktop app. In that case, show the app's Start entry and let the user use Explorer's
-            // supported right-click command. Never mutate the protected taskbar pin store directly.
-            if (state.Status is TaskbarPinStatus.Unsupported or TaskbarPinStatus.NotAllowed or
-                TaskbarPinStatus.Failed)
-            {
-                await ShowManualPinLocationAsync(pin, host.Window, language);
-                return;
-            }
-
-            state = await pin.RequestPinAsync();
-            if (state.Status is TaskbarPinStatus.Pinned or TaskbarPinStatus.Available)
-                return; // Available here means the user declined the Windows confirmation.
-
-            await ShowManualPinLocationAsync(pin, host.Window, language);
-        }
-        finally
-        {
-            host.SuppressHide(false);
-        }
-    }
-
-    private static async Task ShowManualPinLocationAsync(TaskbarPinService pin, Window? owner, string? language)
-    {
-        if (pin.OpenManualPinLocation())
-            return;
-
-        await MessageBox.ShowAsync(owner, AppLanguage.Text("PinToTaskbarManualOpenFailed", language),
-            "TanMenu", MessageBoxButtons.Ok, MessageBoxIcon.Warning);
     }
 
     private static async Task CheckForUpdatesAfterStartupAsync()

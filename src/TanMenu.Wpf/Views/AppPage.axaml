@@ -86,6 +86,18 @@
           </DockPanel>
         </Border>
 
+        <!-- Taskbar-pin notice. An inline InfoBar rather than the modal dialog the app used to throw
+             up on every reveal: RefreshPinNoticeAsync (AppPage.axaml.cs) opens it whenever the app is
+             not yet pinned and 不再提示 has not been chosen, and closes it the moment the pin succeeds
+             or the user dismisses it. Docked above the update notice, directly under the header. -->
+        <ctl:InfoBar x:Name="PinNotice" DockPanel.Dock="Top" Margin="12,0,12,8"
+                     IsOpen="False" Dismissed="OnPinNoticeDismissed">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Button x:Name="PinNowButton" Click="OnPinNowClick" Padding="14,5" />
+            <Button x:Name="PinNeverButton" Click="OnPinNeverClick" Padding="14,5" />
+          </StackPanel>
+        </ctl:InfoBar>
+
         <!-- Update notice. Docked above the body rather than inside its scrolling StackPanel: the
              notice is a page-wide banner, not a category, so it must not become a sibling in the
              horizontal row of groups. Only for Available / Downloading / ReadyToRestart. MinWidth is

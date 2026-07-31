@@ -6,6 +6,8 @@ using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Microsoft.Extensions.DependencyInjection;
+using TanMenu.Core.Services;
+using TanMenu.Wpf.Dialogs;
 using TanMenu.Wpf.Services;
 using TanMenu.Wpf.ViewModels;
 
@@ -24,14 +26,37 @@ public partial class AppPage : UserControl, IDisposable
     // verbatim ahead of the tasks that will actually call it (the settings entry points Task 8+ add).
     private readonly IShellNavigator _navigator;
 
+    private readonly IWindowHost _host;
+    private readonly AppEvents _events;
+
+    // Guards RefreshPinNoticeAsync against stacking: the constructor's own call and the LauncherShown
+    // handler both fire within milliseconds of each other on a cold start (AppPage is built as a
+    // MainWindow field initializer, and AppEvents.RaiseLauncherShown follows moments later from
+    // OnLauncherOpened), and a rapid hotkey/tray toggle can raise LauncherShown again before an
+    // in-flight refresh's GetStateAsync COM call returns.
+    private bool _pinNoticeRefreshing;
+
+    // Set once, from Dispose (real application exit only — see Dispose's own remarks). Checked after
+    // the one await in RefreshPinNoticeAsync so a refresh that was already in flight cannot touch the
+    // control tree once the page is torn down.
+    private bool _disposed;
+
     public AppPage()
     {
         InitializeComponent();
 
         _navigator = App.Services.GetRequiredService<IShellNavigator>();
+        _host = App.Services.GetRequiredService<IWindowHost>();
+        _events = App.Services.GetRequiredService<AppEvents>();
         _viewModel = LauncherViewModel.Create(App.Services);
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
         DataContext = _viewModel;
+
+        // Taskbar recall is the primary product workflow. Check after EVERY reveal (startup, tray,
+        // hotkey, or second-instance activation) in addition to once here, since the state can change
+        // behind our back (the user may pin from Explorer between reveals).
+        _events.LauncherShown += OnLauncherShown;
+        _ = RefreshPinNoticeAsync();
     }
 
     /// <summary>Kick off the menu build. Deliberately NOT done in the constructor: this control is
@@ -57,6 +82,8 @@ public partial class AppPage : UserControl, IDisposable
     /// back to 应用.</summary>
     public void Dispose()
     {
+        _disposed = true;
+        _events.LauncherShown -= OnLauncherShown;
         _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
         _viewModel.Dispose();
     }
@@ -114,6 +141,114 @@ public partial class AppPage : UserControl, IDisposable
     private void OnAboutClick(object? sender, RoutedEventArgs e) => _viewModel.OpenAbout();
 
     private void OnExitClick(object? sender, RoutedEventArgs e) => _viewModel.ExitApp();
+
+    // ══════════════════════════════════════════════════════════════════════════════════════════
+    // Taskbar-pin notice
+    // ══════════════════════════════════════════════════════════════════════════════════════════
+
+    private void OnLauncherShown() => _ = RefreshPinNoticeAsync();
+
+    /// <summary>Evaluate the taskbar-pin notice. Runs on every reveal (the state can change behind our
+    /// back — the user may pin from Explorer) but never blocks it.</summary>
+    private async Task RefreshPinNoticeAsync()
+    {
+        if (_pinNoticeRefreshing)
+            return; // a refresh from this or a very-close reveal is already in flight
+
+        _pinNoticeRefreshing = true;
+        try
+        {
+            var cfg = App.Services.GetRequiredService<ConfigService>();
+            if (cfg.Config.General.TaskbarPinPromptDismissed)
+            {
+                PinNotice.IsOpen = false;
+                return;
+            }
+
+            var pin = App.Services.GetRequiredService<TaskbarPinService>();
+            var state = await pin.GetStateAsync();
+            if (_disposed)
+                return; // the page was torn down while the query was in flight
+
+            var lang = cfg.Config.General.Language;
+
+            PinNotice.Message = AppLanguage.Text("TaskbarPinRequiredPrompt", lang);
+            PinNowButton.Content = AppLanguage.Text("PinNow", lang);
+            PinNeverButton.Content = AppLanguage.Text("PinDontAskAgain", lang);
+            PinNotice.IsOpen = state.Status != TaskbarPinStatus.Pinned;
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Error(ex, "Failed to refresh the taskbar pin notice");
+        }
+        finally
+        {
+            _pinNoticeRefreshing = false;
+        }
+    }
+
+    private void OnPinNoticeDismissed(object? sender, EventArgs e) => PinNotice.IsOpen = false;
+
+    private async void OnPinNeverClick(object? sender, RoutedEventArgs e)
+    {
+        var cfg = App.Services.GetRequiredService<ConfigService>();
+        cfg.Config.General.TaskbarPinPromptDismissed = true;
+        await cfg.SaveAsync();
+        PinNotice.IsOpen = false;
+    }
+
+    private async void OnPinNowClick(object? sender, RoutedEventArgs e)
+    {
+        var pin = App.Services.GetRequiredService<TaskbarPinService>();
+        var cfg = App.Services.GetRequiredService<ConfigService>();
+        var lang = cfg.Config.General.Language;
+
+        // Windows' own pin confirmation takes focus. Keep the window alive across it for users who
+        // have 失焦自动隐藏 switched on.
+        _host.SuppressHide(true);
+        try
+        {
+            var state = await pin.GetStateAsync();
+            if (state.Status is TaskbarPinStatus.Unsupported or TaskbarPinStatus.NotAllowed
+                or TaskbarPinStatus.Failed)
+            {
+                await ShowManualPinLocationAsync(pin, lang);
+                return;
+            }
+
+            state = await pin.RequestPinAsync();
+            if (state.Status is TaskbarPinStatus.Pinned)
+            {
+                PinNotice.IsOpen = false;
+                return;
+            }
+
+            if (state.Status is TaskbarPinStatus.Available)
+                return; // the user declined the Windows confirmation; leave the notice up
+
+            await ShowManualPinLocationAsync(pin, lang);
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Error(ex, "Taskbar pin request failed");
+        }
+        finally
+        {
+            _host.SuppressHide(false);
+        }
+    }
+
+    /// <summary>Windows 10 often cannot expose the consent-based TaskbarManager flow to an unpackaged
+    /// desktop app. Show the app's Start entry and let the user use Explorer's supported right-click
+    /// command. Never mutate the protected taskbar pin store directly.</summary>
+    private async Task ShowManualPinLocationAsync(TaskbarPinService pin, string? lang)
+    {
+        if (pin.OpenManualPinLocation())
+            return;
+
+        await MessageBox.ShowAsync(_host.Window, AppLanguage.Text("PinToTaskbarManualOpenFailed", lang),
+            "TanMenu", MessageBoxButtons.Ok, MessageBoxIcon.Warning);
+    }
 
     // ══════════════════════════════════════════════════════════════════════════════════════════
     // Search box
