@@ -230,7 +230,9 @@ New fields on `GeneralConfig`:
 `AutoClose` and `TopMost` change default from `true` to `false`.
 
 Migration runs in `ConfigService.Normalize` (`ConfigService.cs:94`), which already canonicalizes
-freshly loaded configs and is the right seam:
+freshly loaded configs and is the right seam. It has two call sites — `LoadAsync` (line 58) and
+`RestoreFromAsync` (line 219) — and both want the migration: restoring a 0.11-era backup should
+produce app-window behaviour just as loading a 0.11-era config does.
 
 ```
 if (config.General.SchemaVersion < 1)
