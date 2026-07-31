@@ -1,8 +1,11 @@
 # TanMenu — Windows 11 app shell (nav + pages, replaces the flyout launcher)
 
-> **Status: implemented in `28158a8`..`e7f4797`** (Task 13 of 13 — deletes `SettingsWindow` and
-> finishes the wiring this spec describes; `e7f4797` is a `MenuService` null-safety fix found while
-> verifying it). Every section below now describes shipped behaviour, not a plan.
+> **Status: implemented in `28158a8`..`e7f4797`, corrected by `41c6529`** (Task 13 of 13 deletes
+> `SettingsWindow` and finishes the wiring this spec describes; `e7f4797` is a `MenuService`
+> null-safety fix found while verifying it; `41c6529` is the single fix wave clearing the
+> whole-branch review — see
+> `.superpowers/sdd/2026-07-31-win11-shell-redesign/final-fix-report.md`). Every section below now
+> describes shipped behaviour, not a plan.
 >
 > Design spec, 2026-07-31. Every claim about the current code was grep/read-verified against the
 > tree at `ef79481`, and every Avalonia claim against the `Avalonia 12.1.0` reference assembly
@@ -56,7 +59,6 @@ dependency on Avalonia 12's still-changing `Chrome` API.
 | Add | `Views/AppPage.axaml` (+ code-behind) — search, pin notice, horizontal categories, empty states |
 | Add | `Views/SettingsPage.axaml` (+ code-behind) — the five settings card groups |
 | Add | `Views/Settings/*.axaml` — one control per card group (外观 / 行为 / 文件夹 / 常用工具 / 更新) |
-| Add | `Controls/NavigationRail.axaml` — the two-entry rail |
 | Add | `Controls/InfoBar.axaml` — Fluent 2 InfoBar, used by the taskbar-pin notice |
 | Delete | `SettingsWindow.axaml` + `SettingsWindow.axaml.cs` (184 + 1079 lines) |
 | Rewrite | `Services/WindowHost.cs` — placement replaces content-measurement |
@@ -86,13 +88,18 @@ After:
 | Fallback | If `ActualTransparencyLevel != Mica`, paint `SurfaceBaseBrush` — the same guard `SettingsWindow.axaml.cs:148` already uses |
 | Size | 1000×640 initial, `MinWidth=760`, `MinHeight=520`, `CanResize=True` |
 | Taskbar | `ShowInTaskbar="True"` |
-| Startup | `Manual`, restored from config and clamped to the current work area |
+| Startup | `Manual`, restored from config and clamped to the work area of the monitor the SAVED rectangle belongs to (not the monitor the unplaced window happens to sit on), applied by `App.ShowLauncherWindow` BEFORE `Show()` |
 | Close | Hides to tray (already the semantics of `ShutdownMode.OnExplicitShutdown` in `Program.cs:82`; unchanged) |
 
 `ExperimentalAcrylicBorder` and the `OpaqueFallback` border are deleted from the visual tree — with
 a system-decorated Mica window neither has a job. `Opacity="0"` and the reveal-fade go too: they
-exist only so a cold-start flyout never flashes an unsized rectangle at screen top-left, which
-cannot happen for a window with a restored, explicit size.
+exist only so a cold-start flyout never flashes an unsized rectangle at screen top-left, and a
+window whose size AND position are applied before it is ever shown cannot do that. That last clause
+is a requirement on the startup order, not a free consequence of having a restored size: the
+placement was originally applied from `MainWindow.OnOpened`, i.e. ~30 ms AFTER `Show()`, which
+painted one frame at the OS cascade position and then jumped. `App.ShowLauncherWindow` now calls
+`WindowHost.RestorePlacement()` between `Attach` and `Show`; Avalonia realizes the native window in
+`Window`'s constructor, so `Screens` is already available there.
 
 ### WindowHost
 
@@ -102,11 +109,26 @@ content-sized popup. Deleted: `ResizeToContentAndPlaceAsync`, `TryMeasureNatural
 `RefreshPlacementAfterRevealAsync`, `CompleteReveal`, and the `ContentMaxWidthDip` /
 `MaxHeightFraction` / `SetWindowPos` apparatus.
 
-Added: `RestorePlacement()` (read config, clamp to work area, apply) and `SavePlacement()` (write
-size/position/maximized back). Kept unchanged in contract: `Attach`, `Window`, `ShowAndActivate`,
-`Hide`, `Toggle`, `SuppressHide` — the tray (`TrayService.cs:40,59`), the global hotkey
-(`GlobalHotkeyService.cs:69,146`), the second-instance path, `MessageBox`, `IUpdatePromptService`
-and `ISettingsLauncher` all depend on them.
+Added: `RestorePlacement()` (read config, pick the target monitor from the saved rectangle, clamp,
+apply) and `SavePlacement()` (write size/position/maximized back). Kept unchanged in contract:
+`Attach`, `Window`, `ShowAndActivate`, `Hide`, `Toggle`, `SuppressHide` — the tray
+(`TrayService.cs:40,59`), the global hotkey (`GlobalHotkeyService.cs:69,146`), the second-instance
+path, `MessageBox`, `IUpdatePromptService` and `ISettingsLauncher` all depend on them.
+
+Three of those behaviours are sharper than "unchanged" implies, and each exists because this is an
+ordinary app window rather than a focused flyout:
+
+- **`Toggle` asks who is in FRONT, not merely whether the window is visible.** With 失焦自动隐藏 off by
+  default the window routinely sits visible behind other apps, so `IsVisible` no longer implies
+  "focused"; treating it as such made the hotkey and tray left-click hide the window the user was
+  summoning. It hides only when `GetForegroundWindow()` is our HWND, and raises otherwise.
+- **`Hide` resets the shell to 应用** (see §2), after the window is off screen so the page swap is
+  never seen. Reset on hide rather than on show, because `ISettingsLauncher.OpenCore` navigates to
+  设置 and *then* calls `ShowAndActivate`.
+- **`FlushPlacementBlocking()`** is what 退出 calls. The fire-and-forget flush yields at the first
+  await inside `SaveAsync`, and `desktop.Shutdown()` then ends the dispatcher loop its continuation
+  was posted to, losing a geometry change made inside the 500 ms debounce window. `SaveAsync` awaits
+  with `ConfigureAwait(false)` throughout so this blocking wait cannot deadlock.
 
 `IWindowHost.ContentVersion` disappears from the interface, so `LauncherViewModel`'s
 `_host.ContentVersion = HashCode.Combine(...)` block (`LauncherViewModel.cs:680`) is deleted with
@@ -139,12 +161,17 @@ the old feel. See §6 for how existing configs — which carry `true` explicitly
 - The rail is 200 px, fixed. Each entry is an icon (Segoe Fluent Icons, the family
   `Themes/Fluent2/Launcher.axaml` already uses for `tm-icon`) plus a label, and the selected entry
   carries Fluent 2's 3 px accent bar on its leading edge. No collapse-to-icons mode: with two
-  entries it would be decoration, and `MinWidth=760` guarantees room.
+  entries it would be decoration, and `MinWidth=760` guarantees room. It is declared inline in
+  `MainWindow.axaml` (a `ListBox` with two `ListBoxItem`s, lines 26–46) rather than as a separate
+  `Controls/NavigationRail.axaml`: two static rows do not justify a control.
 - The page host is a `ContentControl` swapping two `UserControl`s. `MainWindow.axaml` keeps only the
   shell so it does not grow into the 300-line file it is today.
 - The overflow menu (`···`) keeps 打开主目录 / 刷新 / 关于 / 退出 and **loses 选项** — the rail is now
   that entry point. It moves into the app page's header, right of the search field.
-- Navigation state is view-level, not config: the window always opens on 应用.
+- Navigation state is view-level, not config: the window always opens on 应用. `ShellNavigator.Current`
+  is process-lifetime state that survives a hide/show cycle, so "always opens on 应用" is enforced by
+  `WindowHost.Hide` resetting it — not merely by the initial value. Without that reset a session that
+  visited 设置 re-summons onto 设置, with `AppPage` detached and therefore no search box to focus.
 
 ## 3 · App page: horizontal categories
 
@@ -179,8 +206,12 @@ Replacement: a Fluent 2 InfoBar pinned above the categories in the app page.
 - `[固定]` reuses the existing service logic verbatim: `RequestPinAsync()`, with the
   `Unsupported`/`NotAllowed`/`Failed` branch falling back to `OpenManualPinLocation()` and its own
   failure `MessageBox`. Only the entry point changes, not the flow.
-- `[不再提示]` sets `TaskbarPinPromptDismissed = true` and saves; the bar never returns. The close
-  glyph dismisses for this session only.
+- `[不再提示]` sets `TaskbarPinPromptDismissed = true` and saves through the SAME
+  `SettingsWrite.CommitAsync` contract as the five settings card groups (§5) — a failed write rolls
+  the flag back, re-evaluates the notice, and reports the error — so the bar can never be dismissed
+  on screen while the flag never reached disk. The close glyph dismisses for this session only.
+- The message string (`TaskbarPinRequiredPrompt`) describes THIS UI: it names the 固定 button, not the
+  确定 of the modal it replaced, and it makes no hide-on-blur claim, since that is off by default now.
 - Once the state reports `Pinned`, the bar removes itself.
 - `SuppressHide(true/false)` around the pin flow is **kept**: Windows' own pin-confirmation dialog
   takes focus, and with 失焦自动隐藏 enabled the window would otherwise disappear mid-flow.
@@ -210,6 +241,11 @@ groups on one vertically scrolling page:
   overwrite the user's data.
 - The 1079-line code-behind is split one control per card group under `Views/Settings/`, so no single
   file inherits the whole thing.
+- **Anything read from the OS is re-read on `OnAttachedToVisualTree`, not once at construction.**
+  `SettingsWindow` re-queried on every `Opened`; the page is cached for the process lifetime and has
+  no such moment, and navigating 应用↔设置 is what detaches and re-attaches it. This covers both OS-backed
+  rows in 行为 — 固定到任务栏 (shell COM) and 开机自启 (the Run key / StartupTask, which Task Manager's
+  启动应用 tab changes behind the app's back).
 - Localization keeps working the way it does now: `AppLanguage` has no change notification, so the
   page re-labels itself imperatively when the language card changes, exactly as
   `SettingsWindow.ApplyStaticText()` does today.
@@ -299,7 +335,11 @@ reference.
 
 - **Unit (`TanMenu.Core.Tests`)**: round-trip of the new `GeneralConfig` fields; the
   `SchemaVersion < 1` migration flipping `AutoClose`/`TopMost` on an old config and leaving a
-  `SchemaVersion = 1` config alone; existing `ColButtonCount` assertions must keep passing unchanged.
+  `SchemaVersion = 1` config alone, pinned on BOTH `Normalize` call sites (`LoadAsync` and
+  `RestoreFromAsync`); `WindowPlacement.ChooseWorkArea` picking the monitor that contains the saved
+  rectangle's centre and falling back to the primary when that monitor is gone;
+  `ConfigService.SaveAsync` completing while the calling thread is blocked on it (the property 退出's
+  flush depends on); existing `ColButtonCount` assertions must keep passing unchanged.
 - **Manual, in the running app** — the paths this design disturbs: tray single-click toggle, tray
   显示, tray 选项 landing on the settings page, global hotkey toggle, second-instance activation
   (new handshake), 失焦自动隐藏 on and off, close-to-tray, size/position surviving a restart, window
