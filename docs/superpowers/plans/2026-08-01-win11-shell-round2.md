@@ -27,7 +27,7 @@ Do not rediscover these, and do not substitute the Avalonia 11 names:
 
 | API | Status |
 |---|---|
-| `Window.ExtendClientAreaToDecorationsHint` | Exists. Extends the client area under the caption; the **system caption buttons remain** |
+| `Window.ExtendClientAreaToDecorationsHint` | Exists. Extends the client area under the caption |
 | `Window.ExtendClientAreaTitleBarHeightHint` | Exists. `-1` = OS default height; any positive value forces that height |
 | `Avalonia.Controls.Chrome.WindowDecorationProperties.ElementRole` | Attached property of type `Avalonia.Input.WindowDecorationsElementRole`, for non-client hit-testing. **Documented as having effect only while `ExtendClientAreaToDecorationsHint` is true** |
 | `WindowDecorationsElementRole.TitleBar` | "The element acts as a titlebar drag area. Clicking and dragging initiates a platform window move" |
@@ -35,7 +35,28 @@ Do not rediscover these, and do not substitute the Avalonia 11 names:
 | `ExtendClientAreaChromeHints` | **Does not exist** in 12.1 — Avalonia 11 name |
 
 So: extend the client area, mark the title strip `TitleBar`, mark the search box and any buttons in
-it `User`. A full app-drawn `WindowDrawnDecorations` template is NOT needed and must not be attempted.
+it `User`.
+
+### CORRECTION, established by decompiling Avalonia 12.1 during Task 1's review
+
+Two lines above were wrong when this plan was written. The corrected facts:
+
+- **The caption buttons are NOT the system's — Avalonia draws its own.** Setting
+  `ExtendClientAreaToDecorationsHint` makes `WindowImpl.NeedsManagedDecorations` true, so
+  `TopLevelHost` instantiates a `WindowDrawnDecorations` and fills it from the Fluent theme's default
+  `ControlTemplate` for that class. That template draws an icon, the window title, and
+  Close/Minimize/Maximize **plus a `PART_FullScreenButton`** — which is why the shipped Task 1 build
+  showed a doubled icon+title and a fourth, non-Windows-11 caption button. An app that draws its own
+  title strip **must override that template/theme** to suppress the default icon, title and
+  fullscreen button. Contrary to the original note, supplying a `WindowDrawnDecorations` override is
+  therefore REQUIRED here, not forbidden.
+- **`WindowDecorationMargin` cannot measure the caption buttons.** The Win32 backend hardcodes
+  `Left`/`Right`/`Bottom` to `0.0` (`WindowImpl.UpdateExtendMargins`), and when
+  `ExtendClientAreaTitleBarHeightHint` is a positive literal, `Top` reduces algebraically to that same
+  literal — so it echoes back the app's own XAML value and carries no information about the real
+  buttons or the real DPI. Any reservation derived from it is a hardcoded constant wearing a
+  disguise. Reserve space from the overridden decorations template's own measured buttons instead, or
+  state plainly in a comment that the width is a constant and why that is acceptable.
 
 ---
 
