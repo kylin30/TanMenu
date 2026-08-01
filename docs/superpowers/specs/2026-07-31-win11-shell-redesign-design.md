@@ -53,6 +53,40 @@
 > against a work-area edge; 字体 and 语言 changes end to end; and a 设置 visit with no menu change in
 > between, then back to 应用.
 >
+> **Superseded in part by Round 3 (2026-08-01/02), shipped as 0.12.0.** After reviewing the Round 2
+> build the user asked for nine more items, planned in
+> `docs/superpowers/plans/2026-08-01-win11-shell-round3.md` and executed in `8b4c1a2`..`725f408`.
+> The measured findings and the decompiled Avalonia facts they rest on are recorded in
+> `docs/superpowers/reports/2026-08-02-win11-shell-round3-findings.md`. Sections below that Round 3
+> changed:
+>
+> - **§1 fit-to-content height** — the height rule is no longer "the tallest category in a single
+>   column". Items fill a column up to `GeneralConfig.ColButtonCount` (default 10, user-settable in
+>   外观) and then wrap, so the height follows `min(tallest category count, ColButtonCount)`. The cap
+>   lives in the data layer (`MenuLayout.ChunkIntoColumns`), which is why `FitToContent`'s unbounded
+>   measure still reports the capped height without any arithmetic change.
+> - **§1 title strip** — the `···` overflow button is gone; 打开主目录 / 刷新 / 关于 / 退出 are rail
+>   entries pinned to the bottom. The search box is centred in the strip and uses the Windows 11 focus
+>   treatment (1 px resting border plus a 2 px accent underline), not an accent ring.
+> - **§3 外观 card** — 按钮大小 is deleted along with the whole size-class plumbing; tiles are always
+>   the former "小" size at a fixed 168 DIP. `GeneralConfig.ButtonSize` is retained as a legacy field
+>   only. 每列个数 takes its place in the card.
+> - **§3 settings cards** — cards stretch to the content width (capped at 1250 DIP) instead of sitting
+>   at a fixed width; section headings dropped to Body/SemiBold against a Subtitle page title; and
+>   固定到任务栏 renders disabled, not accent-styled, once the app is pinned.
+>
+> **Known limit, not a defect:** the window has a practical height floor near 605 DIP outer / 598 DIP
+> client at 150 % scale, below its declared `MinHeight="568"`. 每列个数 values at or below roughly
+> 12–13 therefore all produce the same window height; the setting is height-effective only above that,
+> and lowering it trades height for width (a value of 3 produced a 4648 DIP-wide window in testing).
+>
+> **Round 3's outstanding human verification**, in addition to the lists above: the first-ever 设置
+> open of a process, watching 固定到任务栏 for a stock-Fluent flash before it settles (the fix is
+> argued from the code path; the pre-query frame proved shorter than the 33 ms capture interval, so no
+> screenshot can distinguish it); the column cap at a scale other than 150 %; 每列个数 set to 1; and a
+> hand-edited `colButtonCount` of 0 and of 10000 (both are clamped, but the 外观 spinner reads 30 while
+> the layout stays uncapped above 30).
+>
 > Design spec, 2026-07-31. Every claim about the current code was grep/read-verified against the
 > tree at `ef79481`, and every Avalonia claim against the `Avalonia 12.1.0` reference assembly
 > documentation in the local NuGet cache — not recalled. Where this file and the code disagree, the
