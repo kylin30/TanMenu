@@ -589,6 +589,53 @@ public class ConfigServiceTests
     }
 
     [Fact]
+    public async Task SaveThenLoad_RoundTripsNavRailExpanded()
+    {
+        var paths = NewPaths(out var root);
+        try
+        {
+            var svc1 = new ConfigService(paths, NullLogger<ConfigService>.Instance);
+            await svc1.LoadAsync();
+
+            // A brand-new config (nothing on disk yet) must load collapsed — the Task Manager default.
+            Assert.False(svc1.Config.General.NavRailExpanded);
+
+            svc1.Config.General.NavRailExpanded = true;
+            await svc1.SaveAsync();
+
+            var svc2 = new ConfigService(paths, NullLogger<ConfigService>.Instance);
+            await svc2.LoadAsync();
+
+            Assert.True(svc2.Config.General.NavRailExpanded);
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task LoadAsync_ConfigWithNoNavRailExpandedKey_DefaultsToCollapsed()
+    {
+        var paths = NewPaths(out var root);
+        try
+        {
+            // Every config.json written before this field existed is in this shape.
+            await File.WriteAllTextAsync(
+                paths.ConfigFilePath, "{\"general\":{\"language\":\"zh-Hans\"}}");
+
+            var svc = new ConfigService(paths, NullLogger<ConfigService>.Instance);
+            await svc.LoadAsync();
+
+            Assert.False(svc.Config.General.NavRailExpanded);
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task SaveThenLoad_KeepsNegativeWindowPositionFromALeftHandMonitor()
     {
         var paths = NewPaths(out var root);

@@ -49,4 +49,15 @@ public class AppConfigTests
         Assert.False(general.WindowMaximized);
         Assert.False(general.TaskbarPinPromptDismissed);
     }
+
+    [Fact]
+    public void NewGeneralConfig_NavRailIsCollapsedByDefault()
+    {
+        // Task Manager style: the rail opens icon-only (48 px) unless the user has explicitly expanded
+        // it. An absent key in an old config.json (every file written before this field existed)
+        // deserializes to this same default, so old configs must also open collapsed.
+        var general = new GeneralConfig();
+
+        Assert.False(general.NavRailExpanded);
+    }
 }

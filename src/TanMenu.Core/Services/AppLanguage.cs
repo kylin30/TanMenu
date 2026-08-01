@@ -183,6 +183,11 @@ public static class AppLanguage
             ["MenuMore"] = ("更多", "More"),
             ["NavApps"] = ("应用", "Apps"),
             ["NavSettings"] = ("设置", "Settings"),
+            // The hamburger toggle at the top of the nav rail. Named for the action it performs (what
+            // pressing it does NEXT), not the rail's current state — same convention WinUI's own
+            // NavigationView pane-toggle button uses for its accessible name.
+            ["NavExpand"] = ("展开导航栏", "Expand navigation"),
+            ["NavCollapse"] = ("折叠导航栏", "Collapse navigation"),
             ["NoMatchTitle"] = ("未找到匹配项", "No matches"),
             ["NoMatchHelp"] = ("没有名称包含该关键词的快捷方式。", "No shortcut's name contains that text."),
             ["ClearFilter"] = ("清除搜索", "Clear search"),

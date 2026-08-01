@@ -331,7 +331,10 @@
   </Style>
 
   <!-- Navigation rail. Fluent 2's NavigationView selection idiom: a 3 px accent bar on the leading
-       edge of the selected row, a subtle fill on hover, and no border anywhere. -->
+       edge of the selected row, a subtle fill on hover, and no border anywhere. The BorderThickness
+       here is a flat "3,0,0,0" regardless of collapsed/expanded — it is what the task explicitly asks
+       to "stay visible when collapsed", and a 48 px-wide row has exactly as much room for a 3 px
+       leading bar as a 200 px one does. -->
   <Style Selector="ListBox.tm-nav ListBoxItem">
     <Setter Property="Padding" Value="12,10" />
     <Setter Property="Margin" Value="4,2" />
@@ -345,6 +348,21 @@
     <Setter Property="Background" Value="{DynamicResource SubtleFillTertiaryBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource AccentDefaultBrush}" />
     <Setter Property="BorderThickness" Value="3,0,0,0" />
+  </Style>
+
+  <!-- ══ Collapsed rail (Task Manager style: 48 px, icon-only) ══════════════════════════════════
+       MainWindow's ApplyNavExpandedState toggles this "collapsed" class on the ListBox itself
+       (NavRail), not on each row, so a single Set() call re-derives every row's look. The label
+       TextBlocks disappear entirely (IsVisible=False, not just Opacity=0) rather than fading, so they
+       stop reserving layout space the instant the pane starts narrowing — Avalonia drops an
+       IsVisible=False element from layout the same way it drops WindowDrawnDecorations' own suppressed
+       parts (see MainWindow.axaml's header comment). Centring the icon only in the collapsed state
+       keeps the expanded rail's existing left-aligned icon+label untouched. -->
+  <Style Selector="ListBox.tm-nav.collapsed TextBlock.tm-nav-label">
+    <Setter Property="IsVisible" Value="False" />
+  </Style>
+  <Style Selector="ListBox.tm-nav.collapsed ListBoxItem StackPanel">
+    <Setter Property="HorizontalAlignment" Value="Center" />
   </Style>
 
   <!-- NO MaxWidth here. A cap would only clamp the width the group REPORTS to the horizontal

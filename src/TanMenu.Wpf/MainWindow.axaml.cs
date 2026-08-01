@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -14,13 +15,14 @@ using TanMenu.Wpf.Views;
 namespace TanMenu.Wpf;
 
 /// <summary>
-/// The shell: the title strip (app icon/name, search, overflow), the fixed navigation rail and the
-/// page host. All launcher STATE still lives in <see cref="AppPage"/>'s <c>LauncherViewModel</c> — the
-/// search box and overflow menu here bind and dispatch to that SAME instance (exposed as
+/// The shell: the title strip (app icon/name, search, overflow), the collapsible navigation rail and
+/// the page host. All launcher STATE still lives in <see cref="AppPage"/>'s <c>LauncherViewModel</c> —
+/// the search box and overflow menu here bind and dispatch to that SAME instance (exposed as
 /// <see cref="AppPage.ViewModel"/>) rather than a second one, since AppPage still owns the keyboard
 /// model (Escape, Down-into-the-grid) that the search box's key handling has to reach into. This class
 /// owns what genuinely belongs to the window — the Mica fallback, close-to-tray, the caption-button
-/// reservation, and swapping the page host's content between the two rail entries.
+/// reservation, the rail's collapsed/expanded choice, and swapping the page host's content between the
+/// two rail entries.
 /// </summary>
 public partial class MainWindow : Window
 {
@@ -48,8 +50,14 @@ public partial class MainWindow : Window
         _events = App.Services.GetRequiredService<AppEvents>();
         _events.SettingsChanged += ApplyWindowFont;
         _events.SettingsChanged += ApplyRailText;
+        // NavRailExpanded has no settings-card counterpart to raise SettingsChanged for it specifically
+        // (see the field's remarks in GeneralConfig), but the hamburger's tooltip/automation name is
+        // still language-dependent, so this re-applies alongside the other two for the same reason they
+        // do: AppLanguage/AppFonts carry no change notification of their own.
+        _events.SettingsChanged += ApplyNavExpandedState;
         ApplyWindowFont();
         ApplyRailText();
+        ApplyNavExpandedState();
 
         // The search field and overflow menu bind straight to AppPage's own LauncherViewModel — see
         // the class remarks above for why this is not a second view model.
@@ -89,6 +97,7 @@ public partial class MainWindow : Window
     {
         _events.SettingsChanged -= ApplyWindowFont;
         _events.SettingsChanged -= ApplyRailText;
+        _events.SettingsChanged -= ApplyNavExpandedState;
         _appPage.ViewModel.PropertyChanged -= OnLauncherViewModelPropertyChanged;
 
         // AppPage's view model is disposed here, not on the page's own Unloaded: OnClosed only fires
@@ -186,8 +195,71 @@ public partial class MainWindow : Window
     private void ApplyRailText()
     {
         var lang = App.Services.GetRequiredService<ConfigService>().Config.General.Language;
-        NavAppsLabel.Text = AppLanguage.Text("NavApps", lang);
-        NavSettingsLabel.Text = AppLanguage.Text("NavSettings", lang);
+        var appsText = AppLanguage.Text("NavApps", lang);
+        var settingsText = AppLanguage.Text("NavSettings", lang);
+
+        NavAppsLabel.Text = appsText;
+        NavSettingsLabel.Text = settingsText;
+
+        // AutomationProperties.Name/ToolTip.Tip live on the ROW (the ListBoxItem), not on the label
+        // TextBlock: Launcher.axaml's ".collapsed" rule hides NavAppsLabel/NavSettingsLabel entirely
+        // (IsVisible=False) when the rail is collapsed, so an icon-only row needs an accessible name and
+        // a tooltip that do not depend on that now-invisible label being there to read.
+        NavAppsItem.SetValue(AutomationProperties.NameProperty, appsText);
+        NavSettingsItem.SetValue(AutomationProperties.NameProperty, settingsText);
+        ToolTip.SetTip(NavAppsItem, appsText);
+        ToolTip.SetTip(NavSettingsItem, settingsText);
+    }
+
+    /// <summary>
+    /// Apply the rail's current collapsed/expanded choice: the pane's width (animated by the
+    /// <c>DoubleTransition</c> on <c>NavRailPane.Width</c> in MainWindow.axaml), the "collapsed" class
+    /// that drives Launcher.axaml's icon-only layout, and the hamburger's own tooltip/automation name —
+    /// which names the action pressing it performs NEXT (展开/Expand vs. 折叠/Collapse), so it must flip
+    /// every time the state does; a static XAML value could only ever be half right. Reads live from
+    /// config rather than a cached field, since <see cref="OnNavToggleClick"/> and this method are the
+    /// only two places that ever need the value and neither benefits from a second copy that could drift.
+    /// Called once from the constructor and again on every <see cref="AppEvents.SettingsChanged"/> (the
+    /// hamburger's tooltip text is language-dependent, and AppLanguage has no change notification).
+    /// </summary>
+    private void ApplyNavExpandedState()
+    {
+        var cfg = App.Services.GetRequiredService<ConfigService>();
+        var expanded = cfg.Config.General.NavRailExpanded;
+
+        NavRailPane.Width = expanded ? 200 : 48;
+        NavRail.Classes.Set("collapsed", !expanded);
+
+        var toggleText = AppLanguage.Text(expanded ? "NavCollapse" : "NavExpand", cfg.Config.General.Language);
+        NavToggleButton.SetValue(AutomationProperties.NameProperty, toggleText);
+        ToolTip.SetTip(NavToggleButton, toggleText);
+    }
+
+    /// <summary>
+    /// The hamburger toggle. Persists straight through <see cref="ConfigService.SaveAsync"/> rather than
+    /// <see cref="SettingsWrite.CommitAsync"/> — see <see cref="TanMenu.Core.Models.GeneralConfig.NavRailExpanded"/>'s
+    /// remarks for the full justification: this is shell chrome the rail applies live and owns outright
+    /// (the same category as <c>WindowMaximized</c>/<c>WindowLeft</c>/<c>WindowTop</c>, which
+    /// <see cref="WindowHost.SavePlacement"/> already persists the same way), not a setting a
+    /// 设置 card exposes. There is therefore no card to roll back or reload on a failed save, and no
+    /// other subscriber that needs telling, so a failed save is logged and otherwise ignored — exactly
+    /// like a failed placement flush — rather than surfaced as a blocking error dialog for what is a
+    /// purely cosmetic layout choice.
+    /// </summary>
+    private async void OnNavToggleClick(object? sender, RoutedEventArgs e)
+    {
+        var cfg = App.Services.GetRequiredService<ConfigService>();
+        cfg.Config.General.NavRailExpanded = !cfg.Config.General.NavRailExpanded;
+        ApplyNavExpandedState();
+
+        try
+        {
+            await cfg.SaveAsync();
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "Failed to persist the nav rail expand/collapse choice");
+        }
     }
 
     /// <summary>The 字体 setting used to reach the window through a DataContext binding. The shell has

@@ -30,13 +30,16 @@
     CORRECTED FACT (Task 1 review, established by decompiling Avalonia 12.1 — see the round-2 plan's
     "CORRECTION" note): the caption buttons this hint turns on are NOT drawn by Windows. Setting
     ExtendClientAreaToDecorationsHint makes Avalonia instantiate its OWN WindowDrawnDecorations overlay,
-    styled from the Fluent theme's default ControlTheme for that type — which draws an icon, the window
-    Title, Close/Minimize/Maximize, AND a PART_FullScreenButton Task Manager never shows. Left
-    unsuppressed, that overlay painted a second icon+title on top of this strip's own and a fourth,
-    non-Windows-11 caption button (both visible in the shipped Task 1 screenshots). WindowDecorationsTheme
-    below overrides that default theme, based on the same Fluent one via BasedOn, to hide exactly the
-    two parts this strip is a deliberate replacement for (the title/icon panel and the fullscreen
-    button) while leaving Minimize/Maximize/Close and all their built-in states untouched.
+    styled from the Fluent theme's default ControlTheme for that type — which draws the window title (a
+    TextBlock inside PART_TitleTextPanel) and Close/Minimize/Maximize, PLUS a PART_FullScreenButton Task
+    Manager never shows. Left unsuppressed, that overlay painted a second title on top of this strip's
+    own and a fourth, non-Windows-11 caption button (both visible in the shipped Task 1 screenshots).
+    WindowDecorationsTheme below overrides that default theme, based on the same Fluent one via BasedOn,
+    to hide exactly the two parts this strip is a deliberate replacement for (the title panel and the
+    fullscreen button) while leaving Minimize/Maximize/Close and all their built-in states untouched.
+    Decompiling Avalonia.Themes.Fluent 12.1.0 (Task 2 review) confirms the template contains NO icon
+    element at all — an earlier revision of this comment claimed it drew an icon, inferred from a
+    screenshot rather than from the template itself, and that was wrong.
 
     The strip is marked WindowDecorationProperties.ElementRole="TitleBar" so dragging it moves the
     window; the search field and the overflow button are marked "User" so they take pointer/keyboard
@@ -179,29 +182,70 @@
       </Grid>
     </Border>
 
-    <Grid Grid.Row="1" ColumnDefinitions="200,*">
+    <!-- Grid.Column="0" is "Auto", not a fixed width: NavRailPane below carries its OWN explicit
+         Width (48 collapsed / 200 expanded, toggled by OnNavToggleClick) and the Auto column just
+         follows whatever that Border currently measures at, which is what lets the DoubleTransition
+         on that Width animate the whole rail smoothly instead of snapping. -->
+    <Grid Grid.Row="1" ColumnDefinitions="Auto,*">
 
-      <ListBox x:Name="NavRail"
-               Grid.Column="0"
-               Classes="tm-nav"
-               SelectedIndex="0"
-               SelectionChanged="OnNavSelectionChanged"
-               Background="Transparent"
-               BorderThickness="0"
-               Padding="4,12">
-        <ListBoxItem>
-          <StackPanel Orientation="Horizontal" Spacing="12">
-            <TextBlock Classes="tm-icon" Text="&#xE71D;" VerticalAlignment="Center" />
-            <TextBlock x:Name="NavAppsLabel" Text="应用" VerticalAlignment="Center" />
-          </StackPanel>
-        </ListBoxItem>
-        <ListBoxItem>
-          <StackPanel Orientation="Horizontal" Spacing="12">
-            <TextBlock Classes="tm-icon" Text="&#xE713;" VerticalAlignment="Center" />
-            <TextBlock x:Name="NavSettingsLabel" Text="设置" VerticalAlignment="Center" />
-          </StackPanel>
-        </ListBoxItem>
-      </ListBox>
+      <!-- ══ Navigation rail pane: hamburger toggle + the two-entry rail, Task Manager style ═══════
+           Collapsed (48 px, icon-only) is the default a fresh config gets — GeneralConfig.NavRailExpanded
+           defaults to false — matching Task Manager's own rail. ApplyNavExpandedState (code-behind) is
+           the one place that ever sets this Border's Width or toggles the "collapsed" class below; both
+           happen together so the width animation and the icon-only layout change in lockstep. -->
+      <Border Grid.Column="0"
+              x:Name="NavRailPane"
+              Width="48"
+              Background="Transparent"
+              ClipToBounds="True">
+        <Border.Transitions>
+          <Transitions>
+            <DoubleTransition Property="Width" Duration="0:0:0.167" Easing="CubicEaseOut" />
+          </Transitions>
+        </Border.Transitions>
+
+        <Grid RowDefinitions="Auto,*">
+
+          <!-- The hamburger toggle. Icon-only in BOTH states (Task Manager's own toggle never grows a
+               label), left-aligned rather than centred so its glyph lines up with the rail items' own
+               icons below regardless of the pane's current width — centring would visibly jump the
+               glyph sideways every time the pane's width changes. AutomationProperties.Name/ToolTip.Tip
+               are set imperatively in ApplyNavExpandedState because they name the ACTION the button is
+               about to perform (expand or collapse), which flips every time it is pressed — a static
+               XAML value could only ever be half right. -->
+          <Button Grid.Row="0"
+                  x:Name="NavToggleButton"
+                  Theme="{StaticResource TmIconButton}"
+                  Margin="8,8,0,4"
+                  HorizontalAlignment="Left"
+                  Focusable="False"
+                  Click="OnNavToggleClick">
+            <TextBlock Classes="tm-icon" Text="&#xE700;" />
+          </Button>
+
+          <ListBox x:Name="NavRail"
+                   Grid.Row="1"
+                   Classes="tm-nav"
+                   SelectedIndex="0"
+                   SelectionChanged="OnNavSelectionChanged"
+                   Background="Transparent"
+                   BorderThickness="0"
+                   Padding="4,12">
+            <ListBoxItem x:Name="NavAppsItem">
+              <StackPanel Orientation="Horizontal" Spacing="12">
+                <TextBlock Classes="tm-icon" Text="&#xE71D;" VerticalAlignment="Center" />
+                <TextBlock x:Name="NavAppsLabel" Classes="tm-nav-label" Text="应用" VerticalAlignment="Center" />
+              </StackPanel>
+            </ListBoxItem>
+            <ListBoxItem x:Name="NavSettingsItem">
+              <StackPanel Orientation="Horizontal" Spacing="12">
+                <TextBlock Classes="tm-icon" Text="&#xE713;" VerticalAlignment="Center" />
+                <TextBlock x:Name="NavSettingsLabel" Classes="tm-nav-label" Text="设置" VerticalAlignment="Center" />
+              </StackPanel>
+            </ListBoxItem>
+          </ListBox>
+        </Grid>
+      </Border>
 
       <ContentControl x:Name="PageHost" Grid.Column="1" />
     </Grid>
