@@ -286,6 +286,7 @@ New fields on `GeneralConfig`:
 | `WindowWidth` / `WindowHeight` | `1000` / `640` | Legacy — retired by Round 2's task 4 (`docs/superpowers/plans/2026-08-01-win11-shell-round2.md`). Window size is now recomputed from content on every summon (`WindowHost.FitToContent`); these two fields are kept only so pre-Round-2 config files still deserialize, and nothing reads or writes them any more |
 | `WindowLeft` / `WindowTop` | `null` | Restored position; `null` = no remembered position, centre instead. Nullable rather than a negative sentinel: monitors left of the primary have negative coordinates, so `< 0` cannot mean "unset" |
 | `WindowMaximized` | `false` | Restored maximized state |
+| `NavRailExpanded` | `false` | Added by Round 2's task 2. Whether the navigation rail is pinned open (200 px, icon+label) rather than collapsed (48 px, icon-only). Written directly through `ConfigService.SaveAsync` from `MainWindow.OnNavToggleClick` — shell chrome the rail owns, like `WindowMaximized`/`WindowLeft`/`WindowTop`, not a setting any 设置 card exposes, so it raises no `SettingsChanged` |
 | `TaskbarPinPromptDismissed` | `false` | §4's 不再提示 |
 
 `AutoClose` and `TopMost` change default from `true` to `false`.

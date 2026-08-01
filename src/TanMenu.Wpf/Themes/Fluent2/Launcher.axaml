@@ -64,9 +64,11 @@
            straight from SurfaceLayerBrush to SubtleFillSecondaryBrush on hover would make the tile
            LESS opaque, not more, because those Subtle* alphas are calibrated to sit on a transparent
            rest state (see TmIconButton below), not to stack visibly over a fill that is already
-           there. StateLayer's own CornerRadius is 3, one px less than Root's 4, so it sits just
-           inside Root's hairline border instead of its square corners poking out past Root's rounded
-           ones. -->
+           there. StateLayer's own CornerRadius is RadiusControlInner — RadiusControl minus one — so it
+           sits just inside Root's hairline border instead of its square corners poking out past Root's
+           rounded ones. It was a hardcoded 3 in this template and in TmButton's below until Tokens.axaml
+           grew that token; see its own comment there for why the derived value has to be a second
+           literal and why it is declared next to the one it derives from. -->
       <Setter Property="Template">
         <ControlTemplate>
           <Border x:Name="Root"
@@ -74,7 +76,7 @@
                   BorderBrush="{TemplateBinding BorderBrush}"
                   BorderThickness="{TemplateBinding BorderThickness}"
                   CornerRadius="{TemplateBinding CornerRadius}">
-            <Border x:Name="StateLayer" Background="Transparent" CornerRadius="3">
+            <Border x:Name="StateLayer" Background="Transparent" CornerRadius="{DynamicResource RadiusControlInner}">
               <ContentPresenter Content="{TemplateBinding Content}"
                                 ContentTemplate="{TemplateBinding ContentTemplate}"
                                 Padding="{TemplateBinding Padding}"
@@ -187,7 +189,7 @@
                   BorderBrush="{TemplateBinding BorderBrush}"
                   BorderThickness="{TemplateBinding BorderThickness}"
                   CornerRadius="{TemplateBinding CornerRadius}">
-            <Border x:Name="StateLayer" Background="Transparent" CornerRadius="3">
+            <Border x:Name="StateLayer" Background="Transparent" CornerRadius="{DynamicResource RadiusControlInner}">
               <ContentPresenter Content="{TemplateBinding Content}"
                                 ContentTemplate="{TemplateBinding ContentTemplate}"
                                 Padding="{TemplateBinding Padding}"

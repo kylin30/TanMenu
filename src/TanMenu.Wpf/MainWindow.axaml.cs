@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
@@ -75,6 +76,12 @@ public partial class MainWindow : Window
         // manually resized) apply here exactly as they do to every other call.
         _appPage.NoticeVisibilityChanged += OnNoticeVisibilityChanged;
 
+        // The 小/中/大 tile size, 字体 and 语言 all change what the page measures too, and none of them
+        // used to re-fit the window (review finding 2). The view model raises this once every rebuild
+        // has actually applied them — see OnLauncherContentMetricsChanged for why this, and not
+        // AppEvents.SettingsChanged, is the correct seam.
+        _appPage.ViewModel.ContentMetricsChanged += OnLauncherContentMetricsChanged;
+
         _navReady = true;
     }
 
@@ -94,6 +101,11 @@ public partial class MainWindow : Window
         // restored geometry. App.ShowLauncherWindow now applies the placement between Attach and
         // Show(), i.e. before the window is ever on screen.
         (_host as WindowHost)?.Attach(this);
+
+        // Must run AFTER the HWND exists and after Avalonia has applied the extended client area — see
+        // RestoreSystemCloseCommand's own remarks. OnOpened re-fires on every un-hide, which is also
+        // what keeps this correct if Avalonia re-runs ExtendClientArea between summons.
+        RestoreSystemCloseCommand();
 
         // The startup build begins here, after the window is actually shown — never from AppPage's
         // own constructor, which runs earlier (as MainWindow's field initializer, before Show()) and
@@ -132,13 +144,51 @@ public partial class MainWindow : Window
         RefitToContent();
     }
 
-    /// <summary>Re-run <c>WindowHost.FitToContent</c> against the launcher's current natural size. Called
-    /// after the startup build finishes (<see cref="InitializeAndFitAsync"/>, on every summon) and again
-    /// whenever a docked notice's visibility might have changed that natural size
-    /// (<see cref="OnNoticeVisibilityChanged"/>) — both are the exact same operation, just triggered at
-    /// different times, so there is one place that reads the rail's width and calls through.</summary>
+    /// <summary>
+    /// Re-run <c>WindowHost.FitToContent</c> against the launcher's current natural size — unless the
+    /// launcher is not the page on screen, in which case this does NOTHING AT ALL.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Called after the startup build finishes (<see cref="InitializeAndFitAsync"/>, on every summon)
+    /// and again from every other event that changes what the active page measures: a docked notice
+    /// opening/closing (<see cref="OnNoticeVisibilityChanged"/>), the rail expanding/collapsing
+    /// (<see cref="OnNavToggleClick"/>), a 小/中/大 / 字体 / 语言 change
+    /// (<see cref="OnLauncherContentMetricsChanged"/>), a switch back to 应用
+    /// (<see cref="ShowPage"/>), and the Maximized→Normal transition
+    /// (<see cref="OnPropertyChanged"/>). All of them are the exact same operation, so there is one place
+    /// that reads the rail's width and calls through.
+    /// </para>
+    /// <para>
+    /// THE GUARD IS LOAD-BEARING, not defensive tidiness (review finding 1, CRITICAL). Measuring
+    /// <see cref="_appPage"/> while 设置 is the hosted page does two compounding kinds of damage, both
+    /// established by decompiling Avalonia 12.1.0. <c>ContentControl</c> removes the outgoing content
+    /// from <c>LogicalChildren</c> SYNCHRONOUSLY when <see cref="PageHost"/>'s Content is reassigned, and
+    /// <c>StyledElement.OnDetachedFromLogicalTreeCore</c> then recurses the whole subtree calling
+    /// <c>InvalidateStyles</c>, which drops every style frame from the value store and clears
+    /// <c>_stylesApplied</c>. A page measured in that state has lost <c>Panel.size-* Button.tm-tile</c>'s
+    /// fixed 168/192/216 widths (Launcher.axaml) and every other app-level style, so the window would be
+    /// sized from a ragged, text-width measurement and land on its MinWidth/MinHeight floor. Worse,
+    /// <c>Layoutable.MeasureCore</c> calls <c>ApplyStyling()</c>, and <c>StyledElement.ApplyStyling</c>
+    /// sets <c>_stylesApplied = true</c> even though nothing can match while <c>StylingParent</c> is null
+    /// — so the page's own later <c>OnAttachedToLogicalTreeCore</c> sees the flag already set, no-ops,
+    /// and the launcher renders UNSTYLED for the rest of the session, self-healing only after another
+    /// 设置→应用 round trip. The tray's 选项 entry reaches exactly this: <c>SettingsLauncher.OpenCore</c>
+    /// navigates to 设置 and THEN calls <c>ShowAndActivate</c>, whose <c>Show()</c> re-raises
+    /// <c>Opened</c>, whose <see cref="InitializeAndFitAsync"/> awaits an already-completed memoized Task
+    /// and continues synchronously into this method with the launcher detached.
+    /// </para>
+    /// <para>
+    /// Same test, and for the same underlying reason, as <see cref="ConsumePendingFocus"/>'s own guard;
+    /// and like that one, the deferred work is not lost — <see cref="ShowPage"/> re-invokes this the next
+    /// time the rail switches back to 应用.
+    /// </para>
+    /// </remarks>
     private void RefitToContent()
     {
+        if (!ReferenceEquals(PageHost.Content, _appPage))
+            return;
+
         // Read straight from config, not NavRailPane's own live Width/Bounds — see
         // WindowHost.FitToContent's own <param> remarks on railWidth for why: a config value can never
         // be mid-animation.
@@ -150,12 +200,30 @@ public partial class MainWindow : Window
     /// guards (maximized, already manually resized) decide whether this re-fit actually does anything.</summary>
     private void OnNoticeVisibilityChanged() => RefitToContent();
 
+    /// <summary>
+    /// The launcher finished a (re)build, so anything derived from settings that changes what it
+    /// MEASURES has already been applied to it: the 小/中/大 tile-size class (168/192/216 DIP per tile),
+    /// the 字体 face, and every localized string on the page.
+    /// </summary>
+    /// <remarks>
+    /// Review finding 2: none of those re-fitted the window, so choosing 大 left the horizontal
+    /// scrollbar this round exists to remove, and choosing 小 left dead space. Hooking the view model's
+    /// own post-rebuild signal rather than <c>AppEvents.SettingsChanged</c> directly is what makes the
+    /// measurement valid: <c>LauncherViewModel.HandleSettingsChangedAsync</c> is asynchronous (its
+    /// rebuild is a background disk scan), so a re-fit driven straight off SettingsChanged would measure
+    /// the PREVIOUS layout. Posted at <see cref="DispatcherPriority.Loaded"/> — one below layout — so the
+    /// tile tree has actually been re-measured with the new class before the window is sized to it.
+    /// </remarks>
+    private void OnLauncherContentMetricsChanged() =>
+        Dispatcher.UIThread.Post(RefitToContent, DispatcherPriority.Loaded);
+
     protected override void OnClosed(EventArgs e)
     {
         _events.SettingsChanged -= ApplyWindowFont;
         _events.SettingsChanged -= ApplyRailText;
         _events.SettingsChanged -= ApplyNavExpandedState;
         _appPage.ViewModel.PropertyChanged -= OnLauncherViewModelPropertyChanged;
+        _appPage.ViewModel.ContentMetricsChanged -= OnLauncherContentMetricsChanged;
         _appPage.NoticeVisibilityChanged -= OnNoticeVisibilityChanged;
 
         // AppPage's view model is disposed here, not on the page's own Unloaded: OnClosed only fires
@@ -170,20 +238,69 @@ public partial class MainWindow : Window
 
     /// <summary>
     /// Escape reaches here only when focus was NOT inside the search box or <see cref="AppPage"/>'s own
-    /// tile grid — e.g. a nav-rail row. Both of those already handle Escape (and mark it handled)
-    /// themselves, matching the clear-then-hide behaviour the launcher always had. Before the rail
-    /// existed, this window's own OnKeyDown handled Escape identically regardless of where focus was —
-    /// calling the SAME view-model method here (rather than an unconditional Hide) keeps that behaviour
-    /// rather than merely approximating it.
+    /// tile grid — e.g. a nav-rail row, or anywhere at all on 设置. Both of those already handle Escape
+    /// (and mark it handled) themselves, matching the clear-then-hide behaviour the launcher always had.
+    /// Before the rail existed, this window's own OnKeyDown handled Escape identically regardless of
+    /// where focus was — calling the SAME view-model method here (rather than an unconditional Hide)
+    /// keeps that behaviour rather than merely approximating it, ON 应用.
     /// </summary>
+    /// <remarks>
+    /// On 设置 it dismisses outright instead. <c>HandleSearchEscape</c> is two-stage — a non-empty filter
+    /// is cleared and the window stays up — and on 设置 the filter belongs to a page the user cannot see
+    /// (review finding 4: it can no longer be TYPED there, since <see cref="ShowPage"/> disables the box,
+    /// but a filter carried over from 应用 is still non-empty), so routing through it would spend the
+    /// user's first Escape clearing something invisible and only dismiss on the second.
+    /// </remarks>
     protected override void OnKeyDown(KeyEventArgs e)
     {
         base.OnKeyDown(e);
         if (e.Handled || e.Key != Key.Escape)
             return;
 
-        _appPage.ViewModel.HandleSearchEscape();
+        if (ReferenceEquals(PageHost.Content, _appPage))
+            _appPage.ViewModel.HandleSearchEscape();
+        else
+            _host.Hide();
+
         e.Handled = true;
+    }
+
+    /// <summary>
+    /// Re-fit the window once when the user un-maximizes it, and re-assert the system menu's Close
+    /// command whenever the window state changes.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Review finding 3: <c>WindowHost.FitToContent</c> returns early unless the window is in the Normal
+    /// state — correctly, since there is no restored geometry on screen to measure against while
+    /// maximized — but NOTHING re-triggered a fit when the user came back out of it, so a window that
+    /// started maximized (<c>GeneralConfig.WindowMaximized</c>) restored to the 1000x688 placeholder and
+    /// stayed there for the session. Round 2's plan asked for the opposite: "a maximized window should
+    /// still restore maximized, and fit-to-content applies to the restored (normal) size." This is the
+    /// one transition where that becomes possible, and it needs no Maximized → Normal → Maximized state
+    /// toggle — the very flicker the early return was avoiding — because the window is already Normal by
+    /// the time this runs. Posted at <see cref="DispatcherPriority.Loaded"/> so the restored bounds have
+    /// been laid out before they are measured and replaced.
+    /// </para>
+    /// <para>
+    /// The Close re-enable rides along here because Avalonia's Win32 backend re-runs
+    /// <c>ExtendClientArea()</c> — which is what disables <c>SC_CLOSE</c> — from its own window-state
+    /// handling, so a state change is exactly when the grey-out can come back. See
+    /// <see cref="RestoreSystemCloseCommand"/>.
+    /// </para>
+    /// </remarks>
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+
+        if (change.Property != WindowStateProperty)
+            return;
+
+        RestoreSystemCloseCommand();
+
+        if (change.GetOldValue<WindowState>() == WindowState.Maximized &&
+            change.GetNewValue<WindowState>() == WindowState.Normal)
+            Dispatcher.UIThread.Post(RefitToContent, DispatcherPriority.Loaded);
     }
 
     /// <summary>Mica is a request, not a guarantee: Windows 10, "show transparency" turned off and
@@ -216,17 +333,44 @@ public partial class MainWindow : Window
     /// state (e.g. the font combo's selection guard).</summary>
     public void ShowPage(ShellPage page)
     {
+        // Read BEFORE the swap: "was 设置 the page being replaced" is what distinguishes a real
+        // 设置 → 应用 switch (which owes the launcher a re-fit, since nothing measured it while it was
+        // detached) from the shell's very first ShowPage, where PageHost.Content is still null and
+        // InitializeAndFitAsync owns the first fit. _settingsPage is null until 设置 is first visited,
+        // so this is false for the whole of a session that never goes there.
+        var wasSettings = _settingsPage is not null && ReferenceEquals(PageHost.Content, _settingsPage);
+
         NavRail.SelectedIndex = page == ShellPage.Settings ? 1 : 0;
         PageHost.Content = page == ShellPage.Settings
             ? _settingsPage ??= new SettingsPage()
             : _appPage;
 
+        // Review finding 4: the title strip's search box is always attached and used to stay live on
+        // 设置, where typing silently filtered an invisible 应用 page and Enter reached
+        // LauncherViewModel.HandleSearchEnter — which LAUNCHES the first match. Task Manager disables
+        // its own search box on pages that do not support search; so does this. The field carries the
+        // disabled visual (it is the bordered control the user sees) and the box carries the input
+        // block; setting both states the intent rather than relying on IsEffectivelyEnabled inheritance
+        // to do half of it.
+        var searchable = page == ShellPage.App;
+        SearchField.IsEnabled = searchable;
+        SearchBox.IsEnabled = searchable;
+
+        if (page != ShellPage.App)
+            return;
+
         // Retry a focus request ConsumePendingFocus deferred because 设置 was showing when it arrived
         // (see that method's remarks) — the same "re-check what needs the visual tree on re-attach"
         // rule AppPage's pre-move version of this mechanism followed, just relocated to the one place
         // that now knows which page is active.
-        if (page == ShellPage.App)
-            Dispatcher.UIThread.Post(ConsumePendingFocus, DispatcherPriority.Loaded);
+        Dispatcher.UIThread.Post(ConsumePendingFocus, DispatcherPriority.Loaded);
+
+        // …and the re-fit that was skipped for the same reason, on the same deferred slot: the launcher
+        // has just been re-attached to the logical tree, so its styles are re-applied and it can be
+        // measured meaningfully again. See RefitToContent's own remarks for what happens if it is
+        // measured any earlier than this.
+        if (wasSettings)
+            Dispatcher.UIThread.Post(RefitToContent, DispatcherPriority.Loaded);
     }
 
     private void OnNavSelectionChanged(object? sender, SelectionChangedEventArgs e)
@@ -309,6 +453,14 @@ public partial class MainWindow : Window
         var cfg = App.Services.GetRequiredService<ConfigService>();
         cfg.Config.General.NavRailExpanded = !cfg.Config.General.NavRailExpanded;
         ApplyNavExpandedState();
+
+        // Review finding 2: expanding takes 152 DIP away from the content pane and Body's horizontal
+        // scrollbar (AppPage.axaml) came straight back; collapsing handed those 152 DIP back as dead
+        // space. The rail's width is a term in the window's own content fit, so a change to it is a
+        // re-fit trigger exactly like a notice opening. RefitToContent reads the CONFIG value this
+        // handler has already flipped, not the pane's live Width, so it measures the animation's stable
+        // target rather than an interpolated frame — see WindowHost.FitToContent's railWidth remarks.
+        RefitToContent();
 
         try
         {
@@ -418,4 +570,83 @@ public partial class MainWindow : Window
     private void OnAboutClick(object? sender, RoutedEventArgs e) => _appPage.ViewModel.OpenAbout();
 
     private void OnExitClick(object? sender, RoutedEventArgs e) => _appPage.ViewModel.ExitApp();
+
+    // ══════════════════════════════════════════════════════════════════════════════════════════
+    // Alt+F4 (the system menu's Close command)
+    // ══════════════════════════════════════════════════════════════════════════════════════════
+
+    private const uint SC_CLOSE = 0xF060;
+    private const uint MF_BYCOMMAND = 0x00000000;
+    private const uint MF_ENABLED = 0x00000000;
+    private const uint MF_GRAYED = 0x00000001;
+    private const uint MF_DISABLED = 0x00000002;
+
+    /// <summary>
+    /// Put <c>SC_CLOSE</c> back in the window's system menu, which is what makes Alt+F4 work.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Review finding 5. <c>ExtendClientAreaToDecorationsHint="True"</c> (MainWindow.axaml) has a side
+    /// effect nothing documents: decompiled <c>Avalonia.Win32.WindowImpl.ExtendClientArea()</c> ends with
+    /// <c>if (!_isClientAreaExtended) EnableCloseButton(_hwnd); else DisableCloseButton(_hwnd);</c>, and
+    /// <c>DisableCloseButton</c> greys <c>SC_CLOSE</c> in the system menu with
+    /// <c>EnableMenuItem(..., MF_BYCOMMAND | MF_GRAYED)</c>. Greying that one menu item is ALSO how
+    /// Windows disables the Alt+F4 gesture, so extending the client area silently took Alt+F4 away.
+    /// Avalonia's own drawn Close caption button was unaffected — it calls <c>Window.Close()</c> directly
+    /// rather than posting <c>WM_SYSCOMMAND</c> — which is exactly why the loss was invisible.
+    /// </para>
+    /// <para>
+    /// Undoing it is one call and needs no interception: <c>Window.Close()</c> and <c>WM_SYSCOMMAND</c>/
+    /// <c>SC_CLOSE</c> converge on the same <c>WM_CLOSE</c>, which Avalonia turns into the Closing event,
+    /// so Alt+F4 lands in <see cref="OnClosing"/> and hides to the tray exactly like the caption button.
+    /// </para>
+    /// <para>
+    /// <c>GetSystemMenu(hwnd, false)</c> returns the window's own copy of the menu (passing true would
+    /// RESET it, discarding the change). Called from <see cref="OnOpened"/> — every Show, cold start and
+    /// un-hide alike — and again on every window-state change, because Avalonia re-runs
+    /// <c>ExtendClientArea()</c> from its own state handling and would re-grey the item.
+    /// </para>
+    /// </remarks>
+    private void RestoreSystemCloseCommand()
+    {
+        try
+        {
+            var hwnd = TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
+            if (hwnd == IntPtr.Zero)
+                return;
+
+            var menu = GetSystemMenu(hwnd, false);
+            if (menu == IntPtr.Zero)
+                return;
+
+            var before = GetMenuState(menu, SC_CLOSE, MF_BYCOMMAND);
+            if (before == -1)
+                return; // no SC_CLOSE item on this menu at all; nothing to re-enable
+
+            if (((uint)before & (MF_GRAYED | MF_DISABLED)) == 0)
+                return; // already enabled — nothing to do, and nothing worth logging
+
+            EnableMenuItem(menu, SC_CLOSE, MF_BYCOMMAND | MF_ENABLED);
+
+            // Debug rather than Information: this is expected to fire on every Show for as long as
+            // Avalonia keeps disabling the item, so it is diagnostic detail, not an event.
+            Serilog.Log.Debug(
+                "Re-enabled the system menu's Close command (Alt+F4): state {Before} -> {After}",
+                before, GetMenuState(menu, SC_CLOSE, MF_BYCOMMAND));
+        }
+        catch (Exception ex)
+        {
+            // A window that cannot re-enable Alt+F4 still closes from its caption button and the tray.
+            Serilog.Log.Warning(ex, "Failed to re-enable the system menu's Close command");
+        }
+    }
+
+    [LibraryImport("user32.dll")]
+    private static partial IntPtr GetSystemMenu(IntPtr hWnd, [MarshalAs(UnmanagedType.Bool)] bool bRevert);
+
+    [LibraryImport("user32.dll")]
+    private static partial int EnableMenuItem(IntPtr hMenu, uint uIDEnableItem, uint uEnable);
+
+    [LibraryImport("user32.dll")]
+    private static partial int GetMenuState(IntPtr hMenu, uint uId, uint uFlags);
 }

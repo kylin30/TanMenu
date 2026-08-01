@@ -103,6 +103,15 @@
       <CornerRadius x:Key="RadiusControl">4</CornerRadius>
       <CornerRadius x:Key="RadiusOverlay">8</CornerRadius>
 
+      <!-- RadiusControl MINUS ONE, for a layer that sits just INSIDE a control's own 1px border — the
+           hover/pressed state layer in TmTileButton and TmButton (Launcher.axaml). At the same radius as
+           its parent its square corners poke out past the parent's rounded ones. XAML cannot express
+           "RadiusControl - 1", so this is a second literal; it is declared immediately beside the value
+           it is derived from precisely so the two are changed together. Both StateLayer borders hardcoded
+           a bare 3 until this token existed, which meant a change to RadiusControl silently desynced
+           them in two files' worth of places at once. -->
+      <CornerRadius x:Key="RadiusControlInner">3</CornerRadius>
+
       <!-- Spacing scale. Every margin/padding/gap in Launcher.axaml comes from these. -->
       <x:Double x:Key="Space1">4</x:Double>
       <x:Double x:Key="Space2">8</x:Double>

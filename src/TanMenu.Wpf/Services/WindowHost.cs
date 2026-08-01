@@ -17,13 +17,13 @@ namespace TanMenu.Wpf.Services;
 /// content-sized popup bottom-center on every reveal; from 0.12 through Round 2's Task 1-3 the window
 /// was an ordinary, fixed-then-user-resized application window and none of that ran. Round 2's Task 4
 /// brought content measurement back, and its review round fixed it to run on every SUMMON, not only the
-/// process's first one: <see cref="RestorePlacement"/> restores POSITION always, and either the
-/// PLACEHOLDER size or the user's own last manually-resized size for this process (never
-/// <c>GeneralConfig.WindowWidth</c>/<c>WindowHeight</c> — see those properties' own remarks for why);
-/// <see cref="FitToContent"/> then measures the actual page and resizes the window to it, clamped to the
-/// work area exactly like a restored size always was — UNLESS the user has already taken control of the
-/// size by resizing it by hand, in which case it steps aside for the rest of the process. See
-/// <see cref="_userResized"/>'s own remarks for the full rule.
+/// process's first one: <see cref="RestorePlacement"/> restores POSITION always, and the best size it
+/// knows — the user's own last manually-resized size for this process, else the last size a fit landed
+/// on, else the PLACEHOLDER (never <c>GeneralConfig.WindowWidth</c>/<c>WindowHeight</c> — see those
+/// properties' own remarks for why); <see cref="FitToContent"/> then measures the actual page and
+/// resizes the window to it, clamped to the work area exactly like a restored size always was — UNLESS
+/// the user has already taken control of the size by resizing it by hand, in which case it steps aside
+/// for the rest of the process. See <see cref="_userResized"/>'s own remarks for the full rule.
 /// </remarks>
 public sealed partial class WindowHost : IWindowHost
 {
@@ -34,14 +34,15 @@ public sealed partial class WindowHost : IWindowHost
     /// on top of the measured page size to get the window's own full content-driven height.</summary>
     private const double TitleStripHeightDip = 48;
 
-    /// <summary>Placeholder Width/Height <see cref="RestorePlacement"/> applies before the launcher's
-    /// startup build — an async disk scan — has produced anything for <see cref="FitToContent"/> to
-    /// measure, on the very first show of the process. Matches MainWindow.axaml's own declared
-    /// Width/Height, so there is nothing visually jarring to reconcile once the real, content-driven size
-    /// lands moments later. Fixed constants, NOT read from <c>GeneralConfig.WindowWidth</c>/
-    /// <c>WindowHeight</c>, which Round 2 retired. Superseded by <see cref="_lastNormalWidthDip"/>/
-    /// <see cref="_lastNormalHeightDip"/> on every later summon once the user has manually resized once
-    /// this process — see those fields' own remarks.</summary>
+    /// <summary>Placeholder Width/Height <see cref="RestorePlacement"/> applies on the very FIRST show
+    /// of the process, before the launcher's startup build — an async disk scan — has produced anything
+    /// for <see cref="FitToContent"/> to measure. Matches MainWindow.axaml's own declared Width/Height,
+    /// so there is nothing visually jarring to reconcile once the real, content-driven size lands moments
+    /// later. Fixed constants, NOT read from <c>GeneralConfig.WindowWidth</c>/<c>WindowHeight</c>, which
+    /// Round 2 retired. Superseded on every LATER summon by <see cref="_lastFitWidthDip"/>/
+    /// <see cref="_lastFitHeightDip"/> (the size the previous fit landed on) or, once the user has
+    /// manually resized this process, by <see cref="_lastNormalWidthDip"/>/<see cref="_lastNormalHeightDip"/>
+    /// — see those fields' own remarks.</summary>
     private const double PlaceholderWidthDip = 1000;
     private const double PlaceholderHeightDip = 688;
 
@@ -105,6 +106,25 @@ public sealed partial class WindowHost : IWindowHost
     /// directly and never reads this pair at all).</summary>
     private double _lastNormalWidthDip = PlaceholderWidthDip;
     private double _lastNormalHeightDip = PlaceholderHeightDip;
+
+    /// <summary>The size the most recent successful <see cref="FitToContent"/> landed on, or null until
+    /// one has run. <see cref="RestorePlacement"/> applies it as the PRE-SHOW size on every later summon,
+    /// which is the whole point: the correction a fit makes only reaches the platform on the next layout
+    /// pass, i.e. after <see cref="Window.Show"/> has already put the window on screen, so without this
+    /// every summon painted the 1000x688 placeholder for a frame and then snapped to the real size —
+    /// reintroducing, for SIZE, exactly the paint-then-jump this class already goes out of its way to
+    /// avoid for POSITION (see <see cref="RestorePlacement"/>'s own remarks).</summary>
+    /// <remarks>
+    /// Deliberately a SEPARATE pair from <see cref="_lastNormalWidthDip"/>/<see cref="_lastNormalHeightDip"/>
+    /// rather than a reuse of them. Those two belong to the <see cref="_userResized"/> contract and mean
+    /// "the size the USER chose"; writing a fitted size into them would make a later
+    /// <see cref="RestorePlacement"/> unable to tell an automatic size from a deliberate one, and would
+    /// resurrect the very baseline-drift class of bug <see cref="_userResized"/>'s remarks describe.
+    /// These two mean only "the last size we computed ourselves" and are read ONLY when
+    /// <see cref="_userResized"/> is false.
+    /// </remarks>
+    private double? _lastFitWidthDip;
+    private double? _lastFitHeightDip;
 
     public WindowHost(ConfigService config, AppEvents events, IShellNavigator navigator)
     {
@@ -170,22 +190,66 @@ public sealed partial class WindowHost : IWindowHost
     /// <see cref="_restoring"/> is true, guarded the same as every other listener in <see cref="Attach"/>
     /// — real interactive drags never happen while that flag is set, so this is defence in depth, not
     /// load-bearing).</summary>
+    /// <remarks>
+    /// <para>
+    /// The record is POSTED to the dispatcher rather than taken inline, and the window state is re-read
+    /// there. Review finding: this method used to record <c>e.ClientSize</c> as the remembered NORMAL
+    /// size with no <see cref="WindowState"/> filter at all, unlike every other writer in this class.
+    /// Dragging a window to the top edge to snap-maximize happens INSIDE the interactive move loop, so
+    /// the resulting <c>WM_SIZE(SIZE_MAXIMIZED)</c> arrives with <see cref="WindowResizeReason.User"/>
+    /// and the screen-filling client size was stored as the size to restore to — and latched
+    /// <see cref="_userResized"/> along with it, permanently disabling content-fitting.
+    /// </para>
+    /// <para>
+    /// Reading <c>_window.WindowState</c> inline would not have caught it: in decompiled Avalonia 12.1.0's
+    /// Win32 <c>WM_SIZE</c> handler, <c>Resized(...)</c> — which raises THIS event — is invoked BEFORE
+    /// <c>WindowStateChanged?.Invoke(...)</c>, so the property still reports the stale, pre-transition
+    /// value while this handler is on the stack. Posting defers the read until the whole synchronous
+    /// transition has finished, exactly as <see cref="SchedulePlacementSave"/> already does for the same
+    /// ordering hazard on the save side.
+    /// </para>
+    /// <para>
+    /// A snap-maximize is therefore now ignored outright — not merely excluded from the size record.
+    /// That is deliberate and consistent: maximizing is already remembered by
+    /// <c>GeneralConfig.WindowMaximized</c>, restores maximized, and re-fits to content the moment the
+    /// user un-maximizes (<c>MainWindow.OnPropertyChanged</c>), so treating it as "the user has chosen a
+    /// size" would only strip the restored window of its content fit.
+    /// </para>
+    /// </remarks>
     private void OnWindowResized(object? sender, WindowResizedEventArgs e)
     {
         if (_restoring || e.Reason != WindowResizeReason.User)
             return;
 
-        _userResized = true;
-        _lastNormalWidthDip = e.ClientSize.Width;
-        _lastNormalHeightDip = e.ClientSize.Height;
+        var size = e.ClientSize;
+        Dispatcher.UIThread.Post(() => RecordUserResize(size));
+    }
 
-        // _userResized is never cleared for the rest of the process (see its own remarks) — a WRONG
-        // latch here silently disables content-fitting for the rest of the session with nothing else to
-        // point at, which is exactly what the review round's Critical finding was about. Logged at
-        // Information specifically so that transition is never silent again.
-        Serilog.Log.Information(
-            "User resize detected: {Width}x{Height} DIP; content-fit will not run again this process",
-            e.ClientSize.Width, e.ClientSize.Height);
+    private void RecordUserResize(Size clientSize)
+    {
+        // Not a normal-state resize after all (snap-maximize, or a maximize begun inside the move loop):
+        // there is no "size the user chose" to remember here.
+        if (_window is null || _window.WindowState != WindowState.Normal)
+            return;
+
+        // Win32 sends WM_SIZE throughout the modal drag loop, so a single drag raises the source event
+        // tens-to-hundreds of times. The line below is about the TRANSITION, not about each frame — it
+        // was written unguarded and buried the log under one line per frame. The size assignment stays
+        // unconditional: every frame's size is still the latest one to remember.
+        if (!_userResized)
+        {
+            // _userResized is never cleared for the rest of the process (see its own remarks) — a WRONG
+            // latch here silently disables content-fitting for the rest of the session with nothing else
+            // to point at, which is exactly what the review round's Critical finding was about. Logged at
+            // Information specifically so that transition is never silent again.
+            Serilog.Log.Information(
+                "User resize detected: {Width}x{Height} DIP; content-fit will not run again this process",
+                clientSize.Width, clientSize.Height);
+        }
+
+        _userResized = true;
+        _lastNormalWidthDip = clientSize.Width;
+        _lastNormalHeightDip = clientSize.Height;
     }
 
     /// <summary>Push the current 窗口置顶 setting onto a live window.</summary>
@@ -322,14 +386,17 @@ public sealed partial class WindowHost : IWindowHost
     /// window that is already on screen paints it once at the OS cascade position and then jumps it,
     /// which is exactly what deleting the flyout's <c>Opacity="0"</c> assumed could not happen.
     /// <para>
-    /// The SIZE this applies is <see cref="PlaceholderWidthDip"/>/<see cref="PlaceholderHeightDip"/> —
-    /// the launcher's content is not known yet at this point (its startup build is an async disk scan
-    /// that only begins once the window is shown), so <see cref="FitToContent"/> supersedes it moments
-    /// later — UNLESS the user has already manually resized the window once this process
-    /// (<see cref="_userResized"/>), in which case restoring the placeholder here would only get
-    /// overwritten by FitToContent a moment later anyway; applying their remembered size directly avoids
-    /// a visible placeholder-then-jump on every later summon and is what makes a mid-session resize
-    /// actually survive being hidden and summoned again — review finding: it did not, before this fix.
+    /// The SIZE this applies is the best one known BEFORE the window is on screen, in descending order
+    /// of authority: the user's own last manual resize this process (<see cref="_userResized"/>) —
+    /// restoring anything else would only be overwritten by their choice again, and applying it directly
+    /// is what makes a mid-session resize actually survive a hide/summon cycle (review finding: it did
+    /// not, before that fix); else the size the last <see cref="FitToContent"/> landed on
+    /// (<see cref="_lastFitWidthDip"/>); else <see cref="PlaceholderWidthDip"/>/<see cref="PlaceholderHeightDip"/>,
+    /// which is only ever reached on the process's FIRST show, when the launcher's content genuinely is
+    /// not known yet (its startup build is an async disk scan that only begins once the window is shown).
+    /// The middle rung is the review fix for finding 6: <see cref="FitToContent"/>'s correction reaches
+    /// the platform on the NEXT layout pass, i.e. after Show() has already painted, so restoring the
+    /// placeholder here made every summon flash 1000x688 before snapping to the real size.
     /// </para>
     /// </remarks>
     public void RestorePlacement()
@@ -342,8 +409,8 @@ public sealed partial class WindowHost : IWindowHost
         {
             var g = _config.Config.General;
 
-            var width = _userResized ? _lastNormalWidthDip : PlaceholderWidthDip;
-            var height = _userResized ? _lastNormalHeightDip : PlaceholderHeightDip;
+            var width = _userResized ? _lastNormalWidthDip : _lastFitWidthDip ?? PlaceholderWidthDip;
+            var height = _userResized ? _lastNormalHeightDip : _lastFitHeightDip ?? PlaceholderHeightDip;
 
             var (work, scale) = ResolveTargetScreen(SavedRect(width, height));
 
@@ -381,13 +448,22 @@ public sealed partial class WindowHost : IWindowHost
     /// <summary>
     /// Resize the window to fit <paramref name="pageContent"/>'s natural size, clamped to the work area
     /// of the screen the window is CURRENTLY on. Position is preserved (only re-clamped if the new,
-    /// content-driven size would otherwise push the window off screen). Called on EVERY summon, not only
-    /// a cold start (see the class remarks), and again whenever a docked notice's visibility might have
-    /// changed the page's natural height (<c>MainWindow.OnNoticeVisibilityChanged</c>) — it is a cheap,
-    /// idempotent re-measure, not a one-time setup step.
+    /// content-driven size would otherwise push the window off screen — see the remarks). Called on
+    /// EVERY summon, not only a cold start (see the class remarks), and again on every other event that
+    /// changes what the active page measures: a docked notice opening or closing, the navigation rail
+    /// expanding or collapsing, a 小/中/大 / 字体 / 语言 change, a switch back to 应用 from 设置, and the
+    /// Maximized→Normal transition. It is a cheap, idempotent re-measure, not a one-time setup step, and
+    /// a re-fit that computes the geometry the window already has writes nothing at all
+    /// (<see cref="WindowPlacement.IsSamePlacement"/>), so none of those triggers can cascade.
     /// </summary>
-    /// <param name="pageContent">The active page whose natural size drives the window's — the launcher,
-    /// on every path that reaches this method, since the window always opens on 应用. Measured with an
+    /// <param name="pageContent">The active page whose natural size drives the window's. It is the
+    /// CALLER's job to pass the page that is actually hosted right now and to skip the call otherwise —
+    /// <c>MainWindow.RefitToContent</c> does exactly that. (An earlier revision of this remark asserted
+    /// this was always the launcher "on every path that reaches this method, since the window always
+    /// opens on 应用". That was false: the tray's 选项 entry navigates to 设置 and THEN shows the window,
+    /// so <c>OnOpened</c> re-fired with the launcher already detached from the logical tree, and
+    /// measuring a detached page permanently un-styles it — see <c>MainWindow.RefitToContent</c>'s own
+    /// remarks for the mechanism.) Measured with an
     /// UNBOUNDED width AND height (<see cref="Size"/> of <see cref="double.PositiveInfinity"/> on both
     /// axes) — this is what makes the measurement genuinely content-driven on both axes now, per the
     /// user's Round 2 review decision that height should adapt too: the rule is "the category with the
@@ -425,12 +501,27 @@ public sealed partial class WindowHost : IWindowHost
     /// forcing one would mean toggling WindowState twice in a row (Maximized → Normal → Maximized) purely
     /// to update the invisible restore bounds, which this environment cannot verify is flicker-free
     /// end-to-end. <see cref="WindowState"/> itself is untouched either way, so a maximized start still
-    /// restores maximized regardless.
+    /// restores maximized regardless. Review fix (finding 3): the restore rectangle used to stay the
+    /// placeholder forever because nothing re-triggered a fit when the user un-maximized;
+    /// <c>MainWindow.OnPropertyChanged</c> now calls back here once on the Maximized→Normal transition,
+    /// when there IS a restored window on screen to fit and no state toggle is needed to reach it.
     /// </para>
     /// <para>
     /// ALSO skips once <see cref="_userResized"/> is true — the user has manually resized the window this
     /// process, and that choice wins over any further auto-fit, including one triggered by a notice
     /// appearing. See that field's own remarks for the full rule and the review finding it fixes.
+    /// </para>
+    /// <para>
+    /// POSITION: the window's current top-left is fed back in and re-clamped against the work area, so a
+    /// re-fit CAN move the window — but only ever by the amount the new size would otherwise hang off the
+    /// work area's right or bottom edge, and never at all when the fit shrinks the window or leaves it
+    /// unchanged (<see cref="WindowPlacement.Resolve"/> only moves a rectangle that no longer fits, and
+    /// <see cref="WindowPlacement.IsSamePlacement"/> stops an unchanged one reaching the platform at
+    /// all). Review finding 7 asked for a deliberate decision here; this is it. The alternative —
+    /// pinning Left/Top and letting a grown window hang off the screen edge — trades a small, bounded,
+    /// minimum-necessary shift for content the user cannot reach at all, which is strictly worse, and it
+    /// would also diverge from what every other placement path in this class does with a rectangle that
+    /// no longer fits.
     /// </para>
     /// </remarks>
     public void FitToContent(Layoutable pageContent, double railWidth)
@@ -459,6 +550,24 @@ public sealed partial class WindowHost : IWindowHost
                 railWidth, TitleStripHeightDip,
                 currentLeft, currentTop,
                 work, _window.MinWidth, _window.MinHeight);
+
+            // Remembered even when the window already has this geometry: RestorePlacement reads it as
+            // the PRE-SHOW size on the next summon, and "we measured and this is the answer" is true
+            // whether or not the answer differed from what was already on screen.
+            _lastFitWidthDip = placement.Width;
+            _lastFitHeightDip = placement.Height;
+
+            var current = new PlacementRect(currentLeft, currentTop, _window.Width, _window.Height);
+            if (WindowPlacement.IsSamePlacement(placement, current))
+            {
+                // Several triggers can fire for one user action (see IsSamePlacement's own remarks).
+                // Debug, not Information: a fit that changes nothing is not an event worth a line in the
+                // shipped log, but it is worth being able to see when chasing one that should have.
+                Serilog.Log.Debug(
+                    "Window fit to content: already {Width}x{Height} DIP; nothing to apply",
+                    placement.Width, placement.Height);
+                return;
+            }
 
             _window.Width = placement.Width;
             _window.Height = placement.Height;

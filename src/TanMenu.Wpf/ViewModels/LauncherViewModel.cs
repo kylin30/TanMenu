@@ -152,9 +152,12 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
     // Search / filter
     // ══════════════════════════════════════════════════════════════════════════════════════════
 
-    /// <summary>The raw text in the search box. Setting it filters which tiles are visible and
-    /// reflows the grid within the window's existing bounds — it never touches the window's own size
-    /// or position, which are fixed and user-owned now rather than derived from content.
+    /// <summary>The raw text in the search box. Setting it filters which tiles are visible and reflows
+    /// the grid within the window's existing bounds — filtering deliberately does NOT re-fit the window,
+    /// even though Round 2 made its size content-derived again (<c>WindowHost.FitToContent</c>): a
+    /// window that resized on every keystroke as matches narrowed would be far worse than a page that
+    /// briefly has room to spare, and the re-fit triggers <c>MainWindow.RefitToContent</c> is wired to
+    /// are all deliberate, discrete user actions rather than continuous ones.
     /// Nullable to match <c>TextBox.Text</c>, which pushes null for an emptied box.</summary>
     public string? Filter
     {
@@ -355,9 +358,11 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
 
     private void ApplyUpdateState(AppUpdateState state)
     {
-        // The notice is a whole extra row (and the progress track a whole extra column) when it
-        // appears, but the window no longer re-measures or re-places itself for a content change: it
-        // is a fixed, user-sized application window now, and the body simply scrolls further.
+        // The notice is a whole extra row (and the progress track a whole extra column) when it appears,
+        // and Round 2 made the window's size content-derived again, so that DOES re-measure the window:
+        // AppPage watches ShowUpdateNotice and raises NoticeVisibilityChanged, which MainWindow turns
+        // into a WindowHost.FitToContent call. Nothing to do about it from here — the property change
+        // raised below is the whole mechanism.
         _updateState = state;
         RaisePropertyChanged(nameof(ShowUpdateNotice));
         RaisePropertyChanged(nameof(IsUpdateDownloading));
@@ -652,9 +657,35 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
 
         RaiseLocalizedTextChanged();
         RaiseAppearanceChanged();
+        ContentMetricsChanged?.Invoke();
 
         return result.Changed;
     }
+
+    /// <summary>
+    /// Raised at the end of every (re)build, once everything that decides how large this page MEASURES
+    /// has been applied to it: the groups themselves, the 小/中/大 tile-size class (which drives the
+    /// fixed 168/192/216 DIP tile width), the 字体 face, and every localized string.
+    /// </summary>
+    /// <remarks>
+    /// Round 2's review finding 2: the window is sized from this page's natural size again, but a
+    /// tile-size / font / language change re-rendered the page without ever re-fitting the window, so 大
+    /// left a horizontal scrollbar and 小 left dead space. <c>MainWindow</c> re-fits from this.
+    /// <para>
+    /// An EVENT rather than another <c>PropertyChanged</c> notification, and raised HERE rather than
+    /// subscribed from <c>AppEvents.SettingsChanged</c> directly, for one reason: this method is
+    /// asynchronous — its menu build is a background disk scan — so SettingsChanged fires long before the
+    /// page it changes has been re-rendered, and a re-fit driven off it would measure the previous
+    /// layout. This is the first moment at which a measurement is meaningful.
+    /// </para>
+    /// <para>
+    /// It therefore also fires on a plain summon (<see cref="HandleLauncherShownAsync"/> reloads) and on
+    /// a manual 刷新, which is correct rather than merely tolerable: both can genuinely change the menu.
+    /// A re-fit that lands on the geometry the window already has costs nothing and writes nothing —
+    /// see <c>WindowPlacement.IsSamePlacement</c>.
+    /// </para>
+    /// </remarks>
+    public event Action? ContentMetricsChanged;
 
     private void ReplaceGroups(List<MenuGroupVm> groups)
     {

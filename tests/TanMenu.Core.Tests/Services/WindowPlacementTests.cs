@@ -254,4 +254,106 @@ public class WindowPlacementTests
         Assert.Equal(948, r.Width);   // 900 + 48, well under the work area — untouched
         Assert.Equal(1040, r.Height); // clamped to the work area's own height
     }
+
+    // ══════════════════════════════════════════════════════════════════════════════════════════
+    // Round 2 review, finding 2: the navigation rail's width is a term in the content fit, so
+    // expanding it (48 -> 200) has to widen the window by exactly that 152 DIP rather than take the
+    // space out of the content pane and put the horizontal scrollbar back.
+    // ══════════════════════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void ResolveContentFit_ExpandingTheRail_WidensTheWindowByTheRailDelta()
+    {
+        var collapsed = WindowPlacement.ResolveContentFit(
+            contentWidth: 900, contentHeight: 600,
+            chromeWidth: 48, chromeHeight: 48,
+            currentLeft: 100, currentTop: 100,
+            workArea: Work, minWidth: 760, minHeight: 568);
+
+        var expanded = WindowPlacement.ResolveContentFit(
+            contentWidth: 900, contentHeight: 600,
+            chromeWidth: 200, chromeHeight: 48,
+            currentLeft: 100, currentTop: 100,
+            workArea: Work, minWidth: 760, minHeight: 568);
+
+        Assert.Equal(948, collapsed.Width);
+        Assert.Equal(1100, expanded.Width);
+        Assert.Equal(152, expanded.Width - collapsed.Width);
+        Assert.Equal(collapsed.Height, expanded.Height); // the rail is a width term only
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════════════════════
+    // Round 2 review: several re-fit triggers can fire for one user action, so a fit that computes
+    // the geometry the window already has must be recognisable as a no-op before it is applied.
+    // ══════════════════════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void IsSamePlacement_IdenticalRects_IsTrue()
+    {
+        var a = new PlacementRect(100, 200, 948, 648);
+
+        Assert.True(WindowPlacement.IsSamePlacement(a, a));
+    }
+
+    [Fact]
+    public void IsSamePlacement_SubPixelDifference_IsStillTheSamePlacement()
+    {
+        // Avalonia's Win32 backend truncates DIP to physical pixels before SetWindowPlacement and
+        // writes the converted-back value into Width/Height, so a re-fit at 150% scaling can legally
+        // report a size a fraction of a DIP away from the one it computed.
+        var computed = new PlacementRect(100, 200, 948, 648);
+        var reported = new PlacementRect(100.33, 199.67, 948.33, 647.67);
+
+        Assert.True(WindowPlacement.IsSamePlacement(computed, reported));
+    }
+
+    [Theory]
+    [InlineData(101, 200, 948, 648)] // moved
+    [InlineData(100, 201, 948, 648)]
+    [InlineData(100, 200, 949, 648)] // resized
+    [InlineData(100, 200, 948, 649)]
+    public void IsSamePlacement_AWholeDipOnAnyEdge_IsADifferentPlacement(
+        double left, double top, double width, double height)
+    {
+        var a = new PlacementRect(100, 200, 948, 648);
+
+        Assert.False(WindowPlacement.IsSamePlacement(a, new PlacementRect(left, top, width, height)));
+    }
+
+    [Fact]
+    public void IsSamePlacement_ShrinkingFit_DoesNotMoveTheWindow()
+    {
+        // Round 2 review finding 7's other half, stated as a test rather than only in a comment: a fit
+        // that SHRINKS the window never re-clamps its position, because a smaller rectangle at the same
+        // origin is still inside the work area. Only a fit that would push the window off the right or
+        // bottom edge moves it, and then only by the overflow.
+        var start = new PlacementRect(1500, 800, 400, 200);
+
+        var smaller = WindowPlacement.ResolveContentFit(
+            contentWidth: 252, contentHeight: 102,
+            chromeWidth: 48, chromeHeight: 48,
+            currentLeft: start.Left, currentTop: start.Top,
+            workArea: Work, minWidth: 0, minHeight: 0);
+
+        Assert.Equal(300, smaller.Width);
+        Assert.Equal(150, smaller.Height);
+        Assert.Equal(start.Left, smaller.Left);
+        Assert.Equal(start.Top, smaller.Top);
+    }
+
+    [Fact]
+    public void ResolveContentFit_GrowthPastTheEdge_MovesByExactlyTheOverflow()
+    {
+        // The counterpart: growing a window that sits near the right edge moves it left by the overflow
+        // and no further — the minimum move that keeps the new size on screen.
+        var grown = WindowPlacement.ResolveContentFit(
+            contentWidth: 552, contentHeight: 102,
+            chromeWidth: 48, chromeHeight: 48,
+            currentLeft: 1500, currentTop: 800,
+            workArea: Work, minWidth: 0, minHeight: 0);
+
+        Assert.Equal(600, grown.Width);
+        Assert.Equal(1320, grown.Left); // 1920 - 600, i.e. 1500 shifted left by the 180 of overflow
+        Assert.Equal(800, grown.Top);   // vertically it still fits: 800 + 150 <= 1040
+    }
 }

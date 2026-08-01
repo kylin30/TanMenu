@@ -154,6 +154,33 @@ public static class WindowPlacement
             contentWidth + chromeWidth, contentHeight + chromeHeight,
             workArea, minWidth, minHeight);
 
+    /// <summary>
+    /// True when two resolved placements describe the same window rectangle to within
+    /// <paramref name="tolerance"/> DIPs on every edge.
+    /// </summary>
+    /// <remarks>
+    /// Exists so a re-fit that computes the geometry the window ALREADY has can skip writing it back.
+    /// Round 2's review round wired several new re-fit triggers (rail toggle, 小/中/大, 字体/语言, the
+    /// Maximized→Normal transition) on top of the two that existed, and more than one of them can fire
+    /// for a single user action; without this test each one would re-assign Width/Height/Position and
+    /// re-log an identical "Window fit to content" line. It also makes a notice-driven re-fit that
+    /// changes nothing genuinely inert, rather than merely landing on the same numbers after having
+    /// touched the platform window.
+    /// <para>
+    /// The default tolerance is half a DIP, not exact equality: Avalonia's Win32 backend truncates DIP
+    /// to physical pixels with <c>(int)(value * RenderScaling)</c> before <c>SetWindowPlacement</c> and
+    /// writes the converted-back value into <c>Width</c>/<c>Height</c>, so the size a window reports
+    /// after a fit can differ from the one that was computed by a fraction of a DIP at any scaling
+    /// other than 100%. Exact equality would therefore report "changed" on every re-fit at 125%/150%,
+    /// which is precisely the case this is meant to catch.
+    /// </para>
+    /// </remarks>
+    public static bool IsSamePlacement(PlacementRect a, PlacementRect b, double tolerance = 0.5) =>
+        Math.Abs(a.Left - b.Left) <= tolerance &&
+        Math.Abs(a.Top - b.Top) <= tolerance &&
+        Math.Abs(a.Width - b.Width) <= tolerance &&
+        Math.Abs(a.Height - b.Height) <= tolerance;
+
     private static double Clamp(double value, double min, double max) =>
         max < min ? min : Math.Min(Math.Max(value, min), max);
 }

@@ -30,6 +30,10 @@
        ComputeExtent explicitly inflates the child's Bounds by ITS Margin — so CardStack's true full
        height, insets included, is exactly what ends up in the Extent. -->
 
+  <!-- x:Name is intentional even though no code references it: it is what gives this ScrollViewer a
+       stable UI Automation AutomationId, which is how the "the last card is reachable at 100% scroll"
+       check above is actually measured (ScrollPattern.VerticalScrollPercent on a named element, rather
+       than hunting for an anonymous scroll region by tree position). Keep it. -->
   <ScrollViewer x:Name="SettingsScroll" VerticalScrollBarVisibility="Auto">
     <StackPanel x:Name="CardStack" MaxWidth="720" Margin="24,16,24,24" HorizontalAlignment="Left">
       <TextBlock x:Name="PageTitle" Classes="tm-group-head" Margin="0,0,0,8" />
