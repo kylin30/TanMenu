@@ -188,7 +188,7 @@ TanMenu is a full-trust Windows desktop launcher packaged as MSIX. It uses runFu
 Before each Store update, bump `Directory.Build.props`:
 
 ```xml
-<Version>0.11.0</Version>
+<Version>0.12.0</Version>
 ```
 
 MSIX versions are emitted as four-part versions, for example `0.9.1.0`.

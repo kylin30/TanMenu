@@ -1,33 +1,29 @@
-## TanMenu 0.11.0
+## TanMenu 0.12.0
 
-- 界面改用 Fluent 2 设计语言重做，并按 Windows 11 应用规范对齐：
-  - 材质分工：设置窗用 Mica（长驻窗口），启动器用亚克力（失焦即隐的瞬时面板）；系统不支持时各自回退为不透明底色。
-  - 窗口圆角交给 DWM（`DWMWA_WINDOW_CORNER_PREFERENCE`），无边框的启动器也有原生圆角与投影。
-  - 图标改用系统的 Segoe Fluent Icons（Windows 10 回退 Segoe MDL2 Assets），与资源管理器等系统界面同款。
-  - 字体走 Windows 11 类型阶梯，并按字号切换 Segoe UI Variable 的三种光学尺寸（正文用 Text、标题用 Display）；你若在设置里指定了字体，则一律以你的选择为准。
-  - 强调色取自 Windows 个性化的完整调色板：浅色主题用较深一档保证白字对比度，深色主题用较浅一档并自动改用深色文字。
-  - 键盘焦点框为 Win11 的内外双环。
-- 新增浅色 / 深色，默认跟随系统；在「设置 → 外观」里可以固定为浅色或深色。原来只有一个条目的「主题」下拉已由它取代。
-- 布局重排：搜索框前置为主入口，输入即真正过滤（不匹配的项会消失，空的分组连标题一起收起）；分组框改为分区标题 + 自动换行的磁贴；菜单栏文字按钮收进右上角的「更多」菜单。
-- 键盘可达：↑↓←→ 在磁贴间移动，Enter 启动，Esc 先清空搜索、再隐藏窗口。
-- 窗口不再整体缩放来迁就屏幕，改为限制最大尺寸后滚动。
-- 不再内嵌字体，安装体积从 68.6 MB 降到约 46.9 MB。原先可选的「阿里巴巴普惠体 / Fusion Pixel / Press Start 2P」随之移除，配置里若仍是这三者会在载入时改回默认（系统字体）；选择的是已安装的系统字体则不受影响。
-- 「每列按钮数」设置项移除：磁贴按可用宽度自动换行，该数值已不再影响任何东西。
+- 主界面改成常规应用窗口，采用任务管理器式布局：左侧导航（应用 / 设置），右侧内容。原先失焦即隐的弹出面板不再是主界面。
+- 左侧导航可收缩与展开，默认收缩，选择会记住；收缩时每项都有工具提示。原先标题栏「更多」菜单里的 打开主目录 / 刷新 / 关于 / 退出 移到导航栏底部。
+- 搜索框移到标题栏中央，改用 Windows 11 的文本框聚焦样式：保留 1px 常态边框，聚焦时在底边加 2px 强调色下划线，而不是整圈强调色描边。
+- 分类恢复横向排列，每个分类的快捷方式纵向填满一列再换下一列。
+- 「每列个数」重新成为可设置项，默认 10（0.11.0 曾移除它）。这直接决定窗口高度：一个 47 项的分类，改动前窗口高达 1392 DIP（占满整个工作区），现在是 598 DIP。
+- 「按钮大小」设置移除，磁贴统一使用原来的「小」尺寸。旧配置里的该字段仍能正常载入，不会报错。
+- 快捷方式改为按钮样式：细边框、圆角、完整的悬停 / 按下 / 焦点状态。应用内容区改为实色表面，Mica 只透过导航栏和标题栏。
+- 窗口每次启动都按当前内容重新计算大小；窗口位置仍然记忆。会话中手动调整过大小的，本次会话内不再自动改回。
+- 设置改为主界面内的一页，Windows 11 卡片布局，每项改动即时生效并立即写盘；独立的设置窗口已删除。
+- 「固定到任务栏」不再弹窗提示，改为主界面内的内嵌提示；应用已固定时该按钮显示为禁用态，而不是可点击的强调色按钮。
+- 修复：设置页最底部约 47px 高的内容无法滚动到。
 - 配置、快捷方式缓存与图标缓存三个文件的磁盘格式保持不变，升级后无需重新扫描或重新提取图标。
 
 ---
 
-- The interface was rebuilt in the Fluent 2 design language and aligned with the Windows 11 app conventions:
-  - Materials by role: Mica for the settings window (a long-lived app window), acrylic for the launcher (a transient surface that hides on blur), each falling back to an opaque colour where the platform declines.
-  - Window corners come from DWM (`DWMWA_WINDOW_CORNER_PREFERENCE`), so even the borderless launcher gets native rounding and shadow.
-  - Icons are the system's Segoe Fluent Icons (Segoe MDL2 Assets on Windows 10) — the same glyphs File Explorer draws.
-  - Type follows the Windows 11 ramp and switches Segoe UI Variable between its optical sizes by size band (Text for body, Display for headings). A font you pick in settings still wins everywhere.
-  - The accent comes from your full Windows personalization palette: a darker shade on light backgrounds so white text holds contrast, a lighter one on dark backgrounds with dark text on it.
-  - Keyboard focus draws Windows 11's two-ring rectangle.
-- Light and dark are now supported and follow the OS by default; Settings → Appearance can pin either one. It replaces the old single-entry theme dropdown.
-- The layout was reorganised: search leads the header and typing genuinely filters (non-matches are removed, and a section whose items all disappear takes its heading with it); group boxes became section headings over a wrapping tile grid; the text menu bar moved into a "More" menu at the top right.
-- Keyboard reachable throughout: arrows move across the tile grid, Enter launches, Esc clears the search and then hides the launcher.
-- The window no longer scales itself down to fit the screen — it caps its size and scrolls instead.
-- No fonts are bundled any more, which takes the install from 68.6 MB to about 46.9 MB. The optional Alibaba PuHuiTi / Fusion Pixel / Press Start 2P entries are gone with them: a config still naming one of the three reverts to the default system font on load, while a chosen installed font is untouched.
-- The "buttons per column" setting was removed — tiles wrap to the available width, so the number no longer changed anything.
-- The on-disk format of config, the shortcut cache and the icon cache is unchanged, so upgrading does not force a re-scan or a re-extraction of icons.
+- The main window is now an ordinary app window laid out like Task Manager: navigation on the left (Apps / Settings), content on the right. The hide-on-blur popup panel is no longer the main surface.
+- The navigation rail collapses and expands, starts collapsed, and remembers the choice; every entry keeps a tooltip while collapsed. Open home folder / Refresh / About / Exit moved out of the title bar's "More" menu and into the bottom of the rail.
+- Search moved to the centre of the title bar and adopts the Windows 11 text-box focus treatment: it keeps its 1 px resting border and gains a 2 px accent underline on the bottom edge, rather than an accent ring around the whole field.
+- Categories are laid out side by side again, each filling one column top to bottom before wrapping to the next.
+- Items per column is a setting again, defaulting to 10 (0.11.0 had removed it). It drives the window height directly: a 47-item category previously produced a 1392 DIP window — the full work area — and now produces 598 DIP.
+- The button-size setting is gone; tiles are always what that setting used to call "small". The field still deserializes from older configs without error.
+- Shortcuts render as buttons: hairline border, rounded corners, and real hover / pressed / focus states. The app content area is a solid surface, with Mica showing through only the rail and the title bar.
+- The window re-fits itself to its content on every launch; its position is still remembered. A manual resize during a session sticks for the rest of that session.
+- Settings is a page inside the main window using Windows 11 cards, and every change applies and persists immediately. The separate settings window has been deleted.
+- Pinning to the taskbar no longer prompts in a dialog — the prompt is inline in the main window — and the button renders as disabled once the app is already pinned, rather than as a clickable accent button.
+- Fixed: roughly 47 px of content at the bottom of the settings page could never be scrolled into view.
+- The on-disk formats of the config, shortcut cache and icon cache are unchanged, so upgrading needs no rescan and no icon re-extraction.
