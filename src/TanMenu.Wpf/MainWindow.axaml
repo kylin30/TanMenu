@@ -15,30 +15,37 @@
         ExtendClientAreaTitleBarHeightHint="48">
 
   <!--
-    The shell: a system-decorated Mica window (Windows 11 rounds and shadows it for us) split into a
-    title strip, a fixed navigation rail and a page host. Exactly two pages exist, so the rail is a
-    ListBox rather than anything more elaborate, and the selected page is view state — the window
-    always opens on 应用.
+    The shell: a Mica window split into a title strip, a fixed navigation rail and a page host. Exactly
+    two pages exist, so the rail is a ListBox rather than anything more elaborate, and the selected page
+    is view state — the window always opens on 应用.
 
     ExtendClientAreaToDecorationsHint pulls the whole client area — including the strip where the OS
-    used to paint its own title bar — under our control; the system caption buttons still render
-    there (Avalonia 12.1 does not offer a way to draw those ourselves, and Task Manager keeps them
-    too). ExtendClientAreaTitleBarHeightHint is pinned to 48, the Windows 11 title bar height at 100%
-    scaling, rather than -1 (OS default), so the strip below lines up with it exactly. Height/MinHeight
-    are 48 taller than round 1's 640/520: extending the client area moves the strip's height OUT OF the
-    OS-added frame and INTO the window's own client size, so without this the nav rail and page host
-    would lose exactly the height the strip now occupies.
+    used to paint its own title bar — under our control. ExtendClientAreaTitleBarHeightHint is pinned to
+    48, the Windows 11 title bar height at 100% scaling, rather than -1 (OS default), so the strip below
+    lines up with it exactly. Height/MinHeight are 48 taller than round 1's 640/520: extending the
+    client area moves the strip's height OUT OF the OS-added frame and INTO the window's own client
+    size, so without this the nav rail and page host would lose exactly the height the strip now
+    occupies.
+
+    CORRECTED FACT (Task 1 review, established by decompiling Avalonia 12.1 — see the round-2 plan's
+    "CORRECTION" note): the caption buttons this hint turns on are NOT drawn by Windows. Setting
+    ExtendClientAreaToDecorationsHint makes Avalonia instantiate its OWN WindowDrawnDecorations overlay,
+    styled from the Fluent theme's default ControlTheme for that type — which draws an icon, the window
+    Title, Close/Minimize/Maximize, AND a PART_FullScreenButton Task Manager never shows. Left
+    unsuppressed, that overlay painted a second icon+title on top of this strip's own and a fourth,
+    non-Windows-11 caption button (both visible in the shipped Task 1 screenshots). WindowDecorationsTheme
+    below overrides that default theme, based on the same Fluent one via BasedOn, to hide exactly the
+    two parts this strip is a deliberate replacement for (the title/icon panel and the fullscreen
+    button) while leaving Minimize/Maximize/Close and all their built-in states untouched.
 
     The strip is marked WindowDecorationProperties.ElementRole="TitleBar" so dragging it moves the
     window; the search field and the overflow button are marked "User" so they take pointer/keyboard
-    input instead of starting a drag. CaptionSpacer reserves the room the system caption buttons need,
-    read from Window.WindowDecorationMargin as the round-2 plan named — but its Top component, not
-    Right: Avalonia 12.1's own Win32 backend hardcodes that Thickness's Right to zero (only Top, the
-    title bar height, is ever populated), confirmed by reading the Avalonia source and by this window's
-    own startup log. ApplyCaptionSpacer (code-behind) derives the reservation from Top instead, still
-    entirely DPI-live rather than a hardcoded width — see that method's remarks for the full reasoning,
-    including why the "obvious" GetSystemMetricsForDpi(SM_CXSIZE) alternative measured short on this
-    Windows build.
+    input instead of starting a drag. CaptionSpacer reserves the room the three REMAINING caption
+    buttons need — see the literal Width on that Border for why it is a plain constant, not something
+    read from Window.WindowDecorationMargin: that Thickness cannot answer the question at all on Win32
+    (confirmed by reading WindowImpl.UpdateExtendMargins — Left/Right/Bottom are hardcoded to 0.0, and
+    Top merely echoes back ExtendClientAreaTitleBarHeightHint's own literal, carrying no information
+    about the buttons or the real DPI).
 
     The search box and overflow menu bind to AppPage's own LauncherViewModel (exposed as AppPage.
     ViewModel) rather than a second view model: AppPage still owns the keyboard model (Escape, Down,
@@ -47,6 +54,37 @@
     header had never moved. The one thing that still needs its own imperative binding, exactly as
     before, is the 字体 setting — see ApplyWindowFont in the code-behind.
   -->
+
+  <Window.WindowDecorationsTheme>
+    <ControlTheme TargetType="chrome:WindowDrawnDecorations"
+                  BasedOn="{StaticResource {x:Type chrome:WindowDrawnDecorations}}">
+      <!-- Both parts named here are Avalonia's own default drawn-decorations content, not ours — see
+           the CORRECTED FACT note above. Ground-truthed against the LIVE running app (a temporary
+           GetVisualDescendants() dump reached via TopLevelHost, the real internal Control that wraps
+           this Window as ITS OWN VisualChild — see task-1-report.md's fix log for why WindowDrawnDecorations
+           itself is unreachable by walking down from the Window), not trusted from decompiled-XAML
+           summaries alone: PART_TitleTextPanel and PART_FullScreenButton are both real, confirmed names.
+
+           PART_FullScreenButton: Setter Property="IsVisible" works — Avalonia, unlike WPF's Hidden,
+           drops an invisible element from layout entirely, so the caption-button StackPanel naturally
+           shrinks to Minimize/Maximize/Close with no gap where Fullscreen was.
+
+           PART_TitleTextPanel: IsVisible does NOT work the same way here — its own template declares
+           IsVisible as a local TemplateBinding (to HasTitleBar, which is true whenever a title bar
+           exists), and a local value always outranks a Style setter in Avalonia's value-precedence
+           chain regardless of which ControlTheme declared the setter or in what order. Opacity has no
+           such competing local binding, so it is what actually suppresses the panel's content — the
+           panel still occupies its (otherwise invisible) layout slot in the OVERLAY layer, which is a
+           separate compositing layer from this window's own content and therefore never affects this
+           strip's own layout. -->
+      <Style Selector="^ /template/ Panel#PART_TitleTextPanel">
+        <Setter Property="Opacity" Value="0" />
+      </Style>
+      <Style Selector="^ /template/ Button#PART_FullScreenButton">
+        <Setter Property="IsVisible" Value="False" />
+      </Style>
+    </ControlTheme>
+  </Window.WindowDecorationsTheme>
 
   <Grid RowDefinitions="48,*">
 
@@ -126,10 +164,17 @@
           </Button.Flyout>
         </Button>
 
-        <!-- Sized at runtime by ApplyCaptionSpacer (code-behind) so the system caption buttons never
-             sit on top of the overflow button at a different DPI or with a different system setting.
-             Column 5, Auto width — the Border's own Width drives it. -->
-        <Border Grid.Column="5" x:Name="CaptionSpacer" Background="Transparent" />
+        <!-- A PLAIN CONSTANT, stated as one rather than disguised as one (see the CORRECTED FACT note
+             above for why nothing in Window's own API can measure this on Win32). It does not need to
+             react to DPI: Minimize/Maximize/Close are fixed-size (45x30 DIP each, confirmed live via a
+             temporary GetVisualDescendants() dump of the Fluent theme's own WindowDrawnDecorations
+             template) in Avalonia's own LOGICAL coordinate space, not a Win32 system metric — a DIP
+             measurement is exact at every real monitor scale, not an approximation that happens to work
+             at 150%. 140 is the three-button cluster's OWN measured on-screen width (UI Automation,
+             confirmed identically at two different window sizes after PART_FullScreenButton was
+             suppressed above), not 3 x 45 = 135: the cluster carries a few extra DIP of edge padding
+             the per-button figure alone doesn't account for. See task-1-report.md's fix log. -->
+        <Border Grid.Column="5" x:Name="CaptionSpacer" Width="140" Background="Transparent" />
 
       </Grid>
     </Border>

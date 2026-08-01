@@ -64,7 +64,6 @@ public partial class MainWindow : Window
         base.OnOpened(e);
 
         ApplyBackdrop();
-        ApplyCaptionSpacer();
 
         // The host owns show/hide/placement and needs the window once its HWND exists. Idempotent, and
         // App.ShowLauncherWindow has already attached on the cold-start path; kept so a window opened
@@ -154,6 +153,13 @@ public partial class MainWindow : Window
         PageHost.Content = page == ShellPage.Settings
             ? _settingsPage ??= new SettingsPage()
             : _appPage;
+
+        // Retry a focus request ConsumePendingFocus deferred because 设置 was showing when it arrived
+        // (see that method's remarks) — the same "re-check what needs the visual tree on re-attach"
+        // rule AppPage's pre-move version of this mechanism followed, just relocated to the one place
+        // that now knows which page is active.
+        if (page == ShellPage.App)
+            Dispatcher.UIThread.Post(ConsumePendingFocus, DispatcherPriority.Loaded);
     }
 
     private void OnNavSelectionChanged(object? sender, SelectionChangedEventArgs e)
@@ -194,51 +200,6 @@ public partial class MainWindow : Window
     }
 
     // ══════════════════════════════════════════════════════════════════════════════════════════
-    // Title strip: caption-button reservation
-    // ══════════════════════════════════════════════════════════════════════════════════════════
-
-    // The most caption-area buttons Windows 11 renders for a resizable window: Close, Maximize/
-    // Restore, Minimize, and the fullscreen toggle — confirmed present on this machine (see the
-    // window's own UI Automation tree: AutomationId "AvaloniaWindowChrome" exposes Fullscreen,
-    // Minimize, Maximize and Close as four distinct buttons). Reserving for the maximum rather than
-    // whatever is actually showing costs a few DIPs of otherwise-empty strip when fewer buttons are
-    // present, which is harmless; reserving for too few reproduces the overlap this exists to prevent.
-    private const int MaxCaptionButtons = 4;
-
-    // Measured on this machine at 150% scaling: each real caption button is ~45 DIP wide against a
-    // 48 DIP title bar (WindowDecorationMargin.Top) — close to, but not exactly, 1:1. This factor pads
-    // the Top-derived estimate rather than risk reproducing the exact overlap ApplyCaptionSpacer exists
-    // to prevent if the true ratio runs slightly higher on a different Windows build or DPI.
-    private const double CaptionButtonSafetyFactor = 1.15;
-
-    /// <summary>
-    /// Reserve the room the system caption buttons need, from <see cref="Window.WindowDecorationMargin"/>
-    /// as the round-2 plan named — but from its Top component, not Right. Avalonia 12.1's own Win32
-    /// backend (<c>WindowImpl.UpdateExtendMargins</c>) hardcodes Left/Right/Bottom to zero and only ever
-    /// populates Top (the title bar height): confirmed by reading that source, and by this method's own
-    /// first run on this machine, which logged <c>WindowDecorationMargin observed: 0,48,0,0</c> despite
-    /// four real caption buttons rendering at the top-right corner. <c>GetSystemMetricsForDpi(SM_CXSIZE)</c>
-    /// — the metric Microsoft's own "extend into the title bar" samples use — was tried first and
-    /// measured 36 DIP/button against the ~45 DIP the buttons actually render at here: Windows 11's
-    /// caption buttons are wider than the decades-old SM_CXSIZE metric reports, a known mismatch on this
-    /// OS version. Top correlates far more closely (title bar height and button width are close to 1:1
-    /// on this machine), so the reservation is Top × the button count × a small safety factor, still
-    /// entirely DPI-live rather than a hardcoded pixel width. Not hooked to a live "system setting
-    /// changed" notification (Windows' caption-button-size accessibility setting can change this while
-    /// running); every other imperative re-apply in this class has the same limitation (AppLanguage/
-    /// AppFonts have none either) and this one is rarer still, so it is computed once, from OnOpened.
-    /// </summary>
-    private void ApplyCaptionSpacer()
-    {
-        var margin = WindowDecorationMargin;
-        CaptionSpacer.Width = margin.Top * MaxCaptionButtons * CaptionButtonSafetyFactor;
-        Serilog.Log.Information(
-            "Caption spacer: WindowDecorationMargin={Margin} (Top used) x {Count} buttons x {Factor} " +
-            "safety factor = {Total} DIP reserved",
-            margin, MaxCaptionButtons, CaptionButtonSafetyFactor, CaptionSpacer.Width);
-    }
-
-    // ══════════════════════════════════════════════════════════════════════════════════════════
     // Title strip: search box
     // ══════════════════════════════════════════════════════════════════════════════════════════
 
@@ -273,10 +234,7 @@ public partial class MainWindow : Window
     /// <summary>Deferred focus: <see cref="LauncherViewModel.PendingFocus"/> is set on every summon (and
     /// by AppPage's own "清除筛选"/Up-off-the-grid actions) and consumed here, on the next Loaded pass —
     /// one priority below layout, so the search box has already been measured and arranged by the time
-    /// this runs. Unlike AppPage's pre-move version of this same mechanism, there is no attach-retry:
-    /// the search box now lives in the shell, which stays in the visual tree for the window's whole
-    /// life regardless of which rail entry is showing, so it is never detached the way AppPage itself
-    /// can be when 设置 is on screen.</summary>
+    /// this runs.</summary>
     private void OnLauncherViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is not nameof(LauncherViewModel.PendingFocus))
@@ -285,9 +243,27 @@ public partial class MainWindow : Window
         Dispatcher.UIThread.Post(ConsumePendingFocus, DispatcherPriority.Loaded);
     }
 
+    /// <summary>
+    /// Fix (Task 1 review, Important 3): a focus request that arrives while 设置 is the active page
+    /// must NOT steal focus into a search box that filters a page the user cannot see —
+    /// <c>ISettingsLauncher.OpenCore</c> navigates to 设置 and THEN calls
+    /// <c>WindowHost.ShowAndActivate()</c>, which unconditionally raises <c>LauncherShown</c> and sets
+    /// <c>PendingFocus</c> regardless of which page is showing (the tray's 选项 entry hits this path).
+    /// Before the search box moved into this always-attached title strip, <c>AppPage</c> guarded the
+    /// equivalent case with <c>IsAttachedToVisualTree()</c> — the whole page, search box included, was
+    /// detached whenever 设置 was on screen, so a pending request there was simply invisible. The
+    /// search box has no such attachment signal to reuse now, so the guard is asking the one thing that
+    /// actually determines whether the user can see it: whether <see cref="_appPage"/> is the page
+    /// <see cref="PageHost"/> is currently showing. Left SET otherwise; <see cref="ShowPage"/> retries
+    /// this the next time the rail switches back to 应用, exactly the "re-check what needs the visual
+    /// tree on re-attach" rule AppPage's own pre-move mechanism followed.
+    /// </summary>
     private void ConsumePendingFocus()
     {
         if (!_appPage.ViewModel.PendingFocus)
+            return;
+
+        if (!ReferenceEquals(PageHost.Content, _appPage))
             return;
 
         _appPage.ViewModel.PendingFocus = false;
