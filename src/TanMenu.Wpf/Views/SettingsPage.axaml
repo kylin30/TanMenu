@@ -10,20 +10,25 @@
        is the only step needed; there is no separate call to remember.
 
        The 24/16/24/24 inset is a MARGIN on CardStack, not a Padding on the ScrollViewer — it used to be
-       the latter, and that made roughly the bottom Padding.Top + Padding.Bottom worth of content
-       permanently unreachable at VerticalScrollPercent=100 (confirmed live via UI Automation's
+       the latter, and that made the bottom 2×Padding.Top + Padding.Bottom worth of content (56 DIP here:
+       2×16 + 24) permanently unreachable at VerticalScrollPercent=100 (confirmed live via UI Automation's
        ScrollPattern: 检查更新's bottom edge sat measurably below the window's own bottom edge — a real
        defect, not the PrintWindow capture artifact Round 1's review wrongly guessed). Root cause,
        confirmed by decompiling Avalonia.Controls 12.1.0: ScrollContentPresenter overrides
        MeasureOverride/ArrangeOverride and — unlike plain ContentPresenter — never deflates by its own
        Padding during Measure; Padding is applied ONLY at Arrange time, via Rect.Deflate on the CHILD's
-       arranged Bounds. ComputeExtent then reads that already-shrunk Bounds.Size as the scrollable
-       Extent, while StackPanel.ArrangeOverride (confirmed in its own source) positions children at
-       their full, un-shrunk stacked height regardless of the smaller size it was arranged with — so the
-       tail of the content renders past what the Extent says is scrollable. Margin does not have this
-       bug: every control's own Measure/Arrange resolves it generically, and ComputeExtent explicitly
-       inflates the child's Bounds by ITS Margin — so CardStack's true full height, insets included, is
-       exactly what ends up in the Extent. -->
+       arranged Bounds. ComputeExtent then reads that already-shrunk Bounds.Size (full height minus
+       Padding.Top AND Padding.Bottom) as the scrollable Extent, while StackPanel.ArrangeOverride
+       (confirmed in its own source) positions children at their full, un-shrunk stacked height,
+       OFFSET DOWN by Padding.Top again (Deflate insets the arranged rect's origin, not just its size) —
+       so the true rendered bottom sits at Padding.Top + fullHeight, while the Extent only ever reports
+       fullHeight − Padding.Top − Padding.Bottom as scrollable. The gap between the two — what 100% scroll
+       still cannot reach — is exactly (Padding.Top + fullHeight) − (fullHeight − Padding.Top − Padding.Bottom)
+       = 2×Padding.Top + Padding.Bottom, not Padding.Top + Padding.Bottom as first estimated: the top
+       padding costs twice, once shrinking the reported Extent and once pushing the real content down.
+       Margin does not have this bug: every control's own Measure/Arrange resolves it generically, and
+       ComputeExtent explicitly inflates the child's Bounds by ITS Margin — so CardStack's true full
+       height, insets included, is exactly what ends up in the Extent. -->
 
   <ScrollViewer x:Name="SettingsScroll" VerticalScrollBarVisibility="Auto">
     <StackPanel x:Name="CardStack" MaxWidth="720" Margin="24,16,24,24" HorizontalAlignment="Left">

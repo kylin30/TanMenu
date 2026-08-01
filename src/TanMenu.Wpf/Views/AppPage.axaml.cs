@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -5,6 +6,7 @@ using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using Microsoft.Extensions.DependencyInjection;
 using TanMenu.Core.Services;
+using TanMenu.Wpf.Controls;
 using TanMenu.Wpf.Dialogs;
 using TanMenu.Wpf.Services;
 using TanMenu.Wpf.ViewModels;
@@ -52,12 +54,41 @@ public partial class AppPage : UserControl, IDisposable
         // behind our back (the user may pin from Explorer between reveals).
         _events.LauncherShown += OnLauncherShown;
         _ = RefreshPinNoticeAsync();
+
+        // MainWindow re-fits the window to content whenever either docked notice's visibility might
+        // have changed (see NoticeVisibilityChanged's own remarks) — both PinNotice.IsOpen and
+        // ShowUpdateNotice can flip well after the launcher's own initial fit already ran, since each
+        // is resolved by an async call (a COM query here, an HTTP check for the update banner) that can
+        // easily outlast it.
+        PinNotice.PropertyChanged += OnPinNoticePropertyChanged;
+        _viewModel.PropertyChanged += OnViewModelPropertyChangedForNotice;
     }
 
     /// <summary>The one <see cref="LauncherViewModel"/> instance for the launcher's whole life. Exposed
     /// so MainWindow's title strip can bind its search box and overflow menu to it directly — see the
     /// class remarks for why this is not a second view model.</summary>
     public LauncherViewModel ViewModel => _viewModel;
+
+    /// <summary>Raised whenever the taskbar-pin InfoBar or the update banner might have opened or
+    /// closed. MainWindow re-runs <c>WindowHost.FitToContent</c> from this: a notice that appears AFTER
+    /// the launcher's initial fit steals height from <c>Body</c> (whose vertical scrolling is disabled),
+    /// silently re-wrapping a category that used to render in a single column and putting back the
+    /// horizontal scrollbar the fit exists to avoid. <c>FitToContent</c>'s own guards (maximized, already
+    /// manually resized this process) decide whether the re-fit this triggers actually does anything.
+    /// </summary>
+    public event Action? NoticeVisibilityChanged;
+
+    private void OnPinNoticePropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
+    {
+        if (e.Property == InfoBar.IsOpenProperty)
+            NoticeVisibilityChanged?.Invoke();
+    }
+
+    private void OnViewModelPropertyChangedForNotice(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(LauncherViewModel.ShowUpdateNotice))
+            NoticeVisibilityChanged?.Invoke();
+    }
 
     /// <summary>Kick off the menu build and return the SAME memoized Task every caller of
     /// <c>LauncherViewModel.InitializeAsync</c> shares. Deliberately NOT done in the constructor: this
@@ -82,6 +113,8 @@ public partial class AppPage : UserControl, IDisposable
     {
         _disposed = true;
         _events.LauncherShown -= OnLauncherShown;
+        PinNotice.PropertyChanged -= OnPinNoticePropertyChanged;
+        _viewModel.PropertyChanged -= OnViewModelPropertyChangedForNotice;
         _viewModel.Dispose();
     }
 

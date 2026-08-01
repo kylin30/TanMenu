@@ -283,7 +283,7 @@ New fields on `GeneralConfig`:
 | Field | Default | Purpose |
 |---|---|---|
 | `SchemaVersion` | `0` | Migration marker; the current schema is `1` |
-| `WindowWidth` / `WindowHeight` | `1000` / `640` | Restored window size |
+| `WindowWidth` / `WindowHeight` | `1000` / `640` | Legacy — retired by Round 2's task 4 (`docs/superpowers/plans/2026-08-01-win11-shell-round2.md`). Window size is now recomputed from content on every summon (`WindowHost.FitToContent`); these two fields are kept only so pre-Round-2 config files still deserialize, and nothing reads or writes them any more |
 | `WindowLeft` / `WindowTop` | `null` | Restored position; `null` = no remembered position, centre instead. Nullable rather than a negative sentinel: monitors left of the primary have negative coordinates, so `< 0` cannot mean "unset" |
 | `WindowMaximized` | `false` | Restored maximized state |
 | `TaskbarPinPromptDismissed` | `false` | §4's 不再提示 |

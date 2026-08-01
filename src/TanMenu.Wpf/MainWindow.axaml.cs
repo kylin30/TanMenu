@@ -22,9 +22,10 @@ namespace TanMenu.Wpf;
 /// model (Escape, Down-into-the-grid) that the search box's key handling has to reach into. This class
 /// owns what genuinely belongs to the window — the Mica fallback, close-to-tray, the caption-button
 /// reservation, the rail's collapsed/expanded choice, swapping the page host's content between the two
-/// rail entries, and kicking off the startup build + the one-time fit-to-content resize that follows it
-/// (<see cref="InitializeAndFitAsync"/>) — the actual geometry math for the latter lives in
-/// <c>WindowHost</c>, which owns every other piece of window placement too.
+/// rail entries, and kicking off the startup build + the fit-to-content resize that follows it, on
+/// EVERY summon (<see cref="InitializeAndFitAsync"/>) — the actual geometry math, and the rule for when
+/// a manual resize should win over a fresh fit, lives in <c>WindowHost</c>, which owns every other piece
+/// of window placement too.
 /// </summary>
 public partial class MainWindow : Window
 {
@@ -37,12 +38,6 @@ public partial class MainWindow : Window
     // (and Attach's own ShowPage call, if a navigation arrived before the window existed) raise
     // synchronously WHILE this constructor is still running — see OnNavSelectionChanged.
     private bool _navReady;
-
-    // Guards WindowHost.FitToContent against running more than once per PROCESS. OnOpened re-enters on
-    // every later un-hide (WindowHost.ShowAndActivate calls Show() again whenever the window was
-    // hidden), which must NOT re-fit the window away from a resize the user made mid-session — see
-    // InitializeAndFitAsync's own remarks.
-    private bool _fitToContentDone;
 
     public MainWindow()
     {
@@ -71,6 +66,14 @@ public partial class MainWindow : Window
         // the class remarks above for why this is not a second view model.
         TitleStripContent.DataContext = _appPage.ViewModel;
         _appPage.ViewModel.PropertyChanged += OnLauncherViewModelPropertyChanged;
+
+        // A docked notice (the taskbar-pin InfoBar, the update banner) can open seconds after the
+        // initial fit already ran — its own async check (a COM call, an HTTP request) can outlast it —
+        // and Body's vertical scrolling is disabled, so a late notice would otherwise silently steal
+        // height from it and re-wrap a category that used to fit in one column. Re-fit whenever either
+        // one's visibility might have changed; RefitToContent's own guards (maximized, already
+        // manually resized) apply here exactly as they do to every other call.
+        _appPage.NoticeVisibilityChanged += OnNoticeVisibilityChanged;
 
         _navReady = true;
     }
@@ -112,21 +115,30 @@ public partial class MainWindow : Window
     /// not the menu.
     /// </summary>
     /// <remarks>
-    /// Runs the FIT exactly once per PROCESS, not once per <c>Show()</c>: <see cref="_fitToContentDone"/>
-    /// survives a later hide/tray-restore, which re-enters <see cref="OnOpened"/> (and therefore this
-    /// method) but must not silently undo a resize the user made mid-session. <c>BeginInitialize</c>
-    /// itself is still called on every entry — it is memoized, so every call after the first just awaits
-    /// the already-completed Task — matching what the un-guarded, fire-and-forget call here did before
-    /// this method existed.
+    /// Runs the fit on EVERY entry, not only the process's first one — review fix: <c>OnOpened</c>
+    /// re-enters on every later un-hide (<c>WindowHost.ShowAndActivate</c> calls <c>Show()</c> again
+    /// whenever the window was hidden, and <c>Hide()</c>/<c>ShowCore</c> make that re-raise
+    /// <c>Opened</c>), and a one-shot guard here used to skip every summon after the first — bringing
+    /// back the very horizontal scrollbar this whole feature exists to remove, since
+    /// <c>WindowHost.RestorePlacement</c> resets to a narrower placeholder on every un-hide regardless.
+    /// <c>WindowHost.FitToContent</c> is what actually decides whether to skip a re-fit now (while
+    /// maximized, or once the user has manually resized this process — see its own remarks), so this
+    /// method can simply call it unconditionally every time. <c>BeginInitialize</c> itself is memoized,
+    /// so every call after the first just awaits the already-completed Task.
     /// </remarks>
     private async Task InitializeAndFitAsync()
     {
         await _appPage.BeginInitialize();
+        RefitToContent();
+    }
 
-        if (_fitToContentDone)
-            return;
-        _fitToContentDone = true;
-
+    /// <summary>Re-run <c>WindowHost.FitToContent</c> against the launcher's current natural size. Called
+    /// after the startup build finishes (<see cref="InitializeAndFitAsync"/>, on every summon) and again
+    /// whenever a docked notice's visibility might have changed that natural size
+    /// (<see cref="OnNoticeVisibilityChanged"/>) — both are the exact same operation, just triggered at
+    /// different times, so there is one place that reads the rail's width and calls through.</summary>
+    private void RefitToContent()
+    {
         // Read straight from config, not NavRailPane's own live Width/Bounds — see
         // WindowHost.FitToContent's own <param> remarks on railWidth for why: a config value can never
         // be mid-animation.
@@ -134,12 +146,17 @@ public partial class MainWindow : Window
         (_host as WindowHost)?.FitToContent(_appPage, expanded ? 200.0 : 48.0);
     }
 
+    /// <summary>See the constructor's own remarks on subscribing to this — WindowHost.FitToContent's
+    /// guards (maximized, already manually resized) decide whether this re-fit actually does anything.</summary>
+    private void OnNoticeVisibilityChanged() => RefitToContent();
+
     protected override void OnClosed(EventArgs e)
     {
         _events.SettingsChanged -= ApplyWindowFont;
         _events.SettingsChanged -= ApplyRailText;
         _events.SettingsChanged -= ApplyNavExpandedState;
         _appPage.ViewModel.PropertyChanged -= OnLauncherViewModelPropertyChanged;
+        _appPage.NoticeVisibilityChanged -= OnNoticeVisibilityChanged;
 
         // AppPage's view model is disposed here, not on the page's own Unloaded: OnClosed only fires
         // at real application exit (OnClosing below cancels every other close), while the app page

@@ -144,7 +144,8 @@ public class WindowPlacementTests
 
     // ══════════════════════════════════════════════════════════════════════════════════════════
     // ResolveContentFit — Round 2's "size is recomputed from content on every start" feature.
-    // Uses this app's own real constants (48 DIP rail collapsed, 48 DIP title strip, 760x520 minimum)
+    // Uses this app's own real constants (48 DIP rail collapsed, 48 DIP title strip, 760x568 minimum —
+    // MainWindow.axaml's own MinWidth/MinHeight, the single source of truth WindowHost reads directly)
     // so each case reads as a directly meaningful scenario, not an abstract one.
     // ══════════════════════════════════════════════════════════════════════════════════════════
 
@@ -152,15 +153,15 @@ public class WindowPlacementTests
     public void ResolveContentFit_SmallContent_IsRaisedToTheAppMinimum()
     {
         // Very little content (e.g. one or two thin categories) plus the 48 DIP rail and 48 DIP title
-        // strip still lands below 760x520 — the floor wins, exactly like a tiny saved size did before.
+        // strip still lands below 760x568 — the floor wins, exactly like a tiny saved size did before.
         var r = WindowPlacement.ResolveContentFit(
             contentWidth: 300, contentHeight: 200,
             chromeWidth: 48, chromeHeight: 48,
             currentLeft: 100, currentTop: 100,
-            workArea: Work, minWidth: 760, minHeight: 520);
+            workArea: Work, minWidth: 760, minHeight: 568);
 
         Assert.Equal(760, r.Width);
-        Assert.Equal(520, r.Height);
+        Assert.Equal(568, r.Height);
     }
 
     [Fact]
@@ -173,7 +174,7 @@ public class WindowPlacementTests
             contentWidth: 900, contentHeight: 700,
             chromeWidth: 48, chromeHeight: 48,
             currentLeft: 200, currentTop: 150,
-            workArea: Work, minWidth: 760, minHeight: 520);
+            workArea: Work, minWidth: 760, minHeight: 568);
 
         Assert.Equal(948, r.Width);   // 900 + 48
         Assert.Equal(748, r.Height);  // 700 + 48
@@ -190,7 +191,7 @@ public class WindowPlacementTests
             contentWidth: 6000, contentHeight: 4000,
             chromeWidth: 48, chromeHeight: 48,
             currentLeft: 0, currentTop: 0,
-            workArea: Work, minWidth: 760, minHeight: 520);
+            workArea: Work, minWidth: 760, minHeight: 568);
 
         Assert.Equal(1920, r.Width);
         Assert.Equal(1040, r.Height);
@@ -206,9 +207,51 @@ public class WindowPlacementTests
             contentWidth: 952, contentHeight: 592,
             chromeWidth: 48, chromeHeight: 48,
             currentLeft: null, currentTop: null,
-            workArea: Work, minWidth: 760, minHeight: 520);
+            workArea: Work, minWidth: 760, minHeight: 568);
 
         Assert.Equal(460, r.Left);   // (1920 - 1000) / 2
         Assert.Equal(200, r.Top);    // (1040 - 640) / 2
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════════════════════
+    // Round 2's review round: the user changed height from a fixed 640 DIP reference to fully
+    // content-driven — "the category with the most items fits in a single column without wrapping,
+    // clamped to the work area", with NO comfort cap softening a tall result. WindowHost.FitToContent
+    // supplies that height by probing the page at an UNBOUNDED height (WPF-side, not testable here
+    // without a visual tree); what IS testable in Core is that Resolve/ResolveContentFit's own clamp
+    // never reintroduces a hidden ceiling below the work area, and still clamps independently per axis
+    // when content genuinely exceeds it.
+    // ══════════════════════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void ResolveContentFit_TallNarrowCategory_HeightNotArtificiallyCapped()
+    {
+        // A tall, narrow single category (e.g. ~20 items in one un-wrapped column) well under the work
+        // area's own height (1040 here) must come back at its full natural height — no 640-ish reference
+        // cap softening it, the way the retired fixed-height probe used to impose one.
+        var r = WindowPlacement.ResolveContentFit(
+            contentWidth: 216, contentHeight: 900,
+            chromeWidth: 48, chromeHeight: 48,
+            currentLeft: 100, currentTop: 100,
+            workArea: Work, minWidth: 760, minHeight: 568);
+
+        Assert.Equal(760, r.Width);  // 216 + 48 = 264 falls below the app minimum, raised to it
+        Assert.Equal(948, r.Height); // 900 + 48, kept in full — well short of the 1040 work-area ceiling
+    }
+
+    [Fact]
+    public void ResolveContentFit_CategoryTallerThanWorkArea_HeightClampsButWidthStaysContentDriven()
+    {
+        // "A category taller than the work area clamps and wraps instead of growing off-screen" — the
+        // two axes clamp INDEPENDENTLY: height clamps to the work area while width, comfortably under
+        // it, is left untouched.
+        var r = WindowPlacement.ResolveContentFit(
+            contentWidth: 900, contentHeight: 5000,
+            chromeWidth: 48, chromeHeight: 48,
+            currentLeft: 0, currentTop: 0,
+            workArea: Work, minWidth: 760, minHeight: 568);
+
+        Assert.Equal(948, r.Width);   // 900 + 48, well under the work area — untouched
+        Assert.Equal(1040, r.Height); // clamped to the work area's own height
     }
 }

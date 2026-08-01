@@ -21,7 +21,7 @@
 
        数据文件夹 and 维护 each need THREE trailing buttons rather than 主文件夹's two, and even with the
        path fix above, three buttons sharing column 2 with column 1's title/sub/path left no room at the
-       app's own documented minimum window width (WindowHost.MinWidthDip = 760): 重置为默认/恢复… were
+       app's own documented minimum window width (MainWindow.axaml's MinWidth="760"): 重置为默认/恢复… were
        clipped past the visible edge — confirmed by resizing to exactly that minimum and re-screenshotting,
        not by inspection. Column 2 is left empty on these two rows; their buttons go on their own full-width
        row below instead, indented to align under the title (30px = the icon column's width + its right
