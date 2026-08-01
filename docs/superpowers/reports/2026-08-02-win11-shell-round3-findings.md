@@ -127,18 +127,26 @@ detach is every app-level, **class-scoped** style frame the page depends on — 
 padding, `StackPanel.tm-group`'s alignment, the search field's geometry, and so on — which of those
 specifically produced the corrupted measurement below was not isolated.
 
-**`DispatcherPriority.Loaded` ordering — stated in the code, not decompile-verified.** The current
-comment on `MainWindow.InitializeAndFitAsync` (and the identical claim in the commit that
-introduced it, `2af2401`) asserts that "Avalonia processes pending layout invalidations before
-running Loaded-priority work regardless of how many such callbacks are queued," which is why
-deferring the cold-start fit to `DispatcherPriority.Loaded` (matching every other re-fit trigger)
-reliably measures the already-current, re-templated visual tree instead of racing it. **This
-specific ordering claim was not found decompile-cited anywhere in the Round 3 material** (unlike
-the `InvalidateStyles`/`FrameType` finding above, which explicitly names the assembly and tool
-used) — it is corroborated only empirically, by three fresh cold starts each reporting the correct
-capped page height on the very first fit. Recorded here as what the source actually supports;
-treat the "deterministic, not a race usually won" framing as the stated rationale, not an
-independently verified mechanism.
+**`DispatcherPriority.Loaded` ordering — confirmed by decompile.** The comment on
+`MainWindow.InitializeAndFitAsync` (and the identical claim in `2af2401`) asserts that Avalonia
+processes pending layout invalidations before running Loaded-priority work, which is why deferring
+the cold-start fit to `DispatcherPriority.Loaded` (matching every other re-fit trigger) measures
+the already-current, re-templated visual tree instead of racing it.
+
+The claim holds by construction, and the chain is re-verifiable in the pinned Avalonia 12.1.0:
+`Avalonia.Layout.LayoutManager.QueueLayoutPass()` calls
+`MediaContext.Instance.BeginInvokeOnRender(...)`, which calls `MediaContext.ScheduleRender(now: true)`;
+that sets `priority = DispatcherPriority.Render`, and when an operation is already queued it *raises*
+the queued one to `Render`. The branch that would demote to `DispatcherPriority.Input` is guarded by
+`!now`, so it is unreachable from `BeginInvokeOnRender`. `DispatcherPriority.Loaded` compares strictly
+below `DispatcherPriority.Render`, so any layout invalidation queued by the synchronous binding
+updates in `ReplaceGroups` is dequeued and executed *before* the Loaded-priority job. The deferral
+therefore closes the race rather than usually winning it.
+
+Provenance, so a future maintainer can weigh it: this chain was traced by the Round 3 whole-round
+review, not re-derived when this record was written. It is corroborated empirically by three fresh
+cold starts, each reporting the correct capped page height on the very first fit. The same decompile
+also confirms the pre-existing claim at `WindowHost.cs` that `Default` priority is lower than `Loaded`.
 
 **Non-`User` resize reasons.** Decompiling `Win32.WindowImpl`: it keeps one `_resizeReason` that
 `WM_SIZE` hands straight to `Resized`, which is `User` only between `WM_ENTERSIZEMOVE`/
