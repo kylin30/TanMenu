@@ -44,12 +44,15 @@ Two lines above were wrong when this plan was written. The corrected facts:
 - **The caption buttons are NOT the system's — Avalonia draws its own.** Setting
   `ExtendClientAreaToDecorationsHint` makes `WindowImpl.NeedsManagedDecorations` true, so
   `TopLevelHost` instantiates a `WindowDrawnDecorations` and fills it from the Fluent theme's default
-  `ControlTemplate` for that class. That template draws an icon, the window title, and
-  Close/Minimize/Maximize **plus a `PART_FullScreenButton`** — which is why the shipped Task 1 build
-  showed a doubled icon+title and a fourth, non-Windows-11 caption button. An app that draws its own
-  title strip **must override that template/theme** to suppress the default icon, title and
-  fullscreen button. Contrary to the original note, supplying a `WindowDrawnDecorations` override is
-  therefore REQUIRED here, not forbidden.
+  `ControlTemplate` for that class. That template draws the window title (a `TextBlock` inside
+  `PART_TitleTextPanel`) and Close/Minimize/Maximize **plus a `PART_FullScreenButton`** — which is why
+  the shipped Task 1 build showed a doubled title and a fourth, non-Windows-11 caption button. An app
+  that draws its own title strip **must override that template/theme** to suppress the default title
+  and fullscreen button. Contrary to the original note, supplying a `WindowDrawnDecorations` override
+  is therefore REQUIRED here, not forbidden.
+  *Verified by decompiling `Avalonia.Themes.Fluent` 12.1.0: the template contains no icon element at
+  all — only the title `TextBlock` and the caption buttons. An earlier revision of this note claimed
+  it drew an icon; that was inferred from a screenshot, not from the template, and was wrong.*
 - **`WindowDecorationMargin` cannot measure the caption buttons.** The Win32 backend hardcodes
   `Left`/`Right`/`Bottom` to `0.0` (`WindowImpl.UpdateExtendMargins`), and when
   `ExtendClientAreaTitleBarHeightHint` is a positive literal, `Top` reduces algebraically to that same
