@@ -200,16 +200,20 @@ public partial class MainWindow : Window
     /// free no-op (<see cref="WindowPlacement.IsSamePlacement"/>).
     /// </para>
     /// <para>
-    /// Round 3 final-fix report, finding 4: that last claim — "a free no-op" — was FALSE for exactly the
-    /// low-content-height regime this same Task 4 created (a small ColButtonCount, or the default's own
-    /// natural height, both landing at or below MinHeight="568"). <c>WindowHost.FitToContent</c> used to
-    /// compare a fresh <c>ResolveContentFit</c> result against the window's LIVE Width/Height, but this
-    /// window cannot physically render below roughly 605 DIP outer regardless of what is requested (see
-    /// <c>GeneralConfig.ColButtonCount</c>'s own remarks), so the live size Windows actually applied and
-    /// the 568 DIP the fit had asked for never matched — the "free no-op" fired the whole
-    /// Width/Height/Position/log/debounced-write path a second time on every cold start instead of
-    /// skipping it. Fixed by comparing against the PREVIOUS fit's own requested size instead of the live
-    /// window size; the claim in this paragraph is accurate again as of that fix.
+    /// That last claim — "a free no-op" — was FALSE for exactly the low-content-height regime this same
+    /// Task 4 created (a small ColButtonCount, or the default's own natural height, both landing at or
+    /// below MinHeight="568"). <c>WindowHost.FitToContent</c> used to compare a fresh
+    /// <c>ResolveContentFit</c> result against the window's LIVE Width/Height, but this window cannot
+    /// physically render below 908 physical / 605.3 DIP outer (897 physical / 598 DIP client, at 150%
+    /// scale — see <c>GeneralConfig.ColButtonCount</c>'s own remarks) regardless of what is requested, so
+    /// the live size Windows actually applied and the 568 DIP the fit had asked for never matched — the
+    /// "free no-op" fired the whole Width/Height/Position/log/debounced-write path a second time on every
+    /// cold start instead of skipping it (proof: the pre-fix log shows two <c>[INF] Window fit to
+    /// content: 1724x568 DIP</c> lines 3 ms apart). Fixed by comparing against the PREVIOUS fit's own
+    /// requested size instead of the live window size (post-fix: one <c>[INF]</c> fit plus one
+    /// <c>[DBG] … nothing to apply</c>, 4 ms apart); the claim in this paragraph is accurate again as of
+    /// that fix. Full log evidence:
+    /// docs/superpowers/reports/2026-08-02-win11-shell-round3-findings.md.
     /// </para>
     /// </remarks>
     private async Task InitializeAndFitAsync()
@@ -238,10 +242,11 @@ public partial class MainWindow : Window
     /// <see cref="_appPage"/> while 设置 is the hosted page does REAL, REPRODUCED damage to the window's
     /// SIZE: reproduced live by temporarily removing this guard, the window latched at a wrong
     /// 850x568 DIP for the rest of the session — 568 being <c>MainWindow.axaml</c>'s own
-    /// <c>MinHeight</c>, i.e. a measurement that had collapsed onto the floor. (This paragraph
-    /// previously cited "final-fix-report.md, finding 1" for that reproduction; no such write-up exists
-    /// under that name — the citation was a forward reference to a report that had not been written
-    /// yet. That reproduction is the observed fact this guard rests on.)
+    /// <c>MinHeight</c>, i.e. a measurement that had collapsed onto the floor. That reproduction is the
+    /// observed fact this guard rests on; see
+    /// docs/superpowers/reports/2026-08-02-win11-shell-round3-findings.md for the durable record (this
+    /// paragraph previously cited "final-fix-report.md, finding 1," a file that did not exist at the
+    /// time it was written).
     /// </para>
     /// <para>
     /// The MECHANISM, restated in Round 3's residual review after the previous wording was found to
@@ -580,7 +585,7 @@ public partial class MainWindow : Window
             // two real callers that can reach ShowPage WITHOUT a preceding rail click — the settings
             // entry (ISettingsLauncher.Open -> SettingsLauncher.OpenCore) and WindowHost.Hide's reset to
             // 应用 — can be confirmed LIVE to actually hit this suppression instead of re-entering
-            // ShellNavigator.Navigate. See task-2-report.md's fix-report section for the log capture.
+            // ShellNavigator.Navigate.
             Serilog.Log.Debug(
                 "OnNavSelectionChanged suppressed a write from ShowPage itself ({Rail}, SelectedIndex={Index})",
                 rail.Name, rail.SelectedIndex);

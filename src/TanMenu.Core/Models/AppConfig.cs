@@ -138,16 +138,20 @@ public class GeneralConfig
     /// can still carry anything.
     /// </para>
     /// <para>
-    /// Round 3 final-fix report ("Also record"): the window has a practical HEIGHT floor around 605 DIP
-    /// outer (its title strip and chrome, on top of <c>MainWindow.axaml</c>'s <c>MinHeight="568"</c>) that
-    /// Windows will not go below regardless of what a fit requests — measured live, values of roughly 13
-    /// and below all land on that same client height, so this setting only becomes height-EFFECTIVE
-    /// above that. Below it, lowering this value still visibly changes the layout, just by trading height
-    /// for WIDTH instead: fewer rows per column means more columns across, and a small enough value (3,
-    /// in testing) produces an extremely wide window (4648 DIP). Not a defect — nothing in the Round 3
+    /// The window has a practical HEIGHT floor of 908 physical / 605.3 DIP outer (897 physical / 598 DIP
+    /// client, at 150% scale) — measured via a <c>SetWindowPos</c> probe that bypassed all app code;
+    /// Windows clamps any smaller request and writes the clamped value back into
+    /// <c>MainWindow.axaml</c>'s own <c>Width</c>/<c>Height</c> regardless of what a fit requests. Values
+    /// of roughly 13 and below all land on that same client height, so this setting only becomes
+    /// height-EFFECTIVE above that. Below it, lowering this value still visibly changes the layout, just
+    /// by trading height for WIDTH instead: fewer rows per column means more columns across, and a small
+    /// enough value (3, in testing) produced a 4648x568 DIP window. Not a defect — nothing in the Round 3
     /// plan required this setting to be height-effective across its whole [1, 30] range, only that the
     /// default not need a horizontal scrollbar, which holds — but worth knowing before assuming a low
-    /// value "does nothing" just because the window did not get shorter.
+    /// value "does nothing" just because the window did not get shorter. Full measurement, including why
+    /// the ~30 DIP gap to <c>MinHeight="568"</c> is an unconfirmed numeric inference rather than a
+    /// decompiled fact:
+    /// docs/superpowers/reports/2026-08-02-win11-shell-round3-findings.md.
     /// </para></summary>
     public int ColButtonCount { get; set; } = 10;
 

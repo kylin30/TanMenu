@@ -533,7 +533,7 @@
   <!-- Navigation rail. Fluent 2's NavigationView selection idiom: a left accent bar on the leading
        edge of the selected row plus a subtle rounded fill behind it, a fainter fill on hover, and no
        border anywhere. Confirmed against Task Manager's OWN selected row, not just its own shape:
-       pixel-sampling a live screenshot of its selected "进程" item (Round 3, Task 2 — task-2-report.md)
+       pixel-sampling a live screenshot of its selected "进程" item (Round 3, Task 2)
        found an accent-coloured bar ~3.3 DIP wide flush to the item's left edge, immediately followed
        (no gap) by a flat, uniform fill spanning the REST of the item's own bounds edge-to-edge — exactly
        this shape, which is why the numbers below (3 DIP bar, a flat SubtleFillTertiaryBrush fill) were
@@ -555,7 +555,7 @@
     <Setter Property="BorderThickness" Value="3,0,0,0" />
   </Style>
 
-  <!-- Round 3, Task 2: live UI Automation on Task Manager's OWN rail (task-2-report.md) found its
+  <!-- Round 3, Task 2: live UI Automation on Task Manager's OWN rail found its
        collapsed item column is 40 DIP wide inside the SAME 48 DIP pane this app already used — ours
        measured only 32 DIP before this fix. The difference was this ListBox's own horizontal Padding,
        which used to add a SECOND 4 DIP inset on top of ListBoxItem's own Margin="4,2" above, eating 16
@@ -563,8 +563,7 @@
        (48-8=40). NavRail/NavFooterRail (MainWindow.axaml) now both set Padding with a zero horizontal
        component locally (a local value on the instance, not a class-wide Setter here, since the two
        differ vertically — see their own remarks) to fix the item column to Task Manager's measured 40
-       DIP with no other change; row height was already correct (see the report's own measured table)
-       and is untouched. -->
+       DIP with no other change; row height was already correct and is untouched. -->
 
   <!-- ══ Collapsed rail (Task Manager style: 48 px, icon-only) ══════════════════════════════════
        Round 3, Task 2: MainWindow's ApplyNavExpandedState toggles "collapsed" on NavRailContent (the
@@ -622,7 +621,7 @@
   <!-- Round 3, Task 3 (user item 9): the actual PAGE title ("设置") and each card GROUP'S own heading
        ("外观"/"行为"/"文件夹"/"常用工具"/"更新") both used to share this one class at FontSizeSubtitle
        (20) — the page title was too close in size to its own subsections. Live-measured Task Manager's
-       settings page (task-3-report.md, ink-height pixel sampling, not automation bounding boxes — those
+       settings page (ink-height pixel sampling, not automation bounding boxes — those
        include per-row template padding that differs between its title and its section rows and would
        have overstated the title's real size by nearly 3x) found its page title's ink is ~1.4x its
        section headings' ink, while its section headings and its CARD titles measure the SAME ink height

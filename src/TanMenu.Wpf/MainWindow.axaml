@@ -20,7 +20,7 @@
     below) and a page host.
 
     Round 3, Task 2 (user items 4, 5) reshaped the rail to match Task Manager's OWN measured shape
-    (live UI Automation + pixel geometry, not eyeballed — see this task's report for the full table):
+    (live UI Automation + pixel geometry, not eyeballed):
     Task Manager's rail is not one flat list — its page rows (进程/性能/…/服务) sit in a top "*"-sized
     group and its Settings gear sits alone in a SEPARATE, bottom-pinned footer group, separated from the
     page list by whatever space is left over. This shell's own 应用/设置 map onto that same shape: 应用
@@ -86,9 +86,9 @@
       <!-- Both parts named here are Avalonia's own default drawn-decorations content, not ours — see
            the CORRECTED FACT note above. Ground-truthed against the LIVE running app (a temporary
            GetVisualDescendants() dump reached via TopLevelHost, the real internal Control that wraps
-           this Window as ITS OWN VisualChild — see task-1-report.md's fix log for why WindowDrawnDecorations
-           itself is unreachable by walking down from the Window), not trusted from decompiled-XAML
-           summaries alone: PART_TitleTextPanel and PART_FullScreenButton are both real, confirmed names.
+           this Window as ITS OWN VisualChild (which is why walking down from the Window itself does not
+           reach WindowDrawnDecorations), not trusted from decompiled-XAML summaries alone:
+           PART_TitleTextPanel and PART_FullScreenButton are both real, confirmed names.
 
            PART_FullScreenButton: Setter Property="IsVisible" works — Avalonia, unlike WPF's Hidden,
            drops an invisible element from layout entirely, so the caption-button StackPanel naturally
@@ -120,7 +120,7 @@
            explicitly fixed Height, and Avalonia's layout falls back to centering in that case, which
            is exactly what live measurement showed before this fix: Minimize's own
            BoundingRectangle sat inset ~14 physical px (~9.3 DIP) from the panel's top and ~13 physical px
-           (~8.7 DIP) from its bottom, at 150% scale (task-1-report.md's before/after table). Windows'
+           (~8.7 DIP) from its bottom, at 150% scale, measured before this fix. Windows'
            own native caption buttons never float like that — they sit flush against the outer edge of
            whatever title bar hosts them, regardless of that bar's height. Overriding VerticalAlignment to
            Top on the three real buttons (Fullscreen is already suppressed above, so it needs no rule)
@@ -167,8 +167,8 @@
            between equal-weight star columns evenly — which is what centres that Auto column on the
            WHOLE window, not just on whatever happens to sit to either side of it, as long as neither
            side's content is wide enough to eat into the other star column's share. Confirmed by
-           measurement after the change, at multiple window widths (task-1-report.md's fix log), not
-           only by this construction argument. -->
+           measurement after the change, at multiple window widths, not only by this construction
+           argument. -->
       <Grid x:Name="TitleStripContent"
             x:DataType="vm:LauncherViewModel"
             ColumnDefinitions="*,Auto,*">
@@ -259,7 +259,7 @@
                at 150%. 140 is the three-button cluster's OWN measured on-screen width (UI Automation,
                confirmed identically at two different window sizes after PART_FullScreenButton was
                suppressed above), not 3 x 45 = 135: the cluster carries a few extra DIP of edge padding
-               the per-button figure alone doesn't account for. See task-1-report.md's fix log. -->
+               the per-button figure alone doesn't account for. -->
           <Border x:Name="CaptionSpacer" Width="140" Background="Transparent" />
         </StackPanel>
 
@@ -276,7 +276,7 @@
            Collapsed (48 px, icon-only) is the default a fresh config gets — GeneralConfig.NavRailExpanded
            defaults to false — matching Task Manager's own rail (measured live: PaneRoot is 72 physical
            px = 48 DIP at this machine's 150% scale, the same 48 DIP this app already used before this
-           task — see task-2-report.md's measured table for the full comparison). ApplyNavExpandedState
+           task). ApplyNavExpandedState
            (code-behind) is the one place that ever sets this Border's Width or toggles the "collapsed"
            class on NavRailContent below; both happen together so the width animation and the icon-only
            layout change in lockstep. -->
@@ -326,7 +326,7 @@
                because ListBoxItem's own Margin="4,2" (Launcher.axaml) already supplies the row's outer
                gutter; adding a second, ListBox-level horizontal padding on top of that (the pre-Task-2
                shape) narrowed the collapsed item to 32 DIP against Task Manager's OWN measured 40 DIP —
-               confirmed by live UI Automation on both apps (task-2-report.md). Removing it is what makes
+               confirmed by live UI Automation on both apps. Removing it is what makes
                the collapsed item column exactly 48 (pane) − 2×4 (item margin) = 40 DIP, matching
                Task Manager's row width with no other change. -->
           <ListBox x:Name="NavRail"
@@ -340,7 +340,7 @@
             <!-- Every rail icon TextBlock in this file carries a local Width="16": Task Manager's own
                  icon glyphs measure a FIXED, IDENTICAL 16 DIP box at the same X on every single row
                  (live UI Automation on 7 different glyphs — folder, chart, clock, wrench, people, list,
-                 puzzle — all report x=5322, task-2-report.md), which only happens if the icon sits in a
+                 puzzle — all report x=5322), which only happens if the icon sits in a
                  fixed-size container rather than being centred by its own raw glyph metrics. Segoe
                  Fluent Icons glyphs do NOT all share the same advance width at a given FontSize — before
                  this fix, "应用"'s grid glyph and "设置"'s gear glyph centred 4 physical px apart from
@@ -423,7 +423,7 @@
             <!-- 设置: a real page (see ShowPage), styled and measured exactly like NavRail's own
                  NavAppsItem (same "tm-nav" ListBox class, same ListBoxItem shape) so its selected
                  treatment — Task Manager's own left accent bar + subtle rounded fill, confirmed by
-                 pixel-sampling a live screenshot of Task Manager's selected row (task-2-report.md): a
+                 pixel-sampling a live screenshot of Task Manager's selected row: a
                  ~3.3 DIP accent-coloured bar flush to the item's left edge, and a fill spanning the
                  REST of the item's own bounds edge-to-edge, both already exactly what
                  "ListBox.tm-nav ListBoxItem:selected" (Launcher.axaml) already painted before this

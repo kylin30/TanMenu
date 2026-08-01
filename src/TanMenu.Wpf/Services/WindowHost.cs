@@ -692,13 +692,13 @@ public sealed partial class WindowHost : IWindowHost
                 currentLeft, currentTop,
                 work, _window.MinWidth, _window.MinHeight);
 
-            // Round 3 final-fix report, finding 4: compare against the size the PREVIOUS fit
-            // requested (captured here, before it is overwritten below), NOT the window's live
-            // Width/Height. Task 4's MinHeight="568" can sit below this window's own practical floor —
-            // its title strip/chrome mean Windows will not actually let the client area go below
-            // roughly 605 DIP outer regardless of what is requested — and Win32.WindowImpl clamps a
-            // too-small SetWindowPlacement call up to that floor, then writes the CLAMPED value back
-            // into Width/Height on the next layout pass. Comparing against that live, clamped size
+            // Compare against the size the PREVIOUS fit requested (captured here, before it is
+            // overwritten below), NOT the window's live Width/Height. Task 4's MinHeight="568" can sit
+            // below this window's own practical floor — 908 physical / 605.3 DIP outer, 897 physical /
+            // 598 DIP client at 150% scale, measured via a SetWindowPos probe that bypassed all app code
+            // (docs/superpowers/reports/2026-08-02-win11-shell-round3-findings.md) — and Win32.WindowImpl
+            // clamps a too-small SetWindowPlacement call up to that floor, then writes the CLAMPED value
+            // back into Width/Height on the next layout pass. Comparing against that live, clamped size
             // therefore never matched what a fit had actually asked for (568 vs ~605), so this check
             // could never short-circuit in that regime and every cold start logged and debounce-wrote
             // TWICE instead of once. The previous fit's own requested size is the one thing this class

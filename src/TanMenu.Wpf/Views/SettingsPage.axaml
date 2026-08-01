@@ -36,7 +36,7 @@
        than hunting for an anonymous scroll region by tree position). Keep it. -->
   <!-- Round 3, Task 3 (user item 7): cards used to sit at a fixed MaxWidth="720" with
        HorizontalAlignment="Left" — a shrink-wrapped column parked against the left edge no matter how
-       wide the window got. Task Manager's own settings cards (measured live, task-3-report.md) stretch
+       wide the window got. Task Manager's own settings cards (measured live) stretch
        to fill the content area with a ~24-25 DIP gutter on both sides up to a measured ~1250 DIP cap,
        then centre once that cap is hit. StackPanel's default HorizontalAlignment is already Stretch
        (only the explicit "Left" above was overriding it), and this ScrollViewer never turns on

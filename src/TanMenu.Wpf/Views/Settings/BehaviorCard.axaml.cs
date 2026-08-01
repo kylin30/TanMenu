@@ -340,21 +340,21 @@ public partial class BehaviorCard : UserControl, ISettingsCard
         var isPinned = state.Status is TaskbarPinStatus.Pinned;
         PinTaskbarBtn.IsEnabled = !isPinned;
 
-        // Round 3 final-fix report, finding 1: this runs from ReloadFromConfig too, which
-        // SettingsPage's constructor calls BEFORE MainWindow.ShowPageCore ever assigns the freshly
-        // built page to PageHost.Content — i.e. while this whole card tree is still detached from the
-        // logical tree. Decompiled Avalonia 12.1.0: StyledElement.StylingParent walks
-        // InheritanceParent, which a detached control terminates before ever reaching
-        // Application.Styles (where TmButton/TmAccentButton both live), so FindResource returns
-        // AvaloniaProperty.UnsetValue and the `as ControlTheme` used to yield a hard null — clobbering
-        // whatever theme this button already had. On the very first call there is nothing to clobber
-        // yet, but on every LATER one there is: OnAttachedToVisualTree already applied the correct
-        // theme on a previous visit, and AppEvents.SettingsChanged (which this method's other caller,
-        // ReloadFromConfig, is wired to) can fire while 设置 is not even the page on screen — e.g. a
-        // hotkey saved from a different card, on an entirely different visit. A failed lookup must
-        // therefore leave whatever theme is already applied alone rather than null it out; the next
-        // real re-attach (see OnAttachedToVisualTree's own remarks) always re-queries and re-applies
-        // correctly once the tree is live again.
+        // This runs from ReloadFromConfig too, which SettingsPage's constructor calls BEFORE
+        // MainWindow.ShowPageCore ever assigns the freshly built page to PageHost.Content — i.e. while
+        // this whole card tree is still detached from the logical tree. Decompiled Avalonia 12.1.0:
+        // StyledElement.StylingParent walks InheritanceParent, which a detached control terminates
+        // before ever reaching Application.Styles (where TmButton/TmAccentButton both live), so
+        // FindResource returns AvaloniaProperty.UnsetValue and the `as ControlTheme` used to yield a
+        // hard null — clobbering whatever theme this button already had. On the very first call there
+        // is nothing to clobber yet, but on every LATER one there is: OnAttachedToVisualTree already
+        // applied the correct theme on a previous visit, and AppEvents.SettingsChanged (which this
+        // method's other caller, ReloadFromConfig, is wired to) can fire while 设置 is not even the page
+        // on screen — e.g. a hotkey saved from a different card, on an entirely different visit. A
+        // failed lookup must therefore leave whatever theme is already applied alone rather than null
+        // it out; the next real re-attach (see OnAttachedToVisualTree's own remarks) always re-queries
+        // and re-applies correctly once the tree is live again. Full writeup:
+        // docs/superpowers/reports/2026-08-02-win11-shell-round3-findings.md.
         //
         // Round 3 residual review: that guard alone still left the FIRST call of a process rendering
         // wrong, because "nothing has been assigned yet" and "a lookup failed, so nothing was
