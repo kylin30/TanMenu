@@ -181,7 +181,6 @@ public static class AppLanguage
             ["MenuAbout"] = ("关于", "About"),
             ["MenuExit"] = ("退出", "Exit"),
             ["MenuMore"] = ("更多", "More"),
-            ["MenuHide"] = ("隐藏", "Hide"),
             ["NavApps"] = ("应用", "Apps"),
             ["NavSettings"] = ("设置", "Settings"),
             ["NoMatchTitle"] = ("未找到匹配项", "No matches"),

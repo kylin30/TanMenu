@@ -1,19 +1,26 @@
+using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Media;
+using Avalonia.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using TanMenu.Core.Services;
 using TanMenu.Wpf.Services;
+using TanMenu.Wpf.ViewModels;
 using TanMenu.Wpf.Views;
 
 namespace TanMenu.Wpf;
 
 /// <summary>
-/// The shell: the system title bar, the fixed navigation rail and the page host. All launcher state
-/// and behaviour now live in <see cref="AppPage"/> (via <c>LauncherViewModel</c>); this class owns only
-/// what genuinely belongs to the window — the Mica fallback, close-to-tray, and swapping the page
-/// host's content between the two rail entries.
+/// The shell: the title strip (app icon/name, search, overflow), the fixed navigation rail and the
+/// page host. All launcher STATE still lives in <see cref="AppPage"/>'s <c>LauncherViewModel</c> — the
+/// search box and overflow menu here bind and dispatch to that SAME instance (exposed as
+/// <see cref="AppPage.ViewModel"/>) rather than a second one, since AppPage still owns the keyboard
+/// model (Escape, Down-into-the-grid) that the search box's key handling has to reach into. This class
+/// owns what genuinely belongs to the window — the Mica fallback, close-to-tray, the caption-button
+/// reservation, and swapping the page host's content between the two rail entries.
 /// </summary>
 public partial class MainWindow : Window
 {
@@ -44,6 +51,11 @@ public partial class MainWindow : Window
         ApplyWindowFont();
         ApplyRailText();
 
+        // The search field and overflow menu bind straight to AppPage's own LauncherViewModel — see
+        // the class remarks above for why this is not a second view model.
+        TitleStripContent.DataContext = _appPage.ViewModel;
+        _appPage.ViewModel.PropertyChanged += OnLauncherViewModelPropertyChanged;
+
         _navReady = true;
     }
 
@@ -52,6 +64,7 @@ public partial class MainWindow : Window
         base.OnOpened(e);
 
         ApplyBackdrop();
+        ApplyCaptionSpacer();
 
         // The host owns show/hide/placement and needs the window once its HWND exists. Idempotent, and
         // App.ShowLauncherWindow has already attached on the cold-start path; kept so a window opened
@@ -77,6 +90,7 @@ public partial class MainWindow : Window
     {
         _events.SettingsChanged -= ApplyWindowFont;
         _events.SettingsChanged -= ApplyRailText;
+        _appPage.ViewModel.PropertyChanged -= OnLauncherViewModelPropertyChanged;
 
         // AppPage's view model is disposed here, not on the page's own Unloaded: OnClosed only fires
         // at real application exit (OnClosing below cancels every other close), while the app page
@@ -89,12 +103,12 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Escape reaches here only when focus was NOT inside <see cref="AppPage"/> — e.g. a nav-rail row.
-    /// AppPage's own <c>OnKeyDown</c> already handles Escape (and marks it handled) for the search box
-    /// and the tile grid, matching the clear-then-hide behaviour it always had. Before the rail existed,
-    /// this window's own OnKeyDown handled Escape identically regardless of where focus was — routing
-    /// this fallback through the same view-model call (rather than an unconditional Hide) keeps that
-    /// behaviour rather than merely approximating it.
+    /// Escape reaches here only when focus was NOT inside the search box or <see cref="AppPage"/>'s own
+    /// tile grid — e.g. a nav-rail row. Both of those already handle Escape (and mark it handled)
+    /// themselves, matching the clear-then-hide behaviour the launcher always had. Before the rail
+    /// existed, this window's own OnKeyDown handled Escape identically regardless of where focus was —
+    /// calling the SAME view-model method here (rather than an unconditional Hide) keeps that behaviour
+    /// rather than merely approximating it.
     /// </summary>
     protected override void OnKeyDown(KeyEventArgs e)
     {
@@ -102,7 +116,7 @@ public partial class MainWindow : Window
         if (e.Handled || e.Key != Key.Escape)
             return;
 
-        _appPage.HandleGlobalEscape();
+        _appPage.ViewModel.HandleSearchEscape();
         e.Handled = true;
     }
 
@@ -178,4 +192,129 @@ public partial class MainWindow : Window
         var cfg = App.Services.GetRequiredService<ConfigService>();
         FontFamily = AppFonts.Resolve(cfg.Config.General.FontFamily);
     }
+
+    // ══════════════════════════════════════════════════════════════════════════════════════════
+    // Title strip: caption-button reservation
+    // ══════════════════════════════════════════════════════════════════════════════════════════
+
+    // SM_CXSIZE: "Width of a button in a window's caption or title bar, in pixels" (winuser.h). The
+    // same DPI-aware metric Microsoft's own "extend content into the title bar" samples use to keep
+    // custom content clear of the system caption buttons.
+    private const int SM_CXSIZE = 30;
+
+    // The most caption-area buttons Windows 11 renders for a resizable window: Close, Maximize/
+    // Restore, Minimize, and the fullscreen toggle — confirmed present on this machine (see the
+    // window's own UI Automation tree: AutomationId "AvaloniaWindowChrome" exposes Fullscreen,
+    // Minimize, Maximize and Close as four distinct buttons). Reserving for the maximum rather than
+    // whatever is actually showing costs a few DIPs of otherwise-empty strip when fewer buttons are
+    // present, which is harmless; reserving for too few reproduces the overlap this exists to prevent.
+    private const int MaxCaptionButtons = 4;
+
+    // Measured on this machine at 150% scaling: each real caption button is ~45 DIP wide against a
+    // 48 DIP title bar (WindowDecorationMargin.Top) — close to, but not exactly, 1:1. This factor pads
+    // the Top-derived estimate rather than risk reproducing the exact overlap ApplyCaptionSpacer exists
+    // to prevent if the true ratio runs slightly higher on a different Windows build or DPI.
+    private const double CaptionButtonSafetyFactor = 1.15;
+
+    /// <summary>
+    /// Reserve the room the system caption buttons need, from <see cref="Window.WindowDecorationMargin"/>
+    /// as the round-2 plan named — but from its Top component, not Right. Avalonia 12.1's own Win32
+    /// backend (<c>WindowImpl.UpdateExtendMargins</c>) hardcodes Left/Right/Bottom to zero and only ever
+    /// populates Top (the title bar height): confirmed by reading that source, and by this method's own
+    /// first run on this machine, which logged <c>WindowDecorationMargin observed: 0,48,0,0</c> despite
+    /// four real caption buttons rendering at the top-right corner. <c>GetSystemMetricsForDpi(SM_CXSIZE)</c>
+    /// — the metric Microsoft's own "extend into the title bar" samples use — was tried first and
+    /// measured 36 DIP/button against the ~45 DIP the buttons actually render at here: Windows 11's
+    /// caption buttons are wider than the decades-old SM_CXSIZE metric reports, a known mismatch on this
+    /// OS version. Top correlates far more closely (title bar height and button width are close to 1:1
+    /// on this machine), so the reservation is Top × the button count × a small safety factor, still
+    /// entirely DPI-live rather than a hardcoded pixel width. Not hooked to a live "system setting
+    /// changed" notification (Windows' caption-button-size accessibility setting can change this while
+    /// running); every other imperative re-apply in this class has the same limitation (AppLanguage/
+    /// AppFonts have none either) and this one is rarer still, so it is computed once, from OnOpened.
+    /// </summary>
+    private void ApplyCaptionSpacer()
+    {
+        var margin = WindowDecorationMargin;
+        CaptionSpacer.Width = margin.Top * MaxCaptionButtons * CaptionButtonSafetyFactor;
+        Serilog.Log.Information(
+            "Caption spacer: WindowDecorationMargin={Margin} (Top used) x {Count} buttons x {Factor} " +
+            "safety factor = {Total} DIP reserved",
+            margin, MaxCaptionButtons, CaptionButtonSafetyFactor, CaptionSpacer.Width);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════════════════════
+    // Title strip: search box
+    // ══════════════════════════════════════════════════════════════════════════════════════════
+
+    /// <summary>Focus is drawn on the FIELD (the bordered box), not on the bare TextBox inside it, so
+    /// the accent outline frames the glyph too. The TextBox has no border of its own to light up.</summary>
+    private void OnSearchFocusChanged(object? sender, RoutedEventArgs e) =>
+        SearchField.Classes.Set("focused", SearchBox.IsFocused);
+
+    /// <summary>Enter launches the first match, Escape clears then hides, Down enters the tile grid —
+    /// exactly AppPage's old header behaviour. Enter/Escape are one-line calls straight into the shared
+    /// LauncherViewModel; Down has to reach AppPage's own tile grid, which only AppPage's code-behind
+    /// can walk, so it is forwarded through <see cref="AppPage.FocusFirstTile"/> rather than duplicated
+    /// here.</summary>
+    private void OnSearchKeyDown(object? sender, KeyEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case Key.Enter:
+                _appPage.ViewModel.HandleSearchEnter();
+                e.Handled = true;
+                break;
+            case Key.Escape:
+                _appPage.ViewModel.HandleSearchEscape();
+                e.Handled = true;
+                break;
+            case Key.Down:
+                e.Handled = _appPage.FocusFirstTile();
+                break;
+        }
+    }
+
+    /// <summary>Deferred focus: <see cref="LauncherViewModel.PendingFocus"/> is set on every summon (and
+    /// by AppPage's own "清除筛选"/Up-off-the-grid actions) and consumed here, on the next Loaded pass —
+    /// one priority below layout, so the search box has already been measured and arranged by the time
+    /// this runs. Unlike AppPage's pre-move version of this same mechanism, there is no attach-retry:
+    /// the search box now lives in the shell, which stays in the visual tree for the window's whole
+    /// life regardless of which rail entry is showing, so it is never detached the way AppPage itself
+    /// can be when 设置 is on screen.</summary>
+    private void OnLauncherViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is not nameof(LauncherViewModel.PendingFocus))
+            return;
+
+        Dispatcher.UIThread.Post(ConsumePendingFocus, DispatcherPriority.Loaded);
+    }
+
+    private void ConsumePendingFocus()
+    {
+        if (!_appPage.ViewModel.PendingFocus)
+            return;
+
+        _appPage.ViewModel.PendingFocus = false;
+        try
+        {
+            SearchBox.Focus();
+        }
+        catch
+        {
+            /* focus is a nicety; never let it take startup down */
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════════════════════
+    // Title strip: overflow menu
+    // ══════════════════════════════════════════════════════════════════════════════════════════
+
+    private void OnOpenRootClick(object? sender, RoutedEventArgs e) => _appPage.ViewModel.OpenRoot();
+
+    private void OnRefreshClick(object? sender, RoutedEventArgs e) => _ = _appPage.ViewModel.RefreshAsync();
+
+    private void OnAboutClick(object? sender, RoutedEventArgs e) => _appPage.ViewModel.OpenAbout();
+
+    private void OnExitClick(object? sender, RoutedEventArgs e) => _appPage.ViewModel.ExitApp();
 }

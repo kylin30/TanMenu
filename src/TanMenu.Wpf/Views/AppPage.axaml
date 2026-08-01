@@ -5,9 +5,10 @@
              x:Class="TanMenu.Wpf.Views.AppPage"
              x:DataType="vm:LauncherViewModel">
 
-  <!-- The launcher proper. The window shell owns the title bar and the navigation rail; everything
-       here is the 应用 page: search, the overflow menu, the update notice, the categories, and the
-       three non-menu states (loading, nothing configured, nothing matched). -->
+  <!-- The launcher proper. The window shell owns the title strip (search box and overflow menu now
+       live there, Task Manager style — see MainWindow.axaml) and the navigation rail; everything here
+       is the 应用 page's own content: the update notice, the categories, and the three non-menu states
+       (loading, nothing configured, nothing matched). -->
 
   <Panel x:Name="Root"
          Background="Transparent"
@@ -22,74 +23,11 @@
 
       <DockPanel>
 
-        <!-- ══ Header: search first, then the overflow and close glyphs ═══════════════════════ -->
-        <Border Classes="tm-header" DockPanel.Dock="Top">
-          <DockPanel>
-
-            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
-                        Spacing="2" Margin="8,0,0,0" VerticalAlignment="Center">
-
-              <!-- AutomationProperties.Name is required, not decoration: these buttons have a
-                   geometry glyph and no text, so without it a screen reader announces "button"
-                   and UI Automation cannot address them at all. -->
-              <Button x:Name="OverflowButton"
-                      Theme="{StaticResource TmIconButton}"
-                      Focusable="False"
-                      AutomationProperties.Name="{Binding MenuMoreText}"
-                      ToolTip.Tip="{Binding MenuMoreText}">
-                <!-- Segoe Fluent Icons code points, the same glyphs the Windows 11 shell uses:
-                     E712 More, E8BB ChromeClose, E721 Search, E8B7 Folder, E896 Download. They
-                     exist at these code points in Segoe MDL2 Assets too, which is the Windows 10
-                     fallback in IconFontFamily. -->
-                <TextBlock Classes="tm-icon" Text="&#xE712;" />
-                <Button.Flyout>
-                  <MenuFlyout Placement="BottomEdgeAlignedRight">
-                    <MenuItem Header="{Binding MenuOpenRootText}" Click="OnOpenRootClick" />
-                    <MenuItem Header="{Binding MenuRefreshText}" Click="OnRefreshClick" />
-                    <Separator />
-                    <MenuItem Header="{Binding MenuAboutText}" Click="OnAboutClick" />
-                    <Separator />
-                    <MenuItem Header="{Binding MenuExitText}" Click="OnExitClick" />
-                  </MenuFlyout>
-                </Button.Flyout>
-              </Button>
-
-              <Button Theme="{StaticResource TmIconButton}"
-                      Focusable="False"
-                      Click="OnCloseClick"
-                      AutomationProperties.Name="{Binding MenuHideText}"
-                      ToolTip.Tip="{Binding MenuHideText}">
-                <TextBlock Classes="tm-icon small" Text="&#xE8BB;" />
-              </Button>
-            </StackPanel>
-
-            <Border Classes="tm-searchfield" x:Name="SearchField">
-              <DockPanel>
-                <TextBlock DockPanel.Dock="Left" Classes="tm-icon subtle small"
-                           Text="&#xE721;" Margin="0,0,8,0" />
-                <!-- Background and BorderThickness are LOCAL values on purpose: a local value
-                     outranks a style setter, which is what stops Avalonia's own :pointerover and
-                     :focus TextBox styling from repainting a field the Border already paints. -->
-                <TextBox x:Name="SearchBox"
-                         Classes="tm-search"
-                         AutomationProperties.Name="{Binding SearchPlaceholderText}"
-                         Background="Transparent"
-                         BorderThickness="0"
-                         PlaceholderText="{Binding SearchPlaceholderText}"
-                         Text="{Binding Filter, Mode=TwoWay}"
-                         KeyDown="OnSearchKeyDown"
-                         GotFocus="OnSearchFocusChanged"
-                         LostFocus="OnSearchFocusChanged" />
-              </DockPanel>
-            </Border>
-
-          </DockPanel>
-        </Border>
-
         <!-- Taskbar-pin notice. An inline InfoBar rather than the modal dialog the app used to throw
              up on every reveal: RefreshPinNoticeAsync (AppPage.axaml.cs) opens it whenever the app is
              not yet pinned and 不再提示 has not been chosen, and closes it the moment the pin succeeds
-             or the user dismisses it. Docked above the update notice, directly under the header. -->
+             or the user dismisses it. Docked above the update notice, at the top of the page — the
+             shell's title strip (search + overflow) sits above this in the window, not in this page. -->
         <ctl:InfoBar x:Name="PinNotice" DockPanel.Dock="Top" Margin="12,0,12,8"
                      IsOpen="False" Dismissed="OnPinNoticeDismissed">
           <StackPanel Orientation="Horizontal" Spacing="8">

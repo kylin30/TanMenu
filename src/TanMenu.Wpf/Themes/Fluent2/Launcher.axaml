@@ -124,13 +124,7 @@
 
   </Styles.Resources>
 
-  <!-- ══ Header ═══════════════════════════════════════════════════════════════════════════════ -->
-
-  <Style Selector="Border.tm-header">
-    <Setter Property="BorderThickness" Value="0,0,0,1" />
-    <Setter Property="BorderBrush" Value="{DynamicResource StrokeDividerBrush}" />
-    <Setter Property="Padding" Value="12,10" />
-  </Style>
+  <!-- ══ Title strip (search + overflow, now in MainWindow.axaml) ═══════════════════════════════ -->
 
   <!-- Iconography is Segoe Fluent Icons — the Windows 11 icon face — rather than hand-drawn
        geometry, so the launcher's search, overflow and close glyphs are the same shapes the shell

@@ -253,7 +253,6 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
     public string MenuAboutText => L("MenuAbout");
     public string MenuExitText => L("MenuExit");
     public string MenuMoreText => L("MenuMore");
-    public string MenuHideText => L("MenuHide");
     public string SearchPlaceholderText => L("SearchPlaceholder");
     public string EmptyTitleText => L("EmptyTitle");
     public string EmptyHelpText => L("EmptyHelp");
@@ -275,7 +274,6 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
         RaisePropertyChanged(nameof(MenuAboutText));
         RaisePropertyChanged(nameof(MenuExitText));
         RaisePropertyChanged(nameof(MenuMoreText));
-        RaisePropertyChanged(nameof(MenuHideText));
         RaisePropertyChanged(nameof(SearchPlaceholderText));
         RaisePropertyChanged(nameof(EmptyTitleText));
         RaisePropertyChanged(nameof(EmptyHelpText));
@@ -461,11 +459,6 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
     // ══════════════════════════════════════════════════════════════════════════════════════════
     // Commands from the window
     // ══════════════════════════════════════════════════════════════════════════════════════════
-
-    /// <summary>The header's own hide glyph (not the system title bar — Minimize and the system Close
-    /// button are real OS operations now; the system Close hides too, via MainWindow.OnClosing). There
-    /// is still no application exit from either.</summary>
-    public void HideWindow() => _host.Hide();
 
     public void OpenSettings() => _settings.Open();
 

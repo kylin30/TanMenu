@@ -1,50 +1,164 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:chrome="using:Avalonia.Controls.Chrome"
+        xmlns:vm="using:TanMenu.Wpf.ViewModels"
         x:Class="TanMenu.Wpf.MainWindow"
         Title="TanMenu"
-        Width="1000" Height="640" MinWidth="760" MinHeight="520"
+        Width="1000" Height="688" MinWidth="760" MinHeight="568"
         WindowStartupLocation="Manual"
         TransparencyLevelHint="Mica"
         Background="Transparent"
         Icon="/wwwroot/app.ico"
         FontSize="14"
-        Foreground="{DynamicResource TextPrimaryBrush}">
+        Foreground="{DynamicResource TextPrimaryBrush}"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaTitleBarHeightHint="48">
 
   <!--
     The shell: a system-decorated Mica window (Windows 11 rounds and shadows it for us) split into a
-    fixed navigation rail and a page host. Exactly two pages exist, so the rail is a ListBox rather
-    than anything more elaborate, and the selected page is view state — the window always opens on 应用.
+    title strip, a fixed navigation rail and a page host. Exactly two pages exist, so the rail is a
+    ListBox rather than anything more elaborate, and the selected page is view state — the window
+    always opens on 应用.
 
-    There is no DataContext here any more: the launcher's state (LauncherViewModel) now belongs to
-    AppPage, not the shell. The one thing that used to reach the window through a DataContext binding
-    — the 字体 setting — is applied imperatively instead (see ApplyWindowFont in the code-behind) and
-    inherits down to whichever page is hosted, exactly as the binding used to.
+    ExtendClientAreaToDecorationsHint pulls the whole client area — including the strip where the OS
+    used to paint its own title bar — under our control; the system caption buttons still render
+    there (Avalonia 12.1 does not offer a way to draw those ourselves, and Task Manager keeps them
+    too). ExtendClientAreaTitleBarHeightHint is pinned to 48, the Windows 11 title bar height at 100%
+    scaling, rather than -1 (OS default), so the strip below lines up with it exactly. Height/MinHeight
+    are 48 taller than round 1's 640/520: extending the client area moves the strip's height OUT OF the
+    OS-added frame and INTO the window's own client size, so without this the nav rail and page host
+    would lose exactly the height the strip now occupies.
+
+    The strip is marked WindowDecorationProperties.ElementRole="TitleBar" so dragging it moves the
+    window; the search field and the overflow button are marked "User" so they take pointer/keyboard
+    input instead of starting a drag. CaptionSpacer reserves the room the system caption buttons need,
+    read from Window.WindowDecorationMargin as the round-2 plan named — but its Top component, not
+    Right: Avalonia 12.1's own Win32 backend hardcodes that Thickness's Right to zero (only Top, the
+    title bar height, is ever populated), confirmed by reading the Avalonia source and by this window's
+    own startup log. ApplyCaptionSpacer (code-behind) derives the reservation from Top instead, still
+    entirely DPI-live rather than a hardcoded width — see that method's remarks for the full reasoning,
+    including why the "obvious" GetSystemMetricsForDpi(SM_CXSIZE) alternative measured short on this
+    Windows build.
+
+    The search box and overflow menu bind to AppPage's own LauncherViewModel (exposed as AppPage.
+    ViewModel) rather than a second view model: AppPage still owns the keyboard model (Escape, Down,
+    the tile grid) and constructs/disposes the one LauncherViewModel instance; the shell only hosts the
+    controls that used to sit in AppPage's header and talks to the SAME instance, exactly as if the
+    header had never moved. The one thing that still needs its own imperative binding, exactly as
+    before, is the 字体 setting — see ApplyWindowFont in the code-behind.
   -->
 
-  <Grid ColumnDefinitions="200,*">
+  <Grid RowDefinitions="48,*">
 
-    <ListBox x:Name="NavRail"
-             Grid.Column="0"
-             Classes="tm-nav"
-             SelectedIndex="0"
-             SelectionChanged="OnNavSelectionChanged"
-             Background="Transparent"
-             BorderThickness="0"
-             Padding="4,12">
-      <ListBoxItem>
-        <StackPanel Orientation="Horizontal" Spacing="12">
-          <TextBlock Classes="tm-icon" Text="&#xE71D;" VerticalAlignment="Center" />
-          <TextBlock x:Name="NavAppsLabel" Text="应用" VerticalAlignment="Center" />
-        </StackPanel>
-      </ListBoxItem>
-      <ListBoxItem>
-        <StackPanel Orientation="Horizontal" Spacing="12">
-          <TextBlock Classes="tm-icon" Text="&#xE713;" VerticalAlignment="Center" />
-          <TextBlock x:Name="NavSettingsLabel" Text="设置" VerticalAlignment="Center" />
-        </StackPanel>
-      </ListBoxItem>
-    </ListBox>
+    <!-- ══ Title strip: app icon + name, search, overflow, then room for the caption buttons ══════ -->
+    <Border Grid.Row="0"
+            Background="Transparent"
+            chrome:WindowDecorationProperties.ElementRole="TitleBar">
+      <Grid x:Name="TitleStripContent"
+            x:DataType="vm:LauncherViewModel"
+            ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto"
+            Margin="16,0,0,0">
 
-    <ContentControl x:Name="PageHost" Grid.Column="1" />
+        <Image Grid.Column="0"
+               Width="20" Height="20"
+               VerticalAlignment="Center"
+               Source="avares://TanMenu.Wpf/wwwroot/app-tile.png" />
+
+        <TextBlock Grid.Column="1"
+                   Text="TanMenu"
+                   Margin="10,0,0,0"
+                   VerticalAlignment="Center" />
+
+        <!-- Grid.Column="2" is a flexible spacer: it is what keeps the search box "centred-left"
+             (Task Manager's placement) instead of glued to either the app name or the overflow
+             button, while the overflow button and the caption reservation stay snug against the
+             right edge regardless of window width. -->
+
+        <Border Grid.Column="3"
+                x:Name="SearchField"
+                Classes="tm-searchfield"
+                chrome:WindowDecorationProperties.ElementRole="User"
+                Width="280"
+                Margin="12,0"
+                VerticalAlignment="Center">
+          <DockPanel>
+            <TextBlock DockPanel.Dock="Left" Classes="tm-icon subtle small"
+                       Text="&#xE721;" Margin="0,0,8,0" />
+            <!-- Background and BorderThickness are LOCAL values on purpose: a local value outranks a
+                 style setter, which is what stops Avalonia's own :pointerover and :focus TextBox
+                 styling from repainting a field the Border already paints. -->
+            <TextBox x:Name="SearchBox"
+                     Classes="tm-search"
+                     AutomationProperties.Name="{Binding SearchPlaceholderText}"
+                     Background="Transparent"
+                     BorderThickness="0"
+                     PlaceholderText="{Binding SearchPlaceholderText}"
+                     Text="{Binding Filter, Mode=TwoWay}"
+                     KeyDown="OnSearchKeyDown"
+                     GotFocus="OnSearchFocusChanged"
+                     LostFocus="OnSearchFocusChanged" />
+          </DockPanel>
+        </Border>
+
+        <!-- AutomationProperties.Name is required, not decoration: this button has a geometry glyph
+             and no text, so without it a screen reader announces "button" and UI Automation cannot
+             address it at all. -->
+        <Button Grid.Column="4"
+                x:Name="OverflowButton"
+                Theme="{StaticResource TmIconButton}"
+                Focusable="False"
+                chrome:WindowDecorationProperties.ElementRole="User"
+                AutomationProperties.Name="{Binding MenuMoreText}"
+                ToolTip.Tip="{Binding MenuMoreText}">
+          <!-- Segoe Fluent Icons code point E712 More — the same glyph the Windows 11 shell uses.
+               It exists at this code point in Segoe MDL2 Assets too, the Windows 10 fallback in
+               IconFontFamily. -->
+          <TextBlock Classes="tm-icon" Text="&#xE712;" />
+          <Button.Flyout>
+            <MenuFlyout Placement="BottomEdgeAlignedRight">
+              <MenuItem Header="{Binding MenuOpenRootText}" Click="OnOpenRootClick" />
+              <MenuItem Header="{Binding MenuRefreshText}" Click="OnRefreshClick" />
+              <Separator />
+              <MenuItem Header="{Binding MenuAboutText}" Click="OnAboutClick" />
+              <Separator />
+              <MenuItem Header="{Binding MenuExitText}" Click="OnExitClick" />
+            </MenuFlyout>
+          </Button.Flyout>
+        </Button>
+
+        <!-- Sized at runtime by ApplyCaptionSpacer (code-behind) so the system caption buttons never
+             sit on top of the overflow button at a different DPI or with a different system setting.
+             Column 5, Auto width — the Border's own Width drives it. -->
+        <Border Grid.Column="5" x:Name="CaptionSpacer" Background="Transparent" />
+
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="1" ColumnDefinitions="200,*">
+
+      <ListBox x:Name="NavRail"
+               Grid.Column="0"
+               Classes="tm-nav"
+               SelectedIndex="0"
+               SelectionChanged="OnNavSelectionChanged"
+               Background="Transparent"
+               BorderThickness="0"
+               Padding="4,12">
+        <ListBoxItem>
+          <StackPanel Orientation="Horizontal" Spacing="12">
+            <TextBlock Classes="tm-icon" Text="&#xE71D;" VerticalAlignment="Center" />
+            <TextBlock x:Name="NavAppsLabel" Text="应用" VerticalAlignment="Center" />
+          </StackPanel>
+        </ListBoxItem>
+        <ListBoxItem>
+          <StackPanel Orientation="Horizontal" Spacing="12">
+            <TextBlock Classes="tm-icon" Text="&#xE713;" VerticalAlignment="Center" />
+            <TextBlock x:Name="NavSettingsLabel" Text="设置" VerticalAlignment="Center" />
+          </StackPanel>
+        </ListBoxItem>
+      </ListBox>
+
+      <ContentControl x:Name="PageHost" Grid.Column="1" />
+    </Grid>
   </Grid>
 </Window>

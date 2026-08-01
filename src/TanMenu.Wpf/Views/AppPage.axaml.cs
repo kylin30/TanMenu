@@ -1,9 +1,7 @@
-using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Microsoft.Extensions.DependencyInjection;
 using TanMenu.Core.Services;
@@ -15,9 +13,12 @@ using TanMenu.Wpf.Views.Settings;
 namespace TanMenu.Wpf.Views;
 
 /// <summary>
-/// The 应用 page. All state lives in <see cref="LauncherViewModel"/>; this is the thin view layer that
-/// wires clicks and keys to it and owns the two things that genuinely need the visual tree — deferred
-/// search focus and geometric keyboard navigation across the tiles.
+/// The 应用 page. All state lives in <see cref="LauncherViewModel"/> (exposed as <see cref="ViewModel"/>
+/// so the shell's title-strip search box and overflow menu — see MainWindow.axaml — can bind and
+/// dispatch to the SAME instance rather than a second view model); this class is the thin view layer
+/// that wires clicks and keys to it and owns the one thing that genuinely needs the visual tree here:
+/// geometric keyboard navigation across the tiles. Deferred search-box focus moved to MainWindow along
+/// with the search box itself.
 /// </summary>
 public partial class AppPage : UserControl, IDisposable
 {
@@ -44,7 +45,6 @@ public partial class AppPage : UserControl, IDisposable
         _host = App.Services.GetRequiredService<IWindowHost>();
         _events = App.Services.GetRequiredService<AppEvents>();
         _viewModel = LauncherViewModel.Create(App.Services);
-        _viewModel.PropertyChanged += OnViewModelPropertyChanged;
         DataContext = _viewModel;
 
         // Taskbar recall is the primary product workflow. Check after EVERY reveal (startup, tray,
@@ -54,6 +54,11 @@ public partial class AppPage : UserControl, IDisposable
         _ = RefreshPinNoticeAsync();
     }
 
+    /// <summary>The one <see cref="LauncherViewModel"/> instance for the launcher's whole life. Exposed
+    /// so MainWindow's title strip can bind its search box and overflow menu to it directly — see the
+    /// class remarks for why this is not a second view model.</summary>
+    public LauncherViewModel ViewModel => _viewModel;
+
     /// <summary>Kick off the menu build. Deliberately NOT done in the constructor: this control is
     /// constructed while the shell is still being built — MainWindow's own field initializer runs
     /// before <c>InitializeComponent</c>, before <c>Show()</c> — and the launcher's startup contract
@@ -61,12 +66,6 @@ public partial class AppPage : UserControl, IDisposable
     /// <c>MainWindow.OnOpened</c>, in the same position the pre-split window called
     /// <c>LauncherViewModel.InitializeAsync</c> from.</summary>
     public void BeginInitialize() => _ = _viewModel.InitializeAsync();
-
-    /// <summary>Escape from anywhere in the shell that this control's own <see cref="OnKeyDown"/> never
-    /// sees — currently, a focused nav-rail row — still needs the exact clear-then-hide semantic the
-    /// search box's Escape uses, since the pre-split window applied that same logic regardless of
-    /// where focus was. Called from <c>MainWindow.OnKeyDown</c>'s fallback.</summary>
-    public void HandleGlobalEscape() => _viewModel.HandleSearchEscape();
 
     /// <summary>Dispose the owned view model. Called exactly once, from <c>MainWindow.OnClosed</c> —
     /// the only path that fires at real application exit, since <c>MainWindow.OnClosing</c> hides to
@@ -79,68 +78,12 @@ public partial class AppPage : UserControl, IDisposable
     {
         _disposed = true;
         _events.LauncherShown -= OnLauncherShown;
-        _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
         _viewModel.Dispose();
     }
 
     // ══════════════════════════════════════════════════════════════════════════════════════════
-    // Deferred focus
+    // Recovery actions (empty state + overflow menu)
     // ══════════════════════════════════════════════════════════════════════════════════════════
-
-    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName is not nameof(LauncherViewModel.PendingFocus))
-            return;
-
-        // Loaded priority sits one step below the priority Avalonia runs layout at, so by the time
-        // this callback fires the property change has already been measured and arranged — i.e. the
-        // search box exists if it is going to.
-        Dispatcher.UIThread.Post(ConsumePendingViewWork, DispatcherPriority.Loaded);
-    }
-
-    /// <summary>The rail can swap this whole page out of the page host, so a LauncherShown that arrives
-    /// while 设置 is on screen finds nothing focusable. <see cref="LauncherViewModel.PendingFocus"/> is
-    /// left SET in that case (see <see cref="ConsumePendingViewWork"/>) and consumed here instead, the
-    /// next time this page is actually in the tree — the same "refresh what needs the visual tree on
-    /// re-attach" rule the settings cards follow.</summary>
-    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
-    {
-        base.OnAttachedToVisualTree(e);
-        Dispatcher.UIThread.Post(ConsumePendingViewWork, DispatcherPriority.Loaded);
-    }
-
-    private void ConsumePendingViewWork()
-    {
-        if (!_viewModel.PendingFocus)
-            return;
-
-        // Detached: Focus() on a control outside the visual tree fails silently, so consuming the flag
-        // here would throw the request away and leave type-to-filter dead. Keep it pending instead —
-        // OnAttachedToVisualTree above retries it when this page is next shown.
-        if (!this.IsAttachedToVisualTree())
-            return;
-
-        _viewModel.PendingFocus = false;
-        try
-        {
-            SearchBox.Focus();
-        }
-        catch
-        {
-            /* focus is a nicety; never let it take startup down */
-        }
-    }
-
-    // ══════════════════════════════════════════════════════════════════════════════════════════
-    // Header
-    // ══════════════════════════════════════════════════════════════════════════════════════════
-
-    // The header's own hide glyph. Minimize and the system Close button are real OS window
-    // operations now (system title bar); this button and the system Close both hide to the tray
-    // rather than exiting — see MainWindow.OnClosing.
-    private void OnCloseClick(object? sender, RoutedEventArgs e) => _viewModel.HideWindow();
-
-    private void OnOpenRootClick(object? sender, RoutedEventArgs e) => _viewModel.OpenRoot();
 
     // The empty state's "打开设置…" recovery button — not the overflow menu's old 选项 entry, which is
     // gone now that the rail's 设置 entry is the way to reach settings. Goes through
@@ -148,11 +91,9 @@ public partial class AppPage : UserControl, IDisposable
     // page and brings the window forward rather than opening a separate window.
     private void OnOpenSettingsClick(object? sender, RoutedEventArgs e) => _viewModel.OpenSettings();
 
+    // Also wired to the overflow menu's 刷新 entry in MainWindow.axaml (via AppPage.ViewModel), so this
+    // stays even though the header it once lived in is gone.
     private void OnRefreshClick(object? sender, RoutedEventArgs e) => _ = _viewModel.RefreshAsync();
-
-    private void OnAboutClick(object? sender, RoutedEventArgs e) => _viewModel.OpenAbout();
-
-    private void OnExitClick(object? sender, RoutedEventArgs e) => _viewModel.ExitApp();
 
     // ══════════════════════════════════════════════════════════════════════════════════════════
     // Taskbar-pin notice
@@ -282,38 +223,19 @@ public partial class AppPage : UserControl, IDisposable
     }
 
     // ══════════════════════════════════════════════════════════════════════════════════════════
-    // Search box
+    // Search box (the CONTROL now lives in MainWindow's title strip; this page still owns the
+    // behaviour that needs its own visual tree — the tile grid the search box's Down key focuses,
+    // and "focus the search box" requests routed back through PendingFocus).
     // ══════════════════════════════════════════════════════════════════════════════════════════
 
-    /// <summary>Focus is drawn on the FIELD (the bordered box), not on the bare TextBox inside it, so
-    /// the accent outline frames the glyph too. The TextBox has no border of its own to light up.</summary>
-    private void OnSearchFocusChanged(object? sender, RoutedEventArgs e) =>
-        SearchField.Classes.Set("focused", SearchBox.IsFocused);
-
+    /// <summary>Same "please focus the search box" request a fresh summon makes
+    /// (<c>LauncherViewModel.HandleLauncherShownAsync</c> sets <c>PendingFocus</c>) — reused here
+    /// instead of reaching into MainWindow for its TextBox, since MainWindow already consumes this
+    /// exact flag to focus the control it now owns.</summary>
     private void OnClearFilterClick(object? sender, RoutedEventArgs e)
     {
         _viewModel.ClearFilter();
-        SearchBox.Focus();
-    }
-
-    /// <summary>Enter launches the first match, Escape clears then hides, Down enters the tile grid.
-    /// Everything else is left to the TextBox.</summary>
-    private void OnSearchKeyDown(object? sender, KeyEventArgs e)
-    {
-        switch (e.Key)
-        {
-            case Key.Enter:
-                _viewModel.HandleSearchEnter();
-                e.Handled = true;
-                break;
-            case Key.Escape:
-                _viewModel.HandleSearchEscape();
-                e.Handled = true;
-                break;
-            case Key.Down:
-                e.Handled = FocusFirstTile();
-                break;
-        }
+        _viewModel.PendingFocus = true;
     }
 
     // ══════════════════════════════════════════════════════════════════════════════════════════
@@ -359,15 +281,20 @@ public partial class AppPage : UserControl, IDisposable
         }
         else if (e.Key == Key.Up)
         {
-            // Off the top of the grid: back to where typing goes.
-            SearchBox.Focus();
+            // Off the top of the grid: back to where typing goes. The search box itself now lives in
+            // MainWindow, so this asks for focus the same way a fresh summon does (PendingFocus) rather
+            // than reaching into the shell for its TextBox.
+            _viewModel.PendingFocus = true;
             e.Handled = true;
         }
     }
 
     private static bool IsTile(Control c) => c.Classes.Contains("tm-tile");
 
-    private bool FocusFirstTile()
+    /// <summary>Focus the first rendered tile. Called from <c>MainWindow</c>'s search-box Down-key
+    /// handler — the search box lives in the shell now, but only this page's code-behind can walk its
+    /// own tile grid, so the shell forwards the key here rather than duplicating the geometry.</summary>
+    public bool FocusFirstTile()
     {
         var first = Tiles().FirstOrDefault();
         if (first is null)
