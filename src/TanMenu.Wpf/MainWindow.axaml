@@ -104,7 +104,21 @@
            whatever title bar hosts them, regardless of that bar's height. Overriding VerticalAlignment to
            Top on the three real buttons (Fullscreen is already suppressed above, so it needs no rule)
            moves them flush to Y=0 while leaving their native 45x30 footprint — and therefore their hit
-           target and click behaviour — completely untouched. -->
+           target and click behaviour — completely untouched.
+
+           CORRECTION (Task 1 review): an earlier revision of this comment justified the override by
+           pointing at PART_TitleTextPanel/PART_FullScreenButton above as "the same technique" already
+           proven in this file. That overstated it — neither of those two also has ITS OWN ControlTheme
+           setting the SAME property (Opacity, IsVisible) the way FluentDrawnCaptionButton's own
+           VerticalAlignment="Stretch" Setter competes with this one, so neither actually exercised a
+           same-property conflict against a part's own default theme. What actually makes a Style
+           declared HERE (inside WindowDecorationsTheme, itself BasedOn Fluent's own
+           WindowDrawnDecorations ControlTheme) win over FluentDrawnCaptionButton's own Setter for the
+           same property on the same part is Avalonia's style/theme FRAME precedence: a control's own
+           local Theme override (this one, assigned via Window.WindowDecorationsTheme) is applied at a
+           higher-priority frame than the separate ControlTheme a nested template part resolves for
+           itself — confirmed by the reviewer decompiling that precedence ranking, and by this fix's own
+           live, reproduced result (below), not re-derived here from first principles. -->
       <Style Selector="^ /template/ Button#PART_MinimizeButton">
         <Setter Property="VerticalAlignment" Value="Top" />
       </Style>
@@ -123,27 +137,41 @@
     <Border Grid.Row="0"
             Background="Transparent"
             chrome:WindowDecorationProperties.ElementRole="TitleBar">
+      <!-- Round 3, Task 1 review fix: "*,Auto,*" rather than the old "Auto,Auto,*,Auto,Auto,Auto"
+           (which had exactly ONE flexible column, before the search field and none after it — the
+           field was pinned at a fixed offset from the right edge, not centred, measured at review as
+           ~69% of client width against Task Manager's own ~48.75%). Two EQUAL-weight star columns
+           flank a single Auto column that sizes to SearchField's own (now dynamic — see
+           ApplySearchFieldWidth in the code-behind) width, and Avalonia's Grid splits leftover space
+           between equal-weight star columns evenly — which is what centres that Auto column on the
+           WHOLE window, not just on whatever happens to sit to either side of it, as long as neither
+           side's content is wide enough to eat into the other star column's share. Confirmed by
+           measurement after the change, at multiple window widths (task-1-report.md's fix log), not
+           only by this construction argument. -->
       <Grid x:Name="TitleStripContent"
             x:DataType="vm:LauncherViewModel"
-            ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto"
-            Margin="16,0,0,0">
+            ColumnDefinitions="*,Auto,*">
 
-        <Image Grid.Column="0"
-               Width="20" Height="20"
-               VerticalAlignment="Center"
-               Source="avares://TanMenu.Wpf/wwwroot/app-tile.png" />
+        <!-- Left star: icon + name, pinned to the LEFT of their own column so widening the window
+             (which widens both star columns equally) cannot drag them rightward with it. -->
+        <StackPanel Grid.Column="0"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Left"
+                    Margin="16,0,0,0">
+          <Image Width="20" Height="20"
+                 VerticalAlignment="Center"
+                 Source="avares://TanMenu.Wpf/wwwroot/app-tile.png" />
+          <TextBlock Text="TanMenu"
+                     Margin="10,0,0,0"
+                     VerticalAlignment="Center" />
+        </StackPanel>
 
-        <TextBlock Grid.Column="1"
-                   Text="TanMenu"
-                   Margin="10,0,0,0"
-                   VerticalAlignment="Center" />
-
-        <!-- Grid.Column="2" is a flexible spacer: it is what keeps the search box "centred-left"
-             (Task Manager's placement) instead of glued to either the app name or the overflow
-             button, while the overflow button and the caption reservation stay snug against the
-             right edge regardless of window width. -->
-
-        <Border Grid.Column="3"
+        <!-- Width="280" here is only the value on screen for the instant between this control's
+             creation and the first ApplySearchFieldWidth() call (code-behind) — see that method's own
+             remarks for why a fixed width was wrong (review finding, Round 3 Task 1) and what replaces
+             it: the field's real, live width tracks the window's ClientSize, proportionally, the way
+             Task Manager's own measurably does. -->
+        <Border Grid.Column="1"
                 x:Name="SearchField"
                 Classes="tm-searchfield"
                 chrome:WindowDecorationProperties.ElementRole="User"
@@ -190,43 +218,53 @@
           </Panel>
         </Border>
 
-        <!-- AutomationProperties.Name is required, not decoration: this button has a geometry glyph
-             and no text, so without it a screen reader announces "button" and UI Automation cannot
-             address it at all. -->
-        <Button Grid.Column="4"
-                x:Name="OverflowButton"
-                Theme="{StaticResource TmIconButton}"
-                Focusable="False"
-                chrome:WindowDecorationProperties.ElementRole="User"
-                AutomationProperties.Name="{Binding MenuMoreText}"
-                ToolTip.Tip="{Binding MenuMoreText}">
-          <!-- Segoe Fluent Icons code point E712 More — the same glyph the Windows 11 shell uses.
-               It exists at this code point in Segoe MDL2 Assets too, the Windows 10 fallback in
-               IconFontFamily. -->
-          <TextBlock Classes="tm-icon" Text="&#xE712;" />
-          <Button.Flyout>
-            <MenuFlyout Placement="BottomEdgeAlignedRight">
-              <MenuItem Header="{Binding MenuOpenRootText}" Click="OnOpenRootClick" />
-              <MenuItem Header="{Binding MenuRefreshText}" Click="OnRefreshClick" />
-              <Separator />
-              <MenuItem Header="{Binding MenuAboutText}" Click="OnAboutClick" />
-              <Separator />
-              <MenuItem Header="{Binding MenuExitText}" Click="OnExitClick" />
-            </MenuFlyout>
-          </Button.Flyout>
-        </Button>
+        <!-- Right star: overflow button + caption reservation, pinned to the RIGHT of their own
+             column for the same reason the left group is pinned left. Grouping both into one
+             StackPanel (rather than two more Grid columns, as before) is also what Task 2 needs: that
+             task removes OverflowButton from the strip entirely (its functions move into the nav
+             rail) — CaptionSpacer alone still right-aligns correctly inside this same star column with
+             no structural change here, so this shape does not need to be revisited when that happens. -->
+        <StackPanel Grid.Column="2"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right">
 
-        <!-- A PLAIN CONSTANT, stated as one rather than disguised as one (see the CORRECTED FACT note
-             above for why nothing in Window's own API can measure this on Win32). It does not need to
-             react to DPI: Minimize/Maximize/Close are fixed-size (45x30 DIP each, confirmed live via a
-             temporary GetVisualDescendants() dump of the Fluent theme's own WindowDrawnDecorations
-             template) in Avalonia's own LOGICAL coordinate space, not a Win32 system metric — a DIP
-             measurement is exact at every real monitor scale, not an approximation that happens to work
-             at 150%. 140 is the three-button cluster's OWN measured on-screen width (UI Automation,
-             confirmed identically at two different window sizes after PART_FullScreenButton was
-             suppressed above), not 3 x 45 = 135: the cluster carries a few extra DIP of edge padding
-             the per-button figure alone doesn't account for. See task-1-report.md's fix log. -->
-        <Border Grid.Column="5" x:Name="CaptionSpacer" Width="140" Background="Transparent" />
+          <!-- AutomationProperties.Name is required, not decoration: this button has a geometry glyph
+               and no text, so without it a screen reader announces "button" and UI Automation cannot
+               address it at all. -->
+          <Button x:Name="OverflowButton"
+                  Theme="{StaticResource TmIconButton}"
+                  Focusable="False"
+                  chrome:WindowDecorationProperties.ElementRole="User"
+                  AutomationProperties.Name="{Binding MenuMoreText}"
+                  ToolTip.Tip="{Binding MenuMoreText}">
+            <!-- Segoe Fluent Icons code point E712 More — the same glyph the Windows 11 shell uses.
+                 It exists at this code point in Segoe MDL2 Assets too, the Windows 10 fallback in
+                 IconFontFamily. -->
+            <TextBlock Classes="tm-icon" Text="&#xE712;" />
+            <Button.Flyout>
+              <MenuFlyout Placement="BottomEdgeAlignedRight">
+                <MenuItem Header="{Binding MenuOpenRootText}" Click="OnOpenRootClick" />
+                <MenuItem Header="{Binding MenuRefreshText}" Click="OnRefreshClick" />
+                <Separator />
+                <MenuItem Header="{Binding MenuAboutText}" Click="OnAboutClick" />
+                <Separator />
+                <MenuItem Header="{Binding MenuExitText}" Click="OnExitClick" />
+              </MenuFlyout>
+            </Button.Flyout>
+          </Button>
+
+          <!-- A PLAIN CONSTANT, stated as one rather than disguised as one (see the CORRECTED FACT note
+               above for why nothing in Window's own API can measure this on Win32). It does not need to
+               react to DPI: Minimize/Maximize/Close are fixed-size (45x30 DIP each, confirmed live via a
+               temporary GetVisualDescendants() dump of the Fluent theme's own WindowDrawnDecorations
+               template) in Avalonia's own LOGICAL coordinate space, not a Win32 system metric — a DIP
+               measurement is exact at every real monitor scale, not an approximation that happens to work
+               at 150%. 140 is the three-button cluster's OWN measured on-screen width (UI Automation,
+               confirmed identically at two different window sizes after PART_FullScreenButton was
+               suppressed above), not 3 x 45 = 135: the cluster carries a few extra DIP of edge padding
+               the per-button figure alone doesn't account for. See task-1-report.md's fix log. -->
+          <Border x:Name="CaptionSpacer" Width="140" Background="Transparent" />
+        </StackPanel>
 
       </Grid>
     </Border>

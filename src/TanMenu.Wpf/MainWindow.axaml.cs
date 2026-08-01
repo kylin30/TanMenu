@@ -6,6 +6,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
+using Avalonia.Reactive;
 using Avalonia.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using TanMenu.Core.Services;
@@ -62,6 +63,24 @@ public partial class MainWindow : Window
         ApplyWindowFont();
         ApplyRailText();
         ApplyNavExpandedState();
+
+        // Round 3, Task 1 review fix: the search field's width must track the window's own size —
+        // see ApplySearchFieldWidth's own remarks for the measured basis. ClientSize is a DirectProperty
+        // (TopLevel), so GetObservable is the same mechanism Window's own base class uses internally for
+        // its extended-client-area bookkeeping (Avalonia.Controls.Window, decompiled), not a bespoke
+        // one. It fires once immediately on subscription with whatever ClientSize already is — before
+        // the window has ever been measured that is Size.Empty (0,0), which ApplySearchFieldWidth
+        // guards against, and XAML's own Width="280" is what is on screen for that instant.
+        //
+        // Wrapped in Avalonia.Reactive.AnonymousObserver rather than a fluent `.Subscribe(lambda)`:
+        // IObservable<T> itself already declares Subscribe(IObserver<T>), and C# member lookup finds
+        // that instance method first (an interface's own method of a given name is never shadowed by
+        // an extension of the same name, so the extension overload some other Avalonia internals use
+        // for this exact call shape — Avalonia.Reactive.Observable.Subscribe(IObservable<T>,Action<T>) —
+        // is never even considered, and turned out to be internal to Avalonia.Base besides). This is
+        // Subscribe(IObserver<T>) called directly, with AnonymousObserver adapting a plain Action<T> to
+        // that interface — the one PUBLIC building block for exactly this.
+        this.GetObservable(ClientSizeProperty).Subscribe(new AnonymousObserver<Size>(_ => ApplySearchFieldWidth()));
 
         // The search field and overflow menu bind straight to AppPage's own LauncherViewModel — see
         // the class remarks above for why this is not a second view model.
@@ -503,6 +522,37 @@ public partial class MainWindow : Window
     // ══════════════════════════════════════════════════════════════════════════════════════════
     // Title strip: search box
     // ══════════════════════════════════════════════════════════════════════════════════════════
+
+    /// <summary>Task Manager's own measured behaviour: its search box is NOT a fixed width — it is
+    /// proportional to the window's client width, and clamped at a maximum. Ratio 0.34x/max 600 DIP
+    /// are that measured behaviour (Round 3, Task 1 review), not a guess: <c>SetWindowPos</c>-resized
+    /// Task Manager to 5 client widths from 828 to 3378 physical px at this machine's 150% scale and
+    /// re-measured its search box (<c>AutomationId="TextBox"</c>) with UI Automation each time —
+    /// box-width / client-width held at 33.6%-34.3% up to a client width of roughly 2600 DIP, where the
+    /// box stopped growing at a measured ceiling of 899-900 physical px (600 DIP): 828->284 (34.3%),
+    /// 1078->366 (34.0%), 1478->500 (33.8%), 1920->647 (33.7%), 2378->800 (33.6%), 2878->900 (clamped),
+    /// 3378->899 (clamped). 0.34 is the average of the five UNCLAMPED ratios, not any single one of
+    /// them. MinWidth 200 is NOT an observed Task Manager value — its own window cannot shrink far
+    /// enough on this machine to exercise a floor — it exists only so the field cannot collapse to
+    /// something unusable at this app's own MinWidth (760 DIP, MainWindow.axaml), and was chosen close
+    /// to the OLD fixed 280 DIP this replaces.</summary>
+    private const double SearchFieldWidthRatio = 0.34;
+    private const double SearchFieldMinWidth = 200;
+    private const double SearchFieldMaxWidth = 600;
+
+    /// <summary>Called once immediately (constructor, via the <see cref="TopLevel.ClientSizeProperty"/>
+    /// observable firing on subscription) and again on every resize. Guards on a non-positive width
+    /// because the very first call happens before the window has ever been measured, when ClientSize is
+    /// still <see cref="Size.Empty"/> — XAML's own <c>Width="280"</c> (MainWindow.axaml) is what stays on
+    /// screen for that one instant, which is why it is still there as a literal rather than removed.</summary>
+    private void ApplySearchFieldWidth()
+    {
+        var clientWidth = ClientSize.Width;
+        if (clientWidth <= 0)
+            return;
+
+        SearchField.Width = Math.Clamp(clientWidth * SearchFieldWidthRatio, SearchFieldMinWidth, SearchFieldMaxWidth);
+    }
 
     /// <summary>Focus is drawn on the FIELD (the bordered box), not on the bare TextBox inside it, so
     /// the accent outline frames the glyph too. The TextBox has no border of its own to light up.</summary>
