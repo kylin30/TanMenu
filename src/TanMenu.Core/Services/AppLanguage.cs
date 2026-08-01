@@ -34,17 +34,17 @@ public static class AppLanguage
             ["AppearanceLight"] = ("浅色", "Light"),
             ["AppearanceDark"] = ("深色", "Dark"),
             ["Font"] = ("字体", "Font"),
-            ["ButtonSize"] = ("按钮大小", "Button size"),
-            ["SizeSmall"] = ("小", "Small"),
-            ["SizeMedium"] = ("中", "Medium"),
-            ["SizeLarge"] = ("大", "Large"),
+            // "ButtonSize"/"SizeSmall"/"SizeMedium"/"SizeLarge"/"SizeCardSub" went with the 按钮大小
+            // setting itself (Round 3, Task 4) — tiles are always the one size that setting used to
+            // call "小" now. See GeneralConfig.ButtonSize's own remarks.
+            ["ColButtonCount"] = ("每列个数", "Items per column"),
             // Secondary lines for the 设置 page's 外观 cards (Task 8). The old TabItem-based dialog
             // never had room for a description under each row, so these are new wording rather than
             // ported text.
             ["LanguageCardSub"] = ("应用界面显示所使用的语言", "The language used across the app interface"),
             ["AppearanceCardSub"] = ("选择浅色、深色，或跟随系统设置", "Choose light or dark, or match the system setting"),
             ["FontCardSub"] = ("应用界面使用的字体", "The font used across the app interface"),
-            ["SizeCardSub"] = ("调整“应用”页面上快捷方式图块的大小", "Adjust the size of shortcut tiles on the Apps page"),
+            ["ColButtonCountCardSub"] = ("设置“应用”页面每一列最多显示的快捷方式数量，超出后另起一列", "Set how many shortcuts each column shows on the Apps page before wrapping to a new one"),
             // "BuiltInFonts" went with the four embedded TTFs — every selectable family is installed
             // now, so there is no second group to caption.
             ["DefaultFont"] = ("默认（系统字体）", "Default (system font)"),

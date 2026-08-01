@@ -488,21 +488,36 @@ public sealed partial class WindowHost : IWindowHost
     /// measuring a detached page permanently un-styles it — see <c>MainWindow.RefitToContent</c>'s own
     /// remarks for the mechanism.) Measured with an
     /// UNBOUNDED width AND height (<see cref="Size"/> of <see cref="double.PositiveInfinity"/> on both
-    /// axes) — this is what makes the measurement genuinely content-driven on both axes now, per the
-    /// user's Round 2 review decision that height should adapt too: the rule is "the category with the
-    /// most items fits in a single column without wrapping, clamped to the work area". A vertical
-    /// WrapPanel only reports that true, un-wrapped extent when given an unbounded height budget — handed
-    /// any FINITE bound instead (this method's own first cut used a comfortable 640 DIP reference, and an
-    /// earlier attempt still visible in this method's history used the whole work area), it just wraps to
-    /// avoid exceeding whatever bound it was given and reports back a number that reflects the BOUND, not
-    /// the content — which is the "probe the WrapPanel will happily fill" failure mode the review flagged.
-    /// With every category unwrapped, the reported WIDTH is also then exactly what the FINAL layout needs
-    /// once the window is actually sized to the tallest category's need (every shorter category already
-    /// fits in one column at that same, more generous height too) — so one unbounded probe answers both
-    /// axes consistently. A genuinely oversized category still clamps correctly: <see cref="WindowPlacement.Resolve"/>
-    /// caps the RESULT to the work area regardless of how tall the probe reported, and the next real
-    /// Avalonia layout pass at that smaller, real window height wraps the WrapPanel normally, the same way
-    /// it always has — no special-case wrapping logic needed here.</param>
+    /// axes) — this is what makes the measurement genuinely content-driven on both axes, per the user's
+    /// Round 2 review decision that height should adapt too. Round 2's rule was "the category with the
+    /// most items fits in a single column without wrapping, clamped to the work area", enforced by a
+    /// height-based vertical WrapPanel that only reported that true, un-wrapped extent when given an
+    /// unbounded height budget — handed any FINITE bound instead (this method's own first cut used a
+    /// comfortable 640 DIP reference, and an earlier attempt still visible in this method's history used
+    /// the whole work area), it just wrapped to avoid exceeding whatever bound it was given and reported
+    /// back a number that reflected the BOUND, not the content — the "probe the WrapPanel will happily
+    /// fill" failure mode that round's review flagged.
+    /// <para>
+    /// Round 3's Task 4 changed WHERE the cap lives, not this probe. AppPage.axaml no longer wraps a
+    /// category's items with a height-driven WrapPanel at all: <c>MenuGroupVm.Columns</c> — chunked from
+    /// its VisibleItems by <see cref="TanMenu.Core.Services.MenuLayout.ChunkIntoColumns{T}"/> at
+    /// <c>GeneralConfig.ColButtonCount</c> items per column — decides the wrap point in the DATA before
+    /// layout ever runs, and each column renders as a plain vertical StackPanel. A StackPanel's own
+    /// DesiredSize is the sum of its children's desired sizes regardless of the available-size budget it
+    /// is handed (a general fact about StackPanel, not about this probe specifically), so an item-count
+    /// cap decided upstream survives an unbounded height probe unchanged. The rule this method measures
+    /// is therefore now "the tallest COLUMN — every category's items already capped at ColButtonCount —
+    /// fits without further wrapping, clamped to the work area", and nothing in this method's own
+    /// arithmetic needed to change to get it: the unbounded probe this method already used was already
+    /// exactly what an item-count-capped layout needs too.
+    /// </para>
+    /// With every category's tallest column unwrapped, the reported WIDTH is also then exactly what the
+    /// FINAL layout needs once the window is actually sized to that column's height (every shorter column
+    /// already fits at that same, more generous height too) — so one unbounded probe still answers both
+    /// axes consistently. A genuinely oversized column (ColButtonCount set very high on a large category)
+    /// still clamps correctly: <see cref="WindowPlacement.Resolve"/> caps the RESULT to the work area
+    /// regardless of how tall the probe reported — no special-case wrapping logic needed here either
+    /// way.</param>
     /// <param name="railWidth">The navigation rail's CURRENT width — 48 collapsed or 200 expanded. The
     /// caller reads this straight from <c>GeneralConfig.NavRailExpanded</c> rather than the live pane's
     /// own Width/Bounds, so a fit that happens to run while the rail's collapse/expand transition is

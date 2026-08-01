@@ -167,6 +167,7 @@ public partial class MainWindow : Window
     /// not the menu.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// Runs the fit on EVERY entry, not only the process's first one — review fix: <c>OnOpened</c>
     /// re-enters on every later un-hide (<c>WindowHost.ShowAndActivate</c> calls <c>Show()</c> again
     /// whenever the window was hidden, and <c>Hide()</c>/<c>ShowCore</c> make that re-raise
@@ -177,11 +178,31 @@ public partial class MainWindow : Window
     /// maximized, or once the user has manually resized this process — see its own remarks), so this
     /// method can simply call it unconditionally every time. <c>BeginInitialize</c> itself is memoized,
     /// so every call after the first just awaits the already-completed Task.
+    /// </para>
+    /// <para>
+    /// Round 3, Task 4 finding: the call used to be a direct, undeferred <c>RefitToContent()</c> here.
+    /// On a genuine COLD START that measured the WRONG size — confirmed live via the shipped log, which
+    /// showed this first fit reporting the pre-Task-4 page height (e.g. 2703 DIP for a 47-item category
+    /// at the default ColButtonCount=10, the exact uncapped number) even though
+    /// <c>LauncherViewModel.ReloadAsync</c> had already replaced <c>Groups</c> and recomputed every
+    /// group's <c>Columns</c> (capped at ColButtonCount) synchronously before this method's own `await`
+    /// resumed. A LATER re-fit — e.g. the one <c>OnLauncherContentMetricsChanged</c> queues at
+    /// <see cref="DispatcherPriority.Loaded"/> from the SAME rebuild's own <c>ContentMetricsChanged</c> —
+    /// measured correctly every time; only the direct, same-tick call here raced ahead of Avalonia
+    /// actually re-templating the per-column <c>ItemsControl</c>s (<c>AppPage.axaml</c>'s
+    /// `{Binding Columns}`) with their newly-capped item lists. Posting at the SAME
+    /// <see cref="DispatcherPriority.Loaded"/> that <c>OnLauncherContentMetricsChanged</c> already uses
+    /// closes the race: Avalonia processes pending layout invalidations before running Loaded-priority work
+    /// regardless of how many such callbacks are queued, so both this call and the
+    /// <c>ContentMetricsChanged</c>-triggered one now measure the SAME, already-current visual tree —
+    /// and a fit that lands on the geometry already applied by an earlier one in the same batch is a
+    /// free no-op (<see cref="WindowPlacement.IsSamePlacement"/>).
+    /// </para>
     /// </remarks>
     private async Task InitializeAndFitAsync()
     {
         await _appPage.BeginInitialize();
-        RefitToContent();
+        Dispatcher.UIThread.Post(RefitToContent, DispatcherPriority.Loaded);
     }
 
     /// <summary>

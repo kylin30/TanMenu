@@ -7,13 +7,15 @@
 
        Each row is a Grid (Auto,*,Auto), not a DockPanel. Built first with a DockPanel per row (icon
        docked left, control docked right, a plain StackPanel as the fill child), the longest subtitle
-       (按钮大小's, and the even longer English wording) clipped mid-glyph against the ComboBox's left
-       edge instead of wrapping onto a second line — confirmed by screenshot, not by inspection. The
-       exact DockPanel measure/arrange interaction that produced the clipping was not isolated, so no
-       claim is made about it here. Switching to a Grid fixed it: a Grid's star column is guaranteed to
-       resolve to the same width at both measure and arrange time, so the middle TextBlock always wraps
-       against the width it is actually given, regardless of column order or which sibling is docked
-       where. Re-verified by screenshot in both Chinese and English after the change. -->
+       of the day — 按钮大小's (and the even longer English wording; that row is gone since Round 3,
+       Task 4, but the Grid fix it drove still applies to every row here) — clipped mid-glyph against
+       the ComboBox's left edge instead of wrapping onto a second line — confirmed by screenshot, not
+       by inspection. The exact DockPanel measure/arrange interaction that produced the clipping was
+       not isolated, so no claim is made about it here. Switching to a Grid fixed it: a Grid's star
+       column is guaranteed to resolve to the same width at both measure and arrange time, so the
+       middle TextBlock always wraps against the width it is actually given, regardless of column
+       order or which sibling is docked where. Re-verified by screenshot in both Chinese and English
+       after the change. -->
   <StackPanel>
     <TextBlock x:Name="GroupHead" Classes="tm-group-head" />
 
@@ -58,15 +60,26 @@
       </Grid>
     </Border>
 
+    <!-- Round 3, Task 4: replaces the removed 按钮大小 (小/中/大) row — tiles are always the one size
+         that setting used to call "小" now (Themes/Fluent2/Launcher.axaml's TmTileButton). A
+         NumericUpDown, not a ComboBox like the other rows here: the value is an integer the user
+         picks from a small range, not one of a short list of named choices, and Avalonia ships
+         NumericUpDown as a plain control (no extra NuGet package) that already gives a spinner AND
+         type-in for exactly that. Range 1–30 matches the pre-Avalonia Blazor build's own numeric input
+         for this same setting (docs/plans/2026-06-22-tanmenu-wpf-blazor.md: `min="1" max="30"`) —
+         below 1 a "column" is not a column, and 30 comfortably covers even a large 常用工具/folder
+         group without inviting a single, absurdly tall column. ClipValueToMinMax keeps a typed
+         out-of-range value inside that band rather than accepting it verbatim. -->
     <Border Classes="tm-card">
       <Grid ColumnDefinitions="Auto,*,Auto">
-        <TextBlock Grid.Column="0" Classes="tm-icon" Text="&#xE8A9;" Margin="0,0,14,0" VerticalAlignment="Center" />
+        <TextBlock Grid.Column="0" Classes="tm-icon" Text="&#xE80A;" Margin="0,0,14,0" VerticalAlignment="Center" />
         <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,12,0">
-          <TextBlock x:Name="SizeTitle" Classes="tm-card-title" />
-          <TextBlock x:Name="SizeSub" Classes="tm-card-sub" />
+          <TextBlock x:Name="ColCountTitle" Classes="tm-card-title" />
+          <TextBlock x:Name="ColCountSub" Classes="tm-card-sub" />
         </StackPanel>
-        <ComboBox Grid.Column="2" x:Name="SizeCombo" Width="220" VerticalAlignment="Center"
-                  SelectionChanged="OnSizeChanged" />
+        <NumericUpDown Grid.Column="2" x:Name="ColCountUpDown" Width="220" VerticalAlignment="Center"
+                       Minimum="1" Maximum="30" Increment="1" FormatString="0"
+                       ClipValueToMinMax="True" ValueChanged="OnColCountChanged" />
       </Grid>
     </Border>
   </StackPanel>

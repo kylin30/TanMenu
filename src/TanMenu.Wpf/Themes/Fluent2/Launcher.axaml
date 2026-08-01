@@ -25,10 +25,14 @@
          AT REST rather than appearing only on hover. TmButton below gives every other button in the
          app (the settings-card actions) that same look; this theme duplicates its template rather
          than deriving from it via BasedOn so a tile's own quirks — Stretch content alignment for the
-         icon+label DockPanel, its own per-size-class Padding, and disabling by making the WHOLE card
-         recede to nothing rather than just dimming it — stay self-contained. Unlike the retro build,
-         pressing does NOT offset the content — Fluent 2 signals press by going a shade quieter, not
-         by moving. -->
+         icon+label DockPanel, its own fixed Padding, and disabling by making the WHOLE card recede to
+         nothing rather than just dimming it — stay self-contained. Unlike the retro build, pressing
+         does NOT offset the content — Fluent 2 signals press by going a shade quieter, not by moving.
+
+         Width is a Setter here (168 DIP), not a class-scoped style: Round 3, Task 4 removed the
+         小/中/大 button-size setting (tiles are always this one size, what that setting used to call
+         "小"), which removed the only reason a tile's width ever varied. See Image.tm-tile-icon below
+         for the matching icon-box size. -->
     <ControlTheme x:Key="TmTileButton" TargetType="Button">
       <Setter Property="Background" Value="{DynamicResource SurfaceLayerBrush}" />
       <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
@@ -37,6 +41,7 @@
       <Setter Property="CornerRadius" Value="{DynamicResource RadiusControl}" />
       <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
       <Setter Property="Padding" Value="8,7" />
+      <Setter Property="Width" Value="168" />
       <Setter Property="HorizontalContentAlignment" Value="Stretch" />
       <Setter Property="VerticalContentAlignment" Value="Center" />
       <Setter Property="Cursor" Value="Hand" />
@@ -399,39 +404,15 @@
     <Setter Property="BorderThickness" Value="0" />
   </Style>
 
-  <!-- ══ Tile size classes 小 / 中 / 大 ═══════════════════════════════════════════════════════
-       The size setting drives three things together — tile width, icon box and type size — so a
-       larger setting reads as a genuinely larger control rather than a stretched one. A fixed tile
-       width is what lets the WrapPanel form clean columns; without it every row would be ragged. -->
-
-  <Style Selector="Panel.size-small Button.tm-tile">
-    <Setter Property="Width" Value="168" />
-    <Setter Property="Padding" Value="8,7" />
-    <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
-  </Style>
-  <Style Selector="Panel.size-small Image.tm-tile-icon">
+  <!-- ══ Tile icon size ═══════════════════════════════════════════════════════════════════════
+       Round 3, Task 4 removed the 小/中/大 button-size setting, which used to drive tile width, icon
+       box and type size together as three size classes (Panel.size-small/medium/large). Tiles are
+       always the one size that setting used to call "小" now — TmTileButton's own Width Setter above
+       carries the tile width and FontSize; this is the matching fixed icon-box size, no longer
+       class-scoped since there is only the one size left to scope it to. -->
+  <Style Selector="Image.tm-tile-icon">
     <Setter Property="Width" Value="20" />
     <Setter Property="Height" Value="20" />
-  </Style>
-
-  <Style Selector="Panel.size-medium Button.tm-tile">
-    <Setter Property="Width" Value="192" />
-    <Setter Property="Padding" Value="10,9" />
-    <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
-  </Style>
-  <Style Selector="Panel.size-medium Image.tm-tile-icon">
-    <Setter Property="Width" Value="24" />
-    <Setter Property="Height" Value="24" />
-  </Style>
-
-  <Style Selector="Panel.size-large Button.tm-tile">
-    <Setter Property="Width" Value="216" />
-    <Setter Property="Padding" Value="12,11" />
-    <Setter Property="FontSize" Value="{DynamicResource FontSizeSubtitle}" />
-  </Style>
-  <Style Selector="Panel.size-large Image.tm-tile-icon">
-    <Setter Property="Width" Value="28" />
-    <Setter Property="Height" Value="28" />
   </Style>
 
   <!-- A tile whose target is missing: the label greys out via the ControlTheme, and the icon fades
@@ -607,11 +588,13 @@
   </Style>
 
   <!-- NO MaxWidth here. A cap would only clamp the width the group REPORTS to the horizontal
-       StackPanel; the inner WrapPanel keeps laying out however many columns it needs and nothing
-       clips it, so a category with more columns than the cap allows renders straight over its
-       right-hand neighbour. Tiles already have a fixed width per size class, so a group's honest
-       desired width is exactly columns × column width — bounded, and what the scroller needs. -->
-  <Style Selector="DockPanel.tm-group">
+       StackPanel of categories; the columns ItemsControl inside (AppPage.axaml, bound to
+       MenuGroupVm.Columns) keeps laying out however many columns MenuLayout.ChunkIntoColumns
+       produced and nothing clips it, so a category with more columns than the cap allows would
+       render straight over its right-hand neighbour. The tile has one fixed width now (168 DIP,
+       TmTileButton), so a group's honest desired width is exactly columns × column width —
+       bounded, and what the scroller needs. -->
+  <Style Selector="StackPanel.tm-group">
     <Setter Property="VerticalAlignment" Value="Top" />
   </Style>
 

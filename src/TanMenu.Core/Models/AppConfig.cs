@@ -116,9 +116,27 @@ public class GeneralConfig
     /// when <see cref="GlobalHotkeyEnabled"/> is true.</summary>
     public string GlobalHotkey { get; set; } = "";
 
-    /// <summary>Legacy 0.9.x/0.10.x setting retained only so old config files deserialize cleanly.
-    /// The launcher's tiles wrap to the available width now, so nothing chunks items into columns of
-    /// a fixed count and this value shapes nothing.</summary>
+    /// <summary>Items per category column on the 应用 page — user-configurable again since Round 3
+    /// (设置 → 外观 → 每列个数). A category's items fill a column top to bottom up to this many, then
+    /// wrap into a new column: see <see cref="TanMenu.Core.Services.MenuLayout.ChunkIntoColumns{T}"/>,
+    /// which <c>TanMenu.Wpf.ViewModels.MenuGroupVm.SetColumnCapacity</c> calls on every build and every
+    /// settings change. Also drives the window's own height via <c>WindowHost.FitToContent</c>: since
+    /// the tallest COLUMN is capped at this value, a category with far more items than this no longer
+    /// grows the window past it (the fit measures the page's natural size, and a column now IS at most
+    /// this tall no matter how it is measured — see that method's own remarks).
+    /// <para>
+    /// Default 10, the same default this field has carried since before the Fluent 2 rebuild — during
+    /// that rebuild it was deliberately kept only as a round-tripped legacy value while tiles wrapped
+    /// to the window's own height instead (see
+    /// docs/superpowers/specs/2026-07-31-win11-shell-redesign-design.md for that interim state, now
+    /// superseded).
+    /// </para>
+    /// <para>
+    /// Not clamped here: a value below 1 is defended against at the point of use
+    /// (<see cref="TanMenu.Core.Services.MenuLayout.ChunkIntoColumns{T}"/>'s own <c>Math.Max(1, ...)</c>),
+    /// and the 设置 page's own NumericUpDown restricts the UI to [1, 30], but a hand-edited config.json
+    /// can still carry anything.
+    /// </para></summary>
     public int ColButtonCount { get; set; } = 10;
 
     /// <summary>Active theme. Exactly one theme exists — see <see cref="AppConfig.CanonicalTheme"/>.
@@ -135,7 +153,13 @@ public class GeneralConfig
     /// names an INSTALLED family; resolution lives in <c>TanMenu.Wpf.Services.AppFonts</c>.</summary>
     public string FontFamily { get; set; } = "";
 
-    /// <summary>Launcher button size: "Small" | "Medium" | "Large". Default Small.</summary>
+    /// <summary>Legacy setting retained only so old config files deserialize cleanly — the same
+    /// treatment <see cref="WindowWidth"/>/<see cref="WindowHeight"/> above get, and
+    /// <see cref="ColButtonCount"/> itself got for a while. Round 3, Task 4 removed the 按钮大小
+    /// (小/中/大) setting entirely: launcher tiles are always the one size that used to be called "小"
+    /// (Small, 168 DIP) — see <c>Themes/Fluent2/Launcher.axaml</c>'s <c>TmTileButton</c>. Nothing reads
+    /// this field any more; it is kept only so a config.json written before Round 3 — which can carry
+    /// "Medium" or "Large" — still deserializes without error.</summary>
     public string ButtonSize { get; set; } = "Small";
 
     /// <summary>Show the built-in "常用工具" group (common system tools) before the folder groups.</summary>

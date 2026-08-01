@@ -289,7 +289,7 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
     }
 
     // ══════════════════════════════════════════════════════════════════════════════════════════
-    // Appearance (font + button size class)
+    // Appearance (font)
     // ══════════════════════════════════════════════════════════════════════════════════════════
 
     /// <summary>
@@ -300,24 +300,15 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
     public FontFamily TitleFontFamily =>
         AppFonts.Resolve(_cfg.General.FontFamily, whenBlank: AppFonts.DefaultDisplay);
 
-    // Button size class: anything unrecognized falls back to Small, exactly as the old size-* class did.
-    public bool IsSmallButtons => SizeClass == "Small";
-    public bool IsMediumButtons => SizeClass == "Medium";
-    public bool IsLargeButtons => SizeClass == "Large";
-
-    private string SizeClass => _cfg.General.ButtonSize switch
-    {
-        "Large" => "Large",
-        "Medium" => "Medium",
-        _ => "Small",
-    };
+    // The 小/中/大 button-size setting (IsSmallButtons/IsMediumButtons/IsLargeButtons + the
+    // Classes.size-* bindings AppPage.axaml used to set) went away in Round 3, Task 4: tiles are
+    // always the one size that setting used to call "小" — see GeneralConfig.ButtonSize's own remarks
+    // and Themes/Fluent2/Launcher.axaml's TmTileButton. GeneralConfig.ColButtonCount took its place as
+    // the live 外观 setting; see ApplyGroupSettings below for how it reaches each MenuGroupVm.
 
     private void RaiseAppearanceChanged()
     {
         RaisePropertyChanged(nameof(TitleFontFamily));
-        RaisePropertyChanged(nameof(IsSmallButtons));
-        RaisePropertyChanged(nameof(IsMediumButtons));
-        RaisePropertyChanged(nameof(IsLargeButtons));
     }
 
     // ══════════════════════════════════════════════════════════════════════════════════════════
@@ -713,11 +704,21 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
         RaisePropertyChanged(nameof(ShowEmpty));
     }
 
+    /// <summary>Re-label every group's tooltip and re-chunk its columns from the live config. Called
+    /// after every (re)build and — via <see cref="ReloadAsync"/>'s "unchanged folders" branch — after
+    /// every settings change too, which is what makes editing 每列个数 (GeneralConfig.ColButtonCount)
+    /// re-chunk immediately without waiting for a folder rescan: <see cref="MenuGroupVm.SetColumnCapacity"/>
+    /// is a no-op unless the value actually changed, so calling it unconditionally here costs nothing
+    /// on every OTHER settings change.</summary>
     private void ApplyGroupSettings()
     {
         var tooltip = L("OpenFolderTooltip");
+        var colButtonCount = _cfg.General.ColButtonCount;
         foreach (var group in Groups)
+        {
             group.TitleTooltip = group.IsDirectoryClickable ? tooltip : null;
+            group.SetColumnCapacity(colButtonCount);
+        }
     }
 
     /// <summary>

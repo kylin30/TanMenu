@@ -10,11 +10,12 @@
        is the 应用 page's own content: the update notice, the categories, and the three non-menu states
        (loading, nothing configured, nothing matched). -->
 
+  <!-- Round 3, Task 4 removed the 小/中/大 button-size setting: tiles are always the one size that
+       setting used to call "小" (Themes/Fluent2/Launcher.axaml's TmTileButton), so the Classes.size-*
+       bindings this Panel used to carry (each wired to LauncherViewModel.IsSmallButtons/
+       IsMediumButtons/IsLargeButtons, both since deleted) went with it. -->
   <Panel x:Name="Root"
-         Background="Transparent"
-         Classes.size-small="{Binding IsSmallButtons}"
-         Classes.size-medium="{Binding IsMediumButtons}"
-         Classes.size-large="{Binding IsLargeButtons}">
+         Background="Transparent">
 
     <!-- First child (the main content) is what the overlays measure against; every later child is an
          overlay that contributes no layout size of its own (About and the toast never affect the
@@ -94,9 +95,10 @@
                       Margin="{DynamicResource SurfacePadding}"
                       Spacing="14">
 
-            <!-- 1. The categories, running left to right. Each is a heading plus a column of tiles
-                 that fills downward and wraps into the next column at the bottom edge; a category
-                 with no visible items after filtering removes itself. -->
+            <!-- 1. The categories, running left to right. Each is a heading plus columns of tiles
+                 that fill top-to-bottom, wrapping into a new column once a column reaches
+                 ColButtonCount items (设置 → 外观 → 每列个数, default 10); a category with no visible
+                 items after filtering removes itself. -->
             <ItemsControl IsVisible="{Binding HasVisibleItems}" ItemsSource="{Binding Groups}">
               <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
@@ -105,16 +107,16 @@
               </ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:MenuGroupVm">
-                  <!-- DockPanel, NOT a vertical StackPanel: a vertical StackPanel measures every
-                       stacked child with INFINITE height (that is how stacking works — each child is
-                       free to be as tall as it wants), so the items WrapPanel below would never see a
-                       real height budget and would never wrap into a second column; the category
-                       would render as one endless, uncapped column with the overflow invisible past
-                       the window edge (there is no vertical scrollbar to reach it). A DockPanel gives
-                       the heading its own Top-docked slot and hands the items ItemsControl the
-                       GENUINELY REMAINING, finite height — which is what lets the WrapPanel below wrap
-                       at the actual bottom edge instead of never wrapping at all. -->
-                  <DockPanel Classes="tm-group" IsVisible="{Binding HasVisibleItems}">
+                  <!-- A plain vertical StackPanel is enough now: the column cap is enforced by DATA
+                       (MenuGroupVm.Columns, chunked from VisibleItems by
+                       TanMenu.Core.Services.MenuLayout.ChunkIntoColumns at GeneralConfig.ColButtonCount
+                       items per column — Round 3, Task 4), not by handing an inner panel a real,
+                       finite height budget the way the DockPanel-plus-vertical-WrapPanel this replaced
+                       had to (that panel needed the trick because WindowHost.FitToContent measures the
+                       whole page with an UNBOUNDED height probe: an item-count cap decided in the data
+                       survives that probe unchanged, whereas a height-based wrap would never wrap at
+                       all under an infinite budget — see that method's own remarks). -->
+                  <StackPanel Classes="tm-group" IsVisible="{Binding HasVisibleItems}">
 
                     <!-- A null tooltip shows nothing, which is how the inert 常用工具 heading
                          stays inert. The folder glyph only fades in for a real directory. -->
@@ -122,7 +124,6 @@
                             Classes.clickable="{Binding IsDirectoryClickable}"
                             ToolTip.Tip="{Binding TitleTooltip}"
                             PointerPressed="OnGroupTitlePressed"
-                            DockPanel.Dock="Top"
                             Margin="0,0,0,6"
                             HorizontalAlignment="Left">
                       <StackPanel Orientation="Horizontal" Spacing="6">
@@ -134,44 +135,59 @@
                       </StackPanel>
                     </Border>
 
-                    <!-- Items fill a column top-to-bottom and wrap into the NEXT COLUMN when they
-                         reach the bottom of the window — the pre-Avalonia layout, except that items
-                         per column follow the window height instead of a fixed ColButtonCount. -->
-                    <ItemsControl ItemsSource="{Binding VisibleItems}">
+                    <!-- Columns, left to right; each holds at most ColButtonCount items, top to
+                         bottom — the pre-Avalonia layout's own shape, restored. The outer ItemsControl
+                         below walks MenuGroupVm.Columns (one MenuColumnVm per column); the inner one
+                         walks that column's own Items. Two levels, not one WrapPanel, because
+                         compiled bindings (required for the NativeAOT publish) need a concrete
+                         x:DataType per DataTemplate, and a bare IReadOnlyList&lt;MenuItemVm&gt; has no
+                         name of its own to bind against — see MenuColumnVm's own remarks. -->
+                    <ItemsControl ItemsSource="{Binding Columns}">
                       <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
-                          <WrapPanel Orientation="Vertical" />
+                          <StackPanel Orientation="Horizontal" />
                         </ItemsPanelTemplate>
                       </ItemsControl.ItemsPanel>
                       <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="vm:MenuItemVm">
-                          <Button Classes="tm-tile"
-                                  Theme="{StaticResource TmTileButton}"
-                                  Margin="0,0,4,4"
-                                  IsEnabled="{Binding !IsDisabled}"
-                                  Click="OnItemClick"
-                                  PointerEntered="OnItemPointerEntered">
-                            <DockPanel>
-                              <!-- The icon slot is always occupied (the build always assigns at
-                                   least a fallback), which is why the async icon fill never
-                                   reflows the grid. -->
-                              <Image Classes="tm-tile-icon"
-                                     DockPanel.Dock="Left"
-                                     Source="{Binding Icon}"
-                                     Margin="0,0,10,0"
-                                     Stretch="Uniform"
-                                     VerticalAlignment="Center" />
-                              <TextBlock Text="{Binding Name}"
-                                         TextWrapping="NoWrap"
-                                         TextTrimming="CharacterEllipsis"
-                                         VerticalAlignment="Center" />
-                            </DockPanel>
-                          </Button>
+                        <DataTemplate x:DataType="vm:MenuColumnVm">
+                          <ItemsControl ItemsSource="{Binding Items}">
+                            <ItemsControl.ItemsPanel>
+                              <ItemsPanelTemplate>
+                                <StackPanel Orientation="Vertical" />
+                              </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate x:DataType="vm:MenuItemVm">
+                                <Button Classes="tm-tile"
+                                        Theme="{StaticResource TmTileButton}"
+                                        Margin="0,0,4,4"
+                                        IsEnabled="{Binding !IsDisabled}"
+                                        Click="OnItemClick"
+                                        PointerEntered="OnItemPointerEntered">
+                                  <DockPanel>
+                                    <!-- The icon slot is always occupied (the build always assigns at
+                                         least a fallback), which is why the async icon fill never
+                                         reflows the grid. -->
+                                    <Image Classes="tm-tile-icon"
+                                           DockPanel.Dock="Left"
+                                           Source="{Binding Icon}"
+                                           Margin="0,0,10,0"
+                                           Stretch="Uniform"
+                                           VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding Name}"
+                                               TextWrapping="NoWrap"
+                                               TextTrimming="CharacterEllipsis"
+                                               VerticalAlignment="Center" />
+                                  </DockPanel>
+                                </Button>
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
                         </DataTemplate>
                       </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
-                  </DockPanel>
+                  </StackPanel>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>

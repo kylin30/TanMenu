@@ -9,12 +9,14 @@ using TanMenu.Wpf.Services;
 namespace TanMenu.Wpf.Views.Settings;
 
 /// <summary>
-/// 外观 card group: language, light/dark appearance, UI font and button size. Ported from
-/// <c>SettingsWindow</c>'s 外观 tab, minus the staging: every handler here writes straight to
-/// <see cref="ConfigService.Config"/>, then hands the save off to <see cref="SettingsWrite.CommitAsync"/>,
-/// which raises <see cref="AppEvents.SettingsChanged"/> on success or rolls the field (and, for
-/// Appearance, the live repaint) back and reports the error on failure — instead of mutating a working
-/// clone for a later Apply.
+/// 外观 card group: language, light/dark appearance, UI font, and (since Round 3, Task 4) items per
+/// column. Ported from <c>SettingsWindow</c>'s 外观 tab, minus the staging: every handler here writes
+/// straight to <see cref="ConfigService.Config"/>, then hands the save off to
+/// <see cref="SettingsWrite.CommitAsync"/>, which raises <see cref="AppEvents.SettingsChanged"/> on
+/// success or rolls the field (and, for Appearance, the live repaint) back and reports the error on
+/// failure — instead of mutating a working clone for a later Apply. (The 按钮大小 row this group used to
+/// carry — 小/中/大 button size — was removed in that same task; see
+/// <see cref="TanMenu.Core.Models.GeneralConfig.ButtonSize"/>'s own remarks for what replaced it.)
 /// </summary>
 public partial class AppearanceCard : UserControl, ISettingsCard
 {
@@ -22,8 +24,6 @@ public partial class AppearanceCard : UserControl, ISettingsCard
 
     private static readonly string[] AppearanceSettings =
         { AppAppearance.System, AppAppearance.Light, AppAppearance.Dark };
-
-    private static readonly string[] ButtonSizes = { "Small", "Medium", "Large" };
 
     /// <summary>One row of the font dropdown. <see cref="Family"/> is the value written to config
     /// ("" = the app's own default font); <see cref="IsHeader"/> marks the group caption, which is
@@ -104,24 +104,19 @@ public partial class AppearanceCard : UserControl, ISettingsCard
             FontSub.Text = AppLanguage.Text("FontCardSub", lang);
             PopulateFontCombo(g.FontFamily ?? string.Empty, lang);
 
-            SizeTitle.Text = AppLanguage.Text("ButtonSize", lang);
-            SizeSub.Text = AppLanguage.Text("SizeCardSub", lang);
-            SizeCombo.ItemsSource = ButtonSizes.Select(s => SizeLabel(s, lang)).ToList();
-            var sizeIdx = Array.FindIndex(ButtonSizes, s => s == g.ButtonSize);
-            SizeCombo.SelectedIndex = sizeIdx < 0 ? 0 : sizeIdx; // default = 小 (Small)
+            ColCountTitle.Text = AppLanguage.Text("ColButtonCount", lang);
+            ColCountSub.Text = AppLanguage.Text("ColButtonCountCardSub", lang);
+            // Clamped for DISPLAY only — a hand-edited config.json can carry a value outside the
+            // NumericUpDown's own [1, 30] range (see GeneralConfig.ColButtonCount's own remarks); this
+            // does not write the clamped value back, only shows something sane until the user actually
+            // changes it (at which point OnColCountChanged persists whatever they picked).
+            ColCountUpDown.Value = Math.Clamp(g.ColButtonCount, 1, 30);
         }
         finally
         {
             _loading = false;
         }
     }
-
-    private static string SizeLabel(string key, string? language) => key switch
-    {
-        "Large" => AppLanguage.Text("SizeLarge", language),
-        "Medium" => AppLanguage.Text("SizeMedium", language),
-        _ => AppLanguage.Text("SizeSmall", language),
-    };
 
     private static string AppearanceLabelFor(string setting, string? language) =>
         AppAppearance.NormalizeSetting(setting) switch
@@ -231,15 +226,25 @@ public partial class AppearanceCard : UserControl, ISettingsCard
             reload: ReloadFromConfig);
     });
 
-    private void OnSizeChanged(object? sender, SelectionChangedEventArgs e) => RunSafely(async () =>
+    /// <summary>每列个数 (GeneralConfig.ColButtonCount). Re-fitting the window is not this handler's
+    /// job: <see cref="SettingsWrite.CommitAsync"/> raises <see cref="AppEvents.SettingsChanged"/> on a
+    /// successful save, which <c>LauncherViewModel.OnSettingsChanged</c> turns into a rebuild
+    /// (re-chunking every group's columns — see <c>LauncherViewModel.ApplyGroupSettings</c>) that ends
+    /// by raising <c>ContentMetricsChanged</c>, which <c>MainWindow</c> turns into a re-fit — the same
+    /// chain every other 外观 setting here already rides.</summary>
+    private void OnColCountChanged(object? sender, NumericUpDownValueChangedEventArgs e) => RunSafely(async () =>
     {
-        if (_loading || SizeCombo.SelectedIndex < 0)
+        if (_loading || e.NewValue is not { } value)
+            return; // an emptied/unparsable box reports null; leave the stored setting alone
+
+        var next = (int)Math.Clamp(value, 1, 30);
+        var previous = _config.Config.General.ColButtonCount;
+        if (next == previous)
             return;
 
-        var previous = _config.Config.General.ButtonSize;
-        _config.Config.General.ButtonSize = ButtonSizes[SizeCombo.SelectedIndex];
+        _config.Config.General.ColButtonCount = next;
         await SettingsWrite.CommitAsync(_config, _events, _host, this,
-            rollback: () => _config.Config.General.ButtonSize = previous,
+            rollback: () => _config.Config.General.ColButtonCount = previous,
             reload: ReloadFromConfig);
     });
 

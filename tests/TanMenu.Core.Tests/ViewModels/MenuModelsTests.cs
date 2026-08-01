@@ -142,4 +142,90 @@ public class MenuModelsTests
         Assert.False(new MenuGroupVm { Directory = "", DirectoryName = "常用工具" }.IsDirectoryClickable);
         Assert.True(new MenuGroupVm { Directory = @"C:\Tools", DirectoryName = "Tools" }.IsDirectoryClickable);
     }
+
+    // ---- Columns (Round 3, Task 4: items per column is a real setting again) -------------------
+
+    [Fact]
+    public void Columns_DefaultCapacityIsTen_MatchingGeneralConfigColButtonCount()
+    {
+        // A freshly built group (SetColumnCapacity not yet called by
+        // LauncherViewModel.ApplyGroupSettings) still chunks at the app-wide default until the real
+        // config value is applied — see MenuGroupVm's own remarks on _columnCapacity.
+        var g = Group(Enumerable.Range(1, 25).Select(i => "item" + i).ToArray());
+        g.ApplyFilter("");
+
+        Assert.Equal(3, g.Columns.Count); // 25 at 10 per column: 10, 10, 5
+        Assert.Equal(10, g.Columns[0].Items.Count);
+        Assert.Equal(10, g.Columns[1].Items.Count);
+        Assert.Equal(5, g.Columns[2].Items.Count);
+    }
+
+    [Fact]
+    public void Columns_ThirtyItemCategory_ChunksIntoThreeColumnsOfTen()
+    {
+        // The exact scenario the brief calls out: a 30-item category at the default (10) must not
+        // render as one unwrapped column of 30, which is what used to drag WindowHost.FitToContent's
+        // height probe toward a near-full-screen window.
+        var g = Group(Enumerable.Range(1, 30).Select(i => "item" + i).ToArray());
+        g.ApplyFilter("");
+
+        Assert.Equal(3, g.Columns.Count);
+        Assert.All(g.Columns, c => Assert.Equal(10, c.Items.Count));
+    }
+
+    [Fact]
+    public void SetColumnCapacity_Change_ReChunksImmediately()
+    {
+        var g = Group(Enumerable.Range(1, 12).Select(i => "item" + i).ToArray());
+        g.ApplyFilter("");
+        Assert.Equal(2, g.Columns.Count); // 12 at the default 10: 10 + 2
+
+        g.SetColumnCapacity(5);
+        Assert.Equal(3, g.Columns.Count); // 12 at 5: 5 + 5 + 2
+
+        g.SetColumnCapacity(20);
+        Assert.Single(g.Columns); // 12 at 20: one column, no padding
+        Assert.Equal(12, g.Columns[0].Items.Count);
+    }
+
+    [Fact]
+    public void SetColumnCapacity_NonPositiveValue_TreatedAsOne()
+    {
+        // A hand-edited config.json can carry ColButtonCount <= 0 (GeneralConfig.ColButtonCount is not
+        // itself clamped on load) — this must not divide by zero or produce a negative-size chunk.
+        var g = Group("a", "b", "c");
+        g.ApplyFilter("");
+
+        g.SetColumnCapacity(0);
+        Assert.Equal(3, g.Columns.Count);
+        Assert.All(g.Columns, c => Assert.Single(c.Items));
+    }
+
+    [Fact]
+    public void SetColumnCapacity_SameValue_IsANoOp()
+    {
+        var g = Group("a", "b", "c");
+        g.ApplyFilter("");
+        var before = g.Columns;
+
+        g.SetColumnCapacity(10); // already the default — nothing should change
+        Assert.Same(before, g.Columns);
+    }
+
+    [Fact]
+    public void ApplyFilter_ReComputesColumnsFromVisibleItemsOnly()
+    {
+        // Columns must reflect what the filter actually shows, not the group's full item list —
+        // otherwise a filtered-out item would still occupy a column slot.
+        var g = Group("Visual Studio Code", "Notepad", "计算器", "Paint", "Explorer",
+            "Terminal", "Registry", "Task Manager", "Control Panel", "Photos", "Camera");
+        g.ApplyFilter(""); // 11 items at the default 10 per column: two columns
+
+        Assert.Equal(2, g.Columns.Count);
+
+        g.ApplyFilter("a"); // narrows to whatever matches "a" — well under one column's worth
+        var totalAfterFilter = g.Columns.Sum(c => c.Items.Count);
+        Assert.Equal(g.VisibleItems.Count, totalAfterFilter);
+        Assert.Single(g.Columns);
+    }
 }
