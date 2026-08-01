@@ -279,6 +279,14 @@
     <Setter Property="BorderBrush" Value="{DynamicResource AccentDefaultBrush}" />
     <Setter Property="BorderThickness" Value="1" />
   </Style>
+  <!-- Disabled (设置 page — MainWindow.ShowPage sets SearchField.IsEnabled off ShellPage.App): the
+       same recipe TmButton's own ^:disabled uses above (Foreground/Root dimming), applied here since
+       this field is plain markup rather than a ControlTheme template. A bare Border has no built-in
+       disabled look of its own, so without this rule the box stayed at full, "live" contrast while it
+       silently rejected input. -->
+  <Style Selector="Border.tm-searchfield:disabled">
+    <Setter Property="Opacity" Value="0.6" />
+  </Style>
 
   <Style Selector="TextBox.tm-search">
     <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
@@ -287,6 +295,15 @@
     <Setter Property="VerticalContentAlignment" Value="Center" />
     <Setter Property="MinHeight" Value="30" />
     <Setter Property="Padding" Value="0" />
+  </Style>
+  <!-- This Style-precedence Foreground above outranks the Fluent TextBox ControlTheme's own built-in
+       :disabled foreground (a Style selector always wins over a ControlTheme template setter), so
+       disabling the box left its text at full TextPrimaryBrush contrast. Overriding Foreground AND
+       PlaceholderForeground at the same precedence, plus the field-level Opacity above, is what
+       actually reaches the screen — dimmed text, dimmed placeholder, dimmed field, in both themes. -->
+  <Style Selector="TextBox.tm-search:disabled">
+    <Setter Property="Foreground" Value="{DynamicResource TextDisabledBrush}" />
+    <Setter Property="PlaceholderForeground" Value="{DynamicResource TextDisabledBrush}" />
   </Style>
 
   <!-- ══ Tile size classes 小 / 中 / 大 ═══════════════════════════════════════════════════════

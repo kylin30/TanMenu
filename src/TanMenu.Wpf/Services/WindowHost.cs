@@ -101,9 +101,12 @@ public sealed partial class WindowHost : IWindowHost
     /// <c>Height</c> afterward. Not written by <see cref="RestorePlacement"/>/<see cref="FitToContent"/>
     /// any more (an earlier version kept them in sync purely to give the old float-comparison detection a
     /// baseline — see <see cref="_userResized"/>'s own remarks for why that approach was replaced).
-    /// Seeded to the placeholder size, which is irrelevant until <see cref="_userResized"/> is true (before
-    /// that, <see cref="RestorePlacement"/> uses <see cref="PlaceholderWidthDip"/>/<see cref="PlaceholderHeightDip"/>
-    /// directly and never reads this pair at all).</summary>
+    /// Seeded to the placeholder size, which is irrelevant until <see cref="_userResized"/> is true —
+    /// <see cref="RestorePlacement"/> never reads this pair at all before that. What it reads INSTEAD,
+    /// before the first manual resize, is not always the placeholder any more: since the placeholder-flash
+    /// fix it is <see cref="_lastFitWidthDip"/>/<see cref="_lastFitHeightDip"/> once a fit has run, falling
+    /// back to <see cref="PlaceholderWidthDip"/>/<see cref="PlaceholderHeightDip"/> only on the process's
+    /// genuinely first show (see <see cref="RestorePlacement"/>'s own remarks).</summary>
     private double _lastNormalWidthDip = PlaceholderWidthDip;
     private double _lastNormalHeightDip = PlaceholderHeightDip;
 
@@ -210,10 +213,30 @@ public sealed partial class WindowHost : IWindowHost
     /// </para>
     /// <para>
     /// A snap-maximize is therefore now ignored outright — not merely excluded from the size record.
-    /// That is deliberate and consistent: maximizing is already remembered by
+    /// That is deliberate and consistent for the MAXIMIZE direction: maximizing is already remembered by
     /// <c>GeneralConfig.WindowMaximized</c>, restores maximized, and re-fits to content the moment the
     /// user un-maximizes (<c>MainWindow.OnPropertyChanged</c>), so treating it as "the user has chosen a
     /// size" would only strip the restored window of its content fit.
+    /// </para>
+    /// <para>
+    /// The RESTORE direction is not so clean, and is not fixed here — this method's behaviour is
+    /// unchanged, only documented. Dragging a MAXIMIZED window's title bar down far enough to restore it
+    /// also happens inside <c>WM_ENTERSIZEMOVE</c>/<c>WM_EXITSIZEMOVE</c>, so the resulting
+    /// Maximized→Normal transition also arrives with <see cref="WindowResizeReason.User"/>. The content
+    /// re-fit itself survives that: <c>MainWindow.OnPropertyChanged</c> posts its <c>RefitToContent</c> at
+    /// <see cref="DispatcherPriority.Loaded"/>, while this method posts <see cref="RecordUserResize"/>
+    /// with no explicit priority at all, i.e. <see cref="DispatcherPriority.Default"/> — a LOWER priority
+    /// than <c>Loaded</c>, so the re-fit is dequeued and runs first even though both are queued from the
+    /// same synchronous transition. But <see cref="RecordUserResize"/> still runs after it, on the same
+    /// drag, and by then <c>_window.WindowState</c> already reads <c>Normal</c>, so its guard does not
+    /// reject it: this
+    /// latches <see cref="_userResized"/> to true and records whatever client size Windows itself chose
+    /// for the restore, not the fit's. The one re-fit that already ran keeps its result on screen, but
+    /// every LATER re-fit trigger for the rest of the process — a rail toggle, a 小/中/大 change, another
+    /// un-maximize — is silently disabled from this point on, exactly as a genuine manual resize disables
+    /// it. This is pre-existing behaviour, not introduced by this remark, and the user has not been asked
+    /// whether a maximize-then-drag-to-restore gesture should count as "I chose a size" the same way an
+    /// ordinary drag does — so it is left as is here rather than changed unasked.
     /// </para>
     /// </remarks>
     private void OnWindowResized(object? sender, WindowResizedEventArgs e)

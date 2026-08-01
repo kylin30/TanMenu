@@ -161,19 +161,37 @@ public partial class MainWindow : Window
     /// </para>
     /// <para>
     /// THE GUARD IS LOAD-BEARING, not defensive tidiness (review finding 1, CRITICAL). Measuring
-    /// <see cref="_appPage"/> while 设置 is the hosted page does two compounding kinds of damage, both
-    /// established by decompiling Avalonia 12.1.0. <c>ContentControl</c> removes the outgoing content
-    /// from <c>LogicalChildren</c> SYNCHRONOUSLY when <see cref="PageHost"/>'s Content is reassigned, and
-    /// <c>StyledElement.OnDetachedFromLogicalTreeCore</c> then recurses the whole subtree calling
-    /// <c>InvalidateStyles</c>, which drops every style frame from the value store and clears
-    /// <c>_stylesApplied</c>. A page measured in that state has lost <c>Panel.size-* Button.tm-tile</c>'s
-    /// fixed 168/192/216 widths (Launcher.axaml) and every other app-level style, so the window would be
-    /// sized from a ragged, text-width measurement and land on its MinWidth/MinHeight floor. Worse,
+    /// <see cref="_appPage"/> while 设置 is the hosted page does REAL, REPRODUCED damage to the window's
+    /// SIZE: <c>ContentControl</c> removes the outgoing content from <c>LogicalChildren</c> SYNCHRONOUSLY
+    /// when <see cref="PageHost"/>'s Content is reassigned, and <c>StyledElement.OnDetachedFromLogicalTreeCore</c>
+    /// then recurses the whole subtree calling <c>InvalidateStyles</c>, which drops every style frame from
+    /// the value store and clears <c>_stylesApplied</c> — both established by decompiling Avalonia 12.1.0.
+    /// A page measured in that state has lost <c>Panel.size-* Button.tm-tile</c>'s fixed 168/192/216
+    /// widths (Launcher.axaml) and every other app-level style, so the window is sized from a ragged,
+    /// text-width measurement and lands on its MinWidth/MinHeight floor — reproduced live by temporarily
+    /// removing this guard: the window latched at a wrong 850x568 DIP for the rest of the session
+    /// (see final-fix-report.md, finding 1).
+    /// </para>
+    /// <para>
+    /// A SECOND, worse-sounding claim does NOT belong here as established fact: that the launcher then
+    /// renders UNSTYLED for the rest of the session. On paper that is mechanistically plausible —
     /// <c>Layoutable.MeasureCore</c> calls <c>ApplyStyling()</c>, and <c>StyledElement.ApplyStyling</c>
-    /// sets <c>_stylesApplied = true</c> even though nothing can match while <c>StylingParent</c> is null
-    /// — so the page's own later <c>OnAttachedToLogicalTreeCore</c> sees the flag already set, no-ops,
-    /// and the launcher renders UNSTYLED for the rest of the session, self-healing only after another
-    /// 设置→应用 round trip. The tray's 选项 entry reaches exactly this: <c>SettingsLauncher.OpenCore</c>
+    /// sets <c>_stylesApplied = true</c> UNCONDITIONALLY even though nothing can match while
+    /// <c>StylingParent</c> is null, and the page's own later <c>OnAttachedToLogicalTreeCore</c> gates its
+    /// re-styling on <c>_logicalRoot == null</c>, so its own <c>ApplyStyling()</c> call there sees the
+    /// flag already set and no-ops — traced in the same decompile. But it was NOT observed: in both live
+    /// pre-fix reproductions the tiles came back at the correct 192 DIP once the launcher was reattached
+    /// to 应用, i.e. the styles WERE re-applied despite the latch. The most likely reason is
+    /// <see cref="TanMenu.Wpf.ViewModels.LauncherViewModel.ReloadAsync"/> — it replaces the tile
+    /// containers outright when the rebuild result reports a change, and only relabels the EXISTING ones
+    /// otherwise, so a reload that finds nothing changed after a 设置→应用 round trip would keep whatever
+    /// stale containers the mechanism above predicts, while one that does rebuild hands back fresh,
+    /// correctly-styled ones — this does not fire on every run, so it does not rule the mechanism out, it
+    /// only explains why it was not seen. Treat the sizing damage as confirmed and the un-styling as a
+    /// live risk this same guard happens to close, not as an observed fact.
+    /// </para>
+    /// <para>
+    /// The tray's 选项 entry reaches exactly the sizing defect above: <c>SettingsLauncher.OpenCore</c>
     /// navigates to 设置 and THEN calls <c>ShowAndActivate</c>, whose <c>Show()</c> re-raises
     /// <c>Opened</c>, whose <see cref="InitializeAndFitAsync"/> awaits an already-completed memoized Task
     /// and continues synchronously into this method with the launcher detached.
@@ -348,10 +366,11 @@ public partial class MainWindow : Window
         // Review finding 4: the title strip's search box is always attached and used to stay live on
         // 设置, where typing silently filtered an invisible 应用 page and Enter reached
         // LauncherViewModel.HandleSearchEnter — which LAUNCHES the first match. Task Manager disables
-        // its own search box on pages that do not support search; so does this. The field carries the
-        // disabled visual (it is the bordered control the user sees) and the box carries the input
-        // block; setting both states the intent rather than relying on IsEffectivelyEnabled inheritance
-        // to do half of it.
+        // its own search box on pages that do not support search; so does this. Neither write is
+        // redundant: SearchBox blocks the actual typing/Enter and (via its own :disabled style in
+        // Launcher.axaml) dims its text and placeholder; SearchField disables and dims the bordered
+        // box around it — a plain Border has no disabled behaviour of its own, so without this line a
+        // disabled SearchBox would sit inside a field that still looked fully live.
         var searchable = page == ShellPage.App;
         SearchField.IsEnabled = searchable;
         SearchBox.IsEnabled = searchable;
