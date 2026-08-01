@@ -129,6 +129,34 @@ public sealed partial class WindowHost : IWindowHost
     private double? _lastFitWidthDip;
     private double? _lastFitHeightDip;
 
+    /// <summary>True when something OTHER than this class resized the window, so
+    /// <see cref="_lastFitWidthDip"/>/<see cref="_lastFitHeightDip"/> still describe the last size we
+    /// requested but no longer describe the window on screen. While it is set,
+    /// <see cref="FitToContent"/> refuses to short-circuit even when the geometry it computes matches
+    /// that pair — otherwise the very next content-unchanged re-fit trigger (a rail toggle, a 每列个数
+    /// change) would decide "nothing to do" and leave the foreign size in place forever.</summary>
+    /// <remarks>
+    /// <para>
+    /// Round 3 residual review. Comparing against the previous fit's own REQUEST rather than the live
+    /// window (the fix this class needed, for the reasons <see cref="FitToContent"/> documents) traded
+    /// one bug for a smaller one: the live-size comparison self-healed after any foreign resize,
+    /// because the live size no longer matched anything we had computed. A request-based basis does
+    /// not, so the foreign resize has to be OBSERVED instead of inferred. This flag is that
+    /// observation, kept deliberately separate from nulling the pair itself:
+    /// <see cref="RestorePlacement"/> reads that pair as the PRE-SHOW size on the next summon, and
+    /// clearing it would bring back the 1000x688 placeholder flash it exists to prevent.
+    /// </para>
+    /// <para>
+    /// Set ONLY for <see cref="WindowResizeReason.Unspecified"/> (see <see cref="OnWindowResized"/> for
+    /// which real gestures that covers and why the other reasons are excluded), and cleared as soon as
+    /// a fit has actually applied a geometry — at which point the window and the basis agree again by
+    /// construction. A spurious set therefore costs exactly one redundant re-apply of an
+    /// already-correct geometry, never a cascade: our own re-apply carries
+    /// <see cref="WindowResizeReason.Application"/>, which never sets this.
+    /// </para>
+    /// </remarks>
+    private bool _fitBasisStale;
+
     public WindowHost(ConfigService config, AppEvents events, IShellNavigator navigator)
     {
         _config = config;
@@ -192,7 +220,9 @@ public sealed partial class WindowHost : IWindowHost
     /// <see cref="FitToContent"/> writes (which additionally never reach here at all while
     /// <see cref="_restoring"/> is true, guarded the same as every other listener in <see cref="Attach"/>
     /// — real interactive drags never happen while that flag is set, so this is defence in depth, not
-    /// load-bearing).</summary>
+    /// load-bearing). <c>Unspecified</c> does, separately, mark <see cref="_fitBasisStale"/> — a weaker
+    /// statement than "the user chose a size", meaning only "somebody other than us changed the size";
+    /// see this method's last remark paragraph.</summary>
     /// <remarks>
     /// <para>
     /// The record is POSTED to the dispatcher rather than taken inline, and the window state is re-read
@@ -238,10 +268,42 @@ public sealed partial class WindowHost : IWindowHost
     /// whether a maximize-then-drag-to-restore gesture should count as "I chose a size" the same way an
     /// ordinary drag does — so it is left as is here rather than changed unasked.
     /// </para>
+    /// <para>
+    /// Round 3 residual review — the <see cref="WindowResizeReason.Unspecified"/> branch. It is NOT a
+    /// manual resize (it must not latch <see cref="_userResized"/>) but it IS a size this class did not
+    /// ask for, which matters now that <see cref="FitToContent"/>'s skip test compares against the
+    /// previous fit's own request instead of the live window. Which gestures reach it was established by
+    /// decompiling Avalonia 12.1.0 rather than guessed: <c>Win32.WindowImpl</c> keeps one
+    /// <c>_resizeReason</c> field that <c>WM_SIZE</c> hands straight to <c>Resized</c>; it is
+    /// <c>User</c> only between <c>WM_ENTERSIZEMOVE</c> and <c>WM_EXITSIZEMOVE</c>, <c>DpiChange</c>
+    /// only inside <c>WM_DPICHANGED</c>'s own scope, and <c>Application</c>/<c>Layout</c> only inside
+    /// the scope <c>WindowImpl.Resize</c> wraps its <c>SetWindowPlacement</c> in — which is the only way
+    /// this class's own <c>Width</c>/<c>Height</c> writes reach the platform
+    /// (<c>Window</c>'s <c>ClientSize</c> observable calls <c>ResizePlatformImpl(x, Application)</c>).
+    /// Everything else — a Win+arrow snap, an external <c>SetWindowPos</c>, a caption-button
+    /// un-maximize — falls through with the field at its default, <c>Unspecified</c>. So gating the
+    /// stale-basis mark on <c>Unspecified</c> catches exactly the foreign resizes and cannot be tripped
+    /// by our own, which is what makes it incapable of cascading (see <see cref="_fitBasisStale"/>).
+    /// <c>DpiChange</c> is deliberately EXCLUDED: the OS rescales the window so its DIP size is
+    /// preserved, so a later fit computing the same DIP figure genuinely has nothing to apply and
+    /// skipping is the correct answer, not a missed correction.
+    /// </para>
     /// </remarks>
     private void OnWindowResized(object? sender, WindowResizedEventArgs e)
     {
-        if (_restoring || e.Reason != WindowResizeReason.User)
+        if (_restoring)
+            return;
+
+        if (e.Reason == WindowResizeReason.Unspecified)
+        {
+            // Not "the user chose a size" (that is _userResized's job, and only a real drag earns it) —
+            // only "the window is no longer the size we last computed", so the next fit must not
+            // short-circuit on a basis that has stopped describing the window.
+            _fitBasisStale = true;
+            return;
+        }
+
+        if (e.Reason != WindowResizeReason.User)
             return;
 
         var size = e.ClientSize;
@@ -441,6 +503,40 @@ public sealed partial class WindowHost : IWindowHost
                 g.WindowLeft, g.WindowTop, width, height,
                 work, _window.MinWidth, _window.MinHeight);
 
+            // NOTE (Round 3 residual review): this deliberately does NOT update _lastFitWidthDip/
+            // _lastFitHeightDip, even though it changes the window's size. That is safe, and the
+            // reasoning has to hold across DIFFERENT work areas — the only situation in which the
+            // placement resolved here can differ from the pair at all — so here it is in full.
+            //
+            // The hazard being ruled out is precisely one thing: this method leaving the window at a
+            // size S that differs from the pair B, and a later FitToContent then computing exactly B,
+            // matching the basis and SKIPPING, so the window is stranded at S. Three exhaustive cases:
+            //
+            //  1. _userResized is true. S comes from _lastNormalWidthDip/_lastNormalHeightDip and can
+            //     be anything, but FitToContent's own first guard returns immediately for the rest of
+            //     the process, so no fit can skip and nothing can be stranded.
+            //  2. _userResized is false and the pair is null (the process's genuinely first show). S is
+            //     the placeholder; the basis is null, and FitToContent treats null as "different", so
+            //     the first fit is never skipped.
+            //  3. _userResized is false and the pair is B. Then S = Resolve(B, thisWorkArea), and S can
+            //     only differ from B where Resolve's clamp moved it: Resolve caps width/height at
+            //     workArea.Width/Height and floors them at Math.Min(min, workArea.*), so S != B implies
+            //     either B > workArea.* (clamped DOWN, S = workArea.*) or B < Math.Min(min, workArea.*)
+            //     (floored UP, S = that floor). A subsequent FitToContent runs ResolveContentFit
+            //     against the SAME work area, i.e. the same clamp: its result is likewise <= workArea.*
+            //     and >= that same floor. So in the clamped-down case the fit cannot produce B (that
+            //     would require a result above the cap it just applied), and in the floored-up case it
+            //     cannot produce B either (that would require a result below the floor). Either way the
+            //     fit computes something != B, so it cannot match the basis and cannot skip: the window
+            //     is corrected on the very next fit rather than stranded. (Strictly, IsSamePlacement
+            //     compares to within 0.5 DIP, so the fit could still "match" if the clamp moved the
+            //     size by LESS than that — in which case S is within half a DIP of B and there is
+            //     nothing left to strand.)
+            //
+            // Updating the pair here instead was considered and rejected: it would write a work-area-
+            // clamped size into the field RestorePlacement itself reads as the next summon's PRE-SHOW
+            // size, so summoning back onto a larger monitor would paint the smaller clamped size first
+            // and jump — reintroducing exactly the placeholder-flash defect this pair exists to fix.
             _window.Width = placement.Width;
             _window.Height = placement.Height;
             _window.Position = new PixelPoint(
@@ -476,8 +572,15 @@ public sealed partial class WindowHost : IWindowHost
     /// changes what the active page measures: a docked notice opening or closing, the navigation rail
     /// expanding or collapsing, a 每列个数 / 字体 / 语言 change, a switch back to 应用 from 设置, and the
     /// Maximized→Normal transition. It is a cheap, idempotent re-measure, not a one-time setup step, and
-    /// a re-fit that computes the geometry the window already has writes nothing at all
-    /// (<see cref="WindowPlacement.IsSamePlacement"/>), so none of those triggers can cascade.
+    /// a re-fit that computes the geometry the PREVIOUS fit already requested
+    /// (<see cref="_lastFitWidthDip"/>/<see cref="_lastFitHeightDip"/>, compared with
+    /// <see cref="WindowPlacement.IsSamePlacement"/>) writes nothing at all, so none of those triggers
+    /// can cascade. Note the basis: it is the last size this class ASKED FOR, not the size the window
+    /// currently has — those two legitimately differ whenever the platform clamps a request (this
+    /// window has a practical ~605 DIP outer height floor; see the comment on the check itself), which
+    /// is exactly why comparing against the live window used to make the skip unreachable. A foreign
+    /// resize therefore has to be observed rather than inferred from the live size, which is
+    /// <see cref="_fitBasisStale"/>'s whole job.
     /// </summary>
     /// <param name="pageContent">The active page whose natural size drives the window's. It is the
     /// CALLER's job to pass the page that is actually hosted right now and to skip the call otherwise —
@@ -601,17 +704,10 @@ public sealed partial class WindowHost : IWindowHost
             // TWICE instead of once. The previous fit's own requested size is the one thing this class
             // truly controls and can compare against meaningfully; null (nothing has fit yet this
             // process) always counts as "different", so the very first fit of a process is never
-            // skipped.
-            var previousFitWidthDip = _lastFitWidthDip;
-            var previousFitHeightDip = _lastFitHeightDip;
-
-            // Remembered even when the window already has this geometry: RestorePlacement reads it as
-            // the PRE-SHOW size on the next summon, and "we measured and this is the answer" is true
-            // whether or not the answer differed from what was already on screen.
-            _lastFitWidthDip = placement.Width;
-            _lastFitHeightDip = placement.Height;
-
-            if (previousFitWidthDip is { } previousWidthDip && previousFitHeightDip is { } previousHeightDip)
+            // skipped. _fitBasisStale additionally forces "different" when something outside this class
+            // has resized the window since — see that field's own remarks.
+            if (!_fitBasisStale &&
+                _lastFitWidthDip is { } previousWidthDip && _lastFitHeightDip is { } previousHeightDip)
             {
                 var previous = new PlacementRect(currentLeft, currentTop, previousWidthDip, previousHeightDip);
                 if (WindowPlacement.IsSamePlacement(placement, previous))
@@ -631,6 +727,27 @@ public sealed partial class WindowHost : IWindowHost
             _window.Position = new PixelPoint(
                 (int)Math.Round(placement.Left * scale),
                 (int)Math.Round(placement.Top * scale));
+
+            // Written only AFTER the three assignments above have all returned, never before them.
+            // Round 3 residual review: this pair used to be assigned right after the placement was
+            // computed, above the skip test. That is a basis for "the size this window was last asked
+            // to be", so recording a size the window was never actually asked to be is a lie that never
+            // self-corrects — if any of those three property writes threw, the catch below would log,
+            // the geometry would stay where it was, and the basis would nonetheless claim the new
+            // value, so EVERY later fit computing that same value would match it and skip, forever. The
+            // pre-fix code compared against the live window size and therefore healed on the next fit;
+            // a request-based basis has no such luck and has to be sequenced correctly instead. Writing
+            // it last also gives a partial apply (Width and Height taken, Position throwing) the safe
+            // outcome rather than the sticky one: the basis stays at the previous value, so the next
+            // trigger re-runs the whole apply instead of concluding there is nothing to do.
+            //
+            // The skip path above deliberately does NOT reach here. It applied nothing, so the previous
+            // basis is still exactly what the window was last asked for, and it is within the same 0.5
+            // DIP tolerance of this placement anyway — RestorePlacement, the pair's other reader, gets
+            // the same pre-show size either way.
+            _lastFitWidthDip = placement.Width;
+            _lastFitHeightDip = placement.Height;
+            _fitBasisStale = false; // basis and window agree again by construction
 
             Serilog.Log.Information(
                 "Window fit to content: {Width}x{Height} DIP (page {ContentWidth}x{ContentHeight} + " +

@@ -150,15 +150,22 @@ public sealed class MenuGroupVm : ObservableObject
     /// <summary>Sentinel for <see cref="_appliedFilter"/>: a value no real filter text can ever equal,
     /// so the very first <see cref="ApplyFilter"/> call — and the first one after
     /// <see cref="InvalidateFilter"/> — always runs instead of short-circuiting as "unchanged".
-    /// Deliberately a NUL (U+0000), not the space character this used to be documented as — and, in the
-    /// source file itself, literally WAS: a raw NUL byte sitting in the middle of a string literal, which
-    /// made this whole file read as binary to both `git diff` and `grep` (Round 3 final-fix report). A
-    /// literal space is not actually an equivalent sentinel, only a coincidentally-working one:
-    /// <see cref="string.Trim"/> strips whitespace, not NUL, so a caller that ever forgot to trim its
-    /// filter text first could still legitimately pass " " and collide with a literal-space sentinel. NUL
-    /// cannot arise from ordinary filter text at all, so it needs no such assumption about callers —
+    /// Deliberately a NUL (U+0000). It cannot arise from ordinary filter text at all, so it needs no
+    /// assumption at all about what callers pass; a literal space would be only coincidentally safe,
+    /// since <see cref="string.Trim"/> strips whitespace but not NUL, so a caller that forgot to trim
+    /// could legitimately pass " " and collide with a space sentinel.
+    /// <para>
+    /// What Round 3's final fix wave changed here is the SPELLING, not the value. Both sites holding
+    /// this sentinel (this one and <see cref="InvalidateFilter"/>) carried a raw NUL byte sitting inside
+    /// the string literal in the source, which made this whole file read as binary to both `git diff`
+    /// and `grep` — that is how Task 4's own changes to this file went invisible to the review artifact.
+    /// (An earlier revision of this remark added that the sentinel "used to be documented as" a space.
+    /// It never was: the comment it replaced read, in full, "a value no trimmed filter can equal, so the
+    /// first Apply always runs" — checked against the blob at commit 2af2401, not recalled. That clause
+    /// is dropped rather than reworded.) It is now
     /// written here as the escape <c>"\u0000"</c> rather than a literal control character in the source,
-    /// so the file stays text to every tool that reads it.</summary>
+    /// so the file stays text to every tool that reads it.
+    /// </para></summary>
     private const string NoFilterApplied = "\u0000";
 
     private string _appliedFilter = NoFilterApplied;

@@ -159,7 +159,7 @@ public static class WindowPlacement
     /// <paramref name="tolerance"/> DIPs on every edge.
     /// </summary>
     /// <remarks>
-    /// Exists so a re-fit that computes the geometry the window ALREADY has can skip writing it back.
+    /// Exists so a re-fit that computes a geometry already asked for can skip writing it back.
     /// Round 2's review round wired several new re-fit triggers (rail toggle, 小/中/大 — replaced by
     /// 每列个数 in Round 3, Task 4 — 字体/语言, the Maximized→Normal transition) on top of the two that
     /// existed, and more than one of them can fire
@@ -167,6 +167,16 @@ public static class WindowPlacement
     /// re-log an identical "Window fit to content" line. It also makes a notice-driven re-fit that
     /// changes nothing genuinely inert, rather than merely landing on the same numbers after having
     /// touched the platform window.
+    /// <para>
+    /// This function only compares two rectangles; WHICH second rectangle the caller supplies is the
+    /// caller's decision, and it is deliberately no longer the window's own live geometry. Round 3's
+    /// final fix wave changed <c>WindowHost.FitToContent</c> to pass the size the PREVIOUS fit itself
+    /// requested, because a platform that clamps a request (that window cannot render below roughly 605
+    /// DIP outer, whatever is asked of it) writes the clamped value back into <c>Width</c>/<c>Height</c>
+    /// and so guarantees the live size never equals the computed one in that regime — making the skip
+    /// unreachable exactly where it was needed. Do not "restore" a live-geometry comparison here or in
+    /// the caller on the assumption that the two are interchangeable; they are not.
+    /// </para>
     /// <para>
     /// The default tolerance is half a DIP, not exact equality: Avalonia's Win32 backend truncates DIP
     /// to physical pixels with <c>(int)(value * RenderScaling)</c> before <c>SetWindowPlacement</c> and

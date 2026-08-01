@@ -51,6 +51,43 @@ public class MenuLayoutTests
         Assert.Equal(3, columns[0].Count);
     }
 
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(10)]
+    [InlineData(30)]
+    public void ChunkIntoColumns_ExactlyCapacityItems_IsOneColumnWithNoEmptyTrailingColumn(int capacity)
+    {
+        // The exact boundary the other cases straddle without ever landing on: item count == perColumn.
+        // The loop's `i += capacity` advances past Count on the first pass, so there must be exactly ONE
+        // column and no zero-length trailing one — an off-by-one in the loop condition (`i <= items
+        // .Count`, or a `capacity` that is not the stride) shows up here and nowhere else in this file.
+        // 30 is included specifically because it is the 设置 page's own NumericUpDown maximum
+        // (AppearanceCard.axaml, Minimum="1" Maximum="30"), so the boundary is covered at the largest
+        // value the UI can produce as well as at the smallest.
+        var columns = MenuLayout.ChunkIntoColumns(Items(capacity), capacity);
+
+        Assert.Single(columns);
+        Assert.Equal(capacity, columns[0].Count);
+        Assert.DoesNotContain(columns, c => c.Count == 0);
+        Assert.Equal(Items(capacity), columns[0]);
+    }
+
+    [Fact]
+    public void ChunkIntoColumns_CapacityFarLargerThanItemCount_IsOneColumnAndDoesNotOverrun()
+    {
+        // A hand-edited config.json is explicitly allowed to carry a ColButtonCount outside the UI's
+        // [1, 30] band (GeneralConfig.ColButtonCount's own remarks say so, and nothing clamps the upper
+        // end at the point of use), so a very large capacity is reachable in practice, not just in
+        // theory. The inner `Math.Min(capacity, items.Count - i)` is what keeps it from indexing past
+        // the end; without it this case throws rather than returning one short column.
+        var columns = MenuLayout.ChunkIntoColumns(Items(4), int.MaxValue);
+
+        Assert.Single(columns);
+        Assert.Equal(4, columns[0].Count);
+        Assert.Equal(Items(4), columns[0]);
+    }
+
     [Fact]
     public void ChunkIntoColumns_EmptyInput_ProducesNoColumns()
     {

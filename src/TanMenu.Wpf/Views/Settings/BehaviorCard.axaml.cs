@@ -264,6 +264,24 @@ public partial class BehaviorCard : UserControl, ISettingsCard
         await ShowErrorAsync(L("PinToTaskbarManualOpenFailed"));
     }
 
+    /// <summary>Re-query the OS pin state and push it onto the row. The button is disabled for the
+    /// duration, so it is never clickable while this card does not yet know what clicking it would
+    /// mean.</summary>
+    /// <remarks>
+    /// The inner try/catch is not decoration. This method's caller is
+    /// <see cref="RunSafely"/>, which LOGS AND SWALLOWS — so without it, any fault between the
+    /// <c>IsEnabled = false</c> above and <see cref="ApplyTaskbarPinState"/> below would leave the row
+    /// permanently dead for the rest of the session: a disabled button whose label and status line
+    /// still describe the pre-query guess, and no way for the user to reach the manual fallback. That
+    /// is not reachable through <see cref="TaskbarPinService.GetStateAsync"/>'s OWN body today — it
+    /// wraps everything, including the awaited WinRT call, in its own catch and returns
+    /// <see cref="TaskbarPinStatus.Unsupported"/> rather than throwing (verified by reading it, not
+    /// assumed) — but "the query cannot fail" is a property of a collaborator this class does not own,
+    /// and the cost of not depending on it is four lines. A caught fault is rendered as
+    /// <see cref="TaskbarPinStatus.Failed"/>, which <see cref="ApplyTaskbarPinState"/> already renders
+    /// honestly: neutral theme, re-enabled, "open the Start-menu entry yourself" content, and the
+    /// error in the status line.
+    /// </remarks>
     private async Task RefreshTaskbarPinStateAsync()
     {
         if (_taskbarPinRefreshing)
@@ -273,7 +291,16 @@ public partial class BehaviorCard : UserControl, ISettingsCard
         try
         {
             PinTaskbarBtn.IsEnabled = false; // dead while the async query runs
-            var state = await _taskbarPin.GetStateAsync();
+            TaskbarPinState state;
+            try
+            {
+                state = await _taskbarPin.GetStateAsync();
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Error(ex, "查询固定到任务栏状态失败");
+                state = new TaskbarPinState(TaskbarPinStatus.Failed, ex.Message);
+            }
 
             // TaskbarPinService.GetStateAsync itself only logs on exception, so this is the one place
             // that proves a re-query actually ran on this visit rather than reusing the cached state —
@@ -328,6 +355,15 @@ public partial class BehaviorCard : UserControl, ISettingsCard
         // therefore leave whatever theme is already applied alone rather than null it out; the next
         // real re-attach (see OnAttachedToVisualTree's own remarks) always re-queries and re-applies
         // correctly once the tree is live again.
+        //
+        // Round 3 residual review: that guard alone still left the FIRST call of a process rendering
+        // wrong, because "nothing has been assigned yet" and "a lookup failed, so nothing was
+        // assigned" were the same pixels — stock Fluent — for a Button that carried no Theme and no
+        // Classes in XAML at all. BehaviorCard.axaml now gives this button a static default Theme of
+        // the NEUTRAL TmButton (see that element's own comment for why neutral and not accent), so a
+        // failed lookup here lands on a deliberate, defensible look rather than on Avalonia's default
+        // one, and this assignment is a correction of a known-good starting point rather than the only
+        // thing standing between the button and stock Fluent.
         if (this.FindResource(isPinned ? "TmButton" : "TmAccentButton") is ControlTheme theme)
             PinTaskbarBtn.Theme = theme;
 

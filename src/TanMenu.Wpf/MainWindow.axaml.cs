@@ -236,18 +236,45 @@ public partial class MainWindow : Window
     /// <para>
     /// THE GUARD IS LOAD-BEARING, not defensive tidiness (review finding 1, CRITICAL). Measuring
     /// <see cref="_appPage"/> while 设置 is the hosted page does REAL, REPRODUCED damage to the window's
-    /// SIZE: <c>ContentControl</c> removes the outgoing content from <c>LogicalChildren</c> SYNCHRONOUSLY
-    /// when <see cref="PageHost"/>'s Content is reassigned, and <c>StyledElement.OnDetachedFromLogicalTreeCore</c>
-    /// then recurses the whole subtree calling <c>InvalidateStyles</c>, which drops every style frame from
-    /// the value store and clears <c>_stylesApplied</c> — both established by decompiling Avalonia 12.1.0.
-    /// A page measured in that state has lost <c>Button.tm-tile</c>'s fixed 168 DIP width — a plain
-    /// <c>Width</c> Setter on <c>TmTileButton</c> (Launcher.axaml); Round 3, Task 4 removed the older
-    /// <c>Panel.size-* Button.tm-tile</c> class-scoped 168/192/216 variants this comment used to cite —
-    /// and every other app-level style, so the window is sized from a ragged, text-width measurement and
-    /// lands on its MinWidth/MinHeight floor — reproduced live by temporarily removing this guard: the
-    /// window latched at a wrong 850x568 DIP for the rest of the session. (This paragraph previously
-    /// cited "final-fix-report.md, finding 1" for that reproduction; no such write-up exists under that
-    /// name — the citation was a forward reference to a report that had not been written yet.)
+    /// SIZE: reproduced live by temporarily removing this guard, the window latched at a wrong
+    /// 850x568 DIP for the rest of the session — 568 being <c>MainWindow.axaml</c>'s own
+    /// <c>MinHeight</c>, i.e. a measurement that had collapsed onto the floor. (This paragraph
+    /// previously cited "final-fix-report.md, finding 1" for that reproduction; no such write-up exists
+    /// under that name — the citation was a forward reference to a report that had not been written
+    /// yet. That reproduction is the observed fact this guard rests on.)
+    /// </para>
+    /// <para>
+    /// The MECHANISM, restated in Round 3's residual review after the previous wording was found to
+    /// contradict the file it cited, and this time traced end-to-end through decompiled Avalonia
+    /// 12.1.0 rather than inferred. <c>ContentControl</c> removes the outgoing content from
+    /// <c>LogicalChildren</c> synchronously when <see cref="PageHost"/>'s Content is reassigned;
+    /// <c>StyledElement.OnDetachedFromLogicalTreeCore</c> then calls <c>InvalidateStyles(recurse:
+    /// false)</c> on each element and recurses the subtree itself. <c>InvalidateStyles</c> does exactly
+    /// two things: <c>ValueStore.RemoveFrames(FrameType.Style)</c> and <c>_stylesApplied = false</c>.
+    /// <c>FrameType</c> is a three-value enum (<c>Style</c>, <c>TemplatedParentTheme</c>,
+    /// <c>Theme</c>) and <c>RemoveFrames</c> filters on <c>FramePriority.IsType</c>, i.e.
+    /// <c>(int)priority % 3 == (int)type</c> — so it removes STYLE frames only. A ControlTheme applied
+    /// through an element-local <c>Theme</c> value is installed as a <c>FrameType.Theme</c> frame
+    /// (<c>ApplyControlTheme(theme, FrameType.Theme)</c>, reached because <c>GetEffectiveTheme</c>
+    /// returns the local <c>Theme</c> before it ever consults the implicit one), and nothing on the
+    /// detach path removes it: theme frames are dropped only by <c>OnControlThemeChanged</c> (the
+    /// <c>Theme</c> property itself changing) and by <c>ReevaluateImplicitTheme</c>, which runs on
+    /// ATTACH and short-circuits for an element that has a local <c>Theme</c>. <c>_themeApplied</c> is
+    /// likewise not cleared.
+    /// </para>
+    /// <para>
+    /// So the previous wording here was wrong in both halves and is corrected: the tiles do NOT lose
+    /// their 168 DIP width. That width is a <c>Width</c> Setter on the <c>TmTileButton</c> ControlTheme
+    /// (<c>Themes/Fluent2/Launcher.axaml</c>), applied element-locally as
+    /// <c>Theme="{StaticResource TmTileButton}"</c> in <c>Views/AppPage.axaml</c> — there is no
+    /// <c>Button.tm-tile</c> style setting Width anywhere, and a theme frame survives the detach.
+    /// What IS lost is every APP-LEVEL, class-scoped style frame the page depends on, which is still
+    /// plenty to corrupt a measurement: <c>Image.tm-tile-icon</c>'s 20x20 icon box, <c>TextBlock
+    /// .tm-section</c>'s size/line-height/weight, <c>Border.tm-section-head</c>'s padding,
+    /// <c>StackPanel.tm-group</c>'s alignment, the search field's whole geometry, and so on. Which of
+    /// those produced 850x568 specifically was not isolated, and is not claimed here — the guard is
+    /// justified by the reproduction, and the mechanism above is stated only as far as the decompile
+    /// actually supports it.
     /// </para>
     /// <para>
     /// A SECOND, worse-sounding claim does NOT belong here as established fact: that the launcher then
@@ -256,17 +283,21 @@ public partial class MainWindow : Window
     /// sets <c>_stylesApplied = true</c> UNCONDITIONALLY even though nothing can match while
     /// <c>StylingParent</c> is null, and the page's own later <c>OnAttachedToLogicalTreeCore</c> gates its
     /// re-styling on <c>_logicalRoot == null</c>, so its own <c>ApplyStyling()</c> call there sees the
-    /// flag already set and no-ops — traced in the same decompile. But it was NOT observed: in both live
-    /// pre-fix reproductions the tiles came back at their correct width (192 DIP — this predates Round 3,
-    /// Task 4's later change to a fixed 168 DIP regardless of any setting) once the launcher was
-    /// reattached to 应用, i.e. the styles WERE re-applied despite the latch. The most likely reason is
-    /// <see cref="TanMenu.Wpf.ViewModels.LauncherViewModel.ReloadAsync"/> — it replaces the tile
-    /// containers outright when the rebuild result reports a change, and only relabels the EXISTING ones
-    /// otherwise, so a reload that finds nothing changed after a 设置→应用 round trip would keep whatever
-    /// stale containers the mechanism above predicts, while one that does rebuild hands back fresh,
-    /// correctly-styled ones — this does not fire on every run, so it does not rule the mechanism out, it
-    /// only explains why it was not seen. Treat the sizing damage as confirmed and the un-styling as a
-    /// live risk this same guard happens to close, not as an observed fact.
+    /// flag already set and no-ops — traced in the same decompile. But it was NOT observed as such: in
+    /// both live pre-fix reproductions the launcher looked normal again once it was reattached to 应用.
+    /// The evidence recorded for that at the time was "the tiles came back at their correct width (192
+    /// DIP — this predates Round 3, Task 4's later change to a fixed 168 DIP regardless of any
+    /// setting)", and Round 3's residual review retired that particular piece of evidence: tile width
+    /// comes from <c>TmTileButton</c>'s <c>Width</c> Setter, i.e. a <c>FrameType.Theme</c> frame that
+    /// the detach never removed in the first place (see the previous paragraph), so a correct tile
+    /// width proves nothing either way about whether STYLE frames were re-applied. The observation
+    /// that the page looked right stands; the inference drawn from that one measurement does not.
+    /// A candidate explanation also recorded at the time —
+    /// <see cref="TanMenu.Wpf.ViewModels.LauncherViewModel.ReloadAsync"/> replaces the tile containers
+    /// outright when a rebuild reports a change and only relabels the existing ones otherwise, so some
+    /// runs hand back fresh, correctly-styled containers — remains a candidate and was never confirmed.
+    /// Treat the sizing damage as confirmed and the un-styling as a live risk this same guard happens
+    /// to close, not as an observed fact and not as a ruled-out one.
     /// </para>
     /// <para>
     /// The tray's 选项 entry reaches exactly the sizing defect above: <c>SettingsLauncher.OpenCore</c>
