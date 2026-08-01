@@ -14,11 +14,16 @@ namespace TanMenu.Wpf.Controls;
 /// <c>position:fixed</c>, which contributes no layout size (launcher spec §7 and §9).
 /// </para>
 /// <para>
-/// The window has been a fixed, user-resized application window since 0.12 and no longer sizes
-/// itself from content, so this panel's own DesiredSize no longer feeds back into the window. It stays
-/// in place because it still shapes how the OVERLAYS themselves measure: they see the first child's
-/// (the main surface's) desired width rather than the raw available size, so the toast's single-line
-/// text still ellipsises against the real content width instead of an unconstrained one.
+/// Between 0.12 and Round 2's Task 4 the window was a fixed, user-resized application window that never
+/// sized itself from content, so this panel's own DesiredSize did not feed back into the window over
+/// that stretch. Round 2 brought content-driven sizing back — <c>WindowHost.FitToContent</c> measures
+/// <c>AppPage</c> (this panel's own host) directly, so this panel's DesiredSize is once again exactly
+/// what the window's content-driven width/height are built from, on every cold start. Either way, this
+/// panel still exists for the same original reason: it shapes how the OVERLAYS themselves measure — they
+/// see the first child's (the main surface's) desired width rather than the raw available size, so the
+/// toast's single-line text still ellipsises against the real content width instead of an unconstrained
+/// one, AND — the part that would break without it — opening About or showing a toast never changes what
+/// gets measured, which would otherwise feed a moving target into fit-to-content.
 /// </para>
 /// </summary>
 public sealed class OverlayPanel : Panel

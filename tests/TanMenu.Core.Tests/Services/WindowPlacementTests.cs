@@ -141,4 +141,74 @@ public class WindowPlacementTests
         Assert.Equal(-1500, r.Left);
         Assert.Equal(120, r.Top);
     }
+
+    // ══════════════════════════════════════════════════════════════════════════════════════════
+    // ResolveContentFit — Round 2's "size is recomputed from content on every start" feature.
+    // Uses this app's own real constants (48 DIP rail collapsed, 48 DIP title strip, 760x520 minimum)
+    // so each case reads as a directly meaningful scenario, not an abstract one.
+    // ══════════════════════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void ResolveContentFit_SmallContent_IsRaisedToTheAppMinimum()
+    {
+        // Very little content (e.g. one or two thin categories) plus the 48 DIP rail and 48 DIP title
+        // strip still lands below 760x520 — the floor wins, exactly like a tiny saved size did before.
+        var r = WindowPlacement.ResolveContentFit(
+            contentWidth: 300, contentHeight: 200,
+            chromeWidth: 48, chromeHeight: 48,
+            currentLeft: 100, currentTop: 100,
+            workArea: Work, minWidth: 760, minHeight: 520);
+
+        Assert.Equal(760, r.Width);
+        Assert.Equal(520, r.Height);
+    }
+
+    [Fact]
+    public void ResolveContentFit_ContentBetweenMinimumAndWorkArea_FitsExactly()
+    {
+        // The "5 categories: no scrollbar, no wasted space" case — content plus chrome above the
+        // minimum but well inside the work area must come back UNCHANGED, not inflated to fill the
+        // screen and not shrunk to the minimum.
+        var r = WindowPlacement.ResolveContentFit(
+            contentWidth: 900, contentHeight: 700,
+            chromeWidth: 48, chromeHeight: 48,
+            currentLeft: 200, currentTop: 150,
+            workArea: Work, minWidth: 760, minHeight: 520);
+
+        Assert.Equal(948, r.Width);   // 900 + 48
+        Assert.Equal(748, r.Height);  // 700 + 48
+        Assert.Equal(200, r.Left);
+        Assert.Equal(150, r.Top);
+    }
+
+    [Fact]
+    public void ResolveContentFit_ContentFarLargerThanWorkArea_ClampsInsteadOfGrowingOffScreen()
+    {
+        // "Force a content set far larger than the work area: confirm it clamps and scrolls" — the
+        // window must never exceed the work area just because the content wants more.
+        var r = WindowPlacement.ResolveContentFit(
+            contentWidth: 6000, contentHeight: 4000,
+            chromeWidth: 48, chromeHeight: 48,
+            currentLeft: 0, currentTop: 0,
+            workArea: Work, minWidth: 760, minHeight: 520);
+
+        Assert.Equal(1920, r.Width);
+        Assert.Equal(1040, r.Height);
+    }
+
+    [Fact]
+    public void ResolveContentFit_UnsetPosition_CentresOnWorkArea()
+    {
+        // Fit-to-content always has a real current position by the time it runs (the window is already
+        // placed and shown) — this documents that the null path still falls through to Resolve's own
+        // centring, exercised directly by the other Resolve tests above.
+        var r = WindowPlacement.ResolveContentFit(
+            contentWidth: 952, contentHeight: 592,
+            chromeWidth: 48, chromeHeight: 48,
+            currentLeft: null, currentTop: null,
+            workArea: Work, minWidth: 760, minHeight: 520);
+
+        Assert.Equal(460, r.Left);   // (1920 - 1000) / 2
+        Assert.Equal(200, r.Top);    // (1040 - 640) / 2
+    }
 }

@@ -58,7 +58,15 @@ public class GeneralConfig
     /// to be a no-op on the latter.</summary>
     public int SchemaVersion { get; set; } = 0;
 
-    /// <summary>Restored window size, in DIPs.</summary>
+    /// <summary>Legacy setting retained only so pre-Round-2 config files deserialize cleanly (same
+    /// pattern as <see cref="ShowInTaskbar"/>/<see cref="ColButtonCount"/> below). Round 2 decided
+    /// "size is recomputed from content on every start; position is still remembered" — the window's
+    /// Width/Height are no longer restored from these values at all (<c>WindowHost.RestorePlacement</c>
+    /// uses a fixed placeholder instead, immediately superseded by <c>WindowHost.FitToContent</c> once
+    /// the launcher's async startup build produces something to measure) and nothing writes to these
+    /// two properties any more either — a value the app can no longer act on is not worth persisting,
+    /// and continuing to write it without ever reading it back would be exactly the kind of stale,
+    /// misleading field this comment exists to warn a future reader about.</summary>
     public double WindowWidth { get; set; } = 1000;
     public double WindowHeight { get; set; } = 640;
 

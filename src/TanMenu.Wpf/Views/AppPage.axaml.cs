@@ -59,13 +59,17 @@ public partial class AppPage : UserControl, IDisposable
     /// class remarks for why this is not a second view model.</summary>
     public LauncherViewModel ViewModel => _viewModel;
 
-    /// <summary>Kick off the menu build. Deliberately NOT done in the constructor: this control is
-    /// constructed while the shell is still being built — MainWindow's own field initializer runs
-    /// before <c>InitializeComponent</c>, before <c>Show()</c> — and the launcher's startup contract
-    /// is that the build begins strictly after the window is shown. Called once, from
-    /// <c>MainWindow.OnOpened</c>, in the same position the pre-split window called
-    /// <c>LauncherViewModel.InitializeAsync</c> from.</summary>
-    public void BeginInitialize() => _ = _viewModel.InitializeAsync();
+    /// <summary>Kick off the menu build and return the SAME memoized Task every caller of
+    /// <c>LauncherViewModel.InitializeAsync</c> shares. Deliberately NOT done in the constructor: this
+    /// control is constructed while the shell is still being built — MainWindow's own field initializer
+    /// runs before <c>InitializeComponent</c>, before <c>Show()</c> — and the launcher's startup contract
+    /// is that the build begins strictly after the window is shown. Called from <c>MainWindow.OnOpened</c>
+    /// on every <c>Show()</c> (cold start and every later un-hide alike — memoization makes every call
+    /// after the first an instant no-op), in the same position the pre-split window called
+    /// <c>LauncherViewModel.InitializeAsync</c> from. Returning the Task (rather than the old
+    /// fire-and-forget <c>void</c>) is what lets <c>MainWindow</c> await it before fitting the window to
+    /// whatever it built — see <c>MainWindow.InitializeAndFitAsync</c>.</summary>
+    public Task BeginInitialize() => _viewModel.InitializeAsync();
 
     /// <summary>Dispose the owned view model. Called exactly once, from <c>MainWindow.OnClosed</c> —
     /// the only path that fires at real application exit, since <c>MainWindow.OnClosing</c> hides to

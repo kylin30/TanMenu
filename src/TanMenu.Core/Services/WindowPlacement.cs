@@ -119,6 +119,41 @@ public static class WindowPlacement
         return primary;
     }
 
+    /// <summary>
+    /// Combine a measured page-content size with the shell chrome around it (the navigation rail's
+    /// current width, the title strip's fixed height) into a full window size, then clamp/position it
+    /// exactly like <see cref="Resolve"/>. This is the one new piece of arithmetic Round 2's
+    /// fit-to-content feature needs on top of <see cref="Resolve"/>/<see cref="ChooseWorkArea"/> — pulled
+    /// out here, rather than left inline in <c>WindowHost</c>, so it is unit-testable without measuring a
+    /// real Avalonia visual tree.
+    /// </summary>
+    /// <param name="contentWidth">The active page's natural content width, as measured by Avalonia (e.g.
+    /// <c>AppPage.DesiredSize.Width</c>) — excludes the navigation rail.</param>
+    /// <param name="contentHeight">The active page's natural content height — excludes the title strip.</param>
+    /// <param name="chromeWidth">Everything beside the content that still counts toward the window's own
+    /// Width: the navigation rail's CURRENT width (48 collapsed / 200 expanded).</param>
+    /// <param name="chromeHeight">Everything above the content that still counts toward the window's own
+    /// Height: the title strip.</param>
+    /// <param name="currentLeft">Where to keep the window horizontally — the window's OWN current
+    /// position, not a saved config value: fit-to-content runs after the window is already placed and
+    /// shown, so there is always a real position to preserve. Null only centres, exactly like
+    /// <see cref="Resolve"/>'s <c>savedLeft</c>.</param>
+    /// <param name="currentTop">As <paramref name="currentLeft"/>, vertically.</param>
+    public static PlacementRect ResolveContentFit(
+        double contentWidth,
+        double contentHeight,
+        double chromeWidth,
+        double chromeHeight,
+        double? currentLeft,
+        double? currentTop,
+        PlacementRect workArea,
+        double minWidth,
+        double minHeight) =>
+        Resolve(
+            currentLeft, currentTop,
+            contentWidth + chromeWidth, contentHeight + chromeHeight,
+            workArea, minWidth, minHeight);
+
     private static double Clamp(double value, double min, double max) =>
         max < min ? min : Math.Min(Math.Max(value, min), max);
 }

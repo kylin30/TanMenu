@@ -27,12 +27,22 @@
              up on every reveal: RefreshPinNoticeAsync (AppPage.axaml.cs) opens it whenever the app is
              not yet pinned and 不再提示 has not been chosen, and closes it the moment the pin succeeds
              or the user dismisses it. Docked above the update notice, at the top of the page — the
-             shell's title strip (search + overflow) sits above this in the window, not in this page. -->
+             shell's title strip (search + overflow) sits above this in the window, not in this page.
+
+             PinNowButton/PinNeverButton were still default Avalonia Fluent-1 buttons — a scope gap Task
+             3 introduced (its own plan scoped "buttons are wrong" to settings-card buttons, but the
+             user's complaint was blanket). Same criterion Task 3 applied everywhere else: PinNowButton
+             is the SAME 固定到任务栏 action BehaviorCard's PinTaskbarBtn already gets TmAccentButton for
+             ("the one button on its row, and it does the useful thing"), so it gets the accent here too,
+             for the same action to look the same regardless of which entry point shows it; PinNeverButton
+             is a decline, not a forward-moving action, so it stays on the plain TmButton — the local
+             Padding="14,5" is removed from both, same as every settings-card button in Task 3: a local
+             value would outrank the theme's own Padding setter and defeat it. -->
         <ctl:InfoBar x:Name="PinNotice" DockPanel.Dock="Top" Margin="12,0,12,8"
                      IsOpen="False" Dismissed="OnPinNoticeDismissed">
           <StackPanel Orientation="Horizontal" Spacing="8">
-            <Button x:Name="PinNowButton" Click="OnPinNowClick" Padding="14,5" />
-            <Button x:Name="PinNeverButton" Click="OnPinNeverClick" Padding="14,5" />
+            <Button x:Name="PinNowButton" Theme="{StaticResource TmAccentButton}" Click="OnPinNowClick" />
+            <Button x:Name="PinNeverButton" Theme="{StaticResource TmButton}" Click="OnPinNeverClick" />
           </StackPanel>
         </ctl:InfoBar>
 
@@ -186,7 +196,11 @@
                        CopyrightText="{Binding CopyrightText}"
                        HintText="{Binding ClickToDismissText}" />
 
-      <!-- 3. Loaded, but there is genuinely nothing configured. -->
+      <!-- 3. Loaded, but there is genuinely nothing configured. Both recovery buttons were still
+           default Avalonia Fluent-1 buttons — found while auditing the app for Task 3's scope gap (see
+           the PinNotice comment above); neither is named in that gap's own brief, but they are the same
+           kind of miss. Two peer actions, neither a single obvious default — plain TmButton for both,
+           same criterion FoldersCard's own peer-action rows use. -->
       <StackPanel Classes="tm-empty" IsVisible="{Binding ShowEmpty}"
                   HorizontalAlignment="Center" VerticalAlignment="Center">
         <TextBlock Classes="title" Text="{Binding EmptyTitleText}"
@@ -194,19 +208,23 @@
         <TextBlock Text="{Binding EmptyHelpText}" MaxWidth="360" />
         <StackPanel Orientation="Horizontal" Spacing="8"
                     HorizontalAlignment="Center" Margin="0,14,0,0">
-          <Button Content="{Binding OpenOptionsText}" Click="OnOpenSettingsClick" Padding="14,6" />
-          <Button Content="{Binding MenuRefreshText}" Click="OnRefreshClick" Padding="14,6" />
+          <Button Theme="{StaticResource TmButton}" Content="{Binding OpenOptionsText}" Click="OnOpenSettingsClick" />
+          <Button Theme="{StaticResource TmButton}" Content="{Binding MenuRefreshText}" Click="OnRefreshClick" />
         </StackPanel>
       </StackPanel>
 
-      <!-- 4. There ARE shortcuts, but the filter matched none of them. -->
+      <!-- 4. There ARE shortcuts, but the filter matched none of them. The clear-filter button is the
+           other button this Task's brief names explicitly (the PinNotice comment above covers the
+           other scope-gap fix). It is a reset, the same category as the settings page's HotkeyClearBtn
+           (Task 3 kept that one plain rather than accented "because clearing is a reset, not an
+           affirmative action") — plain TmButton here for the identical reason. -->
       <StackPanel Classes="tm-empty" IsVisible="{Binding ShowNoMatches}"
                   HorizontalAlignment="Center" VerticalAlignment="Center">
         <TextBlock Classes="title" Text="{Binding NoMatchTitleText}"
                    FontFamily="{Binding TitleFontFamily}" />
         <TextBlock Text="{Binding NoMatchHelpText}" MaxWidth="360" />
-        <Button Content="{Binding ClearFilterText}" Click="OnClearFilterClick"
-                Padding="14,6" HorizontalAlignment="Center" Margin="0,14,0,0" />
+        <Button Theme="{StaticResource TmButton}" Content="{Binding ClearFilterText}" Click="OnClearFilterClick"
+                HorizontalAlignment="Center" Margin="0,14,0,0" />
       </StackPanel>
 
       <!-- Transient error. Click anywhere on it to dismiss; otherwise it self-clears. -->

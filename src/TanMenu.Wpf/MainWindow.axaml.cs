@@ -21,8 +21,10 @@ namespace TanMenu.Wpf;
 /// <see cref="AppPage.ViewModel"/>) rather than a second one, since AppPage still owns the keyboard
 /// model (Escape, Down-into-the-grid) that the search box's key handling has to reach into. This class
 /// owns what genuinely belongs to the window — the Mica fallback, close-to-tray, the caption-button
-/// reservation, the rail's collapsed/expanded choice, and swapping the page host's content between the
-/// two rail entries.
+/// reservation, the rail's collapsed/expanded choice, swapping the page host's content between the two
+/// rail entries, and kicking off the startup build + the one-time fit-to-content resize that follows it
+/// (<see cref="InitializeAndFitAsync"/>) — the actual geometry math for the latter lives in
+/// <c>WindowHost</c>, which owns every other piece of window placement too.
 /// </summary>
 public partial class MainWindow : Window
 {
@@ -35,6 +37,12 @@ public partial class MainWindow : Window
     // (and Attach's own ShowPage call, if a navigation arrived before the window existed) raise
     // synchronously WHILE this constructor is still running — see OnNavSelectionChanged.
     private bool _navReady;
+
+    // Guards WindowHost.FitToContent against running more than once per PROCESS. OnOpened re-enters on
+    // every later un-hide (WindowHost.ShowAndActivate calls Show() again whenever the window was
+    // hidden), which must NOT re-fit the window away from a resize the user made mid-session — see
+    // InitializeAndFitAsync's own remarks.
+    private bool _fitToContentDone;
 
     public MainWindow()
     {
@@ -90,7 +98,40 @@ public partial class MainWindow : Window
         // timing-dependent on whether the build finishes before Show() instead of strictly ordered
         // after it, as it was before this class existed. It also has to precede the cold start's
         // LauncherShown, which App raises once Show() has returned — see ShowLauncherWindow's remarks.
-        _appPage.BeginInitialize();
+        // Fire-and-forget (as BeginInitialize's own call always was): InitializeAndFitAsync's inner
+        // await is on LauncherViewModel.InitializeAsync's memoized Task, which swallows its own
+        // exceptions (see InitializeCoreAsync's catch), so there is nothing here that can escape unobserved.
+        _ = InitializeAndFitAsync();
+    }
+
+    /// <summary>
+    /// Await the startup build, THEN fit the window to what it actually built — never the other way
+    /// around. AppPage's natural size is meaningless before its categories exist: InitializeAsync's
+    /// ReloadAsync is an async disk scan (see AppPage.BeginInitialize's own remarks for why the build
+    /// cannot start any earlier than OnOpened), so a fit attempted before this would measure the splash,
+    /// not the menu.
+    /// </summary>
+    /// <remarks>
+    /// Runs the FIT exactly once per PROCESS, not once per <c>Show()</c>: <see cref="_fitToContentDone"/>
+    /// survives a later hide/tray-restore, which re-enters <see cref="OnOpened"/> (and therefore this
+    /// method) but must not silently undo a resize the user made mid-session. <c>BeginInitialize</c>
+    /// itself is still called on every entry — it is memoized, so every call after the first just awaits
+    /// the already-completed Task — matching what the un-guarded, fire-and-forget call here did before
+    /// this method existed.
+    /// </remarks>
+    private async Task InitializeAndFitAsync()
+    {
+        await _appPage.BeginInitialize();
+
+        if (_fitToContentDone)
+            return;
+        _fitToContentDone = true;
+
+        // Read straight from config, not NavRailPane's own live Width/Bounds — see
+        // WindowHost.FitToContent's own <param> remarks on railWidth for why: a config value can never
+        // be mid-animation.
+        var expanded = App.Services.GetRequiredService<ConfigService>().Config.General.NavRailExpanded;
+        (_host as WindowHost)?.FitToContent(_appPage, expanded ? 200.0 : 48.0);
     }
 
     protected override void OnClosed(EventArgs e)

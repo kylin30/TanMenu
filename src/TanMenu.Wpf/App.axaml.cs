@@ -184,7 +184,11 @@ public partial class App : Application
     /// <c>MainWindow.OnOpened</c>) paints one frame at the OS cascade position and then jumps,
     /// measured at ~30 ms.</item>
     /// <item>SHOW, which synchronously runs <c>MainWindow.OnOpened</c>: the tray/hotkey wiring below
-    /// and then <c>AppPage.BeginInitialize()</c>, the startup menu build.</item>
+    /// and then <c>AppPage.BeginInitialize()</c>, the startup menu build. Round 2's Task 4 added a
+    /// further, still-asynchronous step after that build completes — <c>WindowHost.FitToContent</c>,
+    /// which resizes the window to what the build actually produced. Nothing below depends on THAT step
+    /// specifically finishing before it runs; it is ordered only relative to the build, not to
+    /// LauncherShown.</item>
     /// <item>RAISE LauncherShown, last. It must follow the startup build, not precede it: the view
     /// model's first-summon guard exists to suppress the redundant rescan the startup build already
     /// covers, and when the event arrived first (raised from <c>OnLauncherOpened</c>, i.e. inside
