@@ -55,7 +55,7 @@ source-generated `System.Text.Json`, `Microsoft.Extensions.DependencyInjection`,
 - Recall: permanent taskbar pin, system tray (left-click toggle, show/exit menu), single instance.
 - Optional **autostart** (per-user registry Run entry; deliberately unavailable in portable mode).
 - A **settings page** (not a separate window) grouped into Windows 11 setting cards — appearance
-  (language/light-dark/font/button size), behavior (auto-hide-on-blur and always-on-top, both off by
+  (language/light-dark/font/items per column), behavior (auto-hide-on-blur and always-on-top, both off by
   default; autostart; taskbar pinning; a configurable global hotkey), folders (main folder, a
   relocatable data folder, cache/backup/restore), common tools, and updates. Every control applies
   immediately; only the three actions that move or overwrite real data (change/reset the data folder,

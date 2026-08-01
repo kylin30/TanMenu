@@ -232,7 +232,7 @@ public sealed partial class WindowHost : IWindowHost
     /// reject it: this
     /// latches <see cref="_userResized"/> to true and records whatever client size Windows itself chose
     /// for the restore, not the fit's. The one re-fit that already ran keeps its result on screen, but
-    /// every LATER re-fit trigger for the rest of the process — a rail toggle, a 小/中/大 change, another
+    /// every LATER re-fit trigger for the rest of the process — a rail toggle, a 每列个数 change, another
     /// un-maximize — is silently disabled from this point on, exactly as a genuine manual resize disables
     /// it. This is pre-existing behaviour, not introduced by this remark, and the user has not been asked
     /// whether a maximize-then-drag-to-restore gesture should count as "I chose a size" the same way an
@@ -474,7 +474,7 @@ public sealed partial class WindowHost : IWindowHost
     /// content-driven size would otherwise push the window off screen — see the remarks). Called on
     /// EVERY summon, not only a cold start (see the class remarks), and again on every other event that
     /// changes what the active page measures: a docked notice opening or closing, the navigation rail
-    /// expanding or collapsing, a 小/中/大 / 字体 / 语言 change, a switch back to 应用 from 设置, and the
+    /// expanding or collapsing, a 每列个数 / 字体 / 语言 change, a switch back to 应用 from 设置, and the
     /// Maximized→Normal transition. It is a cheap, idempotent re-measure, not a one-time setup step, and
     /// a re-fit that computes the geometry the window already has writes nothing at all
     /// (<see cref="WindowPlacement.IsSamePlacement"/>), so none of those triggers can cascade.
@@ -589,22 +589,41 @@ public sealed partial class WindowHost : IWindowHost
                 currentLeft, currentTop,
                 work, _window.MinWidth, _window.MinHeight);
 
+            // Round 3 final-fix report, finding 4: compare against the size the PREVIOUS fit
+            // requested (captured here, before it is overwritten below), NOT the window's live
+            // Width/Height. Task 4's MinHeight="568" can sit below this window's own practical floor —
+            // its title strip/chrome mean Windows will not actually let the client area go below
+            // roughly 605 DIP outer regardless of what is requested — and Win32.WindowImpl clamps a
+            // too-small SetWindowPlacement call up to that floor, then writes the CLAMPED value back
+            // into Width/Height on the next layout pass. Comparing against that live, clamped size
+            // therefore never matched what a fit had actually asked for (568 vs ~605), so this check
+            // could never short-circuit in that regime and every cold start logged and debounce-wrote
+            // TWICE instead of once. The previous fit's own requested size is the one thing this class
+            // truly controls and can compare against meaningfully; null (nothing has fit yet this
+            // process) always counts as "different", so the very first fit of a process is never
+            // skipped.
+            var previousFitWidthDip = _lastFitWidthDip;
+            var previousFitHeightDip = _lastFitHeightDip;
+
             // Remembered even when the window already has this geometry: RestorePlacement reads it as
             // the PRE-SHOW size on the next summon, and "we measured and this is the answer" is true
             // whether or not the answer differed from what was already on screen.
             _lastFitWidthDip = placement.Width;
             _lastFitHeightDip = placement.Height;
 
-            var current = new PlacementRect(currentLeft, currentTop, _window.Width, _window.Height);
-            if (WindowPlacement.IsSamePlacement(placement, current))
+            if (previousFitWidthDip is { } previousWidthDip && previousFitHeightDip is { } previousHeightDip)
             {
-                // Several triggers can fire for one user action (see IsSamePlacement's own remarks).
-                // Debug, not Information: a fit that changes nothing is not an event worth a line in the
-                // shipped log, but it is worth being able to see when chasing one that should have.
-                Serilog.Log.Debug(
-                    "Window fit to content: already {Width}x{Height} DIP; nothing to apply",
-                    placement.Width, placement.Height);
-                return;
+                var previous = new PlacementRect(currentLeft, currentTop, previousWidthDip, previousHeightDip);
+                if (WindowPlacement.IsSamePlacement(placement, previous))
+                {
+                    // Several triggers can fire for one user action (see IsSamePlacement's own remarks).
+                    // Debug, not Information: a fit that changes nothing is not an event worth a line in the
+                    // shipped log, but it is worth being able to see when chasing one that should have.
+                    Serilog.Log.Debug(
+                        "Window fit to content: already {Width}x{Height} DIP; nothing to apply",
+                        placement.Width, placement.Height);
+                    return;
+                }
             }
 
             _window.Width = placement.Width;

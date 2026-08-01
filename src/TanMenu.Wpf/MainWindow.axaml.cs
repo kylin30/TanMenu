@@ -116,10 +116,11 @@ public partial class MainWindow : Window
         // manually resized) apply here exactly as they do to every other call.
         _appPage.NoticeVisibilityChanged += OnNoticeVisibilityChanged;
 
-        // The 小/中/大 tile size, 字体 and 语言 all change what the page measures too, and none of them
-        // used to re-fit the window (review finding 2). The view model raises this once every rebuild
-        // has actually applied them — see OnLauncherContentMetricsChanged for why this, and not
-        // AppEvents.SettingsChanged, is the correct seam.
+        // The 每列个数 column count, 字体 and 语言 all change what the page measures too — this used to be
+        // the 小/中/大 tile size before Round 3, Task 4 replaced it — and none of them used to re-fit the
+        // window (review finding 2). The view model raises this once every rebuild has actually applied
+        // them — see OnLauncherContentMetricsChanged for why this, and not AppEvents.SettingsChanged, is
+        // the correct seam.
         _appPage.ViewModel.ContentMetricsChanged += OnLauncherContentMetricsChanged;
 
         _navReady = true;
@@ -198,6 +199,18 @@ public partial class MainWindow : Window
     /// and a fit that lands on the geometry already applied by an earlier one in the same batch is a
     /// free no-op (<see cref="WindowPlacement.IsSamePlacement"/>).
     /// </para>
+    /// <para>
+    /// Round 3 final-fix report, finding 4: that last claim — "a free no-op" — was FALSE for exactly the
+    /// low-content-height regime this same Task 4 created (a small ColButtonCount, or the default's own
+    /// natural height, both landing at or below MinHeight="568"). <c>WindowHost.FitToContent</c> used to
+    /// compare a fresh <c>ResolveContentFit</c> result against the window's LIVE Width/Height, but this
+    /// window cannot physically render below roughly 605 DIP outer regardless of what is requested (see
+    /// <c>GeneralConfig.ColButtonCount</c>'s own remarks), so the live size Windows actually applied and
+    /// the 568 DIP the fit had asked for never matched — the "free no-op" fired the whole
+    /// Width/Height/Position/log/debounced-write path a second time on every cold start instead of
+    /// skipping it. Fixed by comparing against the PREVIOUS fit's own requested size instead of the live
+    /// window size; the claim in this paragraph is accurate again as of that fix.
+    /// </para>
     /// </remarks>
     private async Task InitializeAndFitAsync()
     {
@@ -214,7 +227,7 @@ public partial class MainWindow : Window
     /// Called after the startup build finishes (<see cref="InitializeAndFitAsync"/>, on every summon)
     /// and again from every other event that changes what the active page measures: a docked notice
     /// opening/closing (<see cref="OnNoticeVisibilityChanged"/>), the rail expanding/collapsing
-    /// (<see cref="OnNavToggleClick"/>), a 小/中/大 / 字体 / 语言 change
+    /// (<see cref="OnNavToggleClick"/>), a 每列个数 / 字体 / 语言 change
     /// (<see cref="OnLauncherContentMetricsChanged"/>), a switch back to 应用
     /// (<see cref="ShowPage"/>), and the Maximized→Normal transition
     /// (<see cref="OnPropertyChanged"/>). All of them are the exact same operation, so there is one place
@@ -227,11 +240,14 @@ public partial class MainWindow : Window
     /// when <see cref="PageHost"/>'s Content is reassigned, and <c>StyledElement.OnDetachedFromLogicalTreeCore</c>
     /// then recurses the whole subtree calling <c>InvalidateStyles</c>, which drops every style frame from
     /// the value store and clears <c>_stylesApplied</c> — both established by decompiling Avalonia 12.1.0.
-    /// A page measured in that state has lost <c>Panel.size-* Button.tm-tile</c>'s fixed 168/192/216
-    /// widths (Launcher.axaml) and every other app-level style, so the window is sized from a ragged,
-    /// text-width measurement and lands on its MinWidth/MinHeight floor — reproduced live by temporarily
-    /// removing this guard: the window latched at a wrong 850x568 DIP for the rest of the session
-    /// (see final-fix-report.md, finding 1).
+    /// A page measured in that state has lost <c>Button.tm-tile</c>'s fixed 168 DIP width — a plain
+    /// <c>Width</c> Setter on <c>TmTileButton</c> (Launcher.axaml); Round 3, Task 4 removed the older
+    /// <c>Panel.size-* Button.tm-tile</c> class-scoped 168/192/216 variants this comment used to cite —
+    /// and every other app-level style, so the window is sized from a ragged, text-width measurement and
+    /// lands on its MinWidth/MinHeight floor — reproduced live by temporarily removing this guard: the
+    /// window latched at a wrong 850x568 DIP for the rest of the session. (This paragraph previously
+    /// cited "final-fix-report.md, finding 1" for that reproduction; no such write-up exists under that
+    /// name — the citation was a forward reference to a report that had not been written yet.)
     /// </para>
     /// <para>
     /// A SECOND, worse-sounding claim does NOT belong here as established fact: that the launcher then
@@ -241,8 +257,9 @@ public partial class MainWindow : Window
     /// <c>StylingParent</c> is null, and the page's own later <c>OnAttachedToLogicalTreeCore</c> gates its
     /// re-styling on <c>_logicalRoot == null</c>, so its own <c>ApplyStyling()</c> call there sees the
     /// flag already set and no-ops — traced in the same decompile. But it was NOT observed: in both live
-    /// pre-fix reproductions the tiles came back at the correct 192 DIP once the launcher was reattached
-    /// to 应用, i.e. the styles WERE re-applied despite the latch. The most likely reason is
+    /// pre-fix reproductions the tiles came back at their correct width (192 DIP — this predates Round 3,
+    /// Task 4's later change to a fixed 168 DIP regardless of any setting) once the launcher was
+    /// reattached to 应用, i.e. the styles WERE re-applied despite the latch. The most likely reason is
     /// <see cref="TanMenu.Wpf.ViewModels.LauncherViewModel.ReloadAsync"/> — it replaces the tile
     /// containers outright when the rebuild result reports a change, and only relabels the EXISTING ones
     /// otherwise, so a reload that finds nothing changed after a 设置→应用 round trip would keep whatever
@@ -281,17 +298,21 @@ public partial class MainWindow : Window
 
     /// <summary>
     /// The launcher finished a (re)build, so anything derived from settings that changes what it
-    /// MEASURES has already been applied to it: the 小/中/大 tile-size class (168/192/216 DIP per tile),
-    /// the 字体 face, and every localized string on the page.
+    /// MEASURES has already been applied to it: each group's column layout (每列个数,
+    /// <c>GeneralConfig.ColButtonCount</c> — Round 3, Task 4 replaced the 小/中/大 tile-size class this
+    /// used to name; every tile is now a fixed 168 DIP regardless of any setting), the 字体 face, and
+    /// every localized string on the page.
     /// </summary>
     /// <remarks>
-    /// Review finding 2: none of those re-fitted the window, so choosing 大 left the horizontal
-    /// scrollbar this round exists to remove, and choosing 小 left dead space. Hooking the view model's
-    /// own post-rebuild signal rather than <c>AppEvents.SettingsChanged</c> directly is what makes the
-    /// measurement valid: <c>LauncherViewModel.HandleSettingsChangedAsync</c> is asynchronous (its
-    /// rebuild is a background disk scan), so a re-fit driven straight off SettingsChanged would measure
-    /// the PREVIOUS layout. Posted at <see cref="DispatcherPriority.Loaded"/> — one below layout — so the
-    /// tile tree has actually been re-measured with the new class before the window is sized to it.
+    /// Review finding 2: none of those re-fitted the window, so a settings change could re-render the
+    /// page without the window ever catching up to its new size — originally observed as choosing 大
+    /// leaving a horizontal scrollbar and 小 leaving dead space, back when 小/中/大 was the setting in
+    /// question; the same risk applies to 每列个数 today. Hooking the view model's own post-rebuild signal
+    /// rather than <c>AppEvents.SettingsChanged</c> directly is what makes the measurement valid:
+    /// <c>LauncherViewModel.HandleSettingsChangedAsync</c> is asynchronous (its rebuild is a background
+    /// disk scan), so a re-fit driven straight off SettingsChanged would measure the PREVIOUS layout.
+    /// Posted at <see cref="DispatcherPriority.Loaded"/> — one below layout — so the column layout has
+    /// actually been re-measured with the new count before the window is sized to it.
     /// </remarks>
     private void OnLauncherContentMetricsChanged() =>
         Dispatcher.UIThread.Post(RefitToContent, DispatcherPriority.Loaded);

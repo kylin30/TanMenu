@@ -273,7 +273,7 @@ groups on one vertically scrolling page:
 
 | Group | Contents (unchanged in substance) |
 |---|---|
-| 外观 | 语言, 外观 (light/dark/system), 字体, 按钮大小 |
+| 外观 | 语言, 外观 (light/dark/system), 字体, 每列个数 (was 按钮大小 — Round 3, Task 4 replaced it; see the Round 3 plan and final-fix report) |
 | 行为 | 失焦自动隐藏, 窗口置顶, 开机自启, 固定到任务栏 + status, 全局热键 enable/combo/clear |
 | 文件夹 | 主文件夹 (打开/选择), 数据文件夹 (打开/更改/重置), 清理缓存, 备份, 恢复 |
 | 常用工具 | 显示「常用工具」分类 + the per-tool checkbox list |

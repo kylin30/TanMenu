@@ -7,15 +7,17 @@
 
        Each row is a Grid (Auto,*,Auto), not a DockPanel. Built first with a DockPanel per row (icon
        docked left, control docked right, a plain StackPanel as the fill child), the longest subtitle
-       of the day — 按钮大小's (and the even longer English wording; that row is gone since Round 3,
-       Task 4, but the Grid fix it drove still applies to every row here) — clipped mid-glyph against
-       the ComboBox's left edge instead of wrapping onto a second line — confirmed by screenshot, not
-       by inspection. The exact DockPanel measure/arrange interaction that produced the clipping was
-       not isolated, so no claim is made about it here. Switching to a Grid fixed it: a Grid's star
-       column is guaranteed to resolve to the same width at both measure and arrange time, so the
-       middle TextBlock always wraps against the width it is actually given, regardless of column
-       order or which sibling is docked where. Re-verified by screenshot in both Chinese and English
-       after the change. -->
+       of the day — at the time, 按钮大小's (that row, and its even-longer English wording, is gone
+       since Round 3, Task 4; the CURRENT longest is 每列个数's English subtitle,
+       "Set how many shortcuts each column shows on the Apps page before wrapping to a new one" —
+       AppLanguage's ColButtonCountCardSub — longer than 按钮大小's ever was, but the Grid fix below
+       still applies to it exactly the same way) — clipped mid-glyph against the ComboBox's left edge
+       instead of wrapping onto a second line — confirmed by screenshot, not by inspection. The exact
+       DockPanel measure/arrange interaction that produced the clipping was not isolated, so no claim
+       is made about it here. Switching to a Grid fixed it: a Grid's star column is guaranteed to
+       resolve to the same width at both measure and arrange time, so the middle TextBlock always
+       wraps against the width it is actually given, regardless of column order or which sibling is
+       docked where. Re-verified by screenshot in both Chinese and English after the change. -->
   <StackPanel>
     <TextBlock x:Name="GroupHead" Classes="tm-group-head" />
 

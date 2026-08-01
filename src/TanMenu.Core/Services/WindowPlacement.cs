@@ -160,8 +160,9 @@ public static class WindowPlacement
     /// </summary>
     /// <remarks>
     /// Exists so a re-fit that computes the geometry the window ALREADY has can skip writing it back.
-    /// Round 2's review round wired several new re-fit triggers (rail toggle, 小/中/大, 字体/语言, the
-    /// Maximized→Normal transition) on top of the two that existed, and more than one of them can fire
+    /// Round 2's review round wired several new re-fit triggers (rail toggle, 小/中/大 — replaced by
+    /// 每列个数 in Round 3, Task 4 — 字体/语言, the Maximized→Normal transition) on top of the two that
+    /// existed, and more than one of them can fire
     /// for a single user action; without this test each one would re-assign Width/Height/Position and
     /// re-log an identical "Window fit to content" line. It also makes a notice-driven re-fit that
     /// changes nothing genuinely inert, rather than merely landing on the same numbers after having

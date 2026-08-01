@@ -136,6 +136,18 @@ public class GeneralConfig
     /// (<see cref="TanMenu.Core.Services.MenuLayout.ChunkIntoColumns{T}"/>'s own <c>Math.Max(1, ...)</c>),
     /// and the 设置 page's own NumericUpDown restricts the UI to [1, 30], but a hand-edited config.json
     /// can still carry anything.
+    /// </para>
+    /// <para>
+    /// Round 3 final-fix report ("Also record"): the window has a practical HEIGHT floor around 605 DIP
+    /// outer (its title strip and chrome, on top of <c>MainWindow.axaml</c>'s <c>MinHeight="568"</c>) that
+    /// Windows will not go below regardless of what a fit requests — measured live, values of roughly 13
+    /// and below all land on that same client height, so this setting only becomes height-EFFECTIVE
+    /// above that. Below it, lowering this value still visibly changes the layout, just by trading height
+    /// for WIDTH instead: fewer rows per column means more columns across, and a small enough value (3,
+    /// in testing) produces an extremely wide window (4648 DIP). Not a defect — nothing in the Round 3
+    /// plan required this setting to be height-effective across its whole [1, 30] range, only that the
+    /// default not need a horizontal scrollbar, which holds — but worth knowing before assuming a low
+    /// value "does nothing" just because the window did not get shorter.
     /// </para></summary>
     public int ColButtonCount { get; set; } = 10;
 

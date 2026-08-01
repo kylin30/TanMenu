@@ -662,13 +662,16 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
 
     /// <summary>
     /// Raised at the end of every (re)build, once everything that decides how large this page MEASURES
-    /// has been applied to it: the groups themselves, the 小/中/大 tile-size class (which drives the
-    /// fixed 168/192/216 DIP tile width), the 字体 face, and every localized string.
+    /// has been applied to it: the groups themselves, each group's column layout (每列个数,
+    /// <see cref="TanMenu.Core.Models.GeneralConfig.ColButtonCount"/> — Round 3, Task 4 replaced the
+    /// 小/中/大 tile-size class this used to name; every tile is now a fixed 168 DIP regardless of any
+    /// setting), the 字体 face, and every localized string.
     /// </summary>
     /// <remarks>
     /// Round 2's review finding 2: the window is sized from this page's natural size again, but a
-    /// tile-size / font / language change re-rendered the page without ever re-fitting the window, so 大
-    /// left a horizontal scrollbar and 小 left dead space. <c>MainWindow</c> re-fits from this.
+    /// settings change could re-render the page without ever re-fitting the window — originally observed
+    /// as 大 leaving a horizontal scrollbar and 小 leaving dead space, back when 小/中/大 was the setting
+    /// in question; the same risk applies to a 每列个数 change today. <c>MainWindow</c> re-fits from this.
     /// <para>
     /// An EVENT rather than another <c>PropertyChanged</c> notification, and raised HERE rather than
     /// subscribed from <c>AppEvents.SettingsChanged</c> directly, for one reason: this method is
