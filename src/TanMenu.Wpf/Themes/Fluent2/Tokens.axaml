@@ -40,6 +40,12 @@
           <!-- Surfaces -->
           <SolidColorBrush x:Key="SurfaceBaseBrush"          Color="#F3F3F3" />
           <SolidColorBrush x:Key="SurfaceLayerBrush"         Color="#B3FFFFFF" />
+          <!-- The same neutral as SurfaceLayerBrush, just more opaque, for the round-3 Task 1 ask that
+               a focused search field's fill "lightens slightly" rather than changing colour — no WinUI3
+               source was available to pin an exact reference value, so this is a deliberately modest
+               alpha increase in that direction (B3 -> CC), not a claimed pixel-exact match. Used only by
+               Border.tm-searchfield.focused (Launcher.axaml); not a general-purpose "hover" brush. -->
+          <SolidColorBrush x:Key="SurfaceLayerActiveBrush"   Color="#CCFFFFFF" />
           <SolidColorBrush x:Key="SubtleFillSecondaryBrush"  Color="#0A000000" />
           <SolidColorBrush x:Key="SubtleFillTertiaryBrush"   Color="#06000000" />
           <!-- Text -->
@@ -73,6 +79,9 @@
           <!-- Surfaces -->
           <SolidColorBrush x:Key="SurfaceBaseBrush"          Color="#202020" />
           <SolidColorBrush x:Key="SurfaceLayerBrush"         Color="#4D3A3A3A" />
+          <!-- See the Light dictionary's own remark: same neutral, more opaque, for the focused search
+               field only. -->
+          <SolidColorBrush x:Key="SurfaceLayerActiveBrush"   Color="#663A3A3A" />
           <SolidColorBrush x:Key="SubtleFillSecondaryBrush"  Color="#0FFFFFFF" />
           <SolidColorBrush x:Key="SubtleFillTertiaryBrush"   Color="#0BFFFFFF" />
           <!-- Text -->

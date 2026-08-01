@@ -87,6 +87,33 @@
       <Style Selector="^ /template/ Button#PART_FullScreenButton">
         <Setter Property="IsVisible" Value="False" />
       </Style>
+
+      <!-- Round 3, Task 1 (user item 3, "右上角三个按钮位置有偏差"): the three real caption buttons sat
+           floating in the middle of the 48 DIP band instead of hugging its top edge the way a native
+           Windows 11 title bar's buttons do. Root cause, confirmed against Avalonia 12.1.0's actual
+           Fluent theme source (github.com/AvaloniaUI/Avalonia, tag 12.1.0,
+           src/Avalonia.Themes.Fluent/Controls/WindowDrawnDecorations.xaml): PART_OverlayPanel (the
+           StackPanel holding these buttons) has Height bound to TemplateBinding TitleBarHeight — 48 in
+           this app — but each button's own ControlTheme (FluentDrawnCaptionButton) sets a FIXED
+           Width="45" Height="30" with VerticalAlignment="Stretch". Stretch cannot stretch past an
+           explicitly fixed Height, and Avalonia's layout falls back to centering in that case, which
+           is exactly what live measurement showed before this fix: Minimize's own
+           BoundingRectangle sat inset ~14 physical px (~9.3 DIP) from the panel's top and ~13 physical px
+           (~8.7 DIP) from its bottom, at 150% scale (task-1-report.md's before/after table). Windows'
+           own native caption buttons never float like that — they sit flush against the outer edge of
+           whatever title bar hosts them, regardless of that bar's height. Overriding VerticalAlignment to
+           Top on the three real buttons (Fullscreen is already suppressed above, so it needs no rule)
+           moves them flush to Y=0 while leaving their native 45x30 footprint — and therefore their hit
+           target and click behaviour — completely untouched. -->
+      <Style Selector="^ /template/ Button#PART_MinimizeButton">
+        <Setter Property="VerticalAlignment" Value="Top" />
+      </Style>
+      <Style Selector="^ /template/ Button#PART_MaximizeButton">
+        <Setter Property="VerticalAlignment" Value="Top" />
+      </Style>
+      <Style Selector="^ /template/ Button#PART_CloseButton">
+        <Setter Property="VerticalAlignment" Value="Top" />
+      </Style>
     </ControlTheme>
   </Window.WindowDecorationsTheme>
 
@@ -123,23 +150,44 @@
                 Width="280"
                 Margin="12,0"
                 VerticalAlignment="Center">
-          <DockPanel>
-            <TextBlock DockPanel.Dock="Left" Classes="tm-icon subtle small"
-                       Text="&#xE721;" Margin="0,0,8,0" />
-            <!-- Background and BorderThickness are LOCAL values on purpose: a local value outranks a
-                 style setter, which is what stops Avalonia's own :pointerover and :focus TextBox
-                 styling from repainting a field the Border already paints. -->
-            <TextBox x:Name="SearchBox"
-                     Classes="tm-search"
-                     AutomationProperties.Name="{Binding SearchPlaceholderText}"
-                     Background="Transparent"
-                     BorderThickness="0"
-                     PlaceholderText="{Binding SearchPlaceholderText}"
-                     Text="{Binding Filter, Mode=TwoWay}"
-                     KeyDown="OnSearchKeyDown"
-                     GotFocus="OnSearchFocusChanged"
-                     LostFocus="OnSearchFocusChanged" />
-          </DockPanel>
+          <Panel>
+            <DockPanel>
+              <TextBlock DockPanel.Dock="Left" Classes="tm-icon subtle small"
+                         Text="&#xE721;" Margin="0,0,8,0" />
+              <!-- Background and BorderThickness are LOCAL values on purpose: a local value outranks a
+                   style setter for the SAME property on the SAME element, which is what stops
+                   Avalonia's own :pointerover TextBox styling from repainting a field the Border
+                   already paints. CORRECTION (Round 3, Task 1): this does NOT also block the built-in
+                   ":focus" styling — that one targets Border#PART_BorderElement, a DIFFERENT element
+                   living inside TextBox's own control template, which carries no local value of its
+                   own regardless of what is set here. See Launcher.axaml's
+                   "TextBox.tm-search:focus /template/ Border#PART_BorderElement" rule for what
+                   actually suppresses it, and why. -->
+              <TextBox x:Name="SearchBox"
+                       Classes="tm-search"
+                       AutomationProperties.Name="{Binding SearchPlaceholderText}"
+                       Background="Transparent"
+                       BorderThickness="0"
+                       PlaceholderText="{Binding SearchPlaceholderText}"
+                       Text="{Binding Filter, Mode=TwoWay}"
+                       KeyDown="OnSearchKeyDown"
+                       GotFocus="OnSearchFocusChanged"
+                       LostFocus="OnSearchFocusChanged" />
+            </DockPanel>
+            <!-- Windows 11's focused-TextBox accent underline (Launcher.axaml's own remarks on
+                 Border.tm-searchfield.focused explain why this is a second element rather than a
+                 BorderBrush change): transparent at rest, painted only while SearchField carries the
+                 "focused" class. IsHitTestVisible="False" keeps it from ever stealing a click from the
+                 TextBox it sits on top of — it draws over the DockPanel only because it is the LATER
+                 child in this Panel, not because it needs input. -->
+            <Border Classes="tm-searchfield-focusbar"
+                    IsHitTestVisible="False"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Bottom"
+                    Height="2"
+                    Margin="1,0,1,1"
+                    CornerRadius="0,0,3,3" />
+          </Panel>
         </Border>
 
         <!-- AutomationProperties.Name is required, not decoration: this button has a geometry glyph

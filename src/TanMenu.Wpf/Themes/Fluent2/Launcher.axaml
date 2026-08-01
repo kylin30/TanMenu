@@ -273,11 +273,31 @@
   <Style Selector="Border.tm-searchfield:pointerover">
     <Setter Property="BorderBrush" Value="{DynamicResource TextTertiaryBrush}" />
   </Style>
-  <!-- Focus is signalled on the FIELD, not the bare TextBox, so the accent line frames the whole
-       control including the glyph. -->
+  <!-- Round 3, Task 1 (user item 2): Windows 11's own TextBox focus is NOT a full accent ring — it
+       keeps its plain 1 px resting border on all four sides (Border.tm-searchfield's own BorderBrush/
+       BorderThickness above are left untouched by this rule, unlike the old version, which repainted
+       BorderBrush to AccentDefaultBrush and drew an accent rectangle around the whole field) and only
+       the fill lightens slightly, to SurfaceLayerActiveBrush (Tokens.axaml). The 2 px accent UNDERLINE
+       on the bottom edge only is a separate element — Border.tm-searchfield-focusbar, added inside
+       SearchField in MainWindow.axaml — because a Border cannot draw a differently-coloured thickness
+       on one side while keeping the other three at the ambient resting colour: BorderBrush is a single
+       brush for every side. -->
   <Style Selector="Border.tm-searchfield.focused">
-    <Setter Property="BorderBrush" Value="{DynamicResource AccentDefaultBrush}" />
-    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Background" Value="{DynamicResource SurfaceLayerActiveBrush}" />
+  </Style>
+  <!-- The bar itself: transparent at rest, so it takes no visual space and needs no separate
+       Opacity/IsVisible toggle. IsHitTestVisible="False" (set in MainWindow.axaml, not here — a
+       ControlTheme/Style cannot express it any earlier than the element's own local markup) keeps it
+       from ever intercepting a click meant for the TextBox underneath. CornerRadius "0,0,3,3" is
+       RadiusControlInner (RadiusControl minus one) on the bottom corners only, and Margin "1,0,1,1"
+       insets it a hairline inside SearchField's own 1 px border and radius — the same "sit just inside
+       the parent's border" idea RadiusControlInner already documents in Tokens.axaml, reused here
+       instead of a second literal. -->
+  <Style Selector="Border.tm-searchfield-focusbar">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="Border.tm-searchfield.focused Border.tm-searchfield-focusbar">
+    <Setter Property="Background" Value="{DynamicResource AccentDefaultBrush}" />
   </Style>
   <!-- Disabled (设置 page — MainWindow.ShowPage sets SearchField.IsEnabled off ShellPage.App): the
        same recipe TmButton's own ^:disabled uses above (Foreground/Root dimming), applied here since
@@ -304,6 +324,27 @@
   <Style Selector="TextBox.tm-search:disabled">
     <Setter Property="Foreground" Value="{DynamicResource TextDisabledBrush}" />
     <Setter Property="PlaceholderForeground" Value="{DynamicResource TextDisabledBrush}" />
+  </Style>
+  <!-- Round 3, Task 1 (user item 2): the actual source of the old "heavy accent rectangle" was never
+       Border.tm-searchfield.focused above — it was Avalonia's OWN default TextBox ControlTheme, whose
+       "^:focus /template/ Border#PART_BorderElement" style (Avalonia.Themes.Fluent 12.1.0's
+       Controls/TextBox.xaml, the SAME pinned version this app ships) repaints THAT inner template
+       part's Background/BorderBrush/BorderThickness to accent on focus. SearchBox's own local
+       Background="Transparent" BorderThickness="0" (MainWindow.axaml) cannot block this: those locals
+       win only for the OUTER TextBox's own properties, while the built-in style targets a DIFFERENT
+       object — the named part living inside TextBox's control template — which has no competing local
+       value of its own. The fix uses the exact precedence this file already relies on for
+       TextBox.tm-search:disabled above (a Style declared here outranks a ControlTheme's own template
+       setter): re-targeting the SAME part name, at the SAME pseudo-class, forces it back to invisible,
+       leaving Border.tm-searchfield.focused (this field's own fill/underline) as the ONLY focus signal
+       that reaches the screen. Confirmed by pixel-sampling a screenshot before this rule existed: a
+       solid accent-coloured band sat exactly over PART_BorderElement's own measured bounds (inset from
+       SearchField's outer edges by the icon glyph and Border.tm-searchfield's own Padding), not over
+       the whole field. -->
+  <Style Selector="TextBox.tm-search:focus /template/ Border#PART_BorderElement">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
   </Style>
 
   <!-- ══ Tile size classes 小 / 中 / 大 ═══════════════════════════════════════════════════════
