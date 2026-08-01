@@ -197,11 +197,6 @@ public partial class MainWindow : Window
     // Title strip: caption-button reservation
     // ══════════════════════════════════════════════════════════════════════════════════════════
 
-    // SM_CXSIZE: "Width of a button in a window's caption or title bar, in pixels" (winuser.h). The
-    // same DPI-aware metric Microsoft's own "extend content into the title bar" samples use to keep
-    // custom content clear of the system caption buttons.
-    private const int SM_CXSIZE = 30;
-
     // The most caption-area buttons Windows 11 renders for a resizable window: Close, Maximize/
     // Restore, Minimize, and the fullscreen toggle — confirmed present on this machine (see the
     // window's own UI Automation tree: AutomationId "AvaloniaWindowChrome" exposes Fullscreen,
