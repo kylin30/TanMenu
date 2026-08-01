@@ -54,13 +54,11 @@ public sealed partial class WindowHost : IWindowHost
     private bool _restoring;
 
     /// <summary>
-    /// True once a genuine, external Width/Height change has been observed — the user dragging an edge,
-    /// detected in <see cref="SavePlacement"/> as a live size that no longer matches
-    /// <see cref="_lastNormalWidthDip"/>/<see cref="_lastNormalHeightDip"/> (both of <see cref="RestorePlacement"/>
-    /// and <see cref="FitToContent"/> keep those two fields in sync with whatever they themselves just
-    /// applied, so only an outside actor can make them disagree). Sticky for the rest of the PROCESS,
-    /// never cleared: this is the fix for the review finding that a mid-session resize used to be
-    /// silently discarded on the next summon (<see cref="RestorePlacement"/> reset to the placeholder,
+    /// True once the user has genuinely resized the window by dragging — detected from
+    /// <see cref="Window.Resized"/>'s own <see cref="WindowResizeReason"/> (see <see cref="OnWindowResized"/>),
+    /// NOT from comparing Width/Height against a remembered baseline. Sticky for the rest of the
+    /// PROCESS, never cleared: this is the fix for the review finding that a mid-session resize used to
+    /// be silently discarded on the next summon (<see cref="RestorePlacement"/> reset to the placeholder,
     /// and a one-shot guard in <c>MainWindow</c> then skipped re-fitting away from it forever after,
     /// which was itself based on the false premise that RestorePlacement preserved a resize it was
     /// actually already destroying). Once true, <see cref="RestorePlacement"/> restores the REMEMBERED
@@ -68,23 +66,43 @@ public sealed partial class WindowHost : IWindowHost
     /// user's own explicit choice wins, the same rule <c>GeneralConfig.WindowMaximized</c> already gets.
     /// </summary>
     /// <remarks>
-    /// Detected inside <see cref="SavePlacement"/> specifically because that method already runs
-    /// deferred by one dispatcher tick (see <see cref="SchedulePlacementSave"/>'s own remarks): a
-    /// maximize/restore transition raises Width/HeightProperty-changed SYNCHRONOUSLY, with WindowState
-    /// still (momentarily) reading its PRE-transition value, before WindowState itself flips — reading
-    /// the live size any earlier would occasionally mistake a maximize or an un-maximize for a manual
-    /// resize. By the time <see cref="SavePlacement"/> runs, the transition has settled and WindowState
-    /// reads its final value, so only a change that is STILL Normal-sized one tick later ever counts.
+    /// <para>
+    /// Review fix, round 2: an EARLIER version of this detected a manual resize by comparing the live
+    /// Width/Height against a "what we last applied" baseline with <c>!=</c>. That heuristic can latch on
+    /// its OWN output, permanently and silently, with no code path anyone dragged anything. Traced through
+    /// decompiled Avalonia 12.1.0: <c>Win32.WindowImpl.Resize</c> truncates DIP to physical via
+    /// <c>(int)(value.Width * RenderScaling)</c> before <c>SetWindowPlacement</c> — real precision loss,
+    /// not a rounding no-op. <c>Window.HandleResized</c> then writes that truncated-and-converted-back
+    /// client size straight back to <c>Width</c>/<c>Height</c> for ANY resize reason, including our OWN
+    /// <c>Application</c>-reason writes from <see cref="RestorePlacement"/>/<see cref="FitToContent"/> —
+    /// and that write-back is deferred to a LATER layout/render tick by <c>LayoutManager</c>, i.e. it
+    /// lands after <see cref="_restoring"/> has already been reset to false in their own <c>finally</c>
+    /// block. A truncation round-trip landing on a different <c>double</c> than the one we originally
+    /// computed would therefore have reached <c>PropertyChanged</c> with <c>_restoring == false</c> and
+    /// permanently mis-set this field — content-dependent and machine-dependent (whether
+    /// <c>1239.333… × 1.5</c> lands on exactly <c>1859.0</c> or on <c>1858.999…</c> decides whether it
+    /// trips), and with no log line to show it happened.
+    /// </para>
+    /// <para>
+    /// Avalonia already computes the distinction we actually need and exposes it on the event itself:
+    /// <see cref="WindowResizeReason.User"/> is set ONLY between the platform's <c>WM_ENTERSIZEMOVE</c>
+    /// and <c>WM_EXITSIZEMOVE</c> — an actual interactive drag — confirmed in decompiled
+    /// <c>Win32.WindowImpl</c>. Our own placement code never enters that interactive loop, so gating on
+    /// the reason removes the truncation round-trip from the decision entirely instead of trying to
+    /// detect its symptom after the fact.
+    /// </para>
     /// </remarks>
     private bool _userResized;
 
-    /// <summary>The window's own last-applied NORMAL-state Width/Height, in DIPs. <see cref="RestorePlacement"/>
-    /// and <see cref="FitToContent"/> both write these every time either of them assigns a size, so this
-    /// pair always reflects "the size WE most recently, intentionally applied" — never a stale value —
-    /// which is exactly what lets <see cref="SavePlacement"/> tell a genuine external resize apart from
-    /// our own placement writes (see <see cref="_userResized"/>). Seeded to the placeholder size, which
-    /// is precisely what a cold start's first <see cref="RestorePlacement"/> call applies before either
-    /// method has run even once.</summary>
+    /// <summary>The size to restore to once <see cref="_userResized"/> is true — the window's own client
+    /// size (DIP) at the moment <see cref="OnWindowResized"/> saw <see cref="WindowResizeReason.User"/>,
+    /// taken straight from that event's own <c>ClientSize</c> rather than re-read off <c>Width</c>/
+    /// <c>Height</c> afterward. Not written by <see cref="RestorePlacement"/>/<see cref="FitToContent"/>
+    /// any more (an earlier version kept them in sync purely to give the old float-comparison detection a
+    /// baseline — see <see cref="_userResized"/>'s own remarks for why that approach was replaced).
+    /// Seeded to the placeholder size, which is irrelevant until <see cref="_userResized"/> is true (before
+    /// that, <see cref="RestorePlacement"/> uses <see cref="PlaceholderWidthDip"/>/<see cref="PlaceholderHeightDip"/>
+    /// directly and never reads this pair at all).</summary>
     private double _lastNormalWidthDip = PlaceholderWidthDip;
     private double _lastNormalHeightDip = PlaceholderHeightDip;
 
@@ -137,6 +155,37 @@ public sealed partial class WindowHost : IWindowHost
                 e.Property == Window.HeightProperty)
                 SchedulePlacementSave();
         };
+
+        // The authoritative "did the user resize this" signal — see _userResized's own remarks for why
+        // this replaced a float-comparison heuristic against Width/Height.
+        window.Resized += OnWindowResized;
+    }
+
+    /// <summary>See <see cref="_userResized"/>'s own remarks for the full reasoning. Only
+    /// <see cref="WindowResizeReason.User"/> — set by Avalonia's Win32 backend only between
+    /// <c>WM_ENTERSIZEMOVE</c> and <c>WM_EXITSIZEMOVE</c>, i.e. an actual interactive drag — ever sets
+    /// <see cref="_userResized"/>. <c>Unspecified</c>/<c>Application</c>/<c>Layout</c>/<c>DpiChange</c> are
+    /// all explicitly NOT treated as a manual resize, including our own <see cref="RestorePlacement"/>/
+    /// <see cref="FitToContent"/> writes (which additionally never reach here at all while
+    /// <see cref="_restoring"/> is true, guarded the same as every other listener in <see cref="Attach"/>
+    /// — real interactive drags never happen while that flag is set, so this is defence in depth, not
+    /// load-bearing).</summary>
+    private void OnWindowResized(object? sender, WindowResizedEventArgs e)
+    {
+        if (_restoring || e.Reason != WindowResizeReason.User)
+            return;
+
+        _userResized = true;
+        _lastNormalWidthDip = e.ClientSize.Width;
+        _lastNormalHeightDip = e.ClientSize.Height;
+
+        // _userResized is never cleared for the rest of the process (see its own remarks) — a WRONG
+        // latch here silently disables content-fitting for the rest of the session with nothing else to
+        // point at, which is exactly what the review round's Critical finding was about. Logged at
+        // Information specifically so that transition is never silent again.
+        Serilog.Log.Information(
+            "User resize detected: {Width}x{Height} DIP; content-fit will not run again this process",
+            e.ClientSize.Width, e.ClientSize.Height);
     }
 
     /// <summary>Push the current 窗口置顶 setting onto a live window.</summary>
@@ -310,11 +359,6 @@ public sealed partial class WindowHost : IWindowHost
             _window.WindowState = g.WindowMaximized ? WindowState.Maximized : WindowState.Normal;
             ApplyTopmost();
 
-            // Keep the "what did we last intentionally apply" baseline current — see
-            // _lastNormalWidthDip's own remarks for why SavePlacement depends on this.
-            _lastNormalWidthDip = placement.Width;
-            _lastNormalHeightDip = placement.Height;
-
             // Logged at Information, not Debug: this is the only externally visible record of WHICH
             // monitor was chosen and at what scale, and it is what proves the placement was applied
             // before the window was shown (the "Launcher window shown" line follows it).
@@ -422,10 +466,6 @@ public sealed partial class WindowHost : IWindowHost
                 (int)Math.Round(placement.Left * scale),
                 (int)Math.Round(placement.Top * scale));
 
-            // Same baseline SavePlacement compares against — see _lastNormalWidthDip's own remarks.
-            _lastNormalWidthDip = placement.Width;
-            _lastNormalHeightDip = placement.Height;
-
             Serilog.Log.Information(
                 "Window fit to content: {Width}x{Height} DIP (page {ContentWidth}x{ContentHeight} + " +
                 "rail {RailWidth} + title strip {TitleStrip}) on work area " +
@@ -479,21 +519,11 @@ public sealed partial class WindowHost : IWindowHost
                 var scale = CurrentScale();
                 g.WindowLeft = _window.Position.X / scale;
                 g.WindowTop = _window.Position.Y / scale;
-
-                // Detect a genuine, external resize: RestorePlacement/FitToContent both keep
-                // _lastNormalWidthDip/HeightDip in sync with whatever THEY last applied (under
-                // _restoring, which already made this method return above without reaching here), so a
-                // live size that disagrees with that baseline can only mean the user dragged an edge.
-                // This is what makes RestorePlacement restore the resized size on the next summon instead
-                // of resetting to the placeholder — see _userResized's own remarks for the full rule and
-                // the review finding it fixes.
-                if (_window.Width != _lastNormalWidthDip || _window.Height != _lastNormalHeightDip)
-                {
-                    _userResized = true;
-                    _lastNormalWidthDip = _window.Width;
-                    _lastNormalHeightDip = _window.Height;
-                }
             }
+
+            // A genuine manual resize is detected from Window.Resized's own WindowResizeReason
+            // (OnWindowResized), NOT here — see _userResized's own remarks for why a float-equality
+            // comparison against a remembered baseline used to live in this method and was replaced.
 
             _saveDebounce.Stop();
             _saveDebounce.Start();
@@ -574,9 +604,24 @@ public sealed partial class WindowHost : IWindowHost
         }
         else if (_window.WindowState == WindowState.Minimized)
         {
-            _window.WindowState = _config.Config.General.WindowMaximized
-                ? WindowState.Maximized
-                : WindowState.Normal;
+            // Review fix (noted, not introduced this round): this assignment used to run outside
+            // _restoring, so un-minimizing raised WindowStateProperty-changed with _restoring == false
+            // and scheduled a redundant SavePlacement — harmless (it would only re-record the same
+            // g.WindowMaximized this line just read to decide what to restore to), but inconsistent with
+            // every other place this class writes to the window's own placement properties. _restoring
+            // does not affect Resized/WindowResizeReason at all (that guard is about PositionChanged/
+            // PropertyChanged only), so this costs nothing and closes the inconsistency.
+            _restoring = true;
+            try
+            {
+                _window.WindowState = _config.Config.General.WindowMaximized
+                    ? WindowState.Maximized
+                    : WindowState.Normal;
+            }
+            finally
+            {
+                _restoring = false;
+            }
         }
 
         _window.Activate();
