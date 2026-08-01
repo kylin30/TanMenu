@@ -28,6 +28,31 @@
 > 28.6 MB native executable with 0 warnings and 0 errors, and a cold start with
 > `windowMaximized: true` restores maximized.
 >
+> **Superseded in part by Round 2 (2026-08-01).** After reviewing the shipped build the user asked for
+> seven refinements, planned and executed in `docs/superpowers/plans/2026-08-01-win11-shell-round2.md`
+> (commits `5a8ee95`..`8047a20`). Sections below that Round 2 changed:
+>
+> - **§1 window model** — the window no longer restores a remembered size. It is re-fitted to its
+>   content on **every** summon: width from the measured page, height such that the category with the
+>   most items renders in a single column, both clamped to the target screen's work area. A manual
+>   resize sticks for the rest of the process. `GeneralConfig.WindowWidth`/`WindowHeight` are retired
+>   (retained only so old configs deserialize).
+> - **§1 decorations** — the system title bar is gone. `ExtendClientAreaToDecorationsHint` is on, the
+>   strip carries the app icon, name, search box and overflow menu, and Avalonia's own drawn
+>   decorations are suppressed via `Window.WindowDecorationsTheme`. The "use the system title bar"
+>   decision recorded above no longer describes the code.
+> - **§2 rail** — collapsible, 48 px icon-only by default, 200 px expanded, persisted in
+>   `GeneralConfig.NavRailExpanded`.
+> - **§2 app page** — the in-page header (search, overflow, hide glyph) is deleted; the content pane is
+>   a solid `SurfaceBaseBrush` layer rather than Mica, and shortcut tiles are button-styled.
+>
+> **Round 2's outstanding human verification**, in addition to the five above: a literal Alt+F4 (twice
+> — cold start, and after a maximize/restore cycle); Alt+F4 on a window still maximized across a
+> resolution/DPI/taskbar-auto-hide change; dragging a maximized window down to restore; the rail
+> toggle's appearance mid-animation at 125–150 % scaling; a notice arriving while the window sits
+> against a work-area edge; 字体 and 语言 changes end to end; and a 设置 visit with no menu change in
+> between, then back to 应用.
+>
 > Design spec, 2026-07-31. Every claim about the current code was grep/read-verified against the
 > tree at `ef79481`, and every Avalonia claim against the `Avalonia 12.1.0` reference assembly
 > documentation in the local NuGet cache — not recalled. Where this file and the code disagree, the
