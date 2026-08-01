@@ -251,11 +251,14 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
     private string L(string key, params object?[] args) =>
         AppLanguage.Format(key, _cfg.General.Language, args);
 
-    public string MenuOpenRootText => L("MenuOpenRoot");
+    // MenuOpenRootText/MenuAboutText/MenuExitText/MenuMoreText used to back the title strip's ⋯
+    // overflow MenuFlyout's Header bindings and the button's own tooltip. Round 3, Task 2 moved those
+    // four commands into rail rows whose labels/tooltips/automation names MainWindow.ApplyRailText sets
+    // imperatively (via AppLanguage.Text directly, the same way NavAppsLabel/NavSettingsLabel already
+    // were) rather than through a XAML {Binding} — see that method's own remarks — so those four
+    // properties have no reader left and were removed. MenuRefreshText survives: AppPage's own
+    // empty-state "刷新" button (AppPage.axaml) still binds it, unrelated to the rail move.
     public string MenuRefreshText => L("MenuRefresh");
-    public string MenuAboutText => L("MenuAbout");
-    public string MenuExitText => L("MenuExit");
-    public string MenuMoreText => L("MenuMore");
     public string SearchPlaceholderText => L("SearchPlaceholder");
     public string EmptyTitleText => L("EmptyTitle");
     public string EmptyHelpText => L("EmptyHelp");
@@ -272,11 +275,7 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
 
     private void RaiseLocalizedTextChanged()
     {
-        RaisePropertyChanged(nameof(MenuOpenRootText));
         RaisePropertyChanged(nameof(MenuRefreshText));
-        RaisePropertyChanged(nameof(MenuAboutText));
-        RaisePropertyChanged(nameof(MenuExitText));
-        RaisePropertyChanged(nameof(MenuMoreText));
         RaisePropertyChanged(nameof(SearchPlaceholderText));
         RaisePropertyChanged(nameof(EmptyTitleText));
         RaisePropertyChanged(nameof(EmptyHelpText));

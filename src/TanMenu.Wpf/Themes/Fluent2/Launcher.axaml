@@ -110,9 +110,10 @@
            DataTemplate rather than in this control template. -->
     </ControlTheme>
 
-    <!-- ══ Header icon button (⋯ overflow, ✕ close) ═════════════════════════════════════════════
+    <!-- ══ Header icon button (☰ nav toggle, ✕ close) ═══════════════════════════════════════════
          A 32×32 square target. Same subtle-fill state model as the tile so the whole surface reads
-         as one system. -->
+         as one system. (Round 3, Task 2 removed this theme's third user, the title strip's own ⋯
+         overflow button — MainWindow.axaml's rail comment explains where its functions went.) -->
     <ControlTheme x:Key="TmIconButton" TargetType="Button">
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
@@ -229,6 +230,54 @@
       <Setter Property="Background" Value="{DynamicResource AccentDefaultBrush}" />
       <Setter Property="Foreground" Value="{DynamicResource TextOnAccentBrush}" />
       <Setter Property="BorderBrush" Value="{DynamicResource AccentDefaultBrush}" />
+    </ControlTheme>
+
+    <!-- ══ Nav rail command row ═══════════════════════════════════════════════════════════════════
+         Round 3, Task 2: 打开主目录/刷新/关于/退出 move out of the title strip's ⋯ overflow flyout
+         into their own rows in the navigation rail's bottom-pinned footer (MainWindow.axaml). Padding
+         (12,10) and Margin (4,2) are IDENTICAL to "ListBox.tm-nav ListBoxItem" below — a command row
+         has to measure and sit exactly like a page row for the rail to read as one consistent list —
+         but this is a full custom Button ControlTheme, not that ListBoxItem style reused on a Button,
+         because a Button has NO :selected pseudoclass at all: that is what makes "a command row must
+         never look selected" (the task's own constraint) true by construction rather than by a style
+         rule a later edit could defeat. Same two-layer Root/nothing-else shape as TmIconButton (a
+         command row needs no separate state layer the way TmTileButton/TmButton do, since it has no
+         persistent rest-state fill to protect from being replaced outright by the hover wash — Root
+         IS transparent at rest). -->
+    <ControlTheme x:Key="TmNavRowButton" TargetType="Button">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+      <Setter Property="Padding" Value="12,10" />
+      <Setter Property="Margin" Value="4,2" />
+      <Setter Property="CornerRadius" Value="{DynamicResource RadiusControl}" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Left" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="FocusAdorner">
+        <Template>
+          <Border BorderBrush="{DynamicResource FocusStrokeOuterBrush}"
+                  BorderThickness="2" CornerRadius="{DynamicResource RadiusControl}" Margin="-2" />
+        </Template>
+      </Setter>
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border x:Name="Root"
+                  Background="{TemplateBinding Background}"
+                  CornerRadius="{TemplateBinding CornerRadius}">
+            <ContentPresenter Content="{TemplateBinding Content}"
+                              Padding="{TemplateBinding Padding}"
+                              HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                              VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+          </Border>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:pointerover /template/ Border#Root">
+        <Setter Property="Background" Value="{DynamicResource SubtleFillSecondaryBrush}" />
+      </Style>
+      <Style Selector="^:pressed /template/ Border#Root">
+        <Setter Property="Background" Value="{DynamicResource SubtleFillTertiaryBrush}" />
+      </Style>
     </ControlTheme>
 
   </Styles.Resources>
@@ -497,10 +546,15 @@
     <Setter Property="LineHeight" Value="{DynamicResource LineHeightBody}" />
   </Style>
 
-  <!-- Navigation rail. Fluent 2's NavigationView selection idiom: a 3 px accent bar on the leading
-       edge of the selected row, a subtle fill on hover, and no border anywhere. The BorderThickness
-       here is a flat "3,0,0,0" regardless of collapsed/expanded — it is what the task explicitly asks
-       to "stay visible when collapsed", and a 48 px-wide row has exactly as much room for a 3 px
+  <!-- Navigation rail. Fluent 2's NavigationView selection idiom: a left accent bar on the leading
+       edge of the selected row plus a subtle rounded fill behind it, a fainter fill on hover, and no
+       border anywhere. Confirmed against Task Manager's OWN selected row, not just its own shape:
+       pixel-sampling a live screenshot of its selected "进程" item (Round 3, Task 2 — task-2-report.md)
+       found an accent-coloured bar ~3.3 DIP wide flush to the item's left edge, immediately followed
+       (no gap) by a flat, uniform fill spanning the REST of the item's own bounds edge-to-edge — exactly
+       this shape, which is why the numbers below (3 DIP bar, a flat SubtleFillTertiaryBrush fill) were
+       already correct and did not need to change for that task. The BorderThickness here is a flat
+       "3,0,0,0" regardless of collapsed/expanded — a 48 px-wide row has exactly as much room for a 3 px
        leading bar as a 200 px one does. -->
   <Style Selector="ListBox.tm-nav ListBoxItem">
     <Setter Property="Padding" Value="12,10" />
@@ -517,18 +571,35 @@
     <Setter Property="BorderThickness" Value="3,0,0,0" />
   </Style>
 
+  <!-- Round 3, Task 2: live UI Automation on Task Manager's OWN rail (task-2-report.md) found its
+       collapsed item column is 40 DIP wide inside the SAME 48 DIP pane this app already used — ours
+       measured only 32 DIP before this fix. The difference was this ListBox's own horizontal Padding,
+       which used to add a SECOND 4 DIP inset on top of ListBoxItem's own Margin="4,2" above, eating 16
+       DIP total from the 48 DIP pane (48-16=32) instead of the 8 DIP the item Margin alone accounts for
+       (48-8=40). NavRail/NavFooterRail (MainWindow.axaml) now both set Padding with a zero horizontal
+       component locally (a local value on the instance, not a class-wide Setter here, since the two
+       differ vertically — see their own remarks) to fix the item column to Task Manager's measured 40
+       DIP with no other change; row height was already correct (see the report's own measured table)
+       and is untouched. -->
+
   <!-- ══ Collapsed rail (Task Manager style: 48 px, icon-only) ══════════════════════════════════
-       MainWindow's ApplyNavExpandedState toggles this "collapsed" class on the ListBox itself
-       (NavRail), not on each row, so a single Set() call re-derives every row's look. The label
+       Round 3, Task 2: MainWindow's ApplyNavExpandedState toggles "collapsed" on NavRailContent (the
+       Grid wrapping the page list, the four command rows and the settings footer), not on a single
+       ListBox any more — the rail is no longer one ListBox — so every selector below keys off that
+       shared ancestor instead of "ListBox.tm-nav.collapsed", and Button.tm-nav-row (the four command
+       rows) gets the identical centring rule ListBoxItem's own StackPanel already had. The label
        TextBlocks disappear entirely (IsVisible=False, not just Opacity=0) rather than fading, so they
        stop reserving layout space the instant the pane starts narrowing — Avalonia drops an
        IsVisible=False element from layout the same way it drops WindowDrawnDecorations' own suppressed
        parts (see MainWindow.axaml's header comment). Centring the icon only in the collapsed state
        keeps the expanded rail's existing left-aligned icon+label untouched. -->
-  <Style Selector="ListBox.tm-nav.collapsed TextBlock.tm-nav-label">
+  <Style Selector="Grid.tm-nav-rail.collapsed TextBlock.tm-nav-label">
     <Setter Property="IsVisible" Value="False" />
   </Style>
-  <Style Selector="ListBox.tm-nav.collapsed ListBoxItem StackPanel">
+  <Style Selector="Grid.tm-nav-rail.collapsed ListBoxItem StackPanel">
+    <Setter Property="HorizontalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Grid.tm-nav-rail.collapsed Button.tm-nav-row StackPanel">
     <Setter Property="HorizontalAlignment" Value="Center" />
   </Style>
 

@@ -176,11 +176,15 @@ public static class AppLanguage
             ["RestoreSucceeded"] = ("配置已恢复并生效。", "Config restored and applied."),
             ["RestoreInvalid"] = ("恢复失败：所选文件不是有效的 TanMenu 配置。", "Restore failed: the selected file is not a valid TanMenu config."),
 
+            // MenuOpenRoot/MenuRefresh/MenuAbout/MenuExit label the navigation rail's four bottom-pinned
+            // command rows (MainWindow.ApplyRailText, Round 3 Task 2). They used to label the title
+            // strip's ⋯ overflow MenuFlyout's own MenuItems before that button was removed — same keys,
+            // same Chinese/English text, only the reader moved. MenuMore ("更多"), that button's own
+            // tooltip/AutomationProperties.Name, had no other reader and was removed with it.
             ["MenuOpenRoot"] = ("打开主目录", "Open Main Folder"),
             ["MenuRefresh"] = ("刷新", "Refresh"),
             ["MenuAbout"] = ("关于", "About"),
             ["MenuExit"] = ("退出", "Exit"),
-            ["MenuMore"] = ("更多", "More"),
             ["NavApps"] = ("应用", "Apps"),
             ["NavSettings"] = ("设置", "Settings"),
             // The hamburger toggle at the top of the nav rail. Named for the action pressing it

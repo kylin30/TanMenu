@@ -17,17 +17,18 @@ using TanMenu.Wpf.Views;
 namespace TanMenu.Wpf;
 
 /// <summary>
-/// The shell: the title strip (app icon/name, search, overflow), the collapsible navigation rail and
-/// the page host. All launcher STATE still lives in <see cref="AppPage"/>'s <c>LauncherViewModel</c> —
-/// the search box and overflow menu here bind and dispatch to that SAME instance (exposed as
-/// <see cref="AppPage.ViewModel"/>) rather than a second one, since AppPage still owns the keyboard
-/// model (Escape, Down-into-the-grid) that the search box's key handling has to reach into. This class
-/// owns what genuinely belongs to the window — the Mica fallback, close-to-tray, the caption-button
-/// reservation, the rail's collapsed/expanded choice, swapping the page host's content between the two
-/// rail entries, and kicking off the startup build + the fit-to-content resize that follows it, on
-/// EVERY summon (<see cref="InitializeAndFitAsync"/>) — the actual geometry math, and the rule for when
-/// a manual resize should win over a fresh fit, lives in <c>WindowHost</c>, which owns every other piece
-/// of window placement too.
+/// The shell: the title strip (app icon/name, search), the collapsible navigation rail and the page
+/// host. All launcher STATE still lives in <see cref="AppPage"/>'s <c>LauncherViewModel</c> — the
+/// search box here binds and dispatches to that SAME instance (exposed as <see cref="AppPage.ViewModel"/>)
+/// rather than a second one, since AppPage still owns the keyboard model (Escape, Down-into-the-grid)
+/// that the search box's key handling has to reach into. This class owns what genuinely belongs to the
+/// window — the Mica fallback, close-to-tray, the caption-button reservation, the rail's
+/// collapsed/expanded choice, swapping the page host's content between the two PAGE entries (应用/设置;
+/// see <see cref="ShowPage"/>), dispatching the four command rows the title strip's old ⋯ overflow used
+/// to hold (打开主目录/刷新/关于/退出 — Round 3, Task 2), and kicking off the startup build + the
+/// fit-to-content resize that follows it, on EVERY summon (<see cref="InitializeAndFitAsync"/>) — the
+/// actual geometry math, and the rule for when a manual resize should win over a fresh fit, lives in
+/// <c>WindowHost</c>, which owns every other piece of window placement too.
 /// </summary>
 public partial class MainWindow : Window
 {
@@ -368,6 +369,18 @@ public partial class MainWindow : Window
     /// <see cref="_settingsPage"/> is built lazily, the first time 设置 is shown. Both are then kept
     /// alive rather than rebuilt on every rail click, since each card group owns its own live control
     /// state (e.g. the font combo's selection guard).</summary>
+    /// <remarks>
+    /// Round 3, Task 2: 应用 and 设置 now live in TWO separate single-item ListBoxes (<c>NavRail</c>,
+    /// the page list; <c>NavFooterRail</c>, the bottom-pinned footer — see MainWindow.axaml's rail
+    /// comment for why) rather than one two-item list, so keeping them mutually exclusive needs an
+    /// explicit SelectedIndex write on BOTH lists here — a plain ListBox only enforces "at most one
+    /// selected item" WITHIN itself, not across a second, unrelated ListBox instance. Setting the
+    /// inactive list's index to -1 rather than leaving it alone is what actually clears a stale
+    /// selected look on the page just navigated away from; setting it to 0 rather than leaving it
+    /// unchanged is what makes returning to a page re-select its row even if <c>OnNavSelectionChanged</c>
+    /// never ran for it (e.g. the tray's 选项 entry, which calls this through <c>ShellNavigator</c>
+    /// without any rail click at all).
+    /// </remarks>
     public void ShowPage(ShellPage page)
     {
         // Read BEFORE the swap: "was 设置 the page being replaced" is what distinguishes a real
@@ -377,7 +390,8 @@ public partial class MainWindow : Window
         // so this is false for the whole of a session that never goes there.
         var wasSettings = _settingsPage is not null && ReferenceEquals(PageHost.Content, _settingsPage);
 
-        NavRail.SelectedIndex = page == ShellPage.Settings ? 1 : 0;
+        NavRail.SelectedIndex = page == ShellPage.App ? 0 : -1;
+        NavFooterRail.SelectedIndex = page == ShellPage.Settings ? 0 : -1;
         PageHost.Content = page == ShellPage.Settings
             ? _settingsPage ??= new SettingsPage()
             : _appPage;
@@ -411,44 +425,82 @@ public partial class MainWindow : Window
             Dispatcher.UIThread.Post(RefitToContent, DispatcherPriority.Loaded);
     }
 
+    /// <summary>
+    /// Round 3, Task 2: 应用 and 设置 moved into two SEPARATE single-item ListBoxes (<c>NavRail</c>,
+    /// <c>NavFooterRail</c> — see MainWindow.axaml's rail comment for why), so this handler now fires
+    /// for either one and has to keep them acting like one logical selection group itself; a plain
+    /// ListBox only ever enforces "at most one selected item" within its OWN items.
+    /// </summary>
+    /// <remarks>
+    /// <c>rail.SelectedIndex &lt; 0</c> discards two distinct kinds of call this same handler receives
+    /// that must NOT navigate: (1) the re-entrant SelectionChanged this method's own
+    /// <c>otherRail.SelectedIndex = -1</c> line below raises on the OTHER list (its <c>AddedItems</c> is
+    /// empty and its own <c>SelectedIndex</c> reads -1 by the time this runs), and (2) <see cref="ShowPage"/>
+    /// clearing a list's selection directly (also to -1) when navigating to the page the OTHER list
+    /// owns. Only a real "the user (or UI Automation) picked a row" call ever leaves SelectedIndex at 0.
+    /// </remarks>
     private void OnNavSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
         // Ignored until the constructor finishes (_navReady): XAML's SelectedIndex="0" — and,
         // once a real navigation can arrive before the window exists (Task 13's tray path),
         // Attach's own ShowPage call — both raise this event synchronously during construction.
-        // ShowPage already applies NavRail.SelectedIndex and PageHost.Content directly, so nothing
-        // is lost by discarding a SelectionChanged that fires before the shell is ready; letting it
-        // through would instead let Navigate(App) (this event's own read of a freshly-defaulted
-        // SelectedIndex="0") clobber a Current a pre-construction Navigate(Settings) had already set.
+        // ShowPage already applies NavRail.SelectedIndex/NavFooterRail.SelectedIndex and
+        // PageHost.Content directly, so nothing is lost by discarding a SelectionChanged that fires
+        // before the shell is ready; letting it through would instead let Navigate(App) (this event's
+        // own read of a freshly-defaulted SelectedIndex="0") clobber a Current a pre-construction
+        // Navigate(Settings) had already set.
         //
-        // MUST read SelectedIndex off the sender, not the NavRail field: this event can fire before
-        // the generated populate code has assigned this.NavRail — reading the field there null-refs.
-        if (!_navReady || sender is not ListBox rail)
+        // MUST read SelectedIndex off the sender, not a NavRail/NavFooterRail field: this event can
+        // fire before the generated populate code has assigned those fields — reading a field there
+        // null-refs.
+        if (!_navReady || sender is not ListBox rail || rail.SelectedIndex < 0)
             return;
 
+        var otherRail = ReferenceEquals(rail, NavRail) ? NavFooterRail : NavRail;
+        otherRail.SelectedIndex = -1;
+
         App.Services.GetRequiredService<ShellNavigator>()
-            .Navigate(rail.SelectedIndex == 1 ? ShellPage.Settings : ShellPage.App);
+            .Navigate(ReferenceEquals(rail, NavFooterRail) ? ShellPage.Settings : ShellPage.App);
     }
 
     /// <summary>AppLanguage has no change notification, so the rail is labelled imperatively — the same
-    /// approach the settings UI uses.</summary>
+    /// approach the settings UI uses. Round 3, Task 2: also labels the four command rows that used to be
+    /// the title strip's ⋯ overflow MenuItems — MenuOpenRoot/MenuRefresh/MenuAbout/MenuExit are the SAME
+    /// language keys those MenuItems already used (AppLanguage.cs), unchanged by the move.</summary>
     private void ApplyRailText()
     {
         var lang = App.Services.GetRequiredService<ConfigService>().Config.General.Language;
         var appsText = AppLanguage.Text("NavApps", lang);
         var settingsText = AppLanguage.Text("NavSettings", lang);
+        var openRootText = AppLanguage.Text("MenuOpenRoot", lang);
+        var refreshText = AppLanguage.Text("MenuRefresh", lang);
+        var aboutText = AppLanguage.Text("MenuAbout", lang);
+        var exitText = AppLanguage.Text("MenuExit", lang);
 
         NavAppsLabel.Text = appsText;
         NavSettingsLabel.Text = settingsText;
+        NavOpenRootLabel.Text = openRootText;
+        NavRefreshLabel.Text = refreshText;
+        NavAboutLabel.Text = aboutText;
+        NavExitLabel.Text = exitText;
 
-        // AutomationProperties.Name/ToolTip.Tip live on the ROW (the ListBoxItem), not on the label
-        // TextBlock: Launcher.axaml's ".collapsed" rule hides NavAppsLabel/NavSettingsLabel entirely
-        // (IsVisible=False) when the rail is collapsed, so an icon-only row needs an accessible name and
-        // a tooltip that do not depend on that now-invisible label being there to read.
+        // AutomationProperties.Name/ToolTip.Tip live on the ROW (the ListBoxItem or, for the four
+        // command rows, the Button), not on the label TextBlock: Launcher.axaml's ".collapsed" rule
+        // hides every *-label TextBlock entirely (IsVisible=False) when the rail is collapsed, so an
+        // icon-only row needs an accessible name and a tooltip that do not depend on that now-invisible
+        // label being there to read.
         NavAppsItem.SetValue(AutomationProperties.NameProperty, appsText);
         NavSettingsItem.SetValue(AutomationProperties.NameProperty, settingsText);
+        NavOpenRootItem.SetValue(AutomationProperties.NameProperty, openRootText);
+        NavRefreshItem.SetValue(AutomationProperties.NameProperty, refreshText);
+        NavAboutItem.SetValue(AutomationProperties.NameProperty, aboutText);
+        NavExitItem.SetValue(AutomationProperties.NameProperty, exitText);
         ToolTip.SetTip(NavAppsItem, appsText);
         ToolTip.SetTip(NavSettingsItem, settingsText);
+        ToolTip.SetTip(NavOpenRootItem, openRootText);
+        ToolTip.SetTip(NavRefreshItem, refreshText);
+        ToolTip.SetTip(NavAboutItem, aboutText);
+        ToolTip.SetTip(NavExitItem, exitText);
     }
 
     /// <summary>
@@ -462,13 +514,20 @@ public partial class MainWindow : Window
     /// Called once from the constructor and again on every <see cref="AppEvents.SettingsChanged"/> (the
     /// hamburger's tooltip text is language-dependent, and AppLanguage has no change notification).
     /// </summary>
+    /// <remarks>
+    /// Round 3, Task 2: the "collapsed" class now goes on <c>NavRailContent</c> (the Grid wrapping the
+    /// page list, the four command rows and the settings footer), not on <c>NavRail</c> itself — the
+    /// rail is no longer one ListBox, so no single element under the old name could still reach every
+    /// row that needs to react. Launcher.axaml's selectors were updated to match
+    /// (<c>Grid.tm-nav-rail.collapsed …</c>).
+    /// </remarks>
     private void ApplyNavExpandedState()
     {
         var cfg = App.Services.GetRequiredService<ConfigService>();
         var expanded = cfg.Config.General.NavRailExpanded;
 
         NavRailPane.Width = expanded ? 200 : 48;
-        NavRail.Classes.Set("collapsed", !expanded);
+        NavRailContent.Classes.Set("collapsed", !expanded);
 
         var toggleText = AppLanguage.Text(expanded ? "NavCollapse" : "NavExpand", cfg.Config.General.Language);
         NavToggleButton.SetValue(AutomationProperties.NameProperty, toggleText);
@@ -629,7 +688,10 @@ public partial class MainWindow : Window
     }
 
     // ══════════════════════════════════════════════════════════════════════════════════════════
-    // Title strip: overflow menu
+    // Navigation rail: the four relocated commands (Round 3, Task 2 — used to be the title strip's
+    // ⋯ overflow MenuFlyout; MainWindow.axaml's rail comment explains why they are Buttons, not
+    // ListBoxItems, and why each is its own row rather than one collapsed entry). Method bodies are
+    // unchanged from the overflow-menu era: only what invokes them moved.
     // ══════════════════════════════════════════════════════════════════════════════════════════
 
     private void OnOpenRootClick(object? sender, RoutedEventArgs e) => _appPage.ViewModel.OpenRoot();
