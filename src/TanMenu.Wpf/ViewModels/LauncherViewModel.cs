@@ -413,6 +413,14 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
         private set => Set(ref _showAbout, value);
     }
 
+    /// <summary>
+    /// Round 3, Task 2 review (Minor): invoking 关于 while 设置 is the active page sets
+    /// <see cref="ShowAbout"/> on THIS view model, which is not the one attached to
+    /// <see cref="Views.AppPage"/>'s visual tree at that moment — the overlay only becomes visible the
+    /// next time 应用 is shown, not immediately. Pre-existing, not a Task 2 regression: the title
+    /// strip's old ⋯ overflow button reached this exact same method regardless of which page was
+    /// active, before its functions moved into the rail.
+    /// </summary>
     public void OpenAbout() => ShowAbout = true;
 
     public void CloseAbout() => ShowAbout = false;

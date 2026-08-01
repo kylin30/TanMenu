@@ -42,6 +42,26 @@ public partial class MainWindow : Window
     // synchronously WHILE this constructor is still running — see OnNavSelectionChanged.
     private bool _navReady;
 
+    /// <summary>
+    /// Round 3, Task 2 review fix (Important 1). Set for the whole duration of <see cref="ShowPage"/>
+    /// and checked at the top of <see cref="OnNavSelectionChanged"/>. <c>SelectedIndex</c> assignment
+    /// fires <c>SelectionChanged</c> SYNCHRONOUSLY (confirmed by decompiling
+    /// <c>Avalonia.Controls.Primitives.SelectingItemsControl</c>), so a <see cref="ShowPage"/> call that
+    /// arrives WITHOUT a rail click having already set <c>NavRail</c>/<c>NavFooterRail</c>'s indices to
+    /// their target values — the tray/empty-state settings entry
+    /// (<c>ISettingsLauncher.Open</c> → <c>SettingsLauncher.OpenCore</c> → <c>ShellNavigator.Navigate</c>
+    /// straight into this method) and <c>WindowHost.Hide</c>'s reset to 应用 are the two real callers —
+    /// would otherwise let <see cref="OnNavSelectionChanged"/> call straight back into
+    /// <c>ShellNavigator.Navigate</c> → <see cref="ShowPage"/> BEFORE the outer call ever reaches its own
+    /// <c>PageHost.Content = …</c> line: a genuine re-entrant call performing the real page swap while
+    /// the outer one is still on the stack. Nothing broke VISIBLY before this flag existed — the outer
+    /// call's own later writes became no-ops (Avalonia does not re-raise a property-changed notification
+    /// for an unchanged value) and <see cref="RefitToContent"/>/<see cref="ConsumePendingFocus"/> both
+    /// already guard themselves idempotently — but every one of those two transitions was silently
+    /// double-posting both of them regardless, which is exactly the structural risk the review flagged.
+    /// </summary>
+    private bool _inShowPage;
+
     public MainWindow()
     {
         InitializeComponent();
@@ -378,10 +398,30 @@ public partial class MainWindow : Window
     /// inactive list's index to -1 rather than leaving it alone is what actually clears a stale
     /// selected look on the page just navigated away from; setting it to 0 rather than leaving it
     /// unchanged is what makes returning to a page re-select its row even if <c>OnNavSelectionChanged</c>
-    /// never ran for it (e.g. the tray's 选项 entry, which calls this through <c>ShellNavigator</c>
+    /// never ran for it (e.g. the tray's settings entry, which calls this through <c>ShellNavigator</c>
     /// without any rail click at all).
     /// </remarks>
+    /// <remarks>
+    /// Round 3, Task 2 review fix (Important 1): <see cref="_inShowPage"/> is set for this whole method
+    /// (not only around the two <c>SelectedIndex</c> writes below) — see that field's own remarks for
+    /// the full reentrancy this closes: the writes are where the synchronous <c>SelectionChanged</c> can
+    /// actually fire, but wrapping the whole method costs nothing extra, since nothing later in this
+    /// method can itself trigger another synchronous call back into <see cref="OnNavSelectionChanged"/>.
+    /// </remarks>
     public void ShowPage(ShellPage page)
+    {
+        _inShowPage = true;
+        try
+        {
+            ShowPageCore(page);
+        }
+        finally
+        {
+            _inShowPage = false;
+        }
+    }
+
+    private void ShowPageCore(ShellPage page)
     {
         // Read BEFORE the swap: "was 设置 the page being replaced" is what distinguishes a real
         // 设置 → 应用 switch (which owes the launcher a re-fit, since nothing measured it while it was
@@ -432,12 +472,17 @@ public partial class MainWindow : Window
     /// ListBox only ever enforces "at most one selected item" within its OWN items.
     /// </summary>
     /// <remarks>
-    /// <c>rail.SelectedIndex &lt; 0</c> discards two distinct kinds of call this same handler receives
-    /// that must NOT navigate: (1) the re-entrant SelectionChanged this method's own
-    /// <c>otherRail.SelectedIndex = -1</c> line below raises on the OTHER list (its <c>AddedItems</c> is
-    /// empty and its own <c>SelectedIndex</c> reads -1 by the time this runs), and (2) <see cref="ShowPage"/>
-    /// clearing a list's selection directly (also to -1) when navigating to the page the OTHER list
-    /// owns. Only a real "the user (or UI Automation) picked a row" call ever leaves SelectedIndex at 0.
+    /// Two separate guards, for two separate kinds of call this same handler receives that must NOT
+    /// navigate: <see cref="_inShowPage"/> (Round 3, Task 2 review fix, Important 1) discards a
+    /// SelectionChanged raised by <see cref="ShowPageCore"/>'s OWN <c>SelectedIndex</c> writes — see
+    /// that field's own remarks for why reacting to those used to make <see cref="ShowPage"/>
+    /// re-entrant. <c>rail.SelectedIndex &lt; 0</c> discards the re-entrant-LOOKING but harmless
+    /// SelectionChanged this method's OWN <c>otherRail.SelectedIndex = -1</c> line below raises on the
+    /// OTHER list (its <c>AddedItems</c> is empty and its own <c>SelectedIndex</c> reads -1 by the time
+    /// this runs) — that one is not <see cref="_inShowPage"/>'s concern, since it happens BEFORE
+    /// <see cref="ShowPage"/> is ever called for this navigation. Only a real "the user (or UI
+    /// Automation) picked a row" call ever reaches the bottom of this method with SelectedIndex at 0
+    /// and <see cref="_inShowPage"/> false.
     /// </remarks>
     private void OnNavSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
@@ -453,7 +498,23 @@ public partial class MainWindow : Window
         // MUST read SelectedIndex off the sender, not a NavRail/NavFooterRail field: this event can
         // fire before the generated populate code has assigned those fields — reading a field there
         // null-refs.
-        if (!_navReady || sender is not ListBox rail || rail.SelectedIndex < 0)
+        if (!_navReady || sender is not ListBox rail)
+            return;
+
+        if (_inShowPage)
+        {
+            // Round 3, Task 2 review fix (Important 1): logged at Debug, not silently discarded, so the
+            // two real callers that can reach ShowPage WITHOUT a preceding rail click — the settings
+            // entry (ISettingsLauncher.Open -> SettingsLauncher.OpenCore) and WindowHost.Hide's reset to
+            // 应用 — can be confirmed LIVE to actually hit this suppression instead of re-entering
+            // ShellNavigator.Navigate. See task-2-report.md's fix-report section for the log capture.
+            Serilog.Log.Debug(
+                "OnNavSelectionChanged suppressed a write from ShowPage itself ({Rail}, SelectedIndex={Index})",
+                rail.Name, rail.SelectedIndex);
+            return;
+        }
+
+        if (rail.SelectedIndex < 0)
             return;
 
         var otherRail = ReferenceEquals(rail, NavRail) ? NavFooterRail : NavRail;
