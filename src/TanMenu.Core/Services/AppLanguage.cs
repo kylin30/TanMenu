@@ -183,9 +183,11 @@ public static class AppLanguage
             ["MenuMore"] = ("更多", "More"),
             ["NavApps"] = ("应用", "Apps"),
             ["NavSettings"] = ("设置", "Settings"),
-            // The hamburger toggle at the top of the nav rail. Named for the action it performs (what
-            // pressing it does NEXT), not the rail's current state — same convention WinUI's own
-            // NavigationView pane-toggle button uses for its accessible name.
+            // The hamburger toggle at the top of the nav rail. Named for the action pressing it
+            // performs NEXT — "expand" while collapsed, "collapse" while expanded — rather than the
+            // rail's current state, so the accessible name (AutomationProperties.Name/ToolTip.Tip, set
+            // imperatively in MainWindow's ApplyNavExpandedState) always describes what will happen,
+            // not a state description that would otherwise need its own separate wording.
             ["NavExpand"] = ("展开导航栏", "Expand navigation"),
             ["NavCollapse"] = ("折叠导航栏", "Collapse navigation"),
             ["NoMatchTitle"] = ("未找到匹配项", "No matches"),

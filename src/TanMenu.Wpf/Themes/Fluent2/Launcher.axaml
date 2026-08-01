@@ -18,13 +18,23 @@
   <Styles.Resources>
 
     <!-- ══ Launcher item tile ═══════════════════════════════════════════════════════════════════
-         The most-repeated control in the app. Transparent at rest so the acrylic reads through;
-         the hover and pressed states are Fluent 2's subtle fills, which are alpha over whatever is
-         behind rather than opaque swatches. Unlike the retro build, pressing does NOT offset the
-         content — Fluent 2 signals press by going a shade quieter, not by moving. -->
+         The most-repeated control in the app, and — per the round-2 visual-pass review — a real
+         Fluent 2 STANDARD BUTTON now rather than a borderless icon+text row: a subtle fill
+         (SurfaceLayerBrush, the same layered surface Border.tm-card and the search field use), a
+         hairline border (StrokeControlBrush) and the shape scale's 4 px control radius, all visible
+         AT REST rather than appearing only on hover. TmButton below gives every other button in the
+         app (the settings-card actions) that same look; this theme duplicates its template rather
+         than deriving from it via BasedOn so a tile's own quirks — Stretch content alignment for the
+         icon+label DockPanel, its own per-size-class Padding, and disabling by making the WHOLE card
+         recede to nothing rather than just dimming it — stay self-contained. Unlike the retro build,
+         pressing does NOT offset the content — Fluent 2 signals press by going a shade quieter, not
+         by moving. -->
     <ControlTheme x:Key="TmTileButton" TargetType="Button">
-      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Background" Value="{DynamicResource SurfaceLayerBrush}" />
       <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource StrokeControlBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{DynamicResource RadiusControl}" />
       <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
       <Setter Property="Padding" Value="8,7" />
       <Setter Property="HorizontalContentAlignment" Value="Stretch" />
@@ -49,34 +59,49 @@
         </Template>
       </Setter>
 
+      <!-- Two layers: Root paints the persistent fill/border and StateLayer paints ONLY the
+           hover/pressed wash on top of it. One layer cannot do both — swapping Root's own Background
+           straight from SurfaceLayerBrush to SubtleFillSecondaryBrush on hover would make the tile
+           LESS opaque, not more, because those Subtle* alphas are calibrated to sit on a transparent
+           rest state (see TmIconButton below), not to stack visibly over a fill that is already
+           there. StateLayer's own CornerRadius is 3, one px less than Root's 4, so it sits just
+           inside Root's hairline border instead of its square corners poking out past Root's rounded
+           ones. -->
       <Setter Property="Template">
         <ControlTemplate>
           <Border x:Name="Root"
                   Background="{TemplateBinding Background}"
-                  CornerRadius="{DynamicResource RadiusControl}"
-                  Padding="{TemplateBinding Padding}">
-            <ContentPresenter Content="{TemplateBinding Content}"
-                              ContentTemplate="{TemplateBinding ContentTemplate}"
-                              HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
-                              VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}"
+                  CornerRadius="{TemplateBinding CornerRadius}">
+            <Border x:Name="StateLayer" Background="Transparent" CornerRadius="3">
+              <ContentPresenter Content="{TemplateBinding Content}"
+                                ContentTemplate="{TemplateBinding ContentTemplate}"
+                                Padding="{TemplateBinding Padding}"
+                                HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+            </Border>
           </Border>
         </ControlTemplate>
       </Setter>
 
-      <Style Selector="^:pointerover /template/ Border#Root">
+      <Style Selector="^:pointerover /template/ Border#StateLayer">
         <Setter Property="Background" Value="{DynamicResource SubtleFillSecondaryBrush}" />
       </Style>
-      <Style Selector="^:pressed /template/ Border#Root">
+      <Style Selector="^:pressed /template/ Border#StateLayer">
         <Setter Property="Background" Value="{DynamicResource SubtleFillTertiaryBrush}" />
       </Style>
       <!-- A tile whose shortcut target no longer exists. It stays in place and stays readable —
-           it is information, not noise — but it takes no pointer states and cannot be launched. -->
+           it is information, not noise — but it takes no pointer states and cannot be launched, and
+           the card recedes to nothing (fill AND border both go transparent) rather than merely
+           dimming, so it reads as "not a button" instead of "a greyed-out button". -->
       <Style Selector="^:disabled">
         <Setter Property="Foreground" Value="{DynamicResource TextDisabledBrush}" />
         <Setter Property="Cursor" Value="Arrow" />
       </Style>
       <Style Selector="^:disabled /template/ Border#Root">
         <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
       </Style>
       <!-- The disabled tile's ICON is dimmed by a rule in the Styles body below, not here: a
            ControlTheme may not contain a descendant selector, and the icon lives in the launcher's
@@ -120,6 +145,88 @@
       <Style Selector="^:pressed /template/ Border#Root">
         <Setter Property="Background" Value="{DynamicResource SubtleFillTertiaryBrush}" />
       </Style>
+    </ControlTheme>
+
+    <!-- ══ Standard button (settings-card actions) ════════════════════════════════════════════════
+         Fluent 2's control-button surface, used everywhere a settings card needs an actual button
+         (打开/更改…/重置为默认/清理缓存/备份…/恢复…/固定到任务栏/清除/检查更新/下载更新, …), replacing
+         Avalonia's own default Fluent-1 Button look those rows rendered with before. 32 px tall at
+         100% scaling — MinHeight rather than a fixed Height, so the actual on-screen height still
+         tracks the OS text-scale setting the way every other control here does, instead of being a
+         hardcoded pixel box — with the same fill/border/radius/state-layer shape TmTileButton uses
+         above. See that theme's comment for why the hover/pressed wash is a second layer rather than
+         a straight Background swap, and why the two themes duplicate the template instead of one
+         deriving from the other via BasedOn (TmAccentButton below DOES use BasedOn — safely, because
+         it only overrides top-level Setters and touches none of TmButton's nested state-layer
+         Styles). -->
+    <ControlTheme x:Key="TmButton" TargetType="Button">
+      <Setter Property="Background" Value="{DynamicResource SurfaceLayerBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource StrokeControlBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{DynamicResource RadiusControl}" />
+      <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
+      <Setter Property="Padding" Value="16,0" />
+      <Setter Property="MinHeight" Value="32" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="FocusAdorner">
+        <Template>
+          <Border BorderBrush="{DynamicResource FocusStrokeOuterBrush}"
+                  BorderThickness="2" CornerRadius="7" Margin="-3">
+            <Border BorderBrush="{DynamicResource FocusStrokeInnerBrush}"
+                    BorderThickness="1" CornerRadius="5" />
+          </Border>
+        </Template>
+      </Setter>
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border x:Name="Root"
+                  Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}"
+                  CornerRadius="{TemplateBinding CornerRadius}">
+            <Border x:Name="StateLayer" Background="Transparent" CornerRadius="3">
+              <ContentPresenter Content="{TemplateBinding Content}"
+                                ContentTemplate="{TemplateBinding ContentTemplate}"
+                                Padding="{TemplateBinding Padding}"
+                                HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+            </Border>
+          </Border>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:pointerover /template/ Border#StateLayer">
+        <Setter Property="Background" Value="{DynamicResource SubtleFillSecondaryBrush}" />
+      </Style>
+      <Style Selector="^:pressed /template/ Border#StateLayer">
+        <Setter Property="Background" Value="{DynamicResource SubtleFillTertiaryBrush}" />
+      </Style>
+      <Style Selector="^:disabled">
+        <Setter Property="Foreground" Value="{DynamicResource TextDisabledBrush}" />
+        <Setter Property="Cursor" Value="Arrow" />
+      </Style>
+      <Style Selector="^:disabled /template/ Border#Root">
+        <Setter Property="Opacity" Value="0.6" />
+      </Style>
+    </ControlTheme>
+
+    <!-- ══ Accent button ═══════════════════════════════════════════════════════════════════════════
+         The one affirmative, forward-moving action on a card that has exactly one — 固定到任务栏 and
+         下载更新/重启更新 — gets this instead of TmButton. Every other settings-card row either offers
+         no single obvious default (two or three peer actions: 打开/选择…, 打开/更改…/重置为默认,
+         清理缓存/备份…/恢复…) or its one button is a check/reset/clear rather than something that moves
+         the user forward (检查更新, the hotkey 清除 button), so those stay on the plain TmButton. Same
+         template as TmButton via BasedOn — only the rest-state fill/border and the text colour
+         change, to the same accent/on-accent pair AppTheme overwrites with the user's real Windows
+         accent at startup (see Tokens.axaml's header comment); the inherited hover/pressed state
+         layer keeps working unchanged because BasedOn keeps whatever Setters and Styles the derived
+         theme does not redeclare. -->
+    <ControlTheme x:Key="TmAccentButton" TargetType="Button" BasedOn="{StaticResource TmButton}">
+      <Setter Property="Background" Value="{DynamicResource AccentDefaultBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource TextOnAccentBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource AccentDefaultBrush}" />
     </ControlTheme>
 
   </Styles.Resources>

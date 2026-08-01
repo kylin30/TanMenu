@@ -55,8 +55,11 @@
           <TextBlock Grid.Column="0" Classes="tm-icon" Text="&#xE840;" Margin="0,0,14,0" VerticalAlignment="Center" />
           <TextBlock Grid.Column="1" x:Name="PinTaskbarTitle" Classes="tm-card-title"
                      VerticalAlignment="Center" Margin="0,0,12,0" />
-          <Button Grid.Column="2" x:Name="PinTaskbarBtn" Click="OnPinTaskbarClick"
-                  Padding="14,5" VerticalAlignment="Center" />
+          <!-- The only button on this row, and an affirmative one (do the useful thing), so it gets
+               the accent treatment — see TmAccentButton's own comment in Launcher.axaml for the
+               criteria applied to every settings-card button. -->
+          <Button Grid.Column="2" x:Name="PinTaskbarBtn" Theme="{StaticResource TmAccentButton}"
+                  Click="OnPinTaskbarClick" VerticalAlignment="Center" />
         </Grid>
         <TextBlock x:Name="PinTaskbarStatusText" Classes="tm-card-sub" TextWrapping="Wrap"
                    Margin="30,8,0,0" />
@@ -86,7 +89,10 @@
                  bubbling handler would run after the TextBox has already consumed the key. -->
             <TextBox x:Name="HotkeyBox" Width="160" IsReadOnly="True" VerticalContentAlignment="Center"
                      Padding="8,5" />
-            <Button x:Name="HotkeyClearBtn" Click="OnHotkeyClearClick" Padding="12,5" />
+            <!-- Clearing a hotkey is a reset, not a forward-moving action, so it stays on the plain
+                 TmButton rather than TmAccentButton even though it is the row's only button. -->
+            <Button x:Name="HotkeyClearBtn" Theme="{StaticResource TmButton}"
+                    Click="OnHotkeyClearClick" VerticalAlignment="Center" />
           </StackPanel>
         </Grid>
         <TextBlock x:Name="HotkeyHelpText" Classes="tm-card-sub" TextWrapping="Wrap" Margin="30,8,0,0" />

@@ -15,9 +15,10 @@
         ExtendClientAreaTitleBarHeightHint="48">
 
   <!--
-    The shell: a Mica window split into a title strip, a fixed navigation rail and a page host. Exactly
-    two pages exist, so the rail is a ListBox rather than anything more elaborate, and the selected page
-    is view state — the window always opens on 应用.
+    The shell: a Mica window split into a title strip, a collapsible navigation rail (48 px icon-only
+    when collapsed — the default a fresh config gets — 200 px icon+label when expanded, see NavRailPane
+    below) and a page host. Exactly two pages exist, so the rail is a ListBox rather than anything more
+    elaborate, and the selected page is view state — the window always opens on 应用.
 
     ExtendClientAreaToDecorationsHint pulls the whole client area — including the strip where the OS
     used to paint its own title bar — under our control. ExtendClientAreaTitleBarHeightHint is pinned to
@@ -247,7 +248,19 @@
         </Grid>
       </Border>
 
-      <ContentControl x:Name="PageHost" Grid.Column="1" />
+      <!-- ══ Content pane: a solid Fluent 2 surface, not Mica ═══════════════════════════════════════
+           Task Manager's shape: the backdrop shows through the title strip and the nav rail, but the
+           page underneath them is an opaque layer. SurfaceBaseBrush is the SAME "opaque Fluent surface
+           colour" this window's own ApplyBackdrop (code-behind) already paints across the WHOLE window
+           when Mica itself is refused (Windows 10, "show transparency" off, remote desktop), and that
+           MessageBoxWindow and the 关于 overlay below already use for the same reason — reusing it here
+           rather than minting a new token keeps "the app's one opaque surface colour" meaning exactly
+           one thing. AppPage's root Panel and SettingsPage's root ScrollViewer are both left with no
+           background of their own, which is what lets this single Border stand in for the solid pane
+           under EITHER page instead of each page having to paint it separately. -->
+      <Border Grid.Column="1" Background="{DynamicResource SurfaceBaseBrush}">
+        <ContentControl x:Name="PageHost" />
+      </Border>
     </Grid>
   </Grid>
 </Window>

@@ -40,8 +40,10 @@
                      TextTrimming="CharacterEllipsis" MaxWidth="260" Margin="0,6,0,0" />
         </StackPanel>
         <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
-          <Button x:Name="OpenRootBtn" Click="OnOpenRootClick" Padding="14,5" VerticalAlignment="Center" />
-          <Button x:Name="PickRootBtn" Click="OnPickRootClick" Padding="14,5" VerticalAlignment="Center" />
+          <Button x:Name="OpenRootBtn" Theme="{StaticResource TmButton}"
+                  Click="OnOpenRootClick" VerticalAlignment="Center" />
+          <Button x:Name="PickRootBtn" Theme="{StaticResource TmButton}"
+                  Click="OnPickRootClick" VerticalAlignment="Center" />
         </StackPanel>
       </Grid>
     </Border>
@@ -63,9 +65,12 @@
           <!-- Column 2 deliberately empty here — see the class-level remark above. -->
         </Grid>
         <StackPanel Orientation="Horizontal" Spacing="8" Margin="30,10,0,0">
-          <Button x:Name="OpenDataBtn" Click="OnOpenDataClick" Padding="14,5" VerticalAlignment="Center" />
-          <Button x:Name="ChangeDataBtn" Click="OnChangeDataClick" Padding="14,5" VerticalAlignment="Center" />
-          <Button x:Name="ResetDataBtn" Click="OnResetDataClick" Padding="14,5" VerticalAlignment="Center" />
+          <Button x:Name="OpenDataBtn" Theme="{StaticResource TmButton}"
+                  Click="OnOpenDataClick" VerticalAlignment="Center" />
+          <Button x:Name="ChangeDataBtn" Theme="{StaticResource TmButton}"
+                  Click="OnChangeDataClick" VerticalAlignment="Center" />
+          <Button x:Name="ResetDataBtn" Theme="{StaticResource TmButton}"
+                  Click="OnResetDataClick" VerticalAlignment="Center" />
         </StackPanel>
       </StackPanel>
     </Border>
@@ -81,9 +86,12 @@
           <!-- Column 2 deliberately empty here — see the class-level remark above. -->
         </Grid>
         <StackPanel Orientation="Horizontal" Spacing="8" Margin="30,10,0,0">
-          <Button x:Name="ClearCacheBtn" Click="OnClearCacheClick" Padding="14,5" VerticalAlignment="Center" />
-          <Button x:Name="BackupBtn" Click="OnBackupConfigClick" Padding="14,5" VerticalAlignment="Center" />
-          <Button x:Name="RestoreBtn" Click="OnRestoreConfigClick" Padding="14,5" VerticalAlignment="Center" />
+          <Button x:Name="ClearCacheBtn" Theme="{StaticResource TmButton}"
+                  Click="OnClearCacheClick" VerticalAlignment="Center" />
+          <Button x:Name="BackupBtn" Theme="{StaticResource TmButton}"
+                  Click="OnBackupConfigClick" VerticalAlignment="Center" />
+          <Button x:Name="RestoreBtn" Theme="{StaticResource TmButton}"
+                  Click="OnRestoreConfigClick" VerticalAlignment="Center" />
         </StackPanel>
       </StackPanel>
     </Border>
