@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Styling;
 using Avalonia.VisualTree;
 using Microsoft.Extensions.DependencyInjection;
 using TanMenu.Core.Services;
@@ -291,11 +292,28 @@ public partial class BehaviorCard : UserControl, ISettingsCard
         }
     }
 
+    /// <summary>Round 3, Task 3 (user item 8): once pinned, this row's button must read as a completed,
+    /// disabled action rather than a still-live call to action. <c>IsEnabled</c> already tracked
+    /// <see cref="TaskbarPinStatus.Pinned"/> correctly before this change; what was wrong is that the
+    /// button kept <c>TmAccentButton</c>'s Theme regardless, and TmAccentButton's own
+    /// <c>^:disabled /template/ Border#Root</c> rule (inherited, via BasedOn, from TmButton — see
+    /// Launcher.axaml) only dims the whole Root to 60% opacity; it never repaints Background away from
+    /// AccentDefaultBrush, so a disabled-and-pinned button still rendered as a muted BLUE swatch —
+    /// visually still an affordance, just quieter, exactly the "accent-styled" look the task flagged.
+    /// Switching Theme to the plain, neutral TmButton once pinned is what actually reaches a proper
+    /// Windows 11 disabled-control look (dimmed neutral surface, dimmed text, no accent colour at all).
+    /// This runs from the SAME single call site IsEnabled/Content already did (both branches of
+    /// ApplyTaskbarPinState's two callers — the live OS re-query in
+    /// <see cref="RefreshTaskbarPinStateAsync"/> on every <see cref="OnAttachedToVisualTree"/>, and
+    /// ReloadFromConfig's re-label of the cached <see cref="_taskbarPinState"/>) — so the Theme always
+    /// follows the same live-queried state IsEnabled does, never a value captured once at construction.</summary>
     private void ApplyTaskbarPinState(TaskbarPinState state)
     {
         _taskbarPinState = state;
-        PinTaskbarBtn.IsEnabled = state.Status is not TaskbarPinStatus.Pinned;
-        PinTaskbarBtn.Content = state.Status is TaskbarPinStatus.Pinned
+        var isPinned = state.Status is TaskbarPinStatus.Pinned;
+        PinTaskbarBtn.IsEnabled = !isPinned;
+        PinTaskbarBtn.Theme = this.FindResource(isPinned ? "TmButton" : "TmAccentButton") as ControlTheme;
+        PinTaskbarBtn.Content = isPinned
             ? L("PinnedToTaskbar")
             : state.Status is TaskbarPinStatus.Available
                 ? L("PinToTaskbar")

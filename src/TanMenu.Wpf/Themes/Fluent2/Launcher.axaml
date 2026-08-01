@@ -216,11 +216,14 @@
     </ControlTheme>
 
     <!-- ══ Accent button ═══════════════════════════════════════════════════════════════════════════
-         The one affirmative, forward-moving action on a card that has exactly one — 固定到任务栏 and
-         下载更新/重启更新 — gets this instead of TmButton. Every other settings-card row either offers
-         no single obvious default (two or three peer actions: 打开/选择…, 打开/更改…/重置为默认,
-         清理缓存/备份…/恢复…) or its one button is a check/reset/clear rather than something that moves
-         the user forward (检查更新, the hotkey 清除 button), so those stay on the plain TmButton. Same
+         The one affirmative, forward-moving action on a card that has exactly one — 固定到任务栏 (while
+         there is still something to do — Round 3, Task 3 switches it back to plain TmButton once
+         already pinned, see BehaviorCard.axaml.cs's ApplyTaskbarPinState; a completed action is not a
+         call to action) and 下载更新/重启更新 — gets this instead of TmButton. Every other settings-card
+         row either offers no single obvious default (two or three peer actions: 打开/选择…,
+         打开/更改…/重置为默认, 清理缓存/备份…/恢复…) or its one button is a check/reset/clear rather than
+         something that moves the user forward (检查更新, the hotkey 清除 button), so those stay on the
+         plain TmButton. Same
          template as TmButton via BasedOn — only the rest-state fill/border and the text colour
          change, to the same accent/on-accent pair AppTheme overwrites with the user's real Windows
          accent at startup (see Tokens.axaml's header comment); the inherited hover/pressed state
@@ -633,9 +636,34 @@
          the trailing control, which is narrower than several of these descriptions' natural width. -->
     <Setter Property="TextWrapping" Value="Wrap" />
   </Style>
+  <!-- Round 3, Task 3 (user item 9): the actual PAGE title ("设置") and each card GROUP'S own heading
+       ("外观"/"行为"/"文件夹"/"常用工具"/"更新") both used to share this one class at FontSizeSubtitle
+       (20) — the page title was too close in size to its own subsections. Live-measured Task Manager's
+       settings page (task-3-report.md, ink-height pixel sampling, not automation bounding boxes — those
+       include per-row template padding that differs between its title and its section rows and would
+       have overstated the title's real size by nearly 3x) found its page title's ink is ~1.4x its
+       section headings' ink, while its section headings and its CARD titles measure the SAME ink height
+       — the two are told apart by weight (bold vs regular) alone, confirmed by both ink height and ink
+       density (stroke-darkness-per-area, a boldness proxy) on live pixels. Our own ramp already has
+       FontSizeSubtitle:FontSizeBody = 20:14 = 1.43, matching that measured 1.4x almost exactly, so the
+       fix is a straight remap rather than a new token: the real page title gets its own class
+       (tm-page-title, below) at the old Subtitle size, and this class — now used only for the five
+       card-group headings — drops to FontSizeBody, SemiBold, matching Task Manager's own section
+       headings sitting at card-title size but bolder. -->
   <Style Selector="TextBlock.tm-group-head">
-    <Setter Property="FontSize" Value="{DynamicResource FontSizeSubtitle}" />
+    <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
+    <Setter Property="LineHeight" Value="{DynamicResource LineHeightBody}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Margin" Value="0,20,0,8" />
+  </Style>
+
+  <!-- The one real page title (SettingsPage.axaml's own PageTitle) — AppPage's own
+       "tm-empty > TextBlock.title" (above) already uses this exact Subtitle+SemiBold shape for its own
+       single big heading, so this reuses the established size rather than inventing one. -->
+  <Style Selector="TextBlock.tm-page-title">
+    <Setter Property="FontSize" Value="{DynamicResource FontSizeSubtitle}" />
+    <Setter Property="LineHeight" Value="{DynamicResource LineHeightSubtitle}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
   </Style>
 
 </Styles>

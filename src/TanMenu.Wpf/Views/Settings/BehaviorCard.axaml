@@ -55,10 +55,18 @@
           <TextBlock Grid.Column="0" Classes="tm-icon" Text="&#xE840;" Margin="0,0,14,0" VerticalAlignment="Center" />
           <TextBlock Grid.Column="1" x:Name="PinTaskbarTitle" Classes="tm-card-title"
                      VerticalAlignment="Center" Margin="0,0,12,0" />
-          <!-- The only button on this row, and an affirmative one (do the useful thing), so it gets
-               the accent treatment — see TmAccentButton's own comment in Launcher.axaml for the
-               criteria applied to every settings-card button. -->
-          <Button Grid.Column="2" x:Name="PinTaskbarBtn" Theme="{StaticResource TmAccentButton}"
+          <!-- The only button on this row, and — while there is still something useful for it to do
+               (not yet pinned, or pinning needs a manual fallback) — an affirmative, forward-moving one,
+               so it gets the accent treatment (see TmAccentButton's own comment in Launcher.axaml for
+               the criteria applied to every settings-card button). Once already pinned there is no
+               affirmative action left to offer, only a completed state to report, so Theme and Content
+               are both entirely code-driven (ApplyTaskbarPinState, code-behind) rather than given a
+               static default here — Round 3, Task 3 (user item 8): a disabled TmAccentButton still
+               painted a dimmed BLUE swatch (its own ^:disabled rule only lowers Opacity, it never
+               repaints Background off AccentDefaultBrush), which still read as a live call to action,
+               just quieter. Switching to the plain, neutral TmButton once pinned is what actually reads
+               as "done", not "click me, but dimmer". -->
+          <Button Grid.Column="2" x:Name="PinTaskbarBtn"
                   Click="OnPinTaskbarClick" VerticalAlignment="Center" />
         </Grid>
         <TextBlock x:Name="PinTaskbarStatusText" Classes="tm-card-sub" TextWrapping="Wrap"

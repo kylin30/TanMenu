@@ -34,9 +34,22 @@
        stable UI Automation AutomationId, which is how the "the last card is reachable at 100% scroll"
        check above is actually measured (ScrollPattern.VerticalScrollPercent on a named element, rather
        than hunting for an anonymous scroll region by tree position). Keep it. -->
+  <!-- Round 3, Task 3 (user item 7): cards used to sit at a fixed MaxWidth="720" with
+       HorizontalAlignment="Left" — a shrink-wrapped column parked against the left edge no matter how
+       wide the window got. Task Manager's own settings cards (measured live, task-3-report.md) stretch
+       to fill the content area with a ~24-25 DIP gutter on both sides up to a measured ~1250 DIP cap,
+       then centre once that cap is hit. StackPanel's default HorizontalAlignment is already Stretch
+       (only the explicit "Left" above was overriding it), and this ScrollViewer never turns on
+       HorizontalScrollBarVisibility (it only sets Vertical), so ScrollContentPresenter's own
+       MeasureOverride gives CardStack the real, bounded viewport width rather than
+       PositiveInfinity — confirmed against Avalonia 12.1.0's own decompiled source, not assumed — which
+       is what lets Stretch mean something here instead of silently doing nothing the way it would if
+       horizontal scrolling were enabled. Layoutable.ArrangeCore's own Stretch case centres a
+       MaxWidth-clamped child in exactly the leftover space this needs, for free, once the cap engages.
+       Margin stays 24,16,24,24 — Task Manager's own measured gutter already matched that value. -->
   <ScrollViewer x:Name="SettingsScroll" VerticalScrollBarVisibility="Auto">
-    <StackPanel x:Name="CardStack" MaxWidth="720" Margin="24,16,24,24" HorizontalAlignment="Left">
-      <TextBlock x:Name="PageTitle" Classes="tm-group-head" Margin="0,0,0,8" />
+    <StackPanel x:Name="CardStack" MaxWidth="1250" Margin="24,16,24,24">
+      <TextBlock x:Name="PageTitle" Classes="tm-page-title" Margin="0,0,0,8" />
       <cards:AppearanceCard x:Name="Appearance" />
       <cards:BehaviorCard x:Name="Behavior" />
       <cards:FoldersCard x:Name="Folders" />
