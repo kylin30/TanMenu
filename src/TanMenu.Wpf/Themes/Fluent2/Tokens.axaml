@@ -129,13 +129,20 @@
 
       <!-- ══ Variant-independent: shape, spacing, type ═════════════════════════════════════════ -->
 
-      <!-- Fluent 2 shape scale. 4 for controls, 8 for the overlay/window surface. -->
-      <CornerRadius x:Key="RadiusControl">4</CornerRadius>
-      <CornerRadius x:Key="RadiusOverlay">8</CornerRadius>
+      <!-- Fluent 2 shape scale. 4 for controls; the 8 DIP step of that scale is now carried by
+           RadiusPaneTopLeft below and nothing else.
 
-      <!-- The content pane's ONE rounded corner (Round 4, item 5). Declared beside RadiusOverlay for the
-           same reason RadiusControlInner is declared beside RadiusControl: it is a derived literal and
-           belongs next to the value it was derived from.
+           RadiusOverlay (a flat 8) used to be declared here. Its only consumer anywhere was the 关于
+           overlay's Border in AppPage.axaml, and Round 5, item 2 deleted that overlay — 关于 is a
+           settings card now — so the token went with it rather than being left defined for nobody.
+           Fluent2TokenTests checks referenced-to-defined and light/dark parity, never
+           defined-to-referenced, so nothing would have failed on it; that is the reason to delete it by
+           hand, not a reason to keep it. -->
+      <CornerRadius x:Key="RadiusControl">4</CornerRadius>
+
+      <!-- The content pane's ONE rounded corner (Round 4, item 5). Declared beside RadiusControl for the
+           same reason RadiusControlInner is: it is a derived literal and belongs next to the scale it
+           was derived from.
 
            8 DIP comes from the user's reference capture (3.png, a 1:1 native-resolution crop of Task
            Manager's DWM frame bounds, so its pixels are physical and DIP = px / 1.5). Re-measured during

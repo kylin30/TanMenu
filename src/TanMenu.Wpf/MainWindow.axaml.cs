@@ -696,14 +696,14 @@ public partial class MainWindow : Window
     }
 
     /// <summary>AppLanguage has no change notification, so the rail is labelled imperatively — the same
-    /// approach the settings UI uses. Round 3, Task 2: also labels the four command rows that used to be
-    /// the title strip's ⋯ overflow MenuItems — MenuOpenRoot/MenuRefresh/MenuAbout/MenuExit are the SAME
-    /// language keys those MenuItems already used (AppLanguage.cs), unchanged by the move.
+    /// approach the settings UI uses. Round 3, Task 2: also labels the command rows that used to be the
+    /// title strip's ⋯ overflow MenuItems — MenuOpenRoot/MenuRefresh/MenuExit are the SAME language keys
+    /// those MenuItems already used (AppLanguage.cs), unchanged by the move.
     /// <para>
     /// Round 4, item 1 removed the rail's expanded state and with it every visible row label, so what
-    /// this method writes is now the ONLY name each of the six rows has, in any state. The twelve writes
-    /// below are unchanged from when a visible label existed alongside them — what changed is their
-    /// status, not their content.
+    /// this method writes is now the ONLY name each row has, in any state. Round 5, item 2 took the 关于
+    /// row out of the rail altogether, so there are five rows and ten writes; MenuAbout went with it and
+    /// the key it left behind was renamed to "About" for the settings card that replaced the row.
     /// </para></summary>
     private void ApplyRailText()
     {
@@ -712,24 +712,21 @@ public partial class MainWindow : Window
         var settingsText = AppLanguage.Text("NavSettings", lang);
         var openRootText = AppLanguage.Text("MenuOpenRoot", lang);
         var refreshText = AppLanguage.Text("MenuRefresh", lang);
-        var aboutText = AppLanguage.Text("MenuAbout", lang);
         var exitText = AppLanguage.Text("MenuExit", lang);
 
-        // AutomationProperties.Name/ToolTip.Tip live on the ROW (the ListBoxItem or, for the four
+        // AutomationProperties.Name/ToolTip.Tip live on the ROW (the ListBoxItem or, for the three
         // command rows, the Button), not on anything inside it: a row's whole content is a 16 DIP icon
         // glyph (MainWindow.axaml), which names nothing to a screen reader and nothing to a user who
-        // does not already know the glyph. These twelve writes are the rail's entire labelling.
+        // does not already know the glyph. These ten writes are the rail's entire labelling.
         NavAppsItem.SetValue(AutomationProperties.NameProperty, appsText);
         NavSettingsItem.SetValue(AutomationProperties.NameProperty, settingsText);
         NavOpenRootItem.SetValue(AutomationProperties.NameProperty, openRootText);
         NavRefreshItem.SetValue(AutomationProperties.NameProperty, refreshText);
-        NavAboutItem.SetValue(AutomationProperties.NameProperty, aboutText);
         NavExitItem.SetValue(AutomationProperties.NameProperty, exitText);
         ToolTip.SetTip(NavAppsItem, appsText);
         ToolTip.SetTip(NavSettingsItem, settingsText);
         ToolTip.SetTip(NavOpenRootItem, openRootText);
         ToolTip.SetTip(NavRefreshItem, refreshText);
-        ToolTip.SetTip(NavAboutItem, aboutText);
         ToolTip.SetTip(NavExitItem, exitText);
     }
 
@@ -852,46 +849,18 @@ public partial class MainWindow : Window
     }
 
     // ══════════════════════════════════════════════════════════════════════════════════════════
-    // Navigation rail: the four relocated commands (Round 3, Task 2 — used to be the title strip's
+    // Navigation rail: the three relocated commands (Round 3, Task 2 — used to be the title strip's
     // ⋯ overflow MenuFlyout; MainWindow.axaml's rail comment explains why they are Buttons, not
-    // ListBoxItems, and why each is its own row rather than one row that opens a flyout of four).
-    // Round 4, item 2 reordered those rows in MainWindow.axaml and fixed OnAboutClick below; the other
-    // three bodies are still unchanged from the overflow-menu era.
+    // ListBoxItems, and why each is its own row rather than one row that opens a flyout).
+    // There were four until Round 5, item 2 moved 关于 into the 设置 page as a card and deleted the
+    // overlay it raised; OnAboutClick — the one body Round 4 had touched, to navigate to 应用 before
+    // raising a panel that lived on that page — went with it. The three below are still unchanged from
+    // the overflow-menu era.
     // ══════════════════════════════════════════════════════════════════════════════════════════
 
     private void OnOpenRootClick(object? sender, RoutedEventArgs e) => _appPage.ViewModel.OpenRoot();
 
     private void OnRefreshClick(object? sender, RoutedEventArgs e) => _ = _appPage.ViewModel.RefreshAsync();
-
-    /// <summary>
-    /// Navigates to 应用 BEFORE raising the overlay — Round 4, item 2's one behavioural fix, shipped
-    /// with the reorder because a row that silently does nothing on one of the app's two pages is not
-    /// worth repositioning.
-    /// <para>
-    /// The 关于 panel is a child of <see cref="Views.AppPage"/> (AppPage.axaml, its IsVisible bound to
-    /// <see cref="LauncherViewModel.ShowAbout"/>), but this row is in the window's rail and can be
-    /// pressed from either page. While 设置 is showing, <c>PageHost.Content</c> is the settings page and
-    /// AppPage is detached, so setting the flag alone puts nothing on screen and leaves it set — the
-    /// overlay then surfaces later, whenever the user next returns to 应用.
-    /// <c>ShellNavigator.Navigate</c> is the same call <see cref="OnNavSelectionChanged"/> makes for a
-    /// real rail click, and it costs nothing on the page where the bug never showed: with 应用 already
-    /// current, <see cref="ShowPageCore"/> writes two <c>SelectedIndex</c> values that already hold
-    /// those values, re-assigns <c>PageHost.Content</c> to the same instance, re-enables an already
-    /// enabled search box and posts a <see cref="ConsumePendingFocus"/> that returns immediately unless
-    /// a focus request is genuinely outstanding.
-    /// </para>
-    /// <para>
-    /// Both halves were reproduced live, not just read: driving the shipped build through UI Automation
-    /// (<c>SelectionItemPattern.Select</c> on the 设置 row, then <c>InvokePattern.Invoke</c> on this one
-    /// — no synthetic pointer or keyboard input, which this machine cannot deliver), the pre-fix build
-    /// stayed on 设置 with no overlay and then popped the overlay unbidden on the next 应用 selection,
-    /// while the fixed build lands on 应用 with the panel up in one step.
-    /// </para></summary>
-    private void OnAboutClick(object? sender, RoutedEventArgs e)
-    {
-        App.Services.GetRequiredService<ShellNavigator>().Navigate(ShellPage.App);
-        _appPage.ViewModel.OpenAbout();
-    }
 
     private void OnExitClick(object? sender, RoutedEventArgs e) => _appPage.ViewModel.ExitApp();
 

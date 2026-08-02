@@ -597,8 +597,11 @@
        state rule here without re-adding the state it describes. -->
 
   <!-- ══ The footer's one group boundary ═════════════════════════════════════════════════════════
-       Round 4, item 2: a single hairline under 退出, separating the terminal action from the four
-       reversible rows below it (MainWindow.axaml's footer StackPanel carries the ordering rationale).
+       A single hairline separating the terminal action from the reversible rows. Round 4, item 2 put it
+       UNDER 退出, which was then the footer's first row; Round 5, item 1 moved 退出 to the bottom at the
+       user's request and the hairline travelled with it, so it now sits ABOVE 退出 and below 设置.
+       Neither this rule nor its geometry changed — only its position in MainWindow.axaml, whose footer
+       StackPanel carries the ordering rationale and the reason the fence has to follow the row.
 
        Both numbers are derived, not picked. The HORIZONTAL 4 is the rows' own Margin="4,2" (the
        "ListBox.tm-nav ListBoxItem" style above and the TmNavRowButton ControlTheme both set it), so the
@@ -608,7 +611,9 @@
        1 DIP line, which with the neighbouring rows' own 2 DIP vertical margins leaves 6 DIP between the
        line and each adjacent row box, against the 4 DIP that separates two ordinary rows: enough to
        read as a boundary, not so much that it reads as a missing row. The whole block is 9 DIP tall
-       (1 + 2×4), so the footer measures 213 DIP rather than 204.
+       (1 + 2×4), so the footer measures 173 DIP rather than 164 — four rows at the 40 DIP pitch, plus
+       this block, plus the footer's own 4 DIP bottom inset. It was 213 against 204 until Round 5, item 2
+       took the 关于 row out of the footer altogether.
 
        StrokeDividerBrush had NO consumer in this codebase before this rule — it is defined in both
        theme variants (Tokens.axaml) and was referenced nowhere. It is the right token anyway: a
@@ -785,13 +790,15 @@
        for TextBlock.tm-icon.subtle overriding TextBlock.tm-icon's Foreground. -->
 
   <!-- The icon box. :is(Control) rather than a TextBlock-scoped selector so the same class boxes a row
-       whose leading mark is not a glyph — an Image, say — without a second rule.
+       whose leading mark is not a glyph without a second rule — which part C then made real: the 关于
+       card's mark is the product tile, an Image (Views/Settings/AboutCard.axaml).
        Width 16 fixes the column independently of the glyph: all fifteen
        distinct glyphs the settings page carried when this was measured already measured exactly 16 DIP
        wide (fourteen since part B deleted the 当前版本 card and with it the page's only E946), so this
        changes nothing and stops a future glyph from moving the title. Height is deliberately NOT set — the 16 DIP box is
        Segoe Fluent Icons' own line box at FontSize 16, and pinning a height would clip the glyph if the
-       Windows 10 fallback face (Segoe MDL2 Assets) measures taller. -->
+       Windows 10 fallback face (Segoe MDL2 Assets) measures taller. An Image has no line box to supply
+       one, so that ONE row states Height="16" locally; every glyph row still must not. -->
   <Style Selector=":is(Control).tm-card-icon">
     <Setter Property="Width" Value="16" />
     <Setter Property="Margin" Value="0,0,14,0" />

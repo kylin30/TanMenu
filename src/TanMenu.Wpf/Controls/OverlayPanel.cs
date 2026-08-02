@@ -11,7 +11,10 @@ namespace TanMenu.Wpf.Controls;
 /// toast had to cover the window without ever changing what the window measured to (a plain
 /// <see cref="Panel"/> would take the MAX of all children, so opening About or showing a toast would
 /// resize and re-place the popup). The old WebView build got this for free — both were
-/// <c>position:fixed</c>, which contributes no layout size (launcher spec §7 and §9).
+/// <c>position:fixed</c>, which contributes no layout size (launcher spec §7 and §9). Round 5, item 2
+/// deleted the About panel — 关于 is a settings card now — so the overlays this holds today are the
+/// startup splash, the two empty states and the toast. That removes the panel's original occasion, not
+/// its job: every one of those four is still a child that must not feed the window's measure.
 /// </para>
 /// <para>
 /// Between 0.12 and Round 2's Task 4 the window was a fixed, user-resized application window that never
@@ -22,8 +25,8 @@ namespace TanMenu.Wpf.Controls;
 /// panel still exists for the same original reason: it shapes how the OVERLAYS themselves measure — they
 /// see the first child's (the main surface's) desired width rather than the raw available size, so the
 /// toast's single-line text still ellipsises against the real content width instead of an unconstrained
-/// one, AND — the part that would break without it — opening About or showing a toast never changes what
-/// gets measured, which would otherwise feed a moving target into fit-to-content.
+/// one, AND — the part that would break without it — showing a toast or an empty state never changes
+/// what gets measured, which would otherwise feed a moving target into fit-to-content.
 /// </para>
 /// </summary>
 public sealed class OverlayPanel : Panel

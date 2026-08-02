@@ -55,6 +55,9 @@
       <cards:FoldersCard x:Name="Folders" />
       <cards:ToolsCard x:Name="Tools" />
       <cards:UpdatesCard x:Name="Updates" />
+      <!-- 关于 is last, and it is the only group with no interactive control — Round 5, item 2 moved it
+           here from the rail. See AboutCard.axaml for why the page ends on identity. -->
+      <cards:AboutCard x:Name="About" />
     </StackPanel>
   </ScrollViewer>
 </UserControl>

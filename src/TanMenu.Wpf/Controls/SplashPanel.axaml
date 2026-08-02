@@ -4,12 +4,13 @@
              x:Class="TanMenu.Wpf.Controls.SplashPanel">
 
   <!--
-    The startup splash, and (with ShowLoading=false) the "关于" panel.
+    The startup splash. It had a second use — the "关于" panel, the same card with ShowLoading=false —
+    until Round 5, item 2 moved 关于 into the 设置 page as a card and deleted the overlay; AppPage's
+    loading state is the only consumer left.
 
     Deliberately NOT the Windows 2000 theme: this is the product's own brand surface and it looked
     exactly like this in the shipping build (a blue gradient card with the logo, the spinner and the
-    footer). Porting it verbatim keeps the app's identity; the retro chrome is the launcher, not the
-    about box.
+    footer). Porting it verbatim keeps the app's identity; the retro chrome is the launcher.
 
     Everything binds through $parent[ctl:SplashPanel] rather than the DataContext, so the control is
     driven purely by its own properties and inherits nothing from whoever hosts it.
@@ -123,11 +124,10 @@
         </StackPanel>
       </StackPanel>
 
-      <!-- About: "click anywhere to close" instead of the spinner. -->
-      <TextBlock IsVisible="{Binding $parent[ctl:SplashPanel].ShowHint}"
-                 Text="{Binding $parent[ctl:SplashPanel].HintText}"
-                 Foreground="White" FontSize="13" Opacity="0.7"
-                 HorizontalAlignment="Center" Margin="0,0,0,14" />
+      <!-- A "点击任意处关闭" hint used to sit here, shown whenever ShowLoading was false — i.e. only in
+           the 关于 variant, which Round 5, item 2 deleted. It went with it, together with ShowHint,
+           HintText and the ClickToDismiss language key. Nothing replaced it: the startup splash has
+           nothing to dismiss. -->
 
       <!-- In flow, not absolute: the window is content-sized, so an absolute footer would overlap. -->
       <StackPanel Margin="0,6,0,0" HorizontalAlignment="Center">

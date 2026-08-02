@@ -130,13 +130,10 @@ public static class AppLanguage
             ["CurrentDataSize"] = ("当前：{0} · {1}", "Current: {0} · {1}"),
             ["PortableDataCannotChange"] = ("绿色版的数据文件夹固定为绿色版根目录下的 Data，不能在设置中更改。", "The portable edition always uses the Data folder at the portable app root and cannot relocate it in Settings."),
             ["Updates"] = ("更新", "Updates"),
-            // HELD, NOT DEAD — the one key in this file with no consumer in src/, deliberately. Round 5
-            // part B deleted the 更新 group's 当前版本 card (see UpdatesCard.axaml's own remark: an
-            // information card with no control, sitting in an action group, about to print the version a
-            // second time one card apart). The controller's coordination ruling was that part C's 关于
-            // card reads this key instead. Until that card lands, 设置 shows no version at all and this
-            // string is unreferenced; grep finding it alone is expected, not an oversight to sweep. If
-            // part C is abandoned rather than landed, delete this key with it.
+            // Consumer moved, key unchanged. It labelled the 更新 group's 当前版本 card until Round 5
+            // part B deleted that card (an information card with no control, sitting in an action group,
+            // about to print the version a second time one card apart); part C's 关于 card
+            // (Views/Settings/AboutCard.axaml) reads it now, as the first of that card's two value lines.
             ["CurrentVersion"] = ("当前版本：{0}", "Current version: {0}"),
             ["UpdatePortableHelp"] = ("绿色版会自动检查 GitHub Releases；发现新版本后会在主界面提示，只有确认后才会下载和安装。", "The portable edition checks GitHub Releases automatically. New versions appear in the launcher and are downloaded and installed only after confirmation."),
             ["UpdateStoreManaged"] = ("Microsoft Store 版本由 Microsoft Store 管理更新。", "Updates for the Microsoft Store edition are managed by Microsoft Store."),
@@ -206,15 +203,26 @@ public static class AppLanguage
             ["RestoreSucceeded"] = ("配置已恢复并生效。", "Config restored and applied."),
             ["RestoreInvalid"] = ("恢复失败：所选文件不是有效的 TanMenu 配置。", "Restore failed: the selected file is not a valid TanMenu config."),
 
-            // MenuOpenRoot/MenuRefresh/MenuAbout/MenuExit label the navigation rail's four bottom-pinned
-            // command rows (MainWindow.ApplyRailText, Round 3 Task 2). They used to label the title
-            // strip's ⋯ overflow MenuFlyout's own MenuItems before that button was removed — same keys,
-            // same Chinese/English text, only the reader moved. MenuMore ("更多"), that button's own
+            // MenuOpenRoot/MenuRefresh/MenuExit label the navigation rail's three bottom-pinned command
+            // rows (MainWindow.ApplyRailText, Round 3 Task 2). They used to label the title strip's ⋯
+            // overflow MenuFlyout's own MenuItems before that button was removed — same keys, same
+            // Chinese/English text, only the reader moved. MenuMore ("更多"), that button's own
             // tooltip/AutomationProperties.Name, had no other reader and was removed with it.
+            //
+            // There was a fourth, MenuAbout, until Round 5 item 2 moved 关于 off the rail and into the
+            // 设置 page. Its text was right and its NAME was not — a Menu* key labelling a settings
+            // group head is a lie this very comment would have had to carry — so it was renamed to
+            // "About" and re-homed below with the other 关于 string rather than deleted and re-minted.
             ["MenuOpenRoot"] = ("打开主目录", "Open Main Folder"),
             ["MenuRefresh"] = ("刷新", "Refresh"),
-            ["MenuAbout"] = ("关于", "About"),
             ["MenuExit"] = ("退出", "Exit"),
+            // The 设置 page's last group and its one card (Views/Settings/AboutCard.axaml). "About" is
+            // the group head; AboutPublisher is the card's subtitle. The overlay this replaced showed an
+            // untranslated English "by TanSoft" (Controls/SplashPanel.axaml still does, inside a branded
+            // splash card where that is fine) — a settings-row subtitle is not the place for one, so the
+            // line is localized here.
+            ["About"] = ("关于", "About"),
+            ["AboutPublisher"] = ("由 TanSoft 出品", "by TanSoft"),
             ["NavApps"] = ("应用", "Apps"),
             ["NavSettings"] = ("设置", "Settings"),
             ["NoMatchTitle"] = ("未找到匹配项", "No matches"),
@@ -228,7 +236,9 @@ public static class AppLanguage
             ["OpenOptions"] = ("打开设置…", "Open Settings..."),
             ["LaunchFailed"] = ("无法启动：{0}", "Could not launch: {0}"),
             ["RefreshFailed"] = ("刷新失败", "Refresh failed"),
-            ["ClickToDismiss"] = ("点击任意处关闭", "Click anywhere to close"),
+            // ClickToDismiss ("点击任意处关闭") was here. It labelled the 关于 overlay's dismiss hint, its
+            // only consumer, and Round 5 item 2 deleted that overlay along with SplashPanel's ShowHint /
+            // HintText and LauncherViewModel.ClickToDismissText.
             ["OpenFolderTooltip"] = ("打开文件夹", "Open folder"),
 
             ["TrayShow"] = ("显示", "Show"),

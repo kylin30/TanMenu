@@ -1,0 +1,60 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="TanMenu.Wpf.Views.Settings.AboutCard">
+  <!-- One settings row: 关于. See the "row spec's shared classes" block in
+       Themes/Fluent2/Launcher.axaml for the anatomy, and AppearanceCard's code-behind for the full
+       ReloadFromConfig contract every settings card group follows.
+
+       Round 5, item 2 ("关于集成到设置页中"). 关于 used to be a rail row that raised a full-page overlay
+       over 应用 — the startup splash card with its spinner swapped for a "点击任意处关闭" hint. The
+       overlay was DELETED, not hidden, and this card is where its content went. Nothing else in the app
+       shows the version or the copyright to the user any more except the startup splash's own footer,
+       which is the same two strings from the same place (Services/AppIdentity.cs).
+
+       WHY IT IS ITS OWN GROUP, LAST ON THE PAGE. Windows 11 puts identity at the end of a settings page,
+       and this is the only group here with no interactive control at all — so the page ends on
+       information rather than on a half-disabled action, while 更新 keeps the page's last real action.
+
+       THE ONLY VARIANT-6 ROW ON THE PAGE: column 2 has no child. The Grid is the standard
+       Auto,*,Auto anyway, because the header, the icon box and the expansion row are the same
+       everywhere and an absent trailing control is not a different shape, just an empty column.
+
+       ICON. The 16 DIP product tile rather than a Segoe glyph — this row is the app itself, and the
+       image is already compiled into the assembly for SplashPanel and MainWindow's title strip. It
+       carries tm-card-icon like every other row's mark; that class is :is(Control)-scoped precisely so a
+       non-TextBlock leading mark needs no second rule. Height="16" is stated locally because the class
+       deliberately sets Width only (a glyph's line box supplies its own height; an Image has none).
+
+       THE TITLE IS A XAML LITERAL, and the one on this page that is not localized: "TanMenu" is the
+       product's name, identical in both languages, exactly as the overlay had it. The publisher line
+       below it IS localized (AppLanguage's AboutPublisher) — the overlay's own "by TanSoft" was
+       untranslated English, which is acceptable inside a branded splash card and is not acceptable as a
+       settings-row subtitle.
+
+       NEITHER VALUE LINE SETS A ToolTip, and that is deliberate rather than an omission. tm-card-value
+       carries a 260 DIP measure-time bound, and its rule in Launcher.axaml states that a value line
+       whose text CAN outgrow that bound and has no ToolTip is a defect in the card. Neither of these
+       can: both are fixed formats over fixed content, not user data. Measured live at 150 % on this
+       page, 当前版本：0.12.0 is 91.33 DIP of ink and the copyright line 186 — the same reasoning
+       FoldersCard's DataInfoText records for going without one, and the opposite of its two path lines,
+       which are user data and do set one. -->
+  <StackPanel>
+    <TextBlock x:Name="GroupHead" Classes="tm-group-head" />
+
+    <Border Classes="tm-card">
+      <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
+        <Image Grid.Column="0" Classes="tm-card-icon" Height="16"
+               Source="avares://TanMenu.Wpf/wwwroot/app-tile.png" />
+        <StackPanel Grid.Column="1" Classes="tm-card-text">
+          <TextBlock Text="TanMenu" Classes="tm-card-title" />
+          <TextBlock x:Name="PublisherText" Classes="tm-card-sub" />
+        </StackPanel>
+        <StackPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2"
+                    Classes="tm-card-expander tm-card-values">
+          <TextBlock x:Name="VersionLine" Classes="tm-card-sub tm-card-value" />
+          <TextBlock x:Name="CopyrightLine" Classes="tm-card-sub tm-card-value" />
+        </StackPanel>
+      </Grid>
+    </Border>
+  </StackPanel>
+</UserControl>

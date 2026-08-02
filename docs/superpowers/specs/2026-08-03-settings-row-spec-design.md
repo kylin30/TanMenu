@@ -1,12 +1,13 @@
 # TanMenu — the 设置 row spec, and the rail/关于 move (Round 5 design)
 
-> **Status.** Written as design only. **Part A and Part B are now implemented** — task A shipped the
-> style classes and the source guard (`64fc424`, `4427589`), task B migrated all sixteen rows. Part C
-> (items 1 and 2) is not. Where the implementation measured something this document had inherited
-> rather than measured, the document has been corrected in place and the correction is marked
-> **[task B, measured]**. Two such corrections exist: §A.5/§6.1(b) (the three-button rows trail — the
-> 760 DIP constraint was re-taken and no longer binds) and §A.8's `Padding`. Card-height predictions in
-> §B and §5.4 that followed from the old §A.5 are corrected with the heights actually measured.
+> **Status.** **Parts A, B and C are all implemented.** Task A shipped the style classes and the source
+> guard (`64fc424`, `4427589`), task B migrated all sixteen rows (`0dcd1fb`, `5cb9984`), task C moved 退出
+> to the bottom of the rail and turned 关于 into a settings card. Where an implementation measured
+> something this document had inherited rather than measured, the document is corrected in place and the
+> correction is marked **[task B, measured]** or **[task C, measured]**. Task B made two: §A.5/§6.1(b)
+> (the three-button rows trail — the 760 DIP constraint was re-taken and no longer binds) and §A.8's
+> `Padding`; card-height predictions in §B and §5.4 that followed from the old §A.5 are corrected with
+> the heights actually measured. Task C made three, all small and all in §C.2 — see the marks there.
 >
 
 > **Scope.** The three items the user asked for after reviewing the Round 4 build (0.12.0):
@@ -455,8 +456,9 @@ that vocabulary louder is its own item. Recorded as settled in §6.2.
 
 Column 2 simply has no child. The Grid is unchanged; the header is still two lines; the card is still
 62.67 DIP. `当前版本` was the only such row when this was written (`UpdatesCard.axaml:20-28`); **[task B]**
-it has since been deleted (§B row 15), so the page has no Variant-6 row at all until §C.2 adds 关于 as
-the only one.
+it has since been deleted (§B row 15). **[task C]** §C.2's 关于 card is now the page's only Variant-6
+row, and it measures on spec — icon, title and subtitle boxes at the same offsets from the card as every
+other row's (§C.2's verification table).
 
 ## A.10 What is deliberately left alone
 
@@ -582,16 +584,26 @@ stays a `ListBoxItem` in `NavFooterRail` for the reason Round 4 §2.4 records (a
 
 ### Verification (no keyboard, no mouse)
 
+**[task C, measured — all five ran on the live Debug build, PID 30356, and all five passed. The figures
+below are the ones the run produced, not the ones predicted.]**
+
 1. UI Automation tree walk of the footer's children in tree order; the `Name` sequence must be
-   **打开主目录 / 刷新 / 设置 / 退出** and nothing else.
+   **打开主目录 / 刷新 / 设置 / 退出** and nothing else. — *Exactly that sequence, nothing else. The rail
+   as a whole exposes five rows: 应用 plus those four.*
 2. `PrintWindow(hwnd, hdc, 2)`; scan glyph bands over the 40 DIP item column. 退出's `E7E8` must be the
-   **bottom-most glyph in the rail**, its box bottom 4 DIP + 2 DIP margin above the client bottom.
+   **bottom-most glyph in the rail**, its box bottom 4 DIP + 2 DIP margin above the client bottom. —
+   *Ink runs down the item column, in screen px: 1317–1370 (应用's selected row), 1835–1856, 1894–1917,
+   1954–1977, 2002–2003 (the hairline), 2028–2051. 退出's glyph is the last. Its box bottom is 2067
+   against a client bottom of 2076 — 9 px = 6 DIP = the footer's 4 plus the row's own 2.*
 3. The hairline: a run of `StrokeDividerBrush` spanning the 40 DIP item column, 2 physical rows at
    150 %, sitting between 设置's box bottom and 退出's box top. Box-to-box distance across it must be
    **13 DIP (20 px)** against **4 DIP (6 px)** between any ordinary neighbouring pair — the same
-   20 px / 6 px the current build measures across its own separator (r5-about-rail §1.3).
-4. Footer height, from 打开主目录's margin-box top to the client bottom: **173 DIP (260 px)**.
-5. `dotnet test` green with no test file edited.
+   20 px / 6 px the current build measures across its own separator (r5-about-rail §1.3). — *Two rows,
+   y 2002–2003, `(225,227,238)` against the rail's `(239,241,253)`; in dark `(49,50,56)` against
+   `(30,32,38)`. 设置 box bottom 1993 → 退出 box top 2013 = 20 px; 打开主目录 → 刷新 = 6 px.*
+4. Footer height, from 打开主目录's margin-box top to the client bottom: **173 DIP (260 px)**. —
+   *1819 − 3 = 1816 to 2076 = 260 px.*
+5. `dotnet test` green with no test file edited. — *187, no file under `tests/` touched.*
 
 ## C.2 Item 2 — 关于 leaves the rail and becomes a settings card
 
@@ -682,6 +694,13 @@ via `CardStack.Children.OfType<ISettingsCard>()` (`SettingsPage.axaml.cs:34-40`)
 | value 2 | `© 2026 TanSoft. All rights reserved.` | the same expression the overlay rendered (`LauncherViewModel.cs:274`) |
 | control | none | Variant 6 (§A.9) |
 
+**[task C] Two names in the snippet above are not what shipped.** The two value lines are
+`x:Name="VersionLine"` / `CopyrightLine`, not `VersionText` / `CopyrightText`: those two names are
+already `LauncherViewModel` properties that the startup splash still binds and that §C.2(c) re-points at
+`AppIdentity`, so reusing them for `AboutCard`'s generated fields would have made every grep for either
+name ambiguous during exactly the edit that moves them. Nothing else about the card's markup differs
+from the snippet.
+
 `AboutCard` implements `ISettingsCard.ReloadFromConfig()` and takes **no `_loading` guard** — it has no
 writable control, the documented reason `FoldersCard` (`FoldersCard.axaml.cs:25-30`) and `UpdatesCard`
 (`UpdatesCard.axaml.cs:73-77`) have none either. It needs `ConfigService` only, for
@@ -754,17 +773,65 @@ delete `ClickToDismiss`. `CurrentVersion` is unchanged with a moved consumer. No
 
 ### Verification (no keyboard, no mouse)
 
-1. `grep -rn "ShowAbout\|OpenAbout\|CloseAbout\|OnAboutClick\|OnAboutPressed\|ClickToDismiss\|ShowHint\|HintText\|RadiusOverlay" src/` returns **nothing**.
-2. `grep -rn "MenuAbout" src/` returns nothing; `grep -rn "\"About\"" src/` returns exactly two hits — the key and `AboutCard`'s group-head read.
-3. `grep -rn "GetName().Version" src/` returns exactly one hit, in `AppIdentity.cs`.
+**[task C, measured — all six ran; all six pass, two of them against a corrected expectation. The
+corrections are marked inline and are to this list, not to the implementation.]**
+
+1. `grep -rn "ShowAbout\|OpenAbout\|CloseAbout\|OnAboutClick\|OnAboutPressed\|ClickToDismiss\|ShowHint\|HintText\|RadiusOverlay" src/` returns **nothing**. —
+   **Corrected: it returns 16 hits, every one of them inside a comment, and zero in code.** "Returns
+   nothing" was never reachable alongside this repo's own house style, which records a deletion where it
+   happened rather than letting it vanish silently (`AppLanguage`'s note on the removed `MenuMore`,
+   `LauncherViewModel`'s on the four removed `Menu*Text` properties, both predating Round 5). The check
+   that means what this one intended is "zero hits outside comments", and that is what holds.
+2. `grep -rn "MenuAbout" src/` returns nothing; `grep -rn "\"About\"" src/` returns exactly two hits — the key and `AboutCard`'s group-head read. —
+   *`MenuAbout`: 3 hits, all comments, 0 code.* **Corrected: `"About"` returns three code hits, not
+   two** — the key, `AboutCard`'s group-head read, and `SettingsPage.axaml`'s `x:Name="About"` on the card
+   instance. This list forgot that every card in `CardStack` carries an `x:Name`
+   (`Appearance`/`Behavior`/`Folders`/`Tools`/`Updates`); dropping 关于's to satisfy a grep would have made
+   it the only one without.
+3. `grep -rn "GetName().Version" src/` returns exactly one hit, in `AppIdentity.cs`. — *One code hit,
+   `AppIdentity.cs:34`, plus one comment hit in the same file's xmldoc.*
 4. UI Automation on 设置 (reach it with `SelectionItemPattern.Select` on `NavSettingsItem` — patterns are
    programmatic and work where `SendInput` no-ops, the route Round 4 §5.4 step 7 used), then
    `ScrollPattern.SetScrollPercent(100)`: the last group head must read `关于`, and under it a card whose
    Text descendants are exactly `TanMenu`, `由 TanSoft 出品`, `当前版本：0.12.0`,
-   `© 2026 TanSoft. All rights reserved.`, in that order.
+   `© 2026 TanSoft. All rights reserved.`, in that order. — *Exactly those four strings, in that order,
+   under a last group head reading `关于`. The card's fifth child is the product tile, an `Image`, which
+   is not a Text element.*
 5. The 更新 group must contain exactly **one** card, and no element anywhere on the page other than the
-   About card may contain the string `0.12.0`.
-6. The rail must expose exactly five rows (应用 + four footer rows), none of them named 关于.
+   About card may contain the string `0.12.0`. — *One card. The only other element matching
+   `\d+\.\d+\.\d+` at all is 数据文件夹's path line, whose match is the framework moniker
+   `net10.0-windows10.0.19041.0` inside a real directory name; it does not contain `0.12.0`.*
+6. The rail must expose exactly five rows (应用 + four footer rows), none of them named 关于. — *Five;
+   none.*
+
+**Row-spec conformance of the new card [task C, measured]**, against §5.4's own assertions, read off the
+card `Border`'s UIA rect at a scroll stop containing it whole (screen px at 150 %; card at
+2950,1876, 1875 × 157):
+
+| §5.4 | Required | 关于 | Same figure on 更新 |
+|---|---|---|---|
+| 1 icon box | card + (17.33, 23.33) DIP, 16 × 16 | +26, +35 px, 24 × 24 | +26, +35 px, 24 × 24 |
+| 2 title box | top card + 13.33 DIP, height 20 | +20 px, 30 px | +20 px, 30 px |
+| 2 subtitle | top card + 33.33 DIP, height 16 | +50 px, 24 px | +50 px, 24 px |
+| 3 control right edge | — | no control (Variant 6, §A.9) | — |
+| 4 expansion left edge | card + 47.33 DIP | +71 px | +71 px |
+| 5 card height | — | **104.67 DIP (157 px)** | 86.67 (130 px) |
+
+104.67 is the same height 数据文件夹 measures and follows from the same arithmetic: 62.67 + 8
+(`tm-card-expander`) + 16 + 2 (`tm-card-values`) + 16. Both value lines are left on column 1's origin —
+`tm-card-value` doing its job — at 91.33 and 186 DIP of ink against the class's 260 bound.
+
+**Dark [task C, measured].** Repeated 4–6 with `"appearance": "Dark"` written into `Data\config.json`
+and the app restarted: identical text, identical rects. The card fill samples `(40,40,40)` — the same
+value 更新's card samples on the same page — over a `(32,32,32)` pane behind a `(48,48,48)` outline, so
+the new card composites exactly like every other one and paints nothing of its own. The config was
+restored byte-identically afterwards (SHA-256 `DFEFF028…46F65F` before and after).
+
+**Fit-to-content [task C, measured], §5.2's zero-delta claim.** The last pre-change line in
+`Data\cache\logs\log-20260802.txt` and the first two post-change lines are byte-identical:
+`Window fit to content: 1713.8333333333335,816 1692.3333333333333x568 DIP (page
+1643.3333333333333x471.3333333333333 + chrome 49x49)`. Nothing item 2 deleted reached `AppPage`'s
+measure.
 
 ---
 
@@ -829,7 +896,12 @@ automated behavioural coverage and §§C.1/C.2/5.4 are the only nets they get.
 | `Services/AppLanguageTests.cs` | **no change** — it asserts four behaviours and enumerates no keys, so the rename and the two additions are free |
 | everything else | untouched |
 
-Total after: **187** (186 after task B, plus the review's fourth `SettingsRowTests` fact).
+Total after: **187** (186 after task B, plus the review's fourth `SettingsRowTests` fact). **[task C]**
+Task C adds none and edits none, and that is the right delta rather than a gap: all four
+`SettingsRowTests` facts enumerate `Views/Settings/*.axaml`, so `AboutCard` falls inside every one of
+them the moment the file exists — including the fourth, which resolves `AboutPublisher` out of
+`AppLanguage` and would fail if that key were missing or carried a line break. Nothing under `tests/`
+was touched.
 
 ## 5.4 Verification for a machine with no keyboard and no mouse
 
@@ -870,8 +942,9 @@ across all of them:
 5. **Card height.** Every simple card 62.67 (94 px). **[task B, measured]** After the migration the
    fifteen existing rows are: 62.67 × 11 (four 外观, six 行为, 维护), **86.67** 主文件夹, **104.67**
    数据文件夹, **86.67** 更新状态, and 常用工具 at whatever its tool list needs (**268** with the five
-   default tools). 关于 is task C's. The 144 / 102 / 62.67-idle figures this table first carried
-   followed from the old §A.5 and from row 16's expansion row being empty; both premises changed.
+   default tools). **[task C, measured]** 关于 is **104.67** — two value lines on its expansion row, the
+   same shape and the same height as 数据文件夹. The 144 / 102 / 62.67-idle figures this table first
+   carried followed from the old §A.5 and from row 16's expansion row being empty; both premises changed.
 6. **Disabled vocabulary.** `HotkeyBox`'s fill must measure `(253,253,253)` ± 1 — the same value a
    disabled `TmButton` measures — not `(201,201,201)`.
 7. **Dark variant.** Write `"appearance": "Dark"` into `Data\config.json`, restart, repeat 1–5 (they are

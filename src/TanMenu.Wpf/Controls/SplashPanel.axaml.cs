@@ -4,20 +4,23 @@ using Avalonia.Controls;
 namespace TanMenu.Wpf.Controls;
 
 /// <summary>
-/// The blue TanMenu splash card. Used twice: as the launcher's loading state (spinner + dots) while
-/// the first menu build runs on the STA worker, and as the "关于" overlay with
-/// <see cref="ShowLoading"/> false, which swaps the spinner for a dismiss hint.
+/// The blue TanMenu splash card: the launcher's loading state (spinner + dots) while the first menu
+/// build runs on the STA worker.
+/// <para>
+/// It had a second use — the "关于" overlay, the same card with <see cref="ShowLoading"/> false and a
+/// "click anywhere to close" hint in place of the spinner — until Round 5, item 2 folded 关于 into the
+/// 设置 page as a card and deleted the overlay. <c>ShowHint</c>/<c>HintText</c>, the hint TextBlock and
+/// the mirror that drove them went with it; <see cref="ShowLoading"/> stays because it is what gates
+/// the two infinite animations (a hidden control stays attached to the visual tree, so an ungated
+/// animation would tick for the whole tray-resident session).
+/// </para>
 /// </summary>
 public partial class SplashPanel : UserControl
 {
-    /// <summary>True for the startup splash (spinner + blinking dots), false for the About panel.</summary>
+    /// <summary>True while the first menu build is running: the spinner and the blinking dots. False
+    /// stops both animations dead — see the class remarks.</summary>
     public static readonly StyledProperty<bool> ShowLoadingProperty =
         AvaloniaProperty.Register<SplashPanel, bool>(nameof(ShowLoading), defaultValue: true);
-
-    /// <summary>Mirror of <c>!ShowLoading</c>. A plain property rather than a negated binding so the
-    /// XAML stays compiled-binding-simple.</summary>
-    public static readonly StyledProperty<bool> ShowHintProperty =
-        AvaloniaProperty.Register<SplashPanel, bool>(nameof(ShowHint));
 
     /// <summary>Footer version line, e.g. "TanMenu v0.9.6".</summary>
     public static readonly StyledProperty<string?> VersionTextProperty =
@@ -27,26 +30,15 @@ public partial class SplashPanel : UserControl
     public static readonly StyledProperty<string?> CopyrightTextProperty =
         AvaloniaProperty.Register<SplashPanel, string?>(nameof(CopyrightText));
 
-    /// <summary>Localized "click anywhere to close" hint, shown only in the About variant.</summary>
-    public static readonly StyledProperty<string?> HintTextProperty =
-        AvaloniaProperty.Register<SplashPanel, string?>(nameof(HintText));
-
     public SplashPanel()
     {
         InitializeComponent();
-        ShowHint = !ShowLoading;
     }
 
     public bool ShowLoading
     {
         get => GetValue(ShowLoadingProperty);
         set => SetValue(ShowLoadingProperty, value);
-    }
-
-    public bool ShowHint
-    {
-        get => GetValue(ShowHintProperty);
-        private set => SetValue(ShowHintProperty, value);
     }
 
     public string? VersionText
@@ -59,18 +51,5 @@ public partial class SplashPanel : UserControl
     {
         get => GetValue(CopyrightTextProperty);
         set => SetValue(CopyrightTextProperty, value);
-    }
-
-    public string? HintText
-    {
-        get => GetValue(HintTextProperty);
-        set => SetValue(HintTextProperty, value);
-    }
-
-    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
-    {
-        base.OnPropertyChanged(change);
-        if (change.Property == ShowLoadingProperty)
-            ShowHint = !ShowLoading;
     }
 }

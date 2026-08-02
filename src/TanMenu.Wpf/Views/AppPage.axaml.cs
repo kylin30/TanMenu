@@ -434,10 +434,4 @@ public partial class AppPage : UserControl, IDisposable
         _viewModel.DismissToast();
         e.Handled = true;
     }
-
-    private void OnAboutPressed(object? sender, PointerPressedEventArgs e)
-    {
-        _viewModel.CloseAbout();
-        e.Handled = true;
-    }
 }

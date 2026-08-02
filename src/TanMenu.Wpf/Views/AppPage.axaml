@@ -23,8 +23,9 @@
          Background="Transparent">
 
     <!-- First child (the main content) is what the overlays measure against; every later child is an
-         overlay that contributes no layout size of its own (About and the toast never affect the
-         page, which simply fills whatever space the shell's page host gives it). -->
+         overlay that contributes no layout size of its own (the splash, the two non-menu states and the
+         toast never affect the page, which simply fills whatever space the shell's page host gives
+         it). -->
     <ctl:OverlayPanel>
 
       <DockPanel>
@@ -213,7 +214,7 @@
       <!-- ══ Non-menu states (no layout size) ═════════════════════════════════════════════════
            Loading, "nothing configured" and "nothing matched" are page-wide states, not categories,
            so they are NOT siblings inside the horizontal row above — they are centred overlays here,
-           measured against the main content's size the same way the toast and About panel below are. -->
+           measured against the main content's size the same way the toast below is. -->
 
       <!-- 2. Loading. ShowLoading tracks visibility so the spinner's infinite animation stops for
            the rest of the (tray-resident) session once the menu arrives. -->
@@ -222,8 +223,7 @@
                        VerticalAlignment="Center"
                        ShowLoading="{Binding ShowSplash}"
                        VersionText="{Binding VersionText}"
-                       CopyrightText="{Binding CopyrightText}"
-                       HintText="{Binding ClickToDismissText}" />
+                       CopyrightText="{Binding CopyrightText}" />
 
       <!-- 3. Loaded, but there is genuinely nothing configured. Both recovery buttons were still
            default Avalonia Fluent-1 buttons — found while auditing the app for Task 3's scope gap (see
@@ -264,18 +264,13 @@
                    TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
       </Border>
 
-      <!-- "关于": the splash on demand. Clicking ANYWHERE on it closes it — there is no close
-           button and no Escape handler, which is what the original did too. -->
-      <Border IsVisible="{Binding ShowAbout}"
-              Background="{DynamicResource SurfaceBaseBrush}"
-              CornerRadius="{DynamicResource RadiusOverlay}"
-              ClipToBounds="True"
-              PointerPressed="OnAboutPressed">
-        <ctl:SplashPanel ShowLoading="False"
-                         VersionText="{Binding VersionText}"
-                         CopyrightText="{Binding CopyrightText}"
-                         HintText="{Binding ClickToDismissText}" />
-      </Border>
+      <!-- The "关于" overlay used to be the last child here: the same SplashPanel with ShowLoading
+           false, covering the page, dismissed by a click anywhere. Round 5, item 2 ("关于集成到设置页中")
+           deleted it outright rather than hiding it — 关于 is a card at the bottom of the 设置 page now
+           (Views/Settings/AboutCard.axaml). Its rail row, OnAboutClick, LauncherViewModel's
+           ShowAbout/OpenAbout/CloseAbout, this file's OnAboutPressed, SplashPanel's dismiss hint and the
+           ClickToDismiss language key went with it, and Tokens.axaml's RadiusOverlay lost its only
+           consumer. -->
 
     </ctl:OverlayPanel>
   </Panel>

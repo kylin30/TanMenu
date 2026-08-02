@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using System.Reflection;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Microsoft.Extensions.DependencyInjection;
@@ -47,12 +46,7 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
     private int _iconFillEpoch;      // bumped per build so a superseded async icon-fill is ignored
     private int _toastVersion;       // latest-wins guard for the auto-clearing toast
 
-    private bool _showAbout;
     private string? _toastText;
-
-    /// <summary>Version shown in the About/splash footer — the assembly version (3 parts).</summary>
-    private static readonly string AppVersion =
-        Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "1.0.0";
 
     public LauncherViewModel(
         MenuService menu,
@@ -266,12 +260,14 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
     public string NoMatchTitleText => L("NoMatchTitle");
     public string NoMatchHelpText => L("NoMatchHelp");
     public string ClearFilterText => L("ClearFilter");
-    public string ClickToDismissText => AppLanguage.Text("ClickToDismiss", _cfg.General.Language);
 
-    public string VersionText => "TanMenu v" + AppVersion;
+    // Both footer lines come from AppIdentity (Services/AppIdentity.cs), which Round 5, item 2 created
+    // when 关于 became a settings card: the version expression and the copyright string would otherwise
+    // have had a third and a second copy. VersionText is deliberately still built here rather than on
+    // AppIdentity — "TanMenu v0.12.0" is this splash's own footer format, not the app's identity.
+    public string VersionText => AppIdentity.ProductName + " v" + AppIdentity.Version;
 
-    /// <summary>Computed at render time, exactly as the old splash did — never a baked-in year.</summary>
-    public string CopyrightText => $"© {DateTime.Now.Year} TanSoft. All rights reserved.";
+    public string CopyrightText => AppIdentity.Copyright;
 
     private void RaiseLocalizedTextChanged()
     {
@@ -283,7 +279,6 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
         RaisePropertyChanged(nameof(NoMatchTitleText));
         RaisePropertyChanged(nameof(NoMatchHelpText));
         RaisePropertyChanged(nameof(ClearFilterText));
-        RaisePropertyChanged(nameof(ClickToDismissText));
         RaisePropertyChanged(nameof(CopyrightText));
         RaisePropertyChanged(nameof(UpdateNoticeText));
     }
@@ -396,33 +391,15 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
     }
 
     // ══════════════════════════════════════════════════════════════════════════════════════════
-    // About overlay + toast
+    // Toast
     // ══════════════════════════════════════════════════════════════════════════════════════════
-
-    /// <summary>The About panel covers the window and is dismissed by clicking anywhere on it. There
-    /// is no close button and no Escape handler — that was true of the original too.</summary>
-    public bool ShowAbout
-    {
-        get => _showAbout;
-        private set => Set(ref _showAbout, value);
-    }
-
-    /// <summary>
-    /// Raises the overlay ON 应用 — this flag is the only thing the panel keys off, and the panel is a
-    /// child of <see cref="Views.AppPage"/> (AppPage.axaml), so nothing appears while 设置 is the page
-    /// <c>PageHost</c> is showing and AppPage is therefore detached. Setting it from there would leave
-    /// the flag set with nothing on screen, the overlay surfacing later on the next return to 应用.
-    /// <para>
-    /// This method does NOT guard that itself: its one caller — <c>MainWindow.OnAboutClick</c>, the
-    /// rail's 关于 row, which is the only way to reach 关于 anywhere in the app — navigates to 应用
-    /// first, as of Round 4, item 2. An earlier version of this remark recorded the problem here as
-    /// accepted (Round 3, Task 2 review, Minor); item 2 fixed it at the call site instead, because the
-    /// same fix also puts the user on the page the overlay belongs to rather than showing a panel over
-    /// 设置.
-    /// </para></summary>
-    public void OpenAbout() => ShowAbout = true;
-
-    public void CloseAbout() => ShowAbout = false;
+    //
+    // ShowAbout/OpenAbout/CloseAbout used to head this section: the flag AppPage's 关于 overlay bound
+    // its IsVisible to, and the two methods the rail's 关于 row and the overlay's own PointerPressed
+    // called. Round 5, item 2 ("关于集成到设置页中") deleted the overlay outright — 关于 is a card at the
+    // bottom of the 设置 page now (Views/Settings/AboutCard.axaml) — so all three went with it, along
+    // with ClickToDismissText above. VersionText and CopyrightText did NOT: the startup splash still
+    // binds both.
 
     public bool HasToast => !string.IsNullOrEmpty(_toastText);
 
