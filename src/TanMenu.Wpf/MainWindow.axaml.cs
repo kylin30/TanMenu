@@ -792,14 +792,43 @@ public partial class MainWindow : Window
     // Navigation rail: the four relocated commands (Round 3, Task 2 — used to be the title strip's
     // ⋯ overflow MenuFlyout; MainWindow.axaml's rail comment explains why they are Buttons, not
     // ListBoxItems, and why each is its own row rather than one row that opens a flyout of four).
-    // Method bodies are unchanged from the overflow-menu era: only what invokes them moved.
+    // Round 4, item 2 reordered those rows in MainWindow.axaml and fixed OnAboutClick below; the other
+    // three bodies are still unchanged from the overflow-menu era.
     // ══════════════════════════════════════════════════════════════════════════════════════════
 
     private void OnOpenRootClick(object? sender, RoutedEventArgs e) => _appPage.ViewModel.OpenRoot();
 
     private void OnRefreshClick(object? sender, RoutedEventArgs e) => _ = _appPage.ViewModel.RefreshAsync();
 
-    private void OnAboutClick(object? sender, RoutedEventArgs e) => _appPage.ViewModel.OpenAbout();
+    /// <summary>
+    /// Navigates to 应用 BEFORE raising the overlay — Round 4, item 2's one behavioural fix, shipped
+    /// with the reorder because a row that silently does nothing on one of the app's two pages is not
+    /// worth repositioning.
+    /// <para>
+    /// The 关于 panel is a child of <see cref="Views.AppPage"/> (AppPage.axaml, its IsVisible bound to
+    /// <see cref="LauncherViewModel.ShowAbout"/>), but this row is in the window's rail and can be
+    /// pressed from either page. While 设置 is showing, <c>PageHost.Content</c> is the settings page and
+    /// AppPage is detached, so setting the flag alone puts nothing on screen and leaves it set — the
+    /// overlay then surfaces later, whenever the user next returns to 应用.
+    /// <c>ShellNavigator.Navigate</c> is the same call <see cref="OnNavSelectionChanged"/> makes for a
+    /// real rail click, and it costs nothing on the page where the bug never showed: with 应用 already
+    /// current, <see cref="ShowPageCore"/> writes two <c>SelectedIndex</c> values that already hold
+    /// those values, re-assigns <c>PageHost.Content</c> to the same instance, re-enables an already
+    /// enabled search box and posts a <see cref="ConsumePendingFocus"/> that returns immediately unless
+    /// a focus request is genuinely outstanding.
+    /// </para>
+    /// <para>
+    /// Both halves were reproduced live, not just read: driving the shipped build through UI Automation
+    /// (<c>SelectionItemPattern.Select</c> on the 设置 row, then <c>InvokePattern.Invoke</c> on this one
+    /// — no synthetic pointer or keyboard input, which this machine cannot deliver), the pre-fix build
+    /// stayed on 设置 with no overlay and then popped the overlay unbidden on the next 应用 selection,
+    /// while the fixed build lands on 应用 with the panel up in one step.
+    /// </para></summary>
+    private void OnAboutClick(object? sender, RoutedEventArgs e)
+    {
+        App.Services.GetRequiredService<ShellNavigator>().Navigate(ShellPage.App);
+        _appPage.ViewModel.OpenAbout();
+    }
 
     private void OnExitClick(object? sender, RoutedEventArgs e) => _appPage.ViewModel.ExitApp();
 

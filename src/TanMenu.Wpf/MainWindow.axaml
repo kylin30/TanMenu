@@ -38,6 +38,11 @@
     Each row's ToolTip.Tip and AutomationProperties.Name (ApplyRailText, code-behind) are therefore now
     the ONLY label any row carries, not a duplicate of a visible one.
 
+    Round 4, item 2 reordered the footer to 退出 · separator · 关于 · 打开主目录 · 刷新 · 设置 and gave
+    it its one group boundary. The parenthesised list above is the order the ⋯ overflow held, not the
+    order these rows sit in now — see the footer StackPanel's own comment below for the current order
+    and the reasoning behind it.
+
     ExtendClientAreaToDecorationsHint pulls the whole client area — including the strip where the OS
     used to paint its own title bar — under our control. ExtendClientAreaTitleBarHeightHint is pinned to
     48, the Windows 11 title bar height at 100% scaling, rather than -1 (OS default), so the strip below
@@ -377,8 +382,68 @@
                Classes="tm-nav-row" below is kept for the same reason NavRailContent keeps
                Classes="tm-nav-rail" — as these rows' own name for anything that needs to scope a rule
                to them — but as of item 1 NO Launcher.axaml selector keys off it either: its only reader
-               was one of the three rail-state rules item 1 deleted. -->
+               was one of the three rail-state rules item 1 deleted.
+
+               ══ Round 4, item 2: the order below, and why it is what it is ═══════════════════════
+               Top to bottom: 退出 · separator · 关于 · 打开主目录 · 刷新 · 设置. The rows are LITERAL
+               XAML, deliberately: rebuilding the footer from a collection would need a DataTemplate
+               over a type that does not exist, and every DataTemplate in this app must carry an
+               x:DataType (AvaloniaUseCompiledBindingsByDefault + PublishAot, TanMenu.Wpf.csproj), so
+               a reorder is an edit HERE and nowhere else. Nothing downstream is index-based —
+               OnNavSelectionChanged branches on ReferenceEquals against NavFooterRail and ApplyRailText
+               addresses every row by x:Name — so moving a row is inert by construction.
+
+               退出 goes FIRST, away from 设置, because it fires immediately with no confirmation
+               (ShellCommands.Exit's own comment: "there is no dialog and nothing to wait for"), and
+               设置 is the row the app itself treats as most-reached — it is the only footer action with
+               TWO other entry points (the tray menu, wired in App.axaml.cs to TrayService; and the 应用
+               empty state's 打开设置… button, AppPage.axaml). A terminal action directly above the row
+               the pointer returns to at a fixed screen coordinate is the worst adjacency this footer
+               can have, and before this item it was exactly the adjacency it had.
+
+               关于 buffers it, because it is the one footer action reachable NOWHERE else:
+               LauncherViewModel.OpenAbout has exactly one caller, OnAboutClick. Every other row has a
+               second route — 退出 on the tray menu; 刷新 next to 打开设置… in the 应用 empty state
+               (AppPage.axaml, the "tm-empty" panel); 打开主目录 as 设置 → 文件夹 → 主文件夹's own open
+               button (FoldersCard.axaml.cs — a different code path onto the same folder, not a call
+               into LauncherViewModel.OpenRoot, which OnOpenRootClick below is the sole caller of). So
+               关于 is the row that cannot be dropped and the one whose position costs the least.
+
+               设置 stays bottom-most, matching the reference: Task Manager's rail footer holds exactly
+               ONE entry, its Settings gear, pinned to the very bottom of the pane. The four commands
+               being in the rail at all is this app's own divergence from that reference and was not
+               re-litigated by this item.
+
+               The separator is not decoration. The flat run of five was an accident of the Round 3
+               move: the ⋯ overflow MenuFlyout it came from encoded THREE groups —
+               [打开主目录, 刷新] | [关于] | [退出] — and both <Separator/> elements were dropped in
+               transit. Exactly one is restored, and only the boundary that carries safety meaning
+               (terminal vs reversible). NOTE that a menu convention (退出 last, as this app's own tray
+               menu still does) is being deliberately overruled here: a tray menu is a transient popup
+               that appears under the cursor and is gone after one click, whereas the rail is
+               persistent chrome the user aims at repeatedly at a fixed coordinate. -->
           <StackPanel Grid.Row="1">
+            <Button x:Name="NavExitItem"
+                    Theme="{StaticResource TmNavRowButton}"
+                    Classes="tm-nav-row"
+                    Click="OnExitClick">
+              <TextBlock Classes="tm-icon" Width="16" Text="&#xE7E8;"
+                         HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Button>
+
+            <!-- The one group boundary, between the terminal action above and the reversible ones
+                 below. Geometry is in Launcher.axaml's "Border.tm-nav-separator" rule; its Margin is
+                 what makes the gap on either side of the hairline (6 DIP row-box to line) read as a
+                 boundary against the 4 DIP that separates two ordinary rows. -->
+            <Border Classes="tm-nav-separator" />
+
+            <Button x:Name="NavAboutItem"
+                    Theme="{StaticResource TmNavRowButton}"
+                    Classes="tm-nav-row"
+                    Click="OnAboutClick">
+              <TextBlock Classes="tm-icon" Width="16" Text="&#xE946;"
+                         HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Button>
             <Button x:Name="NavOpenRootItem"
                     Theme="{StaticResource TmNavRowButton}"
                     Classes="tm-nav-row"
@@ -393,20 +458,6 @@
               <TextBlock Classes="tm-icon" Width="16" Text="&#xE72C;"
                          HorizontalAlignment="Center" VerticalAlignment="Center" />
             </Button>
-            <Button x:Name="NavAboutItem"
-                    Theme="{StaticResource TmNavRowButton}"
-                    Classes="tm-nav-row"
-                    Click="OnAboutClick">
-              <TextBlock Classes="tm-icon" Width="16" Text="&#xE946;"
-                         HorizontalAlignment="Center" VerticalAlignment="Center" />
-            </Button>
-            <Button x:Name="NavExitItem"
-                    Theme="{StaticResource TmNavRowButton}"
-                    Classes="tm-nav-row"
-                    Click="OnExitClick">
-              <TextBlock Classes="tm-icon" Width="16" Text="&#xE7E8;"
-                         HorizontalAlignment="Center" VerticalAlignment="Center" />
-            </Button>
 
             <!-- 设置: a real page (see ShowPage), styled and measured exactly like NavRail's own
                  NavAppsItem (same "tm-nav" ListBox class, same ListBoxItem shape) so its selected
@@ -416,10 +467,16 @@
                  REST of the item's own bounds edge-to-edge, both already exactly what
                  "ListBox.tm-nav ListBoxItem:selected" (Launcher.axaml) already painted before this
                  task — reads identically to 应用's own. Padding="0,0,0,4" (not the "0,12" NavRail uses)
-                 leaves no top inset of its own — NavExitItem's own Margin="4,2" bottom already supplies
-                 that gap — and a small 4 DIP bottom inset from the pane's true bottom edge, matching
-                 Task Manager's own measured ~4 DIP gap between its FooterMenuItemsHost and the window
-                 edge. -->
+                 leaves no top inset of its own — the command row directly above (NavRefreshItem since
+                 Round 4, item 2 reordered this footer; NavExitItem before it) carries Margin="4,2" and
+                 its bottom half already supplies that gap — and a small 4 DIP bottom inset from the
+                 pane's true bottom edge, matching Task Manager's own measured ~4 DIP gap between its
+                 FooterMenuItemsHost and the window edge.
+
+                 This ListBox stays the LAST child of the footer StackPanel, and the "0,0,0,4" padding
+                 above is the encoding of that: it is the only element here that insets itself from the
+                 pane's bottom edge. Round 4, item 2 chose an order that keeps it last for exactly that
+                 reason — any order that moved 设置 up would have to unpick this padding too. -->
             <ListBox x:Name="NavFooterRail"
                      Classes="tm-nav"
                      SelectionChanged="OnNavSelectionChanged"

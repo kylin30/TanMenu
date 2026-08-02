@@ -405,13 +405,18 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>
-    /// Round 3, Task 2 review (Minor): invoking 关于 while 设置 is the active page sets
-    /// <see cref="ShowAbout"/> on THIS view model, which is not the one attached to
-    /// <see cref="Views.AppPage"/>'s visual tree at that moment — the overlay only becomes visible the
-    /// next time 应用 is shown, not immediately. Pre-existing, not a Task 2 regression: the title
-    /// strip's old ⋯ overflow button reached this exact same method regardless of which page was
-    /// active, before its functions moved into the rail.
-    /// </summary>
+    /// Raises the overlay ON 应用 — this flag is the only thing the panel keys off, and the panel is a
+    /// child of <see cref="Views.AppPage"/> (AppPage.axaml), so nothing appears while 设置 is the page
+    /// <c>PageHost</c> is showing and AppPage is therefore detached. Setting it from there would leave
+    /// the flag set with nothing on screen, the overlay surfacing later on the next return to 应用.
+    /// <para>
+    /// This method does NOT guard that itself: its one caller — <c>MainWindow.OnAboutClick</c>, the
+    /// rail's 关于 row, which is the only way to reach 关于 anywhere in the app — navigates to 应用
+    /// first, as of Round 4, item 2. An earlier version of this remark recorded the problem here as
+    /// accepted (Round 3, Task 2 review, Minor); item 2 fixed it at the call site instead, because the
+    /// same fix also puts the user on the page the overlay belongs to rather than showing a panel over
+    /// 设置.
+    /// </para></summary>
     public void OpenAbout() => ShowAbout = true;
 
     public void CloseAbout() => ShowAbout = false;

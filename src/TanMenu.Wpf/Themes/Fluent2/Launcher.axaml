@@ -574,6 +574,30 @@
        off nor the label class they targeted is written anywhere in the app any more. Do not re-add a
        state rule here without re-adding the state it describes. -->
 
+  <!-- ══ The footer's one group boundary ═════════════════════════════════════════════════════════
+       Round 4, item 2: a single hairline under 退出, separating the terminal action from the four
+       reversible rows below it (MainWindow.axaml's footer StackPanel carries the ordering rationale).
+
+       Both numbers are derived, not picked. The HORIZONTAL 4 is the rows' own Margin="4,2" (the
+       "ListBox.tm-nav ListBoxItem" style above and the TmNavRowButton ControlTheme both set it), so the
+       line spans exactly the 40 DIP item column — 48 DIP pane − 2×4 DIP item margin — that Round 3
+       measured against Task Manager's own rail, and stops flush with the row boxes rather than running
+       edge-to-edge across the pane. The VERTICAL 4 puts 4 DIP of clear space on each side of the
+       1 DIP line, which with the neighbouring rows' own 2 DIP vertical margins leaves 6 DIP between the
+       line and each adjacent row box, against the 4 DIP that separates two ordinary rows: enough to
+       read as a boundary, not so much that it reads as a missing row. The whole block is 9 DIP tall
+       (1 + 2×4), so the footer measures 213 DIP rather than 204.
+
+       StrokeDividerBrush had NO consumer in this codebase before this rule — it is defined in both
+       theme variants (Tokens.axaml) and was referenced nowhere. It is the right token anyway: a
+       divider is exactly what this is, and being a DynamicResource it follows the light/dark swap for
+       free. -->
+  <Style Selector="Border.tm-nav-separator">
+    <Setter Property="Height" Value="1" />
+    <Setter Property="Margin" Value="4,4" />
+    <Setter Property="Background" Value="{DynamicResource StrokeDividerBrush}" />
+  </Style>
+
   <!-- NO MaxWidth here. A cap would only clamp the width the group REPORTS to the horizontal
        StackPanel of categories; the columns ItemsControl inside (AppPage.axaml, bound to
        MenuGroupVm.Columns) keeps laying out however many columns MenuLayout.ChunkIntoColumns
