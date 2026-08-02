@@ -8,6 +8,20 @@
 title bar, a collapsible icon rail, a solid content surface, real button-styled tiles, and a window
 that fits its content.
 
+> **Two of this plan's decisions were overturned by Round 4**
+> (`docs/superpowers/specs/2026-08-02-win11-shell-round4-design.md`); the text below is kept as the
+> record of what Round 2 decided, not as a description of the code.
+>
+> - **The rail is no longer collapsible** (Round 4, item 1). The hamburger toggle, the 200 px expanded
+>   width, the width transition and the six row labels are deleted; the rail is permanently 48 DIP
+>   icon-only and `GeneralConfig.NavRailExpanded` is a legacy deserialize-only field.
+> - **The window position is no longer remembered** (Round 4, item 4), so item 1's "size is recomputed
+>   from content on every start; position is still remembered" and its use of
+>   `WindowPlacement.ChooseWorkArea` are both void — that function and `Resolve` are deleted, and the
+>   window is placed horizontally centred on the PRIMARY screen's work area with its bottom edge 8 DIP
+>   above the work-area bottom on every launch, every summon and every re-fit.
+>   `GeneralConfig.WindowLeft`/`WindowTop` joined `WindowWidth`/`WindowHeight` as legacy fields.
+
 ## Global Constraints
 
 Inherited from round 1 and still binding:

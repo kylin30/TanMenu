@@ -1,11 +1,12 @@
 # TanMenu (Avalonia + NativeAOT)
 
 A Windows desktop launcher: an ordinary Windows 11 application window — Task Manager's shape, with a
-system title bar over a Mica backdrop and a fixed navigation rail (应用 / 设置) on the left. The 应用
-page scans configured folders for apps / `.lnk` shortcuts and lays them out as horizontally-scrolling
-categories; the 设置 page holds every setting as a Windows 11 setting card, applied immediately, with
-no separate settings window any more. Pin its permanent taskbar entry for one-click recall, or use the
-tray fallback.
+Mica backdrop, an app-drawn 48 DIP title strip (app name on the left, search box centred) and a
+48 DIP icon-only navigation rail on the left — 应用 at the top, and a bottom-pinned footer of
+退出 · 关于 · 打开主目录 · 刷新 · 设置. The 应用 page scans configured folders for apps / `.lnk`
+shortcuts and lays them out as horizontally-scrolling categories; the 设置 page holds every setting as
+a Windows 11 setting card, applied immediately, with no separate settings window any more. Pin its
+permanent taskbar entry for one-click recall, or use the tray fallback.
 
 The UI is drawn with native Avalonia controls in the **Fluent 2** design language — a Mica backdrop
 (an opaque Fluent 2 surface colour where the OS refuses it), a 4 px control radius, the system UI
@@ -41,17 +42,27 @@ source-generated `System.Text.Json`, `Microsoft.Extensions.DependencyInjection`,
 ## Features
 
 - **Fluent 2** UI drawn natively: a Mica backdrop with an opaque fallback, categories laid out as
-  horizontally-scrolling groups with column-filling tiles, and one look rendered **light or dark**
-  (following the OS by default). Colour comes from one token file; the accent is read from Windows
-  personalization.
-- **Search-first**: the search box owns the header and typing genuinely filters — non-matches are
-  removed and empty sections disappear. `↑↓←→` walk the tile grid, `Enter` launches, `Esc` clears
-  then hides.
+  horizontally-scrolling groups with column-filling tiles (each tile as wide as its own label, uniform
+  within a column, never ellipsised), and one look rendered **light or dark** (following the OS by
+  default). Colour comes from one token file; the accent is read from Windows personalization. The
+  应用 page is a pure white pane under the shared Mica of the title strip and rail; 设置 keeps the
+  grey surface, because its cards are a translucent white that would vanish on a white page.
+- **Search-first**: the search box sits centred in the title strip and typing genuinely filters —
+  non-matches are removed and empty sections disappear. `↑↓←→` walk the tile grid, `Enter` launches,
+  `Esc` clears then hides.
 - Folder scanning + `.lnk` resolution + real Win32 icon extraction. A shortcut whose target is gone
   stays visible but greyed and unlaunchable.
-- A resizable, system-decorated application window (1000×640 initial, 760×520 minimum) with a fixed
-  200 px navigation rail; size, position and maximized state are restored from config and clamped
-  back onto the visible work area (e.g. after a monitor is disconnected).
+- **A resizable window that places itself.** It opens at 1000×688 DIP on a process's very first show
+  and is then re-fitted to the 应用 page's own measured content. Wherever that lands, the window is
+  horizontally centred on the **primary** screen's work area with its bottom edge **8 DIP** above the
+  work-area bottom — on every launch and every re-fit — so it always comes back to one predictable
+  place just above the taskbar. (The visible gap is a little under 8 DIP: the placement rectangle's
+  bottom is the raw frame edge, and the DWM-visible edge sits inside it.) A window you have **dragged**
+  stays where you put it until its content changes or you summon it again. `MinWidth` is 760 DIP;
+  there is deliberately no `MinHeight` — declaring one made Windows render the window 30 DIP taller
+  than anything asked for — and the app's own 568 DIP height floor is applied to the placement
+  *request* instead. Only the **maximized state** is remembered in config; neither the size nor the
+  position is.
 - Recall: permanent taskbar pin, system tray (left-click toggle, show/exit menu), single instance.
 - Optional **autostart** (per-user registry Run entry; deliberately unavailable in portable mode).
 - A **settings page** (not a separate window) grouped into Windows 11 setting cards — appearance

@@ -539,11 +539,21 @@
            arithmetic and the reason both looks are STYLES rather than local attributes here all live in
            Launcher.axaml's "Border.tm-page-pane" block.
 
-           ClipToBounds is defensive. Whether Avalonia's Border clips its child to the CORNER RADIUS as
-           opposed to the bounds rectangle was not verified, and nothing here depends on it: on 应用 the
-           tile body is inset 16 DIP by SurfacePadding (the Body StackPanel's Margin, Views/AppPage.axaml)
-           and the nearest thing to the corner is a docked notice at Margin="12,0,12,8" — both clear the
-           8 DIP arc horizontally — and 设置 has no radius at all under the .settings rule. -->
+           ClipToBounds. An earlier revision of this comment said it was purely defensive because
+           "whether Avalonia's Border clips its child to the CORNER RADIUS as opposed to the bounds
+           rectangle was not verified". It IS verified now, and the answer is that a Border DOES clip
+           its child to the radius. What established it is the 关于 overlay, which that revision also
+           omitted from its list of content that clears the arc — because it does not clear it. Unlike
+           the tile body (inset 16 DIP by SurfacePadding, the Body StackPanel's Margin,
+           Views/AppPage.axaml) and the docked notice (Margin="12,0,12,8"), the overlay carries no
+           margin and OverlayPanel.ArrangeOverride (Controls/OverlayPanel.cs) arranges every child over
+           the WHOLE panel rect, so it reaches the corner. Its SplashPanel card is a SQUARE Border with
+           an accent gradient and no CornerRadius of its own (Controls/SplashPanel.axaml), yet measured
+           on a PrintWindow capture of the running app its first accent pixel per row traces
+           94, 91, 90, 89, 88, 87, 86, 86, 86, 85, 85 down the top eleven rows — an arc, landing flush
+           with the pane's own inner edge. (Both candidate clippers are Borders carrying the same 8 DIP
+           top-left arc — the overlay's own, and this pane — so the conclusion holds whichever one of
+           them did the clipping.) 设置 still has no radius at all under the .settings rule. -->
       <Border Grid.Column="1"
               x:Name="PagePane"
               Classes="tm-page-pane"

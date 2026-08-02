@@ -21,8 +21,12 @@
 > 3. The tile hover sound, and that a disabled tile stays silent.
 > 4. Physical key-combo capture into the 热键 box, and a registered hotkey summoning the window from
 >    another application.
-> 5. Restoring onto a secondary monitor by actually dragging the window there, exiting and relaunching
->    (the saved-rectangle path was verified by writing the coordinates into `config.json` directly).
+> 5. ~~Restoring onto a secondary monitor by actually dragging the window there, exiting and
+>    relaunching (the saved-rectangle path was verified by writing the coordinates into `config.json`
+>    directly).~~ **Void as of Round 4, item 4**: no position is saved or restored any more, so there
+>    is no saved rectangle and no restore path left to verify. `WindowHost.RestorePlacement` asks
+>    `PrimaryScreen()` and places the window through `WindowPlacement.ResolveBottomCentred` on every
+>    show; `WindowLeft`/`WindowTop` are legacy deserialize-only fields.
 >
 > Verified by the controller against the running app: NativeAOT `dotnet publish -c Release` produces a
 > 28.6 MB native executable with 0 warnings and 0 errors, and a cold start with
@@ -51,10 +55,11 @@
 >
 > **Round 2's outstanding human verification**, in addition to the five above: a literal Alt+F4 (twice
 > — cold start, and after a maximize/restore cycle); Alt+F4 on a window still maximized across a
-> resolution/DPI/taskbar-auto-hide change; dragging a maximized window down to restore; the rail
-> toggle's appearance mid-animation at 125–150 % scaling; a notice arriving while the window sits
-> against a work-area edge; 字体 and 语言 changes end to end; and a 设置 visit with no menu change in
-> between, then back to 应用.
+> resolution/DPI/taskbar-auto-hide change; dragging a maximized window down to restore; ~~the rail
+> toggle's appearance mid-animation at 125–150 % scaling~~ (**void as of Round 4, item 1** — the
+> toggle, the 200 px state and the `DoubleTransition` on `Width` are all deleted); a notice arriving
+> while the window sits against a work-area edge; 字体 and 语言 changes end to end; and a 设置 visit
+> with no menu change in between, then back to 应用.
 >
 > **Superseded in part by Round 3 (2026-08-01/02), shipped as 0.12.0.** After reviewing the Round 2
 > build the user asked for nine more items, planned in
@@ -81,10 +86,29 @@
 >   at a fixed width; section headings dropped to Body/SemiBold against a Subtitle page title; and
 >   固定到任务栏 renders disabled, not accent-styled, once the app is pinned.
 >
-> **Known limit, not a defect:** the window has a practical height floor near 605 DIP outer / 598 DIP
-> client at 150 % scale, below its declared `MinHeight="568"`. 每列个数 values at or below roughly
-> 12–13 therefore all produce the same window height; the setting is height-effective only above that,
-> and lowering it trades height for width (a value of 3 produced a 4648 DIP-wide window in testing).
+> **~~Known limit, not a defect:~~ removed at its source by Round 4, item 4.** Round 3 recorded a
+> practical height floor near 605 DIP outer / 598 DIP client at 150 % scale, *above* the then-declared
+> `MinHeight="568"`, and treated it as a platform constant to live with. It was not one: decompiled
+> `Avalonia.Win32` 12.1.0 sets `ptMinTrackSize.Y = MinHeight × RenderScaling + BorderThickness.Top +
+> Bottom`, and `BorderThickness` there is `AdjustWindowRectEx` on the live style (T45 + B11 = 56 px
+> here) — but `ExtendClientAreaToDecorationsHint` has already pulled the 45 px caption INTO the client
+> area, so the caption was being counted twice. The floor was therefore a *function of* `MinHeight`,
+> which is why raising it could never escape it. Round 4 **deleted the `MinHeight` attribute**
+> (`MainWindow.axaml:7`, and see the comment at `:54-62`): with `_minSize.Height == 0` that guard
+> never runs, Windows falls back to its own default minimum track size, and requested height ==
+> real height. The app's own 568 DIP floor did not go away — it moved to
+> `WindowHost.MinWindowHeightDip` (`:89`), where it is applied to the placement *request* instead of
+> to the window. See the Round 4 design's §4.1(d) and §7.3, and the corrected block in
+> `docs/superpowers/reports/2026-08-02-win11-shell-round3-findings.md`.
+>
+> What survives of the observation: low 每列个数 values still all resolve to **one** height — now 568
+> rather than 598 — so the cut-over above which the setting becomes height-effective is a little
+> lower than the ~12–13 Round 3 measured. It was **not** re-measured, so no exact value is claimed
+> here. Lowering the setting still trades height for width, and the work-area clamp still bounds it
+> (measured on the shipped build at `colButtonCount: 1`: a 9290 DIP page clamps to `0,816 5120x568`,
+> the whole work area, with a horizontal scrollbar). The 4648 DIP figure above is a Round-3
+> measurement of fixed 168 DIP tiles and no longer applies — Round 4, item 3 made tiles
+> content-sized.
 >
 > **Round 3's outstanding human verification**, in addition to the lists above: the first-ever 设置
 > open of a process, watching 固定到任务栏 for a stock-Fluent flash before it settles (the fix is
@@ -172,9 +196,9 @@ After:
 | Decorations | System (`WindowDecorations` default `Full`) |
 | Material | `TransparencyLevelHint="Mica"`, `Background="Transparent"` |
 | Fallback | If `ActualTransparencyLevel != Mica`, paint `SurfaceBaseBrush` — the same guard `SettingsWindow.axaml.cs:148` already uses |
-| Size | 1000×640 initial, `MinWidth=760`, `MinHeight=520`, `CanResize=True` |
+| Size | ~~1000×640 initial, `MinWidth=760`, `MinHeight=520`~~, `CanResize=True`. **Current (Round 4):** `Width="1000" Height="688" MinWidth="760"` (`MainWindow.axaml:7`) — 688 because Round 2's extended client area moved the 48 DIP title strip inside the client size, and **no `MinHeight` at all**, because declaring one made the window render 30 DIP taller than requested (see the "Known limit" block above). The 1000×688 is only the placeholder for a process's first show; every later show uses the last fit's size. The app's 568 DIP height floor lives in `WindowHost.MinWindowHeightDip` |
 | Taskbar | `ShowInTaskbar="True"` |
-| Startup | `Manual`, restored from config and clamped to the work area of the monitor the SAVED rectangle belongs to (not the monitor the unplaced window happens to sit on), applied by `App.ShowLauncherWindow` BEFORE `Show()` |
+| Startup | `Manual`, applied by `App.ShowLauncherWindow` BEFORE `Show()`. ~~Restored from config and clamped to the work area of the monitor the SAVED rectangle belongs to (not the monitor the unplaced window happens to sit on).~~ **Superseded by Round 4, item 4:** nothing is restored from config except `WindowMaximized`. `WindowHost.RestorePlacement` asks `PrimaryScreen()` and hands the size to `WindowPlacement.ResolveBottomCentred`, which centres horizontally on the primary work area and puts the bottom edge 8 DIP above the work-area bottom — on every launch, every summon and every re-fit. `WindowPlacement.Resolve` and `ChooseWorkArea` are deleted |
 | Close | Hides to tray (already the semantics of `ShutdownMode.OnExplicitShutdown` in `Program.cs:82`; unchanged) |
 
 `ExperimentalAcrylicBorder` and the `OpaqueFallback` border are deleted from the visual tree — with
@@ -244,12 +268,19 @@ the old feel. See §6 for how existing configs — which carry `true` explicitly
 └──────────┴─────────────────────────────────────────┘
 ```
 
-- The rail is 200 px, fixed. Each entry is an icon (Segoe Fluent Icons, the family
+- ~~The rail is 200 px, fixed.~~ Each entry is an icon (Segoe Fluent Icons, the family
   `Themes/Fluent2/Launcher.axaml` already uses for `tm-icon`) plus a label, and the selected entry
-  carries Fluent 2's 3 px accent bar on its leading edge. No collapse-to-icons mode: with two
-  entries it would be decoration, and `MinWidth=760` guarantees room. It is declared inline in
+  carries Fluent 2's 3 px accent bar on its leading edge. ~~No collapse-to-icons mode: with two
+  entries it would be decoration, and `MinWidth=760` guarantees room.~~ It is declared inline in
   `MainWindow.axaml` (a `ListBox` with two `ListBoxItem`s, lines 26–46) rather than as a separate
   `Controls/NavigationRail.axaml`: two static rows do not justify a control.
+  **Current (Round 2, then Round 4, item 1):** the rail is **48 DIP, icon-only, permanently** —
+  `MainWindow.axaml:322`'s literal `Width="48"` is its single source of truth, mirrored by
+  `MainWindow.RailWidthDip` for the window fit. Round 2 made it collapsible (48 ⇄ 200 with a width
+  transition); Round 4 deleted the toggle, the 200 px state, the transition and the six row labels,
+  so the tooltips `ApplyRailText` already set are now the only naming of each row. It holds 应用 in a
+  `*`-sized `ListBox` plus a bottom-pinned footer of 退出 · separator · 关于 · 打开主目录 · 刷新 ·
+  设置, where only 设置 is a second `ListBoxItem` and the four commands are plain `Button`s.
 - The page host is a `ContentControl` swapping two `UserControl`s. `MainWindow.axaml` keeps only the
   shell so it does not grow into the 300-line file it is today.
 - The overflow menu (`···`) keeps 打开主目录 / 刷新 / 关于 / 退出 and **loses 选项** — the rail is now
@@ -349,7 +380,7 @@ New fields on `GeneralConfig`:
 |---|---|---|
 | `SchemaVersion` | `0` | Migration marker; the current schema is `1` |
 | `WindowWidth` / `WindowHeight` | `1000` / `640` | Legacy — retired by Round 2's task 4 (`docs/superpowers/plans/2026-08-01-win11-shell-round2.md`). Window size is now recomputed from content on every summon (`WindowHost.FitToContent`); these two fields are kept only so pre-Round-2 config files still deserialize, and nothing reads or writes them any more |
-| `WindowLeft` / `WindowTop` | `null` | Restored position; `null` = no remembered position, centre instead. Nullable rather than a negative sentinel: monitors left of the primary have negative coordinates, so `< 0` cannot mean "unset" |
+| `WindowLeft` / `WindowTop` | `null` | ~~Restored position; `null` = no remembered position, centre instead. Nullable rather than a negative sentinel: monitors left of the primary have negative coordinates, so `< 0` cannot mean "unset".~~ **Superseded by Round 4, item 4**: both are legacy deserialize-only fields, joining `WindowWidth`/`WindowHeight` above. Nothing reads or writes them — `SavePlacement` writes only `WindowMaximized`, and `RestorePlacement` places the window centred-low on the primary work area every time. Retired in place, no schema bump |
 | `WindowMaximized` | `false` | Restored maximized state |
 | `NavRailExpanded` | `false` | Added by Round 2's task 2. Whether the navigation rail is pinned open (200 px, icon+label) rather than collapsed (48 px, icon-only). Written directly through `ConfigService.SaveAsync` from `MainWindow.OnNavToggleClick` — shell chrome the rail owns, like `WindowMaximized`/`WindowLeft`/`WindowTop`, not a setting any 设置 card exposes, so it raises no `SettingsChanged`. **Superseded by Round 4, item 1**: `OnNavToggleClick` and the expanded state are deleted; the field is retained as a legacy deserialize-only property that nothing reads or writes |
 | `TaskbarPinPromptDismissed` | `false` | §4's 不再提示 |
@@ -423,15 +454,21 @@ reference.
 - **Unit (`TanMenu.Core.Tests`)**: round-trip of the new `GeneralConfig` fields; the
   `SchemaVersion < 1` migration flipping `AutoClose`/`TopMost` on an old config and leaving a
   `SchemaVersion = 1` config alone, pinned on BOTH `Normalize` call sites (`LoadAsync` and
-  `RestoreFromAsync`); `WindowPlacement.ChooseWorkArea` picking the monitor that contains the saved
-  rectangle's centre and falling back to the primary when that monitor is gone;
+  `RestoreFromAsync`); ~~`WindowPlacement.ChooseWorkArea` picking the monitor that contains the saved
+  rectangle's centre and falling back to the primary when that monitor is gone~~ (**void as of
+  Round 4, item 4** — `ChooseWorkArea` and `Resolve` are deleted; `WindowPlacementTests` now covers
+  `ResolveBottomCentred`/`ResolveContentFit`: the 8 DIP bottom gap, horizontal centring on a
+  negative-origin work area, and content taller than the work area top-aligning and filling);
   `ConfigService.SaveAsync` completing while the calling thread is blocked on it (the property 退出's
   flush depends on); existing `ColButtonCount` assertions must keep passing unchanged.
 - **Manual, in the running app** — the paths this design disturbs: tray single-click toggle, tray
   显示, tray 选项 landing on the settings page, global hotkey toggle, second-instance activation
-  (new handshake), 失焦自动隐藏 on and off, close-to-tray, size/position surviving a restart, window
-  restored off a disconnected monitor being clamped back, and the Mica fallback with transparency
-  disabled.
+  (new handshake), 失焦自动隐藏 on and off, close-to-tray, ~~size/position surviving a restart, window
+  restored off a disconnected monitor being clamped back~~, and the Mica fallback with transparency
+  disabled. **The two struck items describe behaviour that no longer exists** (Round 2 retired the
+  remembered size, Round 4, item 4 the remembered position and the clamp-a-saved-rectangle path).
+  What replaces them: the window comes back centred-low on the primary work area on every launch,
+  at the size its content measures to.
 
 ## 10 · Rejected alternatives
 

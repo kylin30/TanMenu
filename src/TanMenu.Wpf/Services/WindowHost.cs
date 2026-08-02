@@ -204,6 +204,23 @@ public sealed partial class WindowHost : IWindowHost
     /// This one means only "the last geometry we computed ourselves" and is read ONLY when
     /// <see cref="_userResized"/> is false.
     /// </para>
+    /// <para>
+    /// Noted so nobody chases it: the SAME width out of this field can land one PHYSICAL pixel apart
+    /// depending on which of the two paths applies it. Measured on the shipped build at 150 %, with a
+    /// fitted width of 1692.3333 DIP — <see cref="FitToContent"/> produced a client width of 2539 px,
+    /// while a later <see cref="RestorePlacement"/> reusing this field's identical value produced
+    /// 2538 px. 1692.3333 x 1.5 = 2538.5, i.e. the request lands on a half pixel and the two paths
+    /// resolve it in opposite directions — unsurprising given they reach the platform differently (a
+    /// pre-show <c>Resize</c> versus the next layout pass; see <see cref="_userResized"/>'s remarks on
+    /// <c>Win32.WindowImpl.Resize</c>'s truncation). It cannot affect the skip test, which compares
+    /// REQUESTS and never the live window (<see cref="WindowPlacement.IsSamePlacement"/> over this
+    /// field): both paths request the identical <c>double</c>, so the divergence exists only after the
+    /// request has left this class. Two thirds of a DIP on one edge is also not visible. Nor is it a
+    /// case for widening that 0.5 DIP tolerance — the tolerance never sees this. Do not "fix" it by
+    /// rounding the request either:
+    /// the request is what the content measured to, and forcing it onto a physical-pixel grid would
+    /// make the fit's own arithmetic depend on the scale factor.
+    /// </para>
     /// </remarks>
     private PlacementRect? _lastFitPlacement;
 

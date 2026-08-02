@@ -427,6 +427,46 @@ Per-column widths that produce it: 常用工具 118.0 · 工具 142.4 / 175.3 / 
 开发 195.9 · 临时文件 184.2 · 游戏 134.4. The single widest label is `TeleportUltraPortable.exe` at
 155.08 DIP of text → a 203.08 DIP tile (+35 vs today).
 
+> **Superseded during implementation (commit `beff39e`); the shipped build is the authority.**
+> The chosen row's `≈1675 ± 10` and its `−49` are both wrong. The app's own fit line reads
+> `1713.8333,816 1692.3333x568 DIP (page 1643.3333x471.3333 + chrome 49x49)`: the page is
+> **1643.33 DIP** and the window **1692.33 DIP**, a narrowing of **31.67 DIP**, not 49 — 17.33 DIP
+> outside the ±10 band the table claimed.
+>
+> **The formula is not what missed; the input is.** Feeding the *measured* column widths through
+> §3.1's own arithmetic — `32 + Σ tiles + 4 × 9 + 24 × 4` — gives `32 + 1478.67 + 36 + 96 = 1642.67`
+> against the logged 1643.33, one physical pixel apart. Every column came out **wider** than the
+> `FormattedText` model predicted (measured tile widths from the shipped build; the widest label per
+> column re-derived by re-running §3.2's own harness, extended to chunk each group into columns of
+> `每列个数 = 10`):
+>
+> | # | Group | Widest label in the column | Predicted tile | Measured tile | Δ DIP | Δ px @150 % |
+> |---|---|---|---|---|---|---|
+> | 1 | 常用工具 | `任务管理器` | 118.00 | 118.67 | +0.67 | 1.0 |
+> | 2 | 工具 | `CooDesker-x64` | 142.42 | 143.33 | +0.91 | 1.4 |
+> | 3 | 工具 | `FontViewOK_x64.exe` | 175.34 | 176.67 | +1.33 | 2.0 |
+> | 4 | 工具 | `TeleportUltraPortable.exe` | 203.08 | 204.00 | +0.92 | 1.4 |
+> | 5 | 工具 | `Win11右键菜单切换` | 167.00 | **172.67** | **+5.67** | 8.5 |
+> | 6 | 工具 | `重启进BIOS.bat` | 142.88 | 143.33 | +0.45 | 0.7 |
+> | 7 | 开发 | `Navicat Premium Lite 17` | 195.88 | **199.33** | **+3.45** | 5.2 |
+> | 8 | 临时文件 | `SignalRClientTest.html` | 184.24 | 185.33 | +1.09 | 1.6 |
+> | 9 | 游戏 | `Battle.net国服` | 134.37 | 135.33 | +0.96 | 1.4 |
+>
+> Seven of the nine land within 1.33 DIP = **2 physical px**, which is what layout rounding at 150 %
+> costs and is not a modelling error at all. The two that miss — 5.67 and 3.45 DIP — are the real
+> defect, and it is **not** simply a CJK effect: `Win11右键菜单切换` is mixed Latin + CJK, but
+> `Navicat Premium Lite 17` is pure Latin. The harness is WPF's `FormattedText` over
+> `PresentationCore` (`Segoe UI Variable Text, Segoe UI, Microsoft YaHei UI` at em 14, culture
+> zh-CN); the app shapes that same nominal family list through Avalonia's own text stack, and the
+> two disagree by up to 5.67 DIP on one label. **A design that needs a label advance to ±2 DIP has to
+> measure it in the framework that will render it, not in a neighbouring one.**
+>
+> What does hold: `TeleportUltraPortable.exe` is the single widest label (155.08 DIP of text →
+> 203.08 predicted, 204.00 measured), the narrowing is real, and the direction of every one of the
+> nine errors is the same. The paragraph below keeps its conclusion for the same reason — but its
+> `10 → 1675 vs 1724` row is really `1692.33 vs 1724`, and the rest of its `[3,30]` sweep came out of
+> the same harness, so those rows carry the same understatement and were not re-measured.
+
 **Content-sizing makes this user's window narrower, not wider** — six of the nine columns are set by
 labels shorter than today's ~120 DIP budget, and those savings outweigh the three that grow. The
 narrowing holds at every `每列个数` in [3,30] for this data set (r4-tiles §4: 3 → 4194 vs 4648;
@@ -528,6 +568,16 @@ signal to stop and re-read this section.
 2. `PrintWindow` capture; for each of the nine columns, scan the right edge of every tile in that column:
    **all tiles in a column must share one right edge**, and **different columns must have different
    widths** (expected tile widths, ±2 px: 118 / 142 / 175 / 203 / 167 / 143 / 196 / 184 / 134 DIP).
+
+   > **Steps 1 and 2's numbers were superseded during implementation (commit `beff39e`); the shipped
+   > build is the authority — see §3.2's box for the full table and the cause.** Step 1: the fit line
+   > reads `page 1643.3333x471.3333`, window **1692.33**, not ≈1627/≈1676. Step 2: the *shape* of the
+   > assertion held — every column does have exactly one tile width and the nine differ — but the
+   > expected list is outside its own ±2 tolerance on **two of nine**: column 5 measured 172.67
+   > against 167 and column 7 measured 199.33 against 196. The measured list is
+   > **118.67 / 143.33 / 176.67 / 204 / 172.67 / 143.33 / 199.33 / 185.33 / 135.33 DIP**; the other
+   > seven land within 1.7. Re-run this step against those figures, and note that ±2 is too tight for
+   > a prediction made in a different text stack from the one that renders.
 3. The seven labels that render trimmed today — `FontViewOK_x64.exe`, `Win11右键菜单切换`,
    `TeleportUltraPortable.exe`, `tinyMediaManager.exe`, `Navicat Premium Lite 17`,
    `SignalRClientTest.html`, `WIL编辑器(64位).exe` (r4-tiles §2) — must render with **no ellipsis**.
@@ -688,6 +738,22 @@ verbatim; it needs one added paragraph for POSITION: *`RestorePlacement` now com
 the same function and the same primary work area a subsequent fit will use, so when the size is unchanged
 the two agree exactly and skipping is correct; when the size differs, the skip cannot fire because the
 size differs.*
+
+**(f) A window the user has DRAGGED is not re-anchored until its content changes or it is re-summoned.
+This is a decision, not an oversight, and it is the one place where "one predictable place" is not
+literally true.** It follows from (e): a pure move — a title-bar drag or an external `SetWindowPos` —
+reaches `PositionChanged`, never `Resized` (decompiled `Win32.WindowImpl`: `WM_MOVE` raises
+`PositionChanged`, only `WM_SIZE` raises `Resized`), so it sets neither `_userResized` nor
+`_fitBasisStale`. A later re-fit whose content is unchanged therefore computes the same rectangle it
+last *requested*, matches the basis, and skips — leaving the window where the user put it.
+*Reproduced on the shipped build:* `SetWindowPos(200,200)` followed by 设置 → 应用 left the window at
+`200,200`, with the skip line in the log. The alternative — comparing against the window's LIVE
+position — would snap a dragged window back to the anchor on the next page switch, which is worse, and
+the pre-Round-4 code did not do that either (its resolver derived the position by clamping the live
+one, so the live position appeared on both sides of the comparison and cancelled out). The anchor is
+re-applied unconditionally on the next summon, because `RestorePlacement` always runs before `Show`.
+It is decided here rather than asked of the user, so it is stated here, in `WindowHost.FitToContent`'s
+own skip comment, and in `README.md`'s window paragraph.
 
 ### 4.2 Why
 
@@ -1014,6 +1080,16 @@ to the *corner radius* (as opposed to the bounds rectangle) was **not verified**
 depend on it: `AppPage`'s content starts 16 DIP inside the pane (`SurfacePadding`, `Tokens.axaml:130`,
 applied at `AppPage.axaml:94-96`), which clears the 8 DIP arc entirely; `SettingsPage` has no radius.
 
+> **Answered after the round (shipped code unchanged): a `Border` DOES clip its child to the radius.**
+> The premise above is also incomplete — the 关于 overlay carries no margin and
+> `OverlayPanel.ArrangeOverride` arranges every child over the whole panel rect, so unlike the tile
+> body and the docked notice it *does* reach the corner. Its `SplashPanel` card is a square `Border`
+> with an accent gradient and no `CornerRadius` of its own, yet on a `PrintWindow` capture of the
+> running app its first accent pixel per row traces 94, 91, 90, 89, 88, 87, 86, 86, 86, 85, 85 down
+> the top eleven rows — an arc, flush with the pane's inner edge. Both candidate clippers (the
+> overlay's own `RadiusOverlay` `Border` and this pane) are `Border`s with the same 8 DIP arc, so the
+> conclusion holds either way. Recorded in `MainWindow.axaml`'s own pane comment.
+
 **Tests:** all four `Fluent2TokenTests` keep passing and two of them actively guard this change. No test
 file is edited.
 
@@ -1024,9 +1100,26 @@ measured basis; `MainWindow.axaml.cs:442-444` (`ApplyBackdrop`'s summary).
 
 ### 5.4 Verification
 
-1. `PrintWindow(hwnd, hdc, 2)` capture, Light theme. **`GetPixel(35,12)` and `GetPixel(35,400)` must be
-   equal within 1 level on every channel**, and the same at x = 60. Today they differ by (14,14,6).
-   This single assertion is item 5's headline.
+1. `PrintWindow(hwnd, hdc, 2)` capture, Light theme. Scan a vertical profile down **x = 35** (inside
+   the rail's own band) in 8 px steps from the top of the client area to y ≈ 400, i.e. from the title
+   strip, across the strip/rail seam at **y = 72**, and well down into the rail. **There must be no
+   step at the seam**: the last strip row (y = 66) and the first rail rows (y = 74 / 82 / 90) must be
+   equal on every channel, and the profile as a whole must drift monotonically rather than jump.
+   Repeat at x = 60. This is item 5's headline assertion.
+
+   > **The bar this step originally set is one a correct build fails; rewritten after the round
+   > (shipped code unchanged).** It used to demand that `GetPixel(35,12)` and `GetPixel(35,400)` — two
+   > points 388 px apart — agree "within 1 level on every channel". The shipped build reads
+   > **(240,241,252)** and **(238,241,255)** there in Light, Δ **(2,0,3)**, and Δ **(1,0,2)** in Dark,
+   > so anyone re-running the old wording verbatim reads a pass as a fail. Across the *seam itself*
+   > both variants are pixel-identical — Light strip y = 66 and rail y = 74 / 82 / 90 all
+   > **(239,241,253)** at x = 35; Dark all **(30,32,38)** — and the 8 px profile shows the value
+   > drifting **continuously** through y = 72 with no step at all. What remains is the **Mica
+   > gradient**, which by construction varies down the window and which the title strip and the rail
+   > now share; it is not a layering seam. Before the round the same two points differed by
+   > **(14,14,6)** *with a hard step at y = 72*, and it is the step, not the difference, that item 5
+   > was about. (Values measured on the shipped build in the whole-round review; the Dark figures
+   > required `"appearance": "Dark"` in `Data\config.json`, which was restored afterwards.)
 2. `GetPixel(2400,100)` must be `(255,255,255)`.
 3. Left border: the pane's first two image columns (x = 83,84) at y = 600 must be
    `#F0F0F0` = `(240,240,240)` — `StrokeControlBrush` over white. Top border: y = 72,73 across the pane,
@@ -1095,6 +1188,25 @@ On this machine, with this user's data: page 1627.2 x 471.33 → window **1676.2
 **Left 1721.9, Top 816** DIP. Today: page 1676 x 471.33 → window 1724 x 568 at Left 1511.33, Top 782,
 rendered 30 DIP taller than requested.
 
+> **Superseded during implementation (`c34c65b..908967e`); the shipped build is the authority.**
+> The composition above is exactly right and the predicted numbers are not. The app logs
+>
+> ```
+> Window fit to content: 1713.8333333333335,816 1692.3333333333333x568 DIP
+>   (page 1643.3333333333333x471.3333333333333 + chrome 49x49) on work area 0,0 5120x1392 at scale 1.5
+> ```
+>
+> so the shipped figures are **1692.33 x 568 at Left 1713.83, Top 816**. Height and Top are exact.
+> Width came out **16.13 DIP higher** than predicted and Left **8.07 DIP lower** — which is one
+> error, not two: Left is `(work.Width − Width)/2`, so half of any width error appears in it with the
+> opposite sign.
+>
+> Every line of the box above then checks out against those numbers: `1643.33 + 49 = 1692.33`,
+> `471.33 + 49 = 520.33` clamped up to 568, `(5120 − 1692.33)/2 = 1713.83`, `1392 − 8 − 568 = 816`.
+> **The formula was right and the input was wrong** — the page came in at 1643.33 rather than the
+> predicted 1627.2, because item 3's per-column label-advance model under-measured. §3.2's box has
+> the per-column table and the reason. Nothing about items 4 or 5 contributed to the miss.
+
 ### 6.3 Test-suite delta
 
 183 cases today = 125 `[Fact]` + 58 `[InlineData]` rows under 8 `[Theory]`, in the single project
@@ -1161,6 +1273,7 @@ Say **"both white"** and §5.1(d) is deleted; say nothing and the design ships a
 | Which screen anchors the startup position? | **The primary**, unconditionally, matching 0.11's shipped `TryGetPrimaryDisplay`. `FitToContent` keeps using the window's current screen | §4.2 |
 | Is the saved position retired or still written? | **Retired in place** — `WindowLeft`/`WindowTop` keep deserializing, nothing reads or writes them, no schema bump | §4.1(b), §6.4 |
 | Flush against the work-area bottom, or a gap? | **8 DIP gap** on the placement rectangle = 6.67 DIP visible at 150 %. Flush was rejected because our window carries a 9 px invisible border that Windows' own popups do not | §4.1(c) |
+| Is a window the user has dragged snapped back to the anchor? | **No** — not until its content changes or it is re-summoned. Falls out of the request-based skip basis; snapping back on every page switch is worse, and the pre-Round-4 build did not do it either | §4.1(f) |
 | A tile `MinWidth` or `MaxWidth`? | **Neither.** `MaxWidth` reintroduces the ellipsis the user asked to remove; `MinWidth="168"` turns a 49 DIP narrowing into an 86 DIP widening. The work-area clamp plus `Body`'s scrollbar is the bound | §3.2 |
 | A spacer where the hamburger was? | **No.** 应用 rises 44 DIP, glyph centre y = 120 px | §1.1 |
 | A confirmation on 退出? | **No.** Non-goal; the separator plus four rows of distance from 设置 is the mitigation | §2.3 |
