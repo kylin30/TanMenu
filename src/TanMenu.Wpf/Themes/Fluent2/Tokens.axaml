@@ -171,8 +171,16 @@
            side-by-side tiles (存储 / 显卡) show a 10 px arc with an 18 px gutter (⇒ 8 DIP at a 12 DIP
            gap). A category panel is the second kind of object — a large container holding a heading and
            a grid, sitting beside its siblings — so it takes the second shape. Same "radius minus about
-           half the stroke" rule of thumb RadiusPaneTopLeft records above: authored at 8, a 1 DIP-stroked
-           panel renders 10-11 px of visible arc, which is the reference's own 10.
+           half the stroke" rule of thumb RadiusPaneTopLeft records above. What this authored 8 renders is
+           stated here as MEASURED, not as that block's 10-11 px, which its own text says is
+           instrument-dependent. Scanning PrintWindow captures of the shipped panel for the row and the
+           column at which the border's OUTER pixel reaches its straight-run value: 12 px in each axis in
+           Dark, and in Light 12 px on an exact match or 11 px if a 1-level tolerance is allowed. So the
+           panel does NOT sit inside a 10-11 px band in both variants. What survives the instrument is the
+           comparative reading, taken in the SAME captures: Border.tm-page-pane, this app's other
+           authored-8-DIP corner, gives 12 px in both axes in both variants, so the two 8 DIP corners
+           agree exactly in Dark and to within that one level in Light. The four-criterion table is in
+           docs/superpowers/specs/2026-08-04-round6-surfaces-design.md, section 4.6 step 7.
 
            OverlayCornerRadius further down this file is also 8 and is deliberately NOT reused. That key
            is a FluentTheme OVERRIDE — it reaches Avalonia's own flyout and popup templates — so binding

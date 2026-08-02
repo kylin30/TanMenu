@@ -29,7 +29,17 @@
 > line are corrected at each site. §4.6 step 7's "10-11 px" corner bar is also corrected: it is
 > instrument-dependent, and the correction records the panel's arc beside the app's own other
 > authored-8-DIP corner measured in the same capture. Everything else in §4 held as written, including
-> every RGB in §4.2's Dark table, which was computed and measured exactly.
+> every RGB in §4.2's Dark table, which was computed and measured exactly. **Item 4's review then found
+> three defects in that record itself**, all fixed in a follow-up commit and all marked in place:
+> `AppPage.axaml`'s categories comment still carried the superseded `5 × 22` / `+62`, so a maintainer
+> reading the code — this repo's stated authority — got the wrong figure while the spec had the right
+> one; §4.6 step 2's explanation of the one container that reads 23.3333 invoked a "ten-column group"
+> that does not exist (a `Group-Object … .Count` bug in `r6i4-groups.ps1` had turned four one-column
+> groups into 5 / 10 / 6 / 6, and the residual is instead one device pixel in that container's right
+> inset, present in a *gap* on the pre-change build); and `Tokens.axaml`'s `RadiusPanel` block asserted
+> a flat "10-11 px of visible arc" that the author's own capture had already measured at 12 in Dark.
+> **The build itself was not touched** — the fix is comments and this document, and the shipped page's
+> 825-node UIA dump is byte-identical before and after.
 >
 > **Scope.** The four items the user asked for after reviewing the Round 5 build:
 >
@@ -1240,10 +1250,33 @@ same property on the same `x:DataType`. No reflection, no new type.
    > **Corrected 2026-08-03, while implementing item 4, twice over.**
    >
    > * The width bar is **22.6667 DIP**, not 22.00 (§4.4's correction). Measured on the shipped build,
-   >   the five containers give **22.6666 / 22.6666 / 23.3333 / 22.6667 / 22.6667**. The 23.3333 is the
-   >   ten-column group and is the accumulation of ten independently px-rounded column rects, which is
-   >   the same class of residual §5.2 already flags for the five group rects; the bar should be
+   >   the five containers give **22.6666 / 22.6666 / 23.3333 / 22.6667 / 22.6667**; the bar is
    >   **22.6667 ± 0.7**.
+   >
+   >   **Re-corrected 2026-08-03 by item 4's review, which caught both the explanation of the 23.3333
+   >   and the instrument that produced it.** The first correction called that container "the
+   >   ten-column group … the accumulation of ten independently px-rounded column rects". **There is no
+   >   ten-column group.** It holds ten tiles at a *single* x (image 4230, one tile width 198.6667 DIP);
+   >   the page has **nine** columns across its five categories — 1 / 5 / 1 / 1 / 1 — which is the same
+   >   nine §5.2 and step 5 both count. The false count came from `r6i4-groups.ps1:62-67`, which does
+   >   `$cols = $mine | Group-Object x` and then reads `$cols.Count`: when `Group-Object` yields a
+   >   *single* `GroupInfo`, `.Count` is that group's **member** count, so the script printed
+   >   cols = 5 / 10 / 6 / 6 for the four one-column groups (each equal to its own tile count, which is
+   >   the tell). `@()` around the pipeline is the fix; `r6i4fix-cols.ps1` re-runs both dumps corrected.
+   >
+   >   What the extra 0.6667 actually is, measured on the same two dumps: **one device pixel, and it
+   >   sits in that container's RIGHT inset.** Container-to-inner-`tm-group` insets, in px:
+   >   L = 20 and T = 20 on all five (13.3333 DIP = 12 + 1.3333), R = **15** on that container against
+   >   **14** on the other four (9.3333 DIP = 8 + 1.3333) — an arranged rect of 339 px where the
+   >   arithmetic its four siblings satisfy asks for 338. **The panel did not create the pixel.** On the
+   >   reverted build the identical odd pixel is in the *gap* between that group and the next (37 px,
+   >   against 36 on the other three); after the change all four gaps are exactly 18 px and the pixel
+   >   has moved inside the new Border. Both pages balance to the digit — before,
+   >   `Σ containers 2272 px + Σ gaps 145 px = 2417 px = 1611.3333 DIP` (+ 2 × 16 = the logged
+   >   1643.3333); after, `2443 + 72 = 2515 px = 1676.6667 DIP` (+ 32 = the logged 1708.6667) — so the
+   >   growth is 98 px = **+65.3333 DIP exactly**, and no term of §4.4's corrected model moves. The
+   >   sub-pixel origin of the pixel itself is *not* claimed: unrounded desired sizes are not observable
+   >   through UIA. Instruments: `r6i4fix-cols.ps1`, `r6i4fix-inner.ps1`, `r6i4fix-gaps.ps1`.
    > * **The height half of this step cannot be read off the arranged rect at all, and a correct build
    >   fails it as written.** The window's height is clamped UP to the 568 floor from a 543 request, so
    >   `Body` hands its content ~24.67 DIP more height than it asked for and the panels, being
@@ -1319,6 +1352,20 @@ same property on the same `x:DataType`. No reflection, no new type.
    > instrument's own 1 px ambiguity, and the design's 10-11 px band is met at the steady-value
    > criterion in Light (11) and missed by 1 px in Dark (12) by exactly as much as the pane misses it.**
    > No change to the authored 8. Instrument: `r6i4-arc.ps1` in the scratchpad.
+   >
+   > **Re-measured 2026-08-03 by item 4's review, all four rows reproduced, plus the one thing the
+   > table hides.** Fresh captures of the shipped build (`r6i4fix-light.png`, `r6i4fix-dark.png`, panel
+   > corner at image 109,110 and pane corner at 83,72) give the table above digit for digit. The
+   > "steady-value" column, though, is `r6i4-arc.ps1:62-64`'s criterion, which accepts the border's
+   > outer pixel **within 1 level** of its straight-run value. On an exact match the Light panel reads
+   > **12 / 12**, not 11: the block dump of that corner runs
+   > `y118 = 252, y119 = 247, y120 = 244, y121 = 241, y122 = 240` down the outer column and
+   > `x117 = 252 … x120 = 241, x121 = 240` along the outer row, so 241 at 11 px is inside the tolerance
+   > and 240 first appears at 12. Dark is 12 either way (`59` first at y = 122 / x = 121). **So the
+   > 10-11 px band is not met in either variant on the strict criterion, and the comparative claim is
+   > the one to keep** — the pane's corner reads 12 / 12 in both variants in the same captures.
+   > `Tokens.axaml`'s `RadiusPanel` block was rewritten to say exactly this instead of asserting the
+   > band. Instruments: `r6i4-arc.ps1` plus the block dumps recorded in this session's report.
 8. **Filtering — the failure mode the test in §4.5 guards, checked once on screen too.**
    `ValuePattern.SetValue` on `SearchBox` = a string that matches exactly one category (the recon used
    `"Steam"`). Capture. Scan the row at the surviving panel's vertical centre from the items panel's
@@ -1471,6 +1518,15 @@ Two known error sources, both bounded:
   heading `Border` measures 25.33 where the tokens imply 26 (the same sub-DIP line-box effect Round 5
   measured on `tm-card-title`).
 
+  > **The first of the two is explained, 2026-08-03, by item 4's review** (§4.6 step 2's re-correction,
+  > which measures the same pixel on the other side of the change). It is not spread over five rects:
+  > on the pre-change dump the group rects are 184 / 1290 / 305 / 284 / 209 px = 2272 px = **1514.6667**
+  > and the four gaps are 36 / 36 / **37** / 36 px = 145 px = **96.6667**, i.e. the 0.6667 the rects are
+  > short is the same 0.6667 the gaps are long, in one specific gap. The span is
+  > `2272 + 145 = 2417 px = 1611.3333`, which is the logged `page 1643.3333` less `2 × 16` of
+  > `SurfacePadding` — exact, so the page arithmetic never actually lost anything. The second residual
+  > is untouched by this.
+
 **Items 1, 2 and 3 must not move this line at all.** If the fit line changes for those three, something
 leaked into `_appPage` and that is the signal to stop.
 
@@ -1577,7 +1633,7 @@ were weighed and closed rather than escalated:
 | Item 4: the fill | **`SubtleFillTertiaryBrush`** | `SurfaceLayerBrush` measures (255,255,255) on the pane — invisible; `SubtleFillSecondaryBrush` is exactly the tile's hover colour; `SurfaceBaseBrush` re-introduces the grey Round 4 removed. §4.2 |
 | Item 4: radius | **8 DIP, new `RadiusPanel` token** | Measured on the reference's large side-by-side tiles (10 px arc at 150 %); a category panel is that shape, not the 4 DIP row-card shape. `OverlayCornerRadius` is not reused — it is a FluentTheme key for Avalonia's own popups. §4.3(a) |
 | Item 4: padding | **`12,12,8,8`** = a uniform 12 DIP visible inset | 12 is `Space3` and the reference's measured large-tile gap; the right/bottom are 8 because the tile grid already contributes 4 DIP there, measured on the live build. §4.3(b) |
-| Item 4: the inter-category gap | **24 → 12 DIP** | The reference's measured large-tile gap, and the panels now supply the separation the 24 was doing. It also cuts the cost from +110 to +62. §4.3(c), §4.4 |
+| Item 4: the inter-category gap | **24 → 12 DIP** | The reference's measured large-tile gap, and the panels now supply the separation the 24 was doing. It also cuts the cost from +110 to +62 in authored DIP — measured on the shipped build, +113.33 to **+65.33**, §4.4's correction. §4.3(c), §4.4 |
 | Item 4: equal-height or ragged panels? | **Equal height** | Five different-height bordered boxes side by side read as an error; the reference's large tiles are equal height; and it costs nothing in measure because the panel's *desired* height is still its own content. Achieved by giving the Border no `VerticalAlignment` and leaving `StackPanel.tm-group`'s `Top` in place. §4.3(b) |
 | Item 4: panel some categories only, or vary vertical padding? | **Forbidden** | `FindAdjacentTile`'s `sameRow` test is `< 18 DIP`; every category's first tile row is at one y today and must stay there. §4.5 |
 | Item 4: the inert `Spacing="14"` | **Deleted** | It has one child today and would silently activate on exactly this kind of edit. §4.3(c) |
