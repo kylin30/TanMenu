@@ -332,10 +332,12 @@
              separate Auto row below it, the "*" row's own leftover space pushing the footer down to the
              pane's bottom edge. Round 4, item 1 removed the third (Auto) row this Grid used to open
              with, which held nothing but the hamburger toggle; nothing replaces it, so 应用 rises by
-             that row's whole height. Classes="tm-nav-rail" is kept as this element's own name for
-             anything that needs to scope a rule to the rail root — the three rail-state selectors that
-             used to be its only readers went with the expanded state, so as of item 1 no Launcher.axaml
-             selector keys off it. -->
+             that row's whole height. Classes="tm-nav-rail" is this element's own name for anything
+             that needs to scope a rule to the rail root, and since Round 6, item 3 something does:
+             Launcher.axaml's "Grid.tm-nav-rail TextBlock.tm-icon" is what lifts every rail glyph to
+             Task Manager's own measured contrast without touching tm-icon anywhere else in the app.
+             (Between Round 4, item 1 — which deleted the three rail-state selectors that were its
+             previous readers — and that rule, it had none.) -->
         <Grid x:Name="NavRailContent" Classes="tm-nav-rail" RowDefinitions="*,Auto">
 
           <!-- Page list: 应用 only. 设置 is a real page too (PageHost.Content still swaps between the
@@ -351,7 +353,6 @@
                the hamburger row above it. -->
           <ListBox x:Name="NavRail"
                    Grid.Row="0"
-                   Classes="tm-nav"
                    SelectedIndex="0"
                    SelectionChanged="OnNavSelectionChanged"
                    Background="Transparent"
@@ -377,7 +378,7 @@
                  the same thing, and a local value simply outranks them): it used to come from a pair of
                  rail-state rules in Launcher.axaml that centred the row's StackPanel, and item 1 deleted
                  both along with the StackPanels they targeted. -->
-            <ListBoxItem x:Name="NavAppsItem">
+            <ListBoxItem x:Name="NavAppsItem" Theme="{StaticResource TmNavRowItem}">
               <TextBlock Classes="tm-icon" Width="16" Text="&#xE71D;"
                          HorizontalAlignment="Center" VerticalAlignment="Center" />
             </ListBoxItem>
@@ -414,10 +415,11 @@
                Round 4, item 1: each row's content is now its icon alone — see NavAppsItem above for why
                the label TextBlocks and their StackPanels are gone and where the centring moved to. The
                row's ToolTip.Tip and AutomationProperties.Name (ApplyRailText) are its only label.
-               Classes="tm-nav-row" below is kept for the same reason NavRailContent keeps
-               Classes="tm-nav-rail" — as these rows' own name for anything that needs to scope a rule
-               to them — but as of item 1 NO Launcher.axaml selector keys off it either: its only reader
-               was one of the three rail-state rules item 1 deleted.
+               Classes="tm-nav-row" below is kept as these rows' own name for anything that needs to
+               scope a rule to them, but NO Launcher.axaml selector keys off it: its only reader was
+               one of the three rail-state rules Round 4, item 1 deleted. (NavRailContent's own
+               Classes="tm-nav-rail" was in the same position until Round 6, item 3 gave it a reader —
+               see its remark above.)
 
                ══ Round 5, item 1: the order below, and why it is what it is ═══════════════════════
                Top to bottom: 打开主目录 · 刷新 · 设置 · separator · 退出. The rows are LITERAL
@@ -480,13 +482,12 @@
             </Button>
 
             <!-- 设置: a real page (see ShowPage), styled and measured exactly like NavRail's own
-                 NavAppsItem (same "tm-nav" ListBox class, same ListBoxItem shape) so its selected
-                 treatment — Task Manager's own left accent bar + subtle rounded fill, confirmed by
-                 pixel-sampling a live screenshot of Task Manager's selected row: a
-                 ~3.3 DIP accent-coloured bar flush to the item's left edge, and a fill spanning the
-                 REST of the item's own bounds edge-to-edge, both already exactly what
-                 "ListBox.tm-nav ListBoxItem:selected" (Launcher.axaml) already painted before this
-                 task — reads identically to 应用's own.
+                 NavAppsItem — both carry Theme="{StaticResource TmNavRowItem}", so its selected
+                 treatment reads identically to 应用's own. That theme (Launcher.axaml) is where the
+                 shape lives and where Round 6, item 3's measurements against Task Manager's own
+                 selected row are written down: a 16 DIP pill-shaped accent indicator centred on the
+                 row's leading edge, over a subtle rounded fill spanning the row box, and neither of
+                 them displacing the glyph.
 
                  Padding is "0" — not the "0,12" NavRail uses, and no longer the "0,0,0,4" it carried
                  through Round 4. No top inset, because the command row directly above (NavRefreshItem)
@@ -496,12 +497,11 @@
                  moved onto the footer StackPanel's own Margin, where the fact it states — the footer's
                  distance from the pane's bottom edge — actually lives. -->
             <ListBox x:Name="NavFooterRail"
-                     Classes="tm-nav"
                      SelectionChanged="OnNavSelectionChanged"
                      Background="Transparent"
                      BorderThickness="0"
                      Padding="0">
-              <ListBoxItem x:Name="NavSettingsItem">
+              <ListBoxItem x:Name="NavSettingsItem" Theme="{StaticResource TmNavRowItem}">
                 <TextBlock Classes="tm-icon" Width="16" Text="&#xE713;"
                            HorizontalAlignment="Center" VerticalAlignment="Center" />
               </ListBoxItem>

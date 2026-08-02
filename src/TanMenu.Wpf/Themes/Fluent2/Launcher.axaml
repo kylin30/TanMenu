@@ -261,9 +261,9 @@
          into their own rows in the navigation rail's bottom-pinned footer (MainWindow.axaml). Three of
          those four are this theme's consumers today — Round 5, item 2 took 关于 out of the rail and made
          it a settings card, and its row went with it. Padding
-         (12,10) and Margin (4,2) are IDENTICAL to "ListBox.tm-nav ListBoxItem" below — a command row
+         (12,10) and Margin (4,2) are IDENTICAL to TmNavRowItem below — a command row
          has to measure and sit exactly like a page row for the rail to read as one consistent list —
-         but this is a full custom Button ControlTheme, not that ListBoxItem style reused on a Button,
+         but this is a full custom Button ControlTheme, not that ListBoxItem theme reused on a Button,
          because a Button has NO :selected pseudoclass at all: that is what makes "a command row must
          never look selected" (the task's own constraint) true by construction rather than by a style
          rule a later edit could defeat. Same two-layer Root/nothing-else shape as TmIconButton (a
@@ -303,6 +303,105 @@
       </Style>
       <Style Selector="^:pressed /template/ Border#Root">
         <Setter Property="Background" Value="{DynamicResource SubtleFillTertiaryBrush}" />
+      </Style>
+    </ControlTheme>
+
+    <!-- ══ Nav rail page row ══════════════════════════════════════════════════════════════════════
+         The other rail row kind: a DESTINATION the window navigates to and stays on (应用, 设置), so
+         unlike TmNavRowButton above it is a ListBoxItem and it has a :selected state. The two live
+         side by side here because they must measure alike — Padding (12,10) and Margin (4,2) are the
+         same literals in both, which is what makes the rail read as one list.
+
+         Round 6, item 3 replaced what used to be three plain styles keyed off Classes="tm-nav" with
+         this ControlTheme, because of ONE property those styles could not express. The old selected
+         look was BorderThickness="3,0,0,0" on the stock template's ContentPresenter, and a border
+         always runs the full length of the edge AND always consumes layout: it painted the accent
+         down the whole 36 DIP row box and it pushed the row's own icon sideways. Both were measured
+         against Task Manager's rail at 150% scale, with the two windows' rails occupying the same
+         image columns:
+
+           · TM's accent is 24 px tall — 16 DIP — and centred on the row box, not the full row.
+           · TM's accent is a PILL: 5 px wide through the middle, narrowing to 3 px on its first and
+             last scanlines, i.e. a cap radius near half its width.
+           · TM's glyph does not move when the row is selected. Driving SelectionItemPattern.Select()
+             on its 性能 row and re-capturing, the 进程 glyph's ink sits at the same x in both states.
+             Ours moved its icon TextBlock 2 px (1.33 DIP) to the right on selection — the border's
+             layout cost, reported by UI Automation on the icon itself.
+
+         Everything the measurements found IDENTICAL is deliberately untouched: the 48 DIP rail pane,
+         the 40x36 DIP row box, the 40 DIP row pitch, the 4 DIP corner arc, the empty unselected row,
+         and the accent hue — the two apps' indicators sampled the same triple in each variant, so
+         AccentDefaultBrush (which AppTheme republishes from Windows personalization at startup) is
+         already right and is carried over unchanged.
+
+         So the indicator is an element, not a border: a 3x16 DIP Border with CornerRadius 1.5, laid
+         over the content in a Panel, hit-test invisible, transparent until :selected paints it. The
+         three numbers stay literals rather than becoming tokens, following Border.tm-nav-separator's
+         precedent further down — they are one indivisible measured shape, not a step on a scale.
+         Width stays the 3 DIP this file has always authored: ours renders 4 px and TM's 5 px, and
+         3 DIP at 150% is 4.5, so a single authored 3 explains both under layout rounding while
+         authoring 3.33 would be wrong at every other scale (the same argument Round 4 used for the
+         1 DIP pane border). Height 16 is TM's 24 px / 1.5. The radius is half the width; TM's
+         measured cap radius is about 1.67 DIP.
+
+         The selected fill moved from SubtleFillTertiaryBrush to SubtleFillSecondaryBrush, and that is
+         a LOOKUP, not a taste call: TM's selected row solves to alpha 9.4/255 black in Light and
+         14.5/255 white in Dark against its own backdrop in the same capture, and this app's
+         SubtleFillSecondaryBrush is exactly 10/255 and 15/255 (Tokens.axaml). Ours was 6.4 and 11.3,
+         i.e. SubtleFillTertiaryBrush. A real consequence, accepted: :pointerover already uses that
+         same brush, so a hovered unselected row and a resting selected row now match, and the pill
+         alone carries selection — which is exactly what TM does, and it also fixes an inversion this
+         file used to have, where hover was STRONGER than selection.
+
+         Hover is otherwise untouched. TM's hover and press states cannot be measured in this
+         environment at all (no pointer), and the rule is not to change a property no difference was
+         measured in. :pressed and the FocusAdorner are copied verbatim from TmNavRowButton for a
+         different reason: replacing a template replaces its focus visual and its state styles too,
+         and dropping a state silently while swapping a template is not a match-Task-Manager change,
+         it is a regression. There is no ^:selected:pointerover rule because after this change both
+         states resolve to the same brush already. -->
+    <ControlTheme x:Key="TmNavRowItem" TargetType="ListBoxItem">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Padding" Value="12,10" />
+      <Setter Property="Margin" Value="4,2" />
+      <Setter Property="CornerRadius" Value="{DynamicResource RadiusControl}" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="FocusAdorner">
+        <Template>
+          <Border BorderBrush="{DynamicResource FocusStrokeOuterBrush}"
+                  BorderThickness="2" CornerRadius="{DynamicResource RadiusControl}" Margin="-2" />
+        </Template>
+      </Setter>
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Panel>
+            <Border x:Name="Root"
+                    Background="{TemplateBinding Background}"
+                    CornerRadius="{TemplateBinding CornerRadius}" />
+            <ContentPresenter Content="{TemplateBinding Content}"
+                              Padding="{TemplateBinding Padding}"
+                              HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                              VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+            <Border x:Name="SelectionIndicator"
+                    Background="Transparent"
+                    Width="3" Height="16" CornerRadius="1.5"
+                    HorizontalAlignment="Left" VerticalAlignment="Center"
+                    IsHitTestVisible="False" />
+          </Panel>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:pointerover /template/ Border#Root">
+        <Setter Property="Background" Value="{DynamicResource SubtleFillSecondaryBrush}" />
+      </Style>
+      <Style Selector="^:pressed /template/ Border#Root">
+        <Setter Property="Background" Value="{DynamicResource SubtleFillTertiaryBrush}" />
+      </Style>
+      <Style Selector="^:selected /template/ Border#Root">
+        <Setter Property="Background" Value="{DynamicResource SubtleFillSecondaryBrush}" />
+      </Style>
+      <Style Selector="^:selected /template/ Border#SelectionIndicator">
+        <Setter Property="Background" Value="{DynamicResource AccentDefaultBrush}" />
       </Style>
     </ControlTheme>
 
@@ -549,35 +648,31 @@
     <Setter Property="LineHeight" Value="{DynamicResource LineHeightBody}" />
   </Style>
 
-  <!-- Navigation rail. Fluent 2's NavigationView selection idiom: a left accent bar on the leading
-       edge of the selected row plus a subtle rounded fill behind it, a fainter fill on hover, and no
-       border anywhere. Confirmed against Task Manager's OWN selected row, not just its own shape:
-       pixel-sampling a live screenshot of its selected "进程" item (Round 3, Task 2)
-       found an accent-coloured bar ~3.3 DIP wide flush to the item's left edge, immediately followed
-       (no gap) by a flat, uniform fill spanning the REST of the item's own bounds edge-to-edge — exactly
-       this shape, which is why the numbers below (3 DIP bar, a flat SubtleFillTertiaryBrush fill) were
-       already correct and did not need to change for that task. The BorderThickness is a flat
-       "3,0,0,0" — it used to be described as "the same at either rail width", and since Round 4, item 1
-       there is only the one width left for it to apply to. -->
-  <Style Selector="ListBox.tm-nav ListBoxItem">
-    <Setter Property="Padding" Value="12,10" />
-    <Setter Property="Margin" Value="4,2" />
-    <Setter Property="CornerRadius" Value="{DynamicResource RadiusControl}" />
-    <Setter Property="Background" Value="Transparent" />
-  </Style>
-  <Style Selector="ListBox.tm-nav ListBoxItem:pointerover /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource SubtleFillSecondaryBrush}" />
-  </Style>
-  <Style Selector="ListBox.tm-nav ListBoxItem:selected /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource SubtleFillTertiaryBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource AccentDefaultBrush}" />
-    <Setter Property="BorderThickness" Value="3,0,0,0" />
+  <!-- ══ The rail's icon contrast ════════════════════════════════════════════════════════════════
+       Round 6, item 3, the second half of 导航条中图标的选中状态样式和任务管理器不一样. The row shape is
+       in TmNavRowItem (Styles.Resources, above); this is the glyph inside it.
+
+       Measured, both apps, both variants, and identical in the selected and the unselected state in
+       each: Task Manager's rail glyphs solve to alpha 0.893 black over their row in Light and reach
+       pure white in Dark — which IS this app's TextPrimaryBrush to the level in both (Tokens.axaml).
+       Ours were tm-icon's own TextSecondaryBrush: alpha 0.605 in Light, (208,209,210) in Dark. So
+       this is a lookup, not a colour choice.
+
+       Scoped to the rail, and nothing else, through NavRailContent's own Classes="tm-nav-rail"
+       (MainWindow.axaml) — the class that file kept for exactly this. The descendant combinator
+       reaches every one of the five rows on the logical tree, ListBox to ListBoxItem to TextBlock and
+       Button to TextBlock alike, which is intended: both apps draw every rail glyph at one contrast.
+       tm-icon's own Foreground further up is untouched, so the search affordance, the folder hint and
+       the settings cards' icons keep theirs. -->
+  <Style Selector="Grid.tm-nav-rail TextBlock.tm-icon">
+    <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
   </Style>
 
   <!-- Round 3, Task 2: live UI Automation on Task Manager's OWN rail found its
        item column is 40 DIP wide inside the SAME 48 DIP pane this app already used — ours
        measured only 32 DIP before this fix. The difference was this ListBox's own horizontal Padding,
-       which used to add a SECOND 4 DIP inset on top of ListBoxItem's own Margin="4,2" above, eating 16
+       which used to add a SECOND 4 DIP inset on top of the ListBoxItem Margin="4,2" that TmNavRowItem
+       sets (Styles.Resources, above), eating 16
        DIP total from the 48 DIP pane (48-16=32) instead of the 8 DIP the item Margin alone accounts for
        (48-8=40). NavRail/NavFooterRail (MainWindow.axaml) now both set Padding with a zero horizontal
        component locally (a local value on the instance, not a class-wide Setter here, since the two
@@ -601,7 +696,7 @@
        StackPanel carries the ordering rationale and the reason the fence has to follow the row.
 
        Both numbers are derived, not picked. The HORIZONTAL 4 is the rows' own Margin="4,2" (the
-       "ListBox.tm-nav ListBoxItem" style above and the TmNavRowButton ControlTheme both set it), so the
+       TmNavRowItem and TmNavRowButton ControlThemes both set it), so the
        line spans exactly the 40 DIP item column — 48 DIP pane − 2×4 DIP item margin — that Round 3
        measured against Task Manager's own rail, and stops flush with the row boxes rather than running
        edge-to-edge across the pane. The VERTICAL 4 puts 4 DIP of clear space on each side of the
