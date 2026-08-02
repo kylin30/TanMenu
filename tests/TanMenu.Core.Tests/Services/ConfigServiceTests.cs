@@ -597,7 +597,13 @@ public class ConfigServiceTests
             var svc1 = new ConfigService(paths, NullLogger<ConfigService>.Instance);
             await svc1.LoadAsync();
 
-            // A brand-new config (nothing on disk yet) must load collapsed — the Task Manager default.
+            // NavRailExpanded is a RETIRED field as of Round 4, item 1 — the navigation rail is
+            // permanently icon-only and nothing reads or writes this any more. What these two cases
+            // guard is the retirement contract itself (AppConfig's own remarks, and the same contract
+            // ShowInTaskbar/WindowWidth/WindowHeight/ButtonSize have): the property still round-trips
+            // through the serializer and still defaults to false, so neither an old config.json that
+            // carries the key nor one written before the key existed fails to load. They deliberately
+            // assert nothing about the rail.
             Assert.False(svc1.Config.General.NavRailExpanded);
 
             svc1.Config.General.NavRailExpanded = true;
@@ -620,7 +626,9 @@ public class ConfigServiceTests
         var paths = NewPaths(out var root);
         try
         {
-            // Every config.json written before this field existed is in this shape.
+            // Every config.json written before this field existed is in this shape. Since Round 4,
+            // item 1 retired the field (see the previous test's own comment) this asserts only that an
+            // absent key still deserializes to the property's own default, not anything about the rail.
             await File.WriteAllTextAsync(
                 paths.ConfigFilePath, "{\"general\":{\"language\":\"zh-Hans\"}}");
 

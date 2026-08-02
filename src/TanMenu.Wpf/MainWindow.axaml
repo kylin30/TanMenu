@@ -15,9 +15,8 @@
         ExtendClientAreaTitleBarHeightHint="48">
 
   <!--
-    The shell: a Mica window split into a title strip, a collapsible navigation rail (48 px icon-only
-    when collapsed — the default a fresh config gets — 200 px icon+label when expanded, see NavRailPane
-    below) and a page host.
+    The shell: a Mica window split into a title strip, a permanently icon-only navigation rail
+    (48 DIP wide, see NavRailPane below) and a page host.
 
     Round 3, Task 2 (user items 4, 5) reshaped the rail to match Task Manager's OWN measured shape
     (live UI Automation + pixel geometry, not eyeballed):
@@ -31,9 +30,13 @@
     currently shown alone — so they are plain Buttons (Theme="{StaticResource TmNavRowButton}"), not
     ListBoxItems: a Button has no :selected pseudoclass at all, which is what makes "a command row must
     never look selected" true by construction rather than by a style rule a future edit could defeat.
-    NavRailContent (the Grid wrapping all three rows) carries the single "collapsed" class both lists
-    and all four command buttons key off, so one flip in ApplyNavExpandedState (code-behind) still
-    re-derives the whole rail's icon-only look in one step, exactly as when NavRail alone carried it.
+
+    Round 4, item 1 deleted the rail's expand capability outright — the hamburger toggle, the 200 DIP
+    expanded width, the width animation, the six label TextBlocks and the state class that switched
+    between the two widths are all gone. The rail is 48 DIP, icon-only, always; that is both
+    Task Manager's own measured pane width and the only state this app ever shipped as its default.
+    Each row's ToolTip.Tip and AutomationProperties.Name (ApplyRailText, code-behind) are therefore now
+    the ONLY label any row carries, not a duplicate of a visible one.
 
     ExtendClientAreaToDecorationsHint pulls the whole client area — including the strip where the OS
     used to paint its own title bar — under our control. ExtendClientAreaTitleBarHeightHint is pinned to
@@ -266,58 +269,37 @@
       </Grid>
     </Border>
 
-    <!-- Grid.Column="0" is "Auto", not a fixed width: NavRailPane below carries its OWN explicit
-         Width (48 collapsed / 200 expanded, toggled by OnNavToggleClick) and the Auto column just
-         follows whatever that Border currently measures at, which is what lets the DoubleTransition
-         on that Width animate the whole rail smoothly instead of snapping. -->
+    <!-- Grid.Column="0" is "Auto", not a literal 48: NavRailPane below carries its OWN explicit Width
+         and the Auto column just follows whatever that Border measures at, so the rail's width is
+         stated exactly once in this file (Round 4, item 1 removed the second state that Width used to
+         animate between; a fixed column here would restore a second copy of the number instead). -->
     <Grid Grid.Row="1" ColumnDefinitions="Auto,*">
 
-      <!-- ══ Navigation rail pane: hamburger toggle + the rail, Task Manager style ══════════════════
-           Collapsed (48 px, icon-only) is the default a fresh config gets — GeneralConfig.NavRailExpanded
-           defaults to false — matching Task Manager's own rail (measured live: PaneRoot is 72 physical
-           px = 48 DIP at this machine's 150% scale, the same 48 DIP this app already used before this
-           task). ApplyNavExpandedState
-           (code-behind) is the one place that ever sets this Border's Width or toggles the "collapsed"
-           class on NavRailContent below; both happen together so the width animation and the icon-only
-           layout change in lockstep. -->
+      <!-- ══ Navigation rail pane: 48 DIP, icon-only, permanently ═══════════════════════════════════
+           Round 4, item 1: the hamburger toggle, the 200 DIP expanded width and the DoubleTransition
+           that animated between the two are deleted — a rail with one width needs neither a transition
+           on that width nor the ClipToBounds that only existed to clip the animation. 48 DIP is Task
+           Manager's own pane width, measured live (its PaneRoot is 72 physical px = 48 DIP at this
+           machine's 150% scale) and the width this app has always opened at.
+
+           This literal Width is the SINGLE source of truth for the rail's width. MainWindow.axaml.cs's
+           RailWidthDip mirrors it as the window content fit's chrome term and has to be kept in step
+           with it — see that constant's own remarks. -->
       <Border Grid.Column="0"
               x:Name="NavRailPane"
               Width="48"
-              Background="Transparent"
-              ClipToBounds="True">
-        <Border.Transitions>
-          <Transitions>
-            <DoubleTransition Property="Width" Duration="0:0:0.167" Easing="CubicEaseOut" />
-          </Transitions>
-        </Border.Transitions>
+              Background="Transparent">
 
-        <!-- Three rows, not two: Task Manager's own rail (measured, not eyeballed — its NavigationMenu
-             is a Grid of exactly this shape) keeps its page list in a "*" row and pins Settings alone in
-             a separate Auto row below it, the "*" row's own leftover space pushing the footer down to
-             the pane's bottom edge. Classes="tm-nav-rail" plus the "collapsed" class ApplyNavExpandedState
-             toggles on THIS element is what every collapsed-state selector in Launcher.axaml keys off
-             now (ListBoxItem content, tm-nav-row Button content and every *-label TextBlock), rather than
-             each list carrying its own copy of that class — one flip here still re-derives the whole
-             rail in lockstep, exactly as when NavRail alone carried it. -->
-        <Grid x:Name="NavRailContent" Classes="tm-nav-rail" RowDefinitions="Auto,*,Auto">
-
-          <!-- The hamburger toggle. Icon-only in BOTH states (Task Manager's own toggle never grows a
-               label), left-aligned rather than centred so its glyph lines up with the rail items' own
-               icons below regardless of the pane's current width — centring would visibly jump the
-               glyph sideways every time the pane's width changes. AutomationProperties.Name/ToolTip.Tip
-               are set imperatively in ApplyNavExpandedState because they name the ACTION the button is
-               about to perform (expand or collapse), which flips every time it is pressed — a static
-               XAML value could only ever be half right. The icon's own Width="16" matches every other
-               rail icon below — see NavRail's own remarks for why that fixed width exists at all. -->
-          <Button Grid.Row="0"
-                  x:Name="NavToggleButton"
-                  Theme="{StaticResource TmIconButton}"
-                  Margin="8,8,0,4"
-                  HorizontalAlignment="Left"
-                  Focusable="False"
-                  Click="OnNavToggleClick">
-            <TextBlock Classes="tm-icon" Width="16" Text="&#xE700;" />
-          </Button>
+        <!-- Two rows: Task Manager's own rail (measured, not eyeballed — its NavigationMenu is a Grid
+             of exactly this shape) keeps its page list in a "*" row and pins Settings alone in a
+             separate Auto row below it, the "*" row's own leftover space pushing the footer down to the
+             pane's bottom edge. Round 4, item 1 removed the third (Auto) row this Grid used to open
+             with, which held nothing but the hamburger toggle; nothing replaces it, so 应用 rises by
+             that row's whole height. Classes="tm-nav-rail" is kept as this element's own name for
+             anything that needs to scope a rule to the rail root — the three rail-state selectors that
+             used to be its only readers went with the expanded state, so as of item 1 no Launcher.axaml
+             selector keys off it. -->
+        <Grid x:Name="NavRailContent" Classes="tm-nav-rail" RowDefinitions="*,Auto">
 
           <!-- Page list: 应用 only. 设置 is a real page too (PageHost.Content still swaps between the
                two exactly as before — see ShowPage), but it now lives in NavFooterRail below, pinned to
@@ -325,12 +307,13 @@
                from this list. Padding is "0,12" — ZERO horizontal, unlike a plain ListBox default —
                because ListBoxItem's own Margin="4,2" (Launcher.axaml) already supplies the row's outer
                gutter; adding a second, ListBox-level horizontal padding on top of that (the pre-Task-2
-               shape) narrowed the collapsed item to 32 DIP against Task Manager's OWN measured 40 DIP —
+               shape) narrowed the item to 32 DIP against Task Manager's OWN measured 40 DIP —
                confirmed by live UI Automation on both apps. Removing it is what makes
-               the collapsed item column exactly 48 (pane) − 2×4 (item margin) = 40 DIP, matching
-               Task Manager's row width with no other change. -->
+               the item column exactly 48 (pane) − 2×4 (item margin) = 40 DIP, matching
+               Task Manager's row width with no other change. Grid.Row="0" since Round 4, item 1 deleted
+               the hamburger row above it. -->
           <ListBox x:Name="NavRail"
-                   Grid.Row="1"
+                   Grid.Row="0"
                    Classes="tm-nav"
                    SelectedIndex="0"
                    SelectionChanged="OnNavSelectionChanged"
@@ -345,23 +328,29 @@
                  Fluent Icons glyphs do NOT all share the same advance width at a given FontSize — before
                  this fix, "应用"'s grid glyph and "设置"'s gear glyph centred 4 physical px apart from
                  each other (measured) purely from font-metric differences between the two characters,
-                 even though both StackPanels were correctly centred. A local value beats the tm-icon
+                 even though both rows' content was correctly centred. A local value beats the tm-icon
                  style's own Setters (the same precedence this file already relies on elsewhere), and 16
                  DIP is not a round guess: it is exactly Task Manager's OWN measured icon box, and it also
-                 exactly fills this row's own collapsed content width (40 DIP item − 2×12 DIP
-                 ListBoxItem Padding, Launcher.axaml, = 16 DIP) with no slack on either side. -->
+                 exactly fills this row's own content width (40 DIP item − 2×12 DIP
+                 ListBoxItem Padding, Launcher.axaml, = 16 DIP) with no slack on either side.
+
+                 Round 4, item 1: the icon is now every row's WHOLE content — the label TextBlock and the
+                 horizontal StackPanel that used to pair with it are gone, since the rail can no longer
+                 widen to show a label. Centring is stated LOCALLY on the icon (tm-icon's own Setters say
+                 the same thing, and a local value simply outranks them): it used to come from a pair of
+                 rail-state rules in Launcher.axaml that centred the row's StackPanel, and item 1 deleted
+                 both along with the StackPanels they targeted. -->
             <ListBoxItem x:Name="NavAppsItem">
-              <StackPanel Orientation="Horizontal" Spacing="12">
-                <TextBlock Classes="tm-icon" Width="16" Text="&#xE71D;" VerticalAlignment="Center" />
-                <TextBlock x:Name="NavAppsLabel" Classes="tm-nav-label" Text="应用" VerticalAlignment="Center" />
-              </StackPanel>
+              <TextBlock Classes="tm-icon" Width="16" Text="&#xE71D;"
+                         HorizontalAlignment="Center" VerticalAlignment="Center" />
             </ListBoxItem>
           </ListBox>
 
           <!-- Bottom-pinned footer: Round 3, Task 2 (user item 4) moves the title strip's old ⋯
                overflow flyout (打开主目录/刷新/关于/退出) into the rail, here — and user item 5 asks to
                put 设置 where Task Manager's OWN Settings gear sits, separated from the page list. Both
-               land in the SAME Grid.Row="2" Auto row: Row 1's "*" already gives the page list every
+               land in the SAME Auto row (Grid.Row="1" since Round 4, item 1 deleted the hamburger row
+               this Grid used to open with): Row 0's "*" already gives the page list every
                pixel it does not use, which is what pushes this whole group to the pane's true bottom
                edge without this row needing an explicit height of its own — the identical mechanism
                Task Manager's own FooterMenuItemsHost relies on (measured: its MenuItemsScrollViewer
@@ -373,51 +362,46 @@
                a Button has no :selected pseudoclass at all — so "a command row must never look
                selected" (the task's own constraint) holds by construction, not by a style rule a later
                edit could accidentally defeat. This also means they need no participation in
-               OnNavSelectionChanged's selection bookkeeping below; Click is the whole contract, exactly
-               like NavToggleButton already was.
+               OnNavSelectionChanged's selection bookkeeping below; Click is the whole contract.
 
-               Collapsing all four into one flyout-triggering row instead was the other option this task
+               Folding all four into one flyout-triggering row instead was the other option this task
                named — rejected because nothing in the measured reference shows that shape anywhere:
                Task Manager's OWN rail (both its 7-item page list and its 1-item footer) is built
                entirely from flat, one-row-per-destination entries, never a row that reveals a flyout of
-               further choices. A collapsed row here would also just relocate the exact ⋯-button pattern
-               this task explicitly removes, rather than actually removing it. -->
-          <StackPanel Grid.Row="2">
+               further choices. Such a row would also just relocate the exact ⋯-button pattern
+               this task explicitly removes, rather than actually removing it.
+
+               Round 4, item 1: each row's content is now its icon alone — see NavAppsItem above for why
+               the label TextBlocks and their StackPanels are gone and where the centring moved to. The
+               row's ToolTip.Tip and AutomationProperties.Name (ApplyRailText) are its only label. -->
+          <StackPanel Grid.Row="1">
             <Button x:Name="NavOpenRootItem"
                     Theme="{StaticResource TmNavRowButton}"
                     Classes="tm-nav-row"
                     Click="OnOpenRootClick">
-              <StackPanel Orientation="Horizontal" Spacing="12">
-                <TextBlock Classes="tm-icon" Width="16" Text="&#xE8B7;" VerticalAlignment="Center" />
-                <TextBlock x:Name="NavOpenRootLabel" Classes="tm-nav-label" VerticalAlignment="Center" />
-              </StackPanel>
+              <TextBlock Classes="tm-icon" Width="16" Text="&#xE8B7;"
+                         HorizontalAlignment="Center" VerticalAlignment="Center" />
             </Button>
             <Button x:Name="NavRefreshItem"
                     Theme="{StaticResource TmNavRowButton}"
                     Classes="tm-nav-row"
                     Click="OnRefreshClick">
-              <StackPanel Orientation="Horizontal" Spacing="12">
-                <TextBlock Classes="tm-icon" Width="16" Text="&#xE72C;" VerticalAlignment="Center" />
-                <TextBlock x:Name="NavRefreshLabel" Classes="tm-nav-label" VerticalAlignment="Center" />
-              </StackPanel>
+              <TextBlock Classes="tm-icon" Width="16" Text="&#xE72C;"
+                         HorizontalAlignment="Center" VerticalAlignment="Center" />
             </Button>
             <Button x:Name="NavAboutItem"
                     Theme="{StaticResource TmNavRowButton}"
                     Classes="tm-nav-row"
                     Click="OnAboutClick">
-              <StackPanel Orientation="Horizontal" Spacing="12">
-                <TextBlock Classes="tm-icon" Width="16" Text="&#xE946;" VerticalAlignment="Center" />
-                <TextBlock x:Name="NavAboutLabel" Classes="tm-nav-label" VerticalAlignment="Center" />
-              </StackPanel>
+              <TextBlock Classes="tm-icon" Width="16" Text="&#xE946;"
+                         HorizontalAlignment="Center" VerticalAlignment="Center" />
             </Button>
             <Button x:Name="NavExitItem"
                     Theme="{StaticResource TmNavRowButton}"
                     Classes="tm-nav-row"
                     Click="OnExitClick">
-              <StackPanel Orientation="Horizontal" Spacing="12">
-                <TextBlock Classes="tm-icon" Width="16" Text="&#xE7E8;" VerticalAlignment="Center" />
-                <TextBlock x:Name="NavExitLabel" Classes="tm-nav-label" VerticalAlignment="Center" />
-              </StackPanel>
+              <TextBlock Classes="tm-icon" Width="16" Text="&#xE7E8;"
+                         HorizontalAlignment="Center" VerticalAlignment="Center" />
             </Button>
 
             <!-- 设置: a real page (see ShowPage), styled and measured exactly like NavRail's own
@@ -439,10 +423,8 @@
                      BorderThickness="0"
                      Padding="0,0,0,4">
               <ListBoxItem x:Name="NavSettingsItem">
-                <StackPanel Orientation="Horizontal" Spacing="12">
-                  <TextBlock Classes="tm-icon" Width="16" Text="&#xE713;" VerticalAlignment="Center" />
-                  <TextBlock x:Name="NavSettingsLabel" Classes="tm-nav-label" Text="设置" VerticalAlignment="Center" />
-                </StackPanel>
+                <TextBlock Classes="tm-icon" Width="16" Text="&#xE713;"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" />
               </ListBoxItem>
             </ListBox>
           </StackPanel>

@@ -187,13 +187,6 @@ public static class AppLanguage
             ["MenuExit"] = ("退出", "Exit"),
             ["NavApps"] = ("应用", "Apps"),
             ["NavSettings"] = ("设置", "Settings"),
-            // The hamburger toggle at the top of the nav rail. Named for the action pressing it
-            // performs NEXT — "expand" while collapsed, "collapse" while expanded — rather than the
-            // rail's current state, so the accessible name (AutomationProperties.Name/ToolTip.Tip, set
-            // imperatively in MainWindow's ApplyNavExpandedState) always describes what will happen,
-            // not a state description that would otherwise need its own separate wording.
-            ["NavExpand"] = ("展开导航栏", "Expand navigation"),
-            ["NavCollapse"] = ("折叠导航栏", "Collapse navigation"),
             ["NoMatchTitle"] = ("未找到匹配项", "No matches"),
             ["NoMatchHelp"] = ("没有名称包含该关键词的快捷方式。", "No shortcut's name contains that text."),
             ["ClearFilter"] = ("清除搜索", "Clear search"),

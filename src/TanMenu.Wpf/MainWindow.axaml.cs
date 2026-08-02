@@ -17,13 +17,14 @@ using TanMenu.Wpf.Views;
 namespace TanMenu.Wpf;
 
 /// <summary>
-/// The shell: the title strip (app icon/name, search), the collapsible navigation rail and the page
+/// The shell: the title strip (app icon/name, search), the icon-only navigation rail and the page
 /// host. All launcher STATE still lives in <see cref="AppPage"/>'s <c>LauncherViewModel</c> — the
 /// search box here binds and dispatches to that SAME instance (exposed as <see cref="AppPage.ViewModel"/>)
 /// rather than a second one, since AppPage still owns the keyboard model (Escape, Down-into-the-grid)
 /// that the search box's key handling has to reach into. This class owns what genuinely belongs to the
-/// window — the Mica fallback, close-to-tray, the caption-button reservation, the rail's
-/// collapsed/expanded choice, swapping the page host's content between the two PAGE entries (应用/设置;
+/// window — the Mica fallback, close-to-tray, the caption-button reservation, labelling the rail's six
+/// rows (<see cref="ApplyRailText"/>), swapping the page host's content between the two PAGE entries
+/// (应用/设置;
 /// see <see cref="ShowPage"/>), dispatching the four command rows the title strip's old ⋯ overflow used
 /// to hold (打开主目录/刷新/关于/退出 — Round 3, Task 2), and kicking off the startup build + the
 /// fit-to-content resize that follows it, on EVERY summon (<see cref="InitializeAndFitAsync"/>) — the
@@ -69,21 +70,16 @@ public partial class MainWindow : Window
         _host = App.Services.GetRequiredService<IWindowHost>();
         App.Services.GetRequiredService<ShellNavigator>().Attach(this);
 
-        // AppLanguage/AppFonts have no change notification of their own, so both the rail labels and
-        // the window font are re-applied on every SettingsChanged — the same imperative approach every
-        // settings card group uses for its own labels (AppLanguage has no change notification there
-        // either).
+        // AppLanguage/AppFonts have no change notification of their own, so both the rail's row labels
+        // (its tooltips and accessible names — see ApplyRailText; since Round 4, item 1 the rail has no
+        // VISIBLE label to update) and the window font are re-applied on every SettingsChanged — the
+        // same imperative approach every settings card group uses for its own labels (AppLanguage has
+        // no change notification there either).
         _events = App.Services.GetRequiredService<AppEvents>();
         _events.SettingsChanged += ApplyWindowFont;
         _events.SettingsChanged += ApplyRailText;
-        // NavRailExpanded has no settings-card counterpart to raise SettingsChanged for it specifically
-        // (see the field's remarks in GeneralConfig), but the hamburger's tooltip/automation name is
-        // still language-dependent, so this re-applies alongside the other two for the same reason they
-        // do: AppLanguage/AppFonts carry no change notification of their own.
-        _events.SettingsChanged += ApplyNavExpandedState;
         ApplyWindowFont();
         ApplyRailText();
-        ApplyNavExpandedState();
 
         // Round 3, Task 1 review fix: the search field's width must track the window's own size —
         // see ApplySearchFieldWidth's own remarks for the measured basis. ClientSize is a DirectProperty
@@ -230,12 +226,13 @@ public partial class MainWindow : Window
     /// <para>
     /// Called after the startup build finishes (<see cref="InitializeAndFitAsync"/>, on every summon)
     /// and again from every other event that changes what the active page measures: a docked notice
-    /// opening/closing (<see cref="OnNoticeVisibilityChanged"/>), the rail expanding/collapsing
-    /// (<see cref="OnNavToggleClick"/>), a 每列个数 / 字体 / 语言 change
+    /// opening/closing (<see cref="OnNoticeVisibilityChanged"/>), a 每列个数 / 字体 / 语言 change
     /// (<see cref="OnLauncherContentMetricsChanged"/>), a switch back to 应用
     /// (<see cref="ShowPage"/>), and the Maximized→Normal transition
     /// (<see cref="OnPropertyChanged"/>). All of them are the exact same operation, so there is one place
-    /// that reads the rail's width and calls through.
+    /// that composes the shell's chrome width and calls through. (Round 4, item 1 removed a sixth
+    /// trigger — the rail's expand/collapse toggle — by removing the state it compensated for: the rail
+    /// is one fixed width now, so it can no longer change what the shell takes from the page.)
     /// </para>
     /// <para>
     /// THE GUARD IS LOAD-BEARING, not defensive tidiness (review finding 1, CRITICAL). Measuring
@@ -321,12 +318,35 @@ public partial class MainWindow : Window
         if (!ReferenceEquals(PageHost.Content, _appPage))
             return;
 
-        // Read straight from config, not NavRailPane's own live Width/Bounds — see
-        // WindowHost.FitToContent's own <param> remarks on railWidth for why: a config value can never
-        // be mid-animation.
-        var expanded = App.Services.GetRequiredService<ConfigService>().Config.General.NavRailExpanded;
-        (_host as WindowHost)?.FitToContent(_appPage, expanded ? 200.0 : 48.0);
+        (_host as WindowHost)?.FitToContent(_appPage, RailWidthDip + PaneBorderDip);
     }
+
+    /// <summary>
+    /// The navigation rail's width, mirroring <c>MainWindow.axaml</c>'s literal <c>Width="48"</c> on
+    /// <c>NavRailPane</c> — the single source of truth; this constant has to be kept in step with it.
+    /// A literal here (rather than a read of the pane's live <c>Width</c>/<c>Bounds</c>) is deliberate:
+    /// a fit can run before the pane has ever been arranged. Round 4, item 1 is what made this a
+    /// constant at all — until then the rail had two widths and this term was read out of the config on
+    /// every call.
+    /// </summary>
+    private const double RailWidthDip = 48;
+
+    /// <summary>
+    /// The content pane's own left border, in DIP. The invariant this pair encodes: the chrome width
+    /// handed to <see cref="WindowHost.FitToContent"/> must equal the rail's width PLUS whatever left
+    /// border the 应用 pane carries — a <c>Border</c> draws its <c>BorderThickness</c> inside its own
+    /// bounds and arranges its child inside that, so a left border takes exactly that much away from
+    /// the page and the fit has to hand it back or <c>AppPage</c>'s horizontal scrollbar returns.
+    /// <para>
+    /// STATE AT THE TIME OF WRITING (Round 4, item 1): <c>MainWindow.axaml</c>'s content-pane Border
+    /// still carries no <c>BorderThickness</c> of its own, so this 1 DIP currently makes the fitted
+    /// window 1 DIP wider than the page strictly needs. It is stated here because Round 4's item 5 —
+    /// the white content pane with a 1 DIP top+left hairline — is what the term exists for; a reader
+    /// who finds that border still absent and this term still present may simply have found this note
+    /// before item 5 landed.
+    /// </para>
+    /// </summary>
+    private const double PaneBorderDip = 1;
 
     /// <summary>See the constructor's own remarks on subscribing to this — WindowHost.FitToContent's
     /// guards (maximized, already manually resized) decide whether this re-fit actually does anything.</summary>
@@ -357,7 +377,6 @@ public partial class MainWindow : Window
     {
         _events.SettingsChanged -= ApplyWindowFont;
         _events.SettingsChanged -= ApplyRailText;
-        _events.SettingsChanged -= ApplyNavExpandedState;
         _appPage.ViewModel.PropertyChanged -= OnLauncherViewModelPropertyChanged;
         _appPage.ViewModel.ContentMetricsChanged -= OnLauncherContentMetricsChanged;
         _appPage.NoticeVisibilityChanged -= OnNoticeVisibilityChanged;
@@ -605,7 +624,13 @@ public partial class MainWindow : Window
     /// <summary>AppLanguage has no change notification, so the rail is labelled imperatively — the same
     /// approach the settings UI uses. Round 3, Task 2: also labels the four command rows that used to be
     /// the title strip's ⋯ overflow MenuItems — MenuOpenRoot/MenuRefresh/MenuAbout/MenuExit are the SAME
-    /// language keys those MenuItems already used (AppLanguage.cs), unchanged by the move.</summary>
+    /// language keys those MenuItems already used (AppLanguage.cs), unchanged by the move.
+    /// <para>
+    /// Round 4, item 1 removed the rail's expanded state and with it every visible row label, so what
+    /// this method writes is now the ONLY name each of the six rows has, in any state. The twelve writes
+    /// below are unchanged from when a visible label existed alongside them — what changed is their
+    /// status, not their content.
+    /// </para></summary>
     private void ApplyRailText()
     {
         var lang = App.Services.GetRequiredService<ConfigService>().Config.General.Language;
@@ -616,18 +641,10 @@ public partial class MainWindow : Window
         var aboutText = AppLanguage.Text("MenuAbout", lang);
         var exitText = AppLanguage.Text("MenuExit", lang);
 
-        NavAppsLabel.Text = appsText;
-        NavSettingsLabel.Text = settingsText;
-        NavOpenRootLabel.Text = openRootText;
-        NavRefreshLabel.Text = refreshText;
-        NavAboutLabel.Text = aboutText;
-        NavExitLabel.Text = exitText;
-
         // AutomationProperties.Name/ToolTip.Tip live on the ROW (the ListBoxItem or, for the four
-        // command rows, the Button), not on the label TextBlock: Launcher.axaml's ".collapsed" rule
-        // hides every *-label TextBlock entirely (IsVisible=False) when the rail is collapsed, so an
-        // icon-only row needs an accessible name and a tooltip that do not depend on that now-invisible
-        // label being there to read.
+        // command rows, the Button), not on anything inside it: a row's whole content is a 16 DIP icon
+        // glyph (MainWindow.axaml), which names nothing to a screen reader and nothing to a user who
+        // does not already know the glyph. These twelve writes are the rail's entire labelling.
         NavAppsItem.SetValue(AutomationProperties.NameProperty, appsText);
         NavSettingsItem.SetValue(AutomationProperties.NameProperty, settingsText);
         NavOpenRootItem.SetValue(AutomationProperties.NameProperty, openRootText);
@@ -640,72 +657,6 @@ public partial class MainWindow : Window
         ToolTip.SetTip(NavRefreshItem, refreshText);
         ToolTip.SetTip(NavAboutItem, aboutText);
         ToolTip.SetTip(NavExitItem, exitText);
-    }
-
-    /// <summary>
-    /// Apply the rail's current collapsed/expanded choice: the pane's width (animated by the
-    /// <c>DoubleTransition</c> on <c>NavRailPane.Width</c> in MainWindow.axaml), the "collapsed" class
-    /// that drives Launcher.axaml's icon-only layout, and the hamburger's own tooltip/automation name —
-    /// which names the action pressing it performs NEXT (展开/Expand vs. 折叠/Collapse), so it must flip
-    /// every time the state does; a static XAML value could only ever be half right. Reads live from
-    /// config rather than a cached field, since <see cref="OnNavToggleClick"/> and this method are the
-    /// only two places that ever need the value and neither benefits from a second copy that could drift.
-    /// Called once from the constructor and again on every <see cref="AppEvents.SettingsChanged"/> (the
-    /// hamburger's tooltip text is language-dependent, and AppLanguage has no change notification).
-    /// </summary>
-    /// <remarks>
-    /// Round 3, Task 2: the "collapsed" class now goes on <c>NavRailContent</c> (the Grid wrapping the
-    /// page list, the four command rows and the settings footer), not on <c>NavRail</c> itself — the
-    /// rail is no longer one ListBox, so no single element under the old name could still reach every
-    /// row that needs to react. Launcher.axaml's selectors were updated to match
-    /// (<c>Grid.tm-nav-rail.collapsed …</c>).
-    /// </remarks>
-    private void ApplyNavExpandedState()
-    {
-        var cfg = App.Services.GetRequiredService<ConfigService>();
-        var expanded = cfg.Config.General.NavRailExpanded;
-
-        NavRailPane.Width = expanded ? 200 : 48;
-        NavRailContent.Classes.Set("collapsed", !expanded);
-
-        var toggleText = AppLanguage.Text(expanded ? "NavCollapse" : "NavExpand", cfg.Config.General.Language);
-        NavToggleButton.SetValue(AutomationProperties.NameProperty, toggleText);
-        ToolTip.SetTip(NavToggleButton, toggleText);
-    }
-
-    /// <summary>
-    /// The hamburger toggle. Persists straight through <see cref="ConfigService.SaveAsync"/> rather than
-    /// <see cref="SettingsWrite.CommitAsync"/> — see <see cref="TanMenu.Core.Models.GeneralConfig.NavRailExpanded"/>'s
-    /// remarks for the full justification: this is shell chrome the rail applies live and owns outright
-    /// (the same category as <c>WindowMaximized</c>/<c>WindowLeft</c>/<c>WindowTop</c>, which
-    /// <see cref="WindowHost.SavePlacement"/> already persists the same way), not a setting a
-    /// 设置 card exposes. There is therefore no card to roll back or reload on a failed save, and no
-    /// other subscriber that needs telling, so a failed save is logged and otherwise ignored — exactly
-    /// like a failed placement flush — rather than surfaced as a blocking error dialog for what is a
-    /// purely cosmetic layout choice.
-    /// </summary>
-    private async void OnNavToggleClick(object? sender, RoutedEventArgs e)
-    {
-        var cfg = App.Services.GetRequiredService<ConfigService>();
-        cfg.Config.General.NavRailExpanded = !cfg.Config.General.NavRailExpanded;
-        ApplyNavExpandedState();
-
-        // Review finding 2: expanding takes 152 DIP away from the content pane and Body's horizontal
-        // scrollbar (AppPage.axaml) came straight back; collapsing handed those 152 DIP back as dead
-        // space. The rail's width is a term in the window's own content fit, so a change to it is a
-        // re-fit trigger exactly like a notice opening. RefitToContent reads the CONFIG value this
-        // handler has already flipped, not the pane's live Width, so it measures the animation's stable
-        // target rather than an interpolated frame — see WindowHost.FitToContent's railWidth remarks.
-        RefitToContent();
-
-        try
-        {
-            await cfg.SaveAsync();
-        }
-        catch (Exception ex)
-        {
-            Serilog.Log.Warning(ex, "Failed to persist the nav rail expand/collapse choice");
-        }
     }
 
     /// <summary>The 字体 setting used to reach the window through a DataContext binding. The shell has
@@ -829,8 +780,8 @@ public partial class MainWindow : Window
     // ══════════════════════════════════════════════════════════════════════════════════════════
     // Navigation rail: the four relocated commands (Round 3, Task 2 — used to be the title strip's
     // ⋯ overflow MenuFlyout; MainWindow.axaml's rail comment explains why they are Buttons, not
-    // ListBoxItems, and why each is its own row rather than one collapsed entry). Method bodies are
-    // unchanged from the overflow-menu era: only what invokes them moved.
+    // ListBoxItems, and why each is its own row rather than one row that opens a flyout of four).
+    // Method bodies are unchanged from the overflow-menu era: only what invokes them moved.
     // ══════════════════════════════════════════════════════════════════════════════════════════
 
     private void OnOpenRootClick(object? sender, RoutedEventArgs e) => _appPage.ViewModel.OpenRoot();

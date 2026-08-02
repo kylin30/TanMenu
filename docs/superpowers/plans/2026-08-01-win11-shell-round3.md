@@ -75,6 +75,12 @@ and justify the choice against the reference — but the `···` button itself 
 The rail must stay collapsible with the same persisted `NavRailExpanded` state, and every entry needs
 a tooltip when collapsed plus an `AutomationProperties.Name`.
 
+> **Superseded by Round 4, item 1** (`docs/superpowers/specs/2026-08-02-win11-shell-round4-design.md`
+> §1). "The rail must stay collapsible" no longer holds: the hamburger toggle, the 200 px expanded
+> width and the six row labels are deleted and `NavRailExpanded` is retained only as a legacy
+> deserialize-only field. The tooltip + `AutomationProperties.Name` requirement survives and is
+> strengthened — they are now the only label any rail row has.
+
 ---
 
 ### Task 3 — Settings page parity (user items 7, 8, 9)

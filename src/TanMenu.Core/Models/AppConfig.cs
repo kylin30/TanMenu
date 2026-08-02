@@ -83,20 +83,15 @@ public class GeneralConfig
 
     public bool WindowMaximized { get; set; } = false;
 
-    /// <summary>Whether the navigation rail is pinned open (200 px, icon+label) rather than collapsed
-    /// (48 px, icon-only — the Windows 11 shell convention, e.g. Task Manager's default rail state).
-    /// Defaults to collapsed/false: an absent key (every config written before this field existed)
-    /// deserializes to that same default, so old configs open collapsed rather than expanded.
-    /// <para>
-    /// Persisted the same way as <see cref="WindowMaximized"/>/<see cref="WindowLeft"/>/
-    /// <see cref="WindowTop"/> above: written directly through <c>ConfigService.SaveAsync</c> from
-    /// <c>MainWindow</c>'s hamburger-toggle handler, NOT through <c>SettingsWrite.CommitAsync</c> and
-    /// without raising <c>AppEvents.SettingsChanged</c>. This is shell chrome the rail itself owns and
-    /// applies live, exactly like the window's own placement — not a setting a card on the 设置 page
-    /// exposes, so there is no card to roll back or reload on a failed save, and no other subscriber
-    /// needs telling. A failed save is logged and otherwise ignored, the same as a failed placement
-    /// flush, rather than shown as a blocking error dialog for what is a purely cosmetic layout choice.
-    /// </para></summary>
+    /// <summary>Legacy setting retained only so config files written between Round 2 and Round 4
+    /// deserialize cleanly — the same treatment <see cref="WindowWidth"/>/<see cref="WindowHeight"/>
+    /// above and <see cref="ButtonSize"/> below get. Round 2 gave the navigation rail a hamburger
+    /// toggle and two widths (48 px icon-only, 200 px icon+label) and persisted the choice here; Round
+    /// 4, item 1 deleted the toggle, the second width and the row labels outright, so the rail is
+    /// permanently 48 px icon-only and each row's tooltip/accessible name is its only label. Nothing
+    /// reads or writes this field any more; it is kept only so a config.json that carries a
+    /// <c>navRailExpanded</c> key (every file saved by 0.12.0 has one) still loads without error.
+    /// A <c>true</c> in such a file has no effect on anything.</summary>
     public bool NavRailExpanded { get; set; } = false;
 
     /// <summary>The user chose 不再提示 on the in-app taskbar-pin notice. The 行为 settings card keeps an

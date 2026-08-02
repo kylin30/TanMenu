@@ -537,9 +537,9 @@
        found an accent-coloured bar ~3.3 DIP wide flush to the item's left edge, immediately followed
        (no gap) by a flat, uniform fill spanning the REST of the item's own bounds edge-to-edge — exactly
        this shape, which is why the numbers below (3 DIP bar, a flat SubtleFillTertiaryBrush fill) were
-       already correct and did not need to change for that task. The BorderThickness here is a flat
-       "3,0,0,0" regardless of collapsed/expanded — a 48 px-wide row has exactly as much room for a 3 px
-       leading bar as a 200 px one does. -->
+       already correct and did not need to change for that task. The BorderThickness is a flat
+       "3,0,0,0" — it used to be described as "the same at either rail width", and since Round 4, item 1
+       there is only the one width left for it to apply to. -->
   <Style Selector="ListBox.tm-nav ListBoxItem">
     <Setter Property="Padding" Value="12,10" />
     <Setter Property="Margin" Value="4,2" />
@@ -556,7 +556,7 @@
   </Style>
 
   <!-- Round 3, Task 2: live UI Automation on Task Manager's OWN rail found its
-       collapsed item column is 40 DIP wide inside the SAME 48 DIP pane this app already used — ours
+       item column is 40 DIP wide inside the SAME 48 DIP pane this app already used — ours
        measured only 32 DIP before this fix. The difference was this ListBox's own horizontal Padding,
        which used to add a SECOND 4 DIP inset on top of ListBoxItem's own Margin="4,2" above, eating 16
        DIP total from the 48 DIP pane (48-16=32) instead of the 8 DIP the item Margin alone accounts for
@@ -565,26 +565,14 @@
        differ vertically — see their own remarks) to fix the item column to Task Manager's measured 40
        DIP with no other change; row height was already correct and is untouched. -->
 
-  <!-- ══ Collapsed rail (Task Manager style: 48 px, icon-only) ══════════════════════════════════
-       Round 3, Task 2: MainWindow's ApplyNavExpandedState toggles "collapsed" on NavRailContent (the
-       Grid wrapping the page list, the four command rows and the settings footer), not on a single
-       ListBox any more — the rail is no longer one ListBox — so every selector below keys off that
-       shared ancestor instead of "ListBox.tm-nav.collapsed", and Button.tm-nav-row (the four command
-       rows) gets the identical centring rule ListBoxItem's own StackPanel already had. The label
-       TextBlocks disappear entirely (IsVisible=False, not just Opacity=0) rather than fading, so they
-       stop reserving layout space the instant the pane starts narrowing — Avalonia drops an
-       IsVisible=False element from layout the same way it drops WindowDrawnDecorations' own suppressed
-       parts (see MainWindow.axaml's header comment). Centring the icon only in the collapsed state
-       keeps the expanded rail's existing left-aligned icon+label untouched. -->
-  <Style Selector="Grid.tm-nav-rail.collapsed TextBlock.tm-nav-label">
-    <Setter Property="IsVisible" Value="False" />
-  </Style>
-  <Style Selector="Grid.tm-nav-rail.collapsed ListBoxItem StackPanel">
-    <Setter Property="HorizontalAlignment" Value="Center" />
-  </Style>
-  <Style Selector="Grid.tm-nav-rail.collapsed Button.tm-nav-row StackPanel">
-    <Setter Property="HorizontalAlignment" Value="Center" />
-  </Style>
+  <!-- ══ Rail rows are icon-only, and there is no rule here that makes them so ═══════════════════
+       Round 4, item 1 deleted the three rail-state rules that used to live at this spot — one hid every
+       row's label TextBlock, the other two centred the icon+label StackPanel inside a ListBoxItem and
+       inside a nav-row Button. All three targeted elements that no longer exist: the rail has a single
+       width, so a row's whole content is its 16 DIP icon and each icon states its own
+       HorizontalAlignment="Center" locally (MainWindow.axaml). Neither the class those selectors keyed
+       off nor the label class they targeted is written anywhere in the app any more. Do not re-add a
+       state rule here without re-adding the state it describes. -->
 
   <!-- NO MaxWidth here. A cap would only clamp the width the group REPORTS to the horizontal
        StackPanel of categories; the columns ItemsControl inside (AppPage.axaml, bound to

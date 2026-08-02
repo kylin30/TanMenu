@@ -120,8 +120,9 @@ public static class WindowPlacement
     }
 
     /// <summary>
-    /// Combine a measured page-content size with the shell chrome around it (the navigation rail's
-    /// current width, the title strip's fixed height) into a full window size, then clamp/position it
+    /// Combine a measured page-content size with the shell chrome around it (the navigation rail and
+    /// the content pane's left border beside it, the title strip's fixed height above it) into a full
+    /// window size, then clamp/position it
     /// exactly like <see cref="Resolve"/>. This is the one new piece of arithmetic Round 2's
     /// fit-to-content feature needs on top of <see cref="Resolve"/>/<see cref="ChooseWorkArea"/> — pulled
     /// out here, rather than left inline in <c>WindowHost</c>, so it is unit-testable without measuring a
@@ -131,7 +132,9 @@ public static class WindowPlacement
     /// <c>AppPage.DesiredSize.Width</c>) — excludes the navigation rail.</param>
     /// <param name="contentHeight">The active page's natural content height — excludes the title strip.</param>
     /// <param name="chromeWidth">Everything beside the content that still counts toward the window's own
-    /// Width: the navigation rail's CURRENT width (48 collapsed / 200 expanded).</param>
+    /// Width: the navigation rail, which is a fixed 48 DIP, plus whatever left border the content pane
+    /// carries. This function only adds it — what it is composed of is the caller's business
+    /// (<c>MainWindow.RefitToContent</c>).</param>
     /// <param name="chromeHeight">Everything above the content that still counts toward the window's own
     /// Height: the title strip.</param>
     /// <param name="currentLeft">Where to keep the window horizontally — the window's OWN current
@@ -160,9 +163,10 @@ public static class WindowPlacement
     /// </summary>
     /// <remarks>
     /// Exists so a re-fit that computes a geometry already asked for can skip writing it back.
-    /// Round 2's review round wired several new re-fit triggers (rail toggle, 小/中/大 — replaced by
-    /// 每列个数 in Round 3, Task 4 — 字体/语言, the Maximized→Normal transition) on top of the two that
-    /// existed, and more than one of them can fire
+    /// Round 2's review round wired several new re-fit triggers (小/中/大 — replaced by
+    /// 每列个数 in Round 3, Task 4 — 字体/语言, the Maximized→Normal transition, and a rail
+    /// expand/collapse toggle that Round 4, item 1 then deleted along with the rail's second width) on
+    /// top of the two that existed, and more than one of them can fire
     /// for a single user action; without this test each one would re-assign Width/Height/Position and
     /// re-log an identical "Window fit to content" line. It also makes a notice-driven re-fit that
     /// changes nothing genuinely inert, rather than merely landing on the same numbers after having

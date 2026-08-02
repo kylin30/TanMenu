@@ -133,8 +133,8 @@ public sealed partial class WindowHost : IWindowHost
     /// <see cref="_lastFitWidthDip"/>/<see cref="_lastFitHeightDip"/> still describe the last size we
     /// requested but no longer describe the window on screen. While it is set,
     /// <see cref="FitToContent"/> refuses to short-circuit even when the geometry it computes matches
-    /// that pair — otherwise the very next content-unchanged re-fit trigger (a rail toggle, a 每列个数
-    /// change) would decide "nothing to do" and leave the foreign size in place forever.</summary>
+    /// that pair — otherwise the very next content-unchanged re-fit trigger (a docked notice opening, a
+    /// 每列个数 change) would decide "nothing to do" and leave the foreign size in place forever.</summary>
     /// <remarks>
     /// <para>
     /// Round 3 residual review. Comparing against the previous fit's own REQUEST rather than the live
@@ -569,9 +569,11 @@ public sealed partial class WindowHost : IWindowHost
     /// of the screen the window is CURRENTLY on. Position is preserved (only re-clamped if the new,
     /// content-driven size would otherwise push the window off screen — see the remarks). Called on
     /// EVERY summon, not only a cold start (see the class remarks), and again on every other event that
-    /// changes what the active page measures: a docked notice opening or closing, the navigation rail
-    /// expanding or collapsing, a 每列个数 / 字体 / 语言 change, a switch back to 应用 from 设置, and the
-    /// Maximized→Normal transition. It is a cheap, idempotent re-measure, not a one-time setup step, and
+    /// changes what the active page measures: a docked notice opening or closing, a 每列个数 / 字体 /
+    /// 语言 change, a switch back to 应用 from 设置, and the
+    /// Maximized→Normal transition. (The navigation rail expanding or collapsing was a sixth trigger
+    /// until Round 4, item 1 made the rail a single fixed width.)
+    /// It is a cheap, idempotent re-measure, not a one-time setup step, and
     /// a re-fit that computes the geometry the PREVIOUS fit already requested
     /// (<see cref="_lastFitWidthDip"/>/<see cref="_lastFitHeightDip"/>, compared with
     /// <see cref="WindowPlacement.IsSamePlacement"/>) writes nothing at all, so none of those triggers
@@ -621,10 +623,13 @@ public sealed partial class WindowHost : IWindowHost
     /// still clamps correctly: <see cref="WindowPlacement.Resolve"/> caps the RESULT to the work area
     /// regardless of how tall the probe reported — no special-case wrapping logic needed here either
     /// way.</param>
-    /// <param name="railWidth">The navigation rail's CURRENT width — 48 collapsed or 200 expanded. The
-    /// caller reads this straight from <c>GeneralConfig.NavRailExpanded</c> rather than the live pane's
-    /// own Width/Bounds, so a fit that happens to run while the rail's collapse/expand transition is
-    /// still animating measures the STABLE target width, never an interpolated one.</param>
+    /// <param name="chromeWidth">Everything to the LEFT of the page that still counts toward the
+    /// window's own Width: the navigation rail's width plus whatever left border the content pane
+    /// carries. The caller composes it from literal constants that mirror the XAML
+    /// (<c>MainWindow.RailWidthDip</c>/<c>PaneBorderDip</c>) rather than measuring live elements — see
+    /// those constants' own remarks. Round 4, item 1: this used to be a rail width that varied with the
+    /// rail's persisted expand state (48 or 200) and had to be read from config rather than from the
+    /// pane, whose Width could be mid-animation; the rail has one width now and no animation.</param>
     /// <remarks>
     /// <para>
     /// Callable only after the window has been placed AND shown: unlike <see cref="RestorePlacement"/>,
@@ -665,7 +670,7 @@ public sealed partial class WindowHost : IWindowHost
     /// no longer fits.
     /// </para>
     /// </remarks>
-    public void FitToContent(Layoutable pageContent, double railWidth)
+    public void FitToContent(Layoutable pageContent, double chromeWidth)
     {
         if (_window is null || _window.WindowState != WindowState.Normal || _userResized)
             return;
@@ -688,7 +693,7 @@ public sealed partial class WindowHost : IWindowHost
 
             var placement = WindowPlacement.ResolveContentFit(
                 desired.Width, desired.Height,
-                railWidth, TitleStripHeightDip,
+                chromeWidth, TitleStripHeightDip,
                 currentLeft, currentTop,
                 work, _window.MinWidth, _window.MinHeight);
 
@@ -751,9 +756,9 @@ public sealed partial class WindowHost : IWindowHost
 
             Serilog.Log.Information(
                 "Window fit to content: {Width}x{Height} DIP (page {ContentWidth}x{ContentHeight} + " +
-                "rail {RailWidth} + title strip {TitleStrip}) on work area " +
+                "chrome {ChromeWidth} + title strip {TitleStrip}) on work area " +
                 "{WorkLeft},{WorkTop} {WorkWidth}x{WorkHeight} at scale {Scale}",
-                placement.Width, placement.Height, desired.Width, desired.Height, railWidth,
+                placement.Width, placement.Height, desired.Width, desired.Height, chromeWidth,
                 TitleStripHeightDip, work.Left, work.Top, work.Width, work.Height, scale);
         }
         catch (Exception ex)

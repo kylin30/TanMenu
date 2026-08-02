@@ -53,9 +53,11 @@ public class AppConfigTests
     [Fact]
     public void NewGeneralConfig_NavRailIsCollapsedByDefault()
     {
-        // Task Manager style: the rail opens icon-only (48 px) unless the user has explicitly expanded
-        // it. An absent key in an old config.json (every file written before this field existed)
-        // deserializes to this same default, so old configs must also open collapsed.
+        // NavRailExpanded is retired as of Round 4, item 1: the rail is permanently icon-only (48 px)
+        // and nothing reads or writes this property any more. The default still has to be false — an
+        // absent key in an old config.json deserializes to it, and the field is kept purely so such a
+        // file still loads. The test name predates the retirement and is kept so the case's history is
+        // greppable.
         var general = new GeneralConfig();
 
         Assert.False(general.NavRailExpanded);
