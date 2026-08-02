@@ -22,11 +22,12 @@ namespace TanMenu.Wpf;
 /// search box here binds and dispatches to that SAME instance (exposed as <see cref="AppPage.ViewModel"/>)
 /// rather than a second one, since AppPage still owns the keyboard model (Escape, Down-into-the-grid)
 /// that the search box's key handling has to reach into. This class owns what genuinely belongs to the
-/// window — the Mica fallback, close-to-tray, the caption-button reservation, labelling the rail's six
-/// rows (<see cref="ApplyRailText"/>), swapping the page host's content between the two PAGE entries
-/// (应用/设置;
-/// see <see cref="ShowPage"/>), dispatching the four command rows the title strip's old ⋯ overflow used
-/// to hold (打开主目录/刷新/关于/退出 — Round 3, Task 2), and kicking off the startup build + the
+/// window — the Mica fallback, close-to-tray, the caption-button reservation, labelling the rail's five
+/// rows (<see cref="ApplyRailText"/>, ten writes — a name and a tooltip each), swapping the page host's
+/// content between the two PAGE entries (应用/设置;
+/// see <see cref="ShowPage"/>), dispatching the three command rows the title strip's old ⋯ overflow used
+/// to hold (打开主目录/刷新/退出 — Round 3, Task 2 moved four, 关于 among them, and Round 5, item 2 took
+/// 关于 back out of the rail and into the 设置 page as a card), and kicking off the startup build + the
 /// fit-to-content resize that follows it, on EVERY summon (<see cref="InitializeAndFitAsync"/>) — the
 /// actual geometry math, and the rule for when a manual resize should win over a fresh fit, lives in
 /// <c>WindowHost</c>, which owns every other piece of window placement too.

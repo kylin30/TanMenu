@@ -25,11 +25,13 @@
     page list by whatever space is left over. This shell's own 应用/设置 map onto that same shape: 应用
     is the only real "page list" entry (NavRail, a ListBox in the Grid's "*" row), and 设置 — a real page
     here too, exactly like Task Manager's own Settings — moves into a second, bottom-pinned ListBox
-    (NavFooterRail) alongside the four commands the title strip's old ⋯ overflow used to hold
-    (打开主目录/刷新/关于/退出). Those four are NOT pages — invoking one leaves whatever page is
-    currently shown alone — so they are plain Buttons (Theme="{StaticResource TmNavRowButton}"), not
-    ListBoxItems: a Button has no :selected pseudoclass at all, which is what makes "a command row must
-    never look selected" true by construction rather than by a style rule a future edit could defeat.
+    (NavFooterRail) alongside the commands the title strip's old ⋯ overflow used to hold. Round 3 moved
+    four of them (打开主目录/刷新/关于/退出); three are still rail rows, because Round 5, item 2 took 关于
+    back out of the rail and made it a settings card. A command row is NOT a page — invoking one leaves
+    whatever page is currently shown alone — so they are plain Buttons (Theme="{StaticResource
+    TmNavRowButton}"), not ListBoxItems: a Button has no :selected pseudoclass at all, which is what makes
+    "a command row must never look selected" true by construction rather than by a style rule a future
+    edit could defeat.
 
     Round 4, item 1 deleted the rail's expand capability outright — the hamburger toggle, the 200 DIP
     expanded width, the width animation, the six label TextBlocks and the state class that switched
@@ -39,9 +41,10 @@
     the ONLY label any row carries, not a duplicate of a visible one.
 
     Round 4, item 2 reordered the footer to 退出 · separator · 关于 · 打开主目录 · 刷新 · 设置 and gave
-    it its one group boundary. The parenthesised list above is the order the ⋯ overflow held, not the
-    order these rows sit in now — see the footer StackPanel's own comment below for the current order
-    and the reasoning behind it.
+    it its one group boundary. Round 5 then moved 退出 (and the separator with it) to the bottom and took
+    关于 out. NEITHER of those two lists — the ⋯ overflow's above, or Round 4's here — is the order these
+    rows sit in now; see the footer StackPanel's own comment below for the current order and the
+    reasoning behind it.
 
     ExtendClientAreaToDecorationsHint pulls the whole client area — including the strip where the OS
     used to paint its own title bar — under our control. ExtendClientAreaTitleBarHeightHint is pinned to
@@ -277,8 +280,9 @@
 
         <!-- Right star: caption reservation only, pinned to the RIGHT of its own column for the same
              reason the left group is pinned left. Round 3, Task 2 removed OverflowButton (and its
-             MenuFlyout) from here entirely — 打开主目录/刷新/关于/退出 are now rows in the navigation
-             rail's bottom-pinned footer (see the Grid.Row="1" section below) — leaving CaptionSpacer as
+             MenuFlyout) from here entirely — 打开主目录/刷新/退出 are now rows in the navigation
+             rail's bottom-pinned footer (see the Grid.Row="1" section below), and 关于, the fourth the
+             flyout held, is a card on the 设置 page since Round 5, item 2 — leaving CaptionSpacer as
              this StackPanel's only remaining child. It stays a StackPanel rather than collapsing back to
              a bare Border directly in Grid.Column="2": a future right-aligned addition to this group
              needs no structural change, exactly the property this shape was already kept for. -->
@@ -379,9 +383,10 @@
             </ListBoxItem>
           </ListBox>
 
-          <!-- Bottom-pinned footer: Round 3, Task 2 (user item 4) moves the title strip's old ⋯
-               overflow flyout (打开主目录/刷新/关于/退出) into the rail, here — and user item 5 asks to
-               put 设置 where Task Manager's OWN Settings gear sits, separated from the page list. Both
+          <!-- Bottom-pinned footer: Round 3, Task 2 (user item 4) moved the title strip's old ⋯
+               overflow flyout (打开主目录/刷新/关于/退出 — 关于 has since left again, Round 5, item 2)
+               into the rail, here — and user item 5 asks to put 设置 where Task Manager's OWN Settings
+               gear sits, separated from the page list. Both
                land in the SAME Auto row (Grid.Row="1" since Round 4, item 1 deleted the hamburger row
                this Grid used to open with): Row 0's "*" already gives the page list every
                pixel it does not use, which is what pushes this whole group to the pane's true bottom
@@ -389,20 +394,22 @@
                Task Manager's own FooterMenuItemsHost relies on (measured: its MenuItemsScrollViewer
                fills a "*"-sized 1390 physical px even though its 7 items only occupy 414 of them).
 
-               The four commands are Buttons (Theme="{StaticResource TmNavRowButton}"), not
-               ListBoxItems, on purpose: they are one-shot actions that leave whatever page is on screen
-               alone, never a destination the window navigates TO and stays on the way 应用/设置 are, and
-               a Button has no :selected pseudoclass at all — so "a command row must never look
-               selected" (the task's own constraint) holds by construction, not by a style rule a later
-               edit could accidentally defeat. This also means they need no participation in
-               OnNavSelectionChanged's selection bookkeeping below; Click is the whole contract.
+               The command rows — three of them below, since Round 5, item 2 took 关于 out of this
+               footer (see that item's own note further down) — are Buttons (Theme="{StaticResource
+               TmNavRowButton}"), not ListBoxItems, on purpose: they are one-shot actions that leave
+               whatever page is on screen alone, never a destination the window navigates TO and stays
+               on the way 应用/设置 are, and a Button has no :selected pseudoclass at all — so "a command
+               row must never look selected" (the task's own constraint) holds by construction, not by a
+               style rule a later edit could accidentally defeat. This also means they need no
+               participation in OnNavSelectionChanged's selection bookkeeping below; Click is the whole
+               contract.
 
-               Folding all four into one flyout-triggering row instead was the other option this task
-               named — rejected because nothing in the measured reference shows that shape anywhere:
-               Task Manager's OWN rail (both its 7-item page list and its 1-item footer) is built
-               entirely from flat, one-row-per-destination entries, never a row that reveals a flyout of
-               further choices. Such a row would also just relocate the exact ⋯-button pattern
-               this task explicitly removes, rather than actually removing it.
+               Folding the commands into one flyout-triggering row instead was the other option Round 3,
+               Task 2 named — rejected because nothing in the measured reference shows that shape
+               anywhere: Task Manager's OWN rail (both its 7-item page list and its 1-item footer) is
+               built entirely from flat, one-row-per-destination entries, never a row that reveals a
+               flyout of further choices. Such a row would also just relocate the exact ⋯-button pattern
+               Round 3, Task 2 explicitly removed, rather than actually removing it.
 
                Round 4, item 1: each row's content is now its icon alone — see NavAppsItem above for why
                the label TextBlocks and their StackPanels are gone and where the centring moved to. The
@@ -556,12 +563,21 @@
              arc, so the conclusion holds for whichever it was and names neither. It is not
              re-verifiable from this tree, and nothing here should be written as if it were.
 
-           WHAT IS TRUE TODAY. Every remaining child of AppPage clears the arc by its own inset — the
-           tile body 16 DIP (SurfacePadding, the Body StackPanel's Margin, Views/AppPage.axaml),
-           PinNotice 12,0,12,8, the update banner 16,16,16,0, both tm-empty panels centred, tm-toast
-           centred with a 16 margin — so nothing left in the page can reproduce that capture, and
-           ClipToBounds is once again defensive rather than load-bearing. It stays for exactly that
-           reason: it costs nothing and it is what would keep a future full-bleed child inside the arc.
+           WHAT IS TRUE TODAY. AppPage's OverlayPanel has exactly FIVE children (Views/AppPage.axaml,
+           counted in the markup, not sampled), and every one of them clears the arc:
+             1. the DockPanel of real content, whose own children inset themselves — the tile body by
+                16 DIP (SurfacePadding, the Body StackPanel's Margin), PinNotice by 12,0,12,8, the
+                update banner by 16,16,16,0;
+             2. SplashPanel — the startup splash, and the one remaining child that IS the control the
+                deleted 关于 overlay reused, so it is the obvious candidate to re-raise this question.
+                It cannot: it carries HorizontalAlignment="Center" VerticalAlignment="Center", which is
+                precisely what the 关于 Border did NOT (it set neither alignment nor margin, so
+                OverlayPanel.ArrangeOverride's Arrange(whole rect) left it full-bleed);
+             3 and 4. both tm-empty panels — centred, same as the splash;
+             5. tm-toast — Margin 16, centred, bottom-aligned (Launcher.axaml, Border.tm-toast).
+           So nothing left in the page can reproduce that capture, and ClipToBounds is once again
+           defensive rather than load-bearing. It stays for exactly that reason: it costs nothing and it
+           is what would keep a future full-bleed child inside the arc.
            设置 still has no radius at all under the .settings rule. -->
       <Border Grid.Column="1"
               x:Name="PagePane"

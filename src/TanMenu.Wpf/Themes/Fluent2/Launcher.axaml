@@ -257,8 +257,10 @@
     </ControlTheme>
 
     <!-- ══ Nav rail command row ═══════════════════════════════════════════════════════════════════
-         Round 3, Task 2: 打开主目录/刷新/关于/退出 move out of the title strip's ⋯ overflow flyout
-         into their own rows in the navigation rail's bottom-pinned footer (MainWindow.axaml). Padding
+         Round 3, Task 2: 打开主目录/刷新/关于/退出 moved out of the title strip's ⋯ overflow flyout
+         into their own rows in the navigation rail's bottom-pinned footer (MainWindow.axaml). Three of
+         those four are this theme's consumers today — Round 5, item 2 took 关于 out of the rail and made
+         it a settings card, and its row went with it. Padding
          (12,10) and Margin (4,2) are IDENTICAL to "ListBox.tm-nav ListBoxItem" below — a command row
          has to measure and sit exactly like a page row for the rail to read as one consistent list —
          but this is a full custom Button ControlTheme, not that ListBoxItem style reused on a Button,
