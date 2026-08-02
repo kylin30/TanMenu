@@ -11,7 +11,13 @@
 > and the two selectors are `Border.tm-page-pane.app` / `:not(.app)`, verified against the tree as this
 > note was written. **One correction to §2.5 came out of running it** — step 6, the deliberate
 > Mica-refused case, **could not be executed on this machine**; the correction is marked in place at
-> that step. Items 3 and 4 are still design only.
+> that step. **Item 3 shipped next**, in `f1ba7aa`, *feat: match the rail's selected style to Task
+> Manager's, measured*, exactly as §3.2 specifies (the `TmNavRowItem` `ControlTheme` verbatim, the
+> three old rules and `Classes="tm-nav"` deleted, the glyph rule added). **One correction to §3.5 came
+> out of running it** — step 3's cap test is an instrument that is far more sensitive in Dark than in
+> Light and reads a correct pill as square-ended there; the correction, with the coverage numbers that
+> replace it, is marked in place at that step. Step 9 also needed one sentence of disambiguation
+> against §3.2(e), marked in place. Item 4 is still design only.
 >
 > **Scope.** The four items the user asked for after reviewing the Round 5 build:
 >
@@ -767,6 +773,11 @@ Light, over the measured rail backdrop `(239,241,253)`, α 10/255 black →
 `(43.2, 45.1, 50.8)` → **`(43,45,51)`**. These are predictions on this wallpaper; the criterion is the
 **alpha**, not the triple.
 
+> **Outcome, 2026-08-03.** Light measured `(230,232,244)` — blue one level above the prediction,
+> because the fill and the backdrop are sampled at different x on a wallpaper gradient (backdrop
+> `(239,242,253)` at image x 14 in that same capture, against the `(239,241,253)` §3.1 recorded).
+> Dark measured `(43,45,51)`, exactly as predicted. Both alphas are inside §3.5 step 4's band.
+
 ### 3.4 Blast radius
 
 **Files touched:** `Themes/Fluent2/Launcher.axaml` (one new `ControlTheme`, three rules deleted, one
@@ -815,6 +826,21 @@ Re-capture; do not compare against the recon PNGs (§0.3).
    (§3.3(b)) starting at the box's own left edge. On the run's **first and last** scanlines the accent
    width must be **at least 1 px narrower** than at the centre. Today the run is the same width on
    every scanline it occupies.
+
+   > **Corrected 2026-08-03, while implementing item 3: the "Δ > 30 on the blue channel" mask this
+   > step inherits from step 2 is a bar a correct build fails in Dark, for the same class of reason
+   > §0.3 guards against.** Its sensitivity is not comparable between the variants. In Light the
+   > accent's blue is 192 against a row fill near 244, a 52-level span, so Δ > 30 needs **58 %** ink
+   > coverage to trip. In Dark the accent's blue is 255 against a fill near 51, a 204-level span, so
+   > the same Δ > 30 needs **15 %**. An anti-aliased cap pixel at ~27 % coverage is therefore invisible
+   > to the Light mask and fully counted by the Dark one, and an identical pill reads pill-shaped in
+   > Light and square in Dark. **Measured both ways on the shipped build**: under the literal mask,
+   > Light gave first 3 / centre 5 / last 3 and Dark gave 5 / 5 / 5. Under **coverage** — the pixel's
+   > blue expressed as a fraction of the accent-minus-fill span, one threshold of 0.577 (= 30/52, the
+   > coverage the Light bar itself implies) for both variants — the two are the same shape to within
+   > 0.02: the four corner scanlines read `x17 0.27 · x18 0.85 · x19 1.00 · x20 0.85 · x21 0.27` and
+   > `x17 0.85 · x18–x20 1.00 · x21 0.85` in **both** Light and Dark. **The bar to use is coverage,
+   > not a raw channel delta.** Instrument: `r6i3-pill.ps1` in the scratchpad.
 4. **Fill strength, as an alpha against a same-capture backdrop.** Measure the row fill and the rail
    backdrop at the same y, outside the accent. Light: `1 − fill/backdrop` must be
    **0.039 ± 0.004** (today 0.024, TM 0.037). Dark: `(fill − backdrop)/(255 − backdrop)` must be
@@ -830,6 +856,16 @@ Re-capture; do not compare against the recon PNGs (§0.3).
 8. **Dark.** `"appearance": "Dark"` in `Data\config.json`, restart, repeat 2-7, restore.
 9. **Command rows unchanged.** The three Buttons' icon rects and their resting pixels must be identical
    before and after, and no command row may show a pill in any capture.
+
+   > **Disambiguated 2026-08-03, while implementing item 3.** "Resting pixels" can only mean the row's
+   > own **surface**, not its glyph: §3.2(e) deliberately scopes the glyph rule to
+   > `Grid.tm-nav-rail`, which is the ancestor of all five rows, and §3.1's glyph row records that both
+   > apps draw every rail glyph at one contrast. Reading it as "including the glyph" would contradict
+   > the section it is verifying. **Measured, Light, before against after**: `NavOpenRootItem`
+   > `(238,242,254)` → `(238,242,254)`, `NavRefreshItem` `(238,242,254)` → `(238,242,254)`,
+   > `NavExitItem` `(239,242,253)` → `(239,242,253)`; icon rects `2606,·,24x24` in both; zero accent
+   > pixels in the indicator columns of any command row in any of the six captures taken. Their
+   > **glyphs** did change, as intended: `(93,95,100)` → `(25,26,27)`, i.e. contrast 0.608 → 0.894.
 10. `dotnet test` green with no test file edited for this item.
 
 ---
