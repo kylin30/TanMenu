@@ -71,7 +71,17 @@ public static class AppLanguage
             // interactive control on the card's right edge, so the direction is stable.
             ["PinToTaskbarNotAllowed"] = ("Windows 当前不允许应用发起固定。点击右侧按钮打开 TanMenu 快捷方式，再右键选择“固定到任务栏”。", "Windows is not allowing an app-initiated pin. Use the button on the right to open the TanMenu shortcut, then right-click it and choose Pin to taskbar."),
             ["PinToTaskbarUnsupported"] = ("当前 Windows（包括部分 Windows 10 环境）不支持应用内固定。点击右侧按钮打开 TanMenu 快捷方式，再右键选择“固定到任务栏”。", "This Windows environment, including some Windows 10 systems, does not support in-app pinning. Use the button on the right to open the TanMenu shortcut, then right-click it and choose Pin to taskbar."),
-            ["PinToTaskbarFailed"] = ("固定失败：{0}\n请右键开始菜单中的 TanMenu → 固定到任务栏。", "Pinning failed: {0}\nRight-click TanMenu in Start and choose Pin to taskbar."),
+            // NO HARD LINE BREAK, unlike every other {0}-carrying error string in this file. This one is
+            // the third member of the set above — ApplyTaskbarPinState writes it into the 固定到任务栏
+            // row's SUBTITLE, and a tm-card-sub renders "\n" as a real second line at EVERY window width,
+            // which pushes that row's header past the two lines invariant I1 fixes the icon and the button
+            // on. The other seven strings that can land in that subtitle are plain sentences which only
+            // wrap when the window is narrow; this one used to break unconditionally, in a state that is
+            // both reachable and persistent. The error is parenthesised rather than
+            // separated by punctuation because {0} is an arbitrary Exception.Message that may or may not
+            // end in a full stop of its own. It is still unbounded, so a long enough message wraps — but
+            // it wraps, the same way a long 数据文件夹 subtitle does, instead of breaking by construction.
+            ["PinToTaskbarFailed"] = ("固定失败（{0}）。请右键开始菜单中的 TanMenu → 固定到任务栏。", "Pinning failed ({0}). Right-click TanMenu in Start and choose Pin to taskbar."),
             ["PinToTaskbarManualOpened"] = ("已打开 TanMenu 快捷方式。请右键它并选择“固定到任务栏”；完成后，下次显示主界面会自动识别。", "The TanMenu shortcut is open. Right-click it and choose Pin to taskbar; TanMenu will detect it the next time the launcher is shown."),
             ["PinToTaskbarManualOpenFailed"] = ("无法打开 TanMenu 快捷方式位置。请从开始菜单找到 TanMenu，右键选择“固定到任务栏”。", "Could not open the TanMenu shortcut location. Find TanMenu in Start, right-click it, and choose Pin to taskbar."),
             ["PinNow"] = ("固定", "Pin"),
@@ -120,6 +130,13 @@ public static class AppLanguage
             ["CurrentDataSize"] = ("当前：{0} · {1}", "Current: {0} · {1}"),
             ["PortableDataCannotChange"] = ("绿色版的数据文件夹固定为绿色版根目录下的 Data，不能在设置中更改。", "The portable edition always uses the Data folder at the portable app root and cannot relocate it in Settings."),
             ["Updates"] = ("更新", "Updates"),
+            // HELD, NOT DEAD — the one key in this file with no consumer in src/, deliberately. Round 5
+            // part B deleted the 更新 group's 当前版本 card (see UpdatesCard.axaml's own remark: an
+            // information card with no control, sitting in an action group, about to print the version a
+            // second time one card apart). The controller's coordination ruling was that part C's 关于
+            // card reads this key instead. Until that card lands, 设置 shows no version at all and this
+            // string is unreferenced; grep finding it alone is expected, not an oversight to sweep. If
+            // part C is abandoned rather than landed, delete this key with it.
             ["CurrentVersion"] = ("当前版本：{0}", "Current version: {0}"),
             ["UpdatePortableHelp"] = ("绿色版会自动检查 GitHub Releases；发现新版本后会在主界面提示，只有确认后才会下载和安装。", "The portable edition checks GitHub Releases automatically. New versions appear in the launcher and are downloaded and installed only after confirmation."),
             ["UpdateStoreManaged"] = ("Microsoft Store 版本由 Microsoft Store 管理更新。", "Updates for the Microsoft Store edition are managed by Microsoft Store."),

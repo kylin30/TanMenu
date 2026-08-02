@@ -454,8 +454,9 @@ that vocabulary louder is its own item. Recorded as settled in §6.2.
 ## A.9 Variant 6 — a row with no control
 
 Column 2 simply has no child. The Grid is unchanged; the header is still two lines; the card is still
-62.67 DIP. `当前版本` is the only such row today (`UpdatesCard.axaml:20-28`); after §C.2 the only such
-row is 关于.
+62.67 DIP. `当前版本` was the only such row when this was written (`UpdatesCard.axaml:20-28`); **[task B]**
+it has since been deleted (§B row 15), so the page has no Variant-6 row at all until §C.2 adds 关于 as
+the only one.
 
 ## A.10 What is deliberately left alone
 
@@ -495,7 +496,7 @@ mechanical edit with no visual effect (the icon's measured 16 DIP width becomes 
 | 12 | 文件夹 · **数据文件夹** — `4.png` | `:51-76` | no (I1, I2, I3, centring) | root `StackPanel` becomes the two-row Grid. `DataPathText`/`DataInfoText` (`:58-63`) → `tm-card-values` on the expansion row, left at **47.33** (from **504.0**). Icon offset **+28.33 → +8.00**. **[task B, measured]** The three buttons (`:67-74`) do not stay below — they move into column 2 as a `tm-card-actions` strip, right edge on **1232.67** (§A.5, §6.1(b)); the `Margin="30,10,0,0"` constant goes with them. Card 146 → **104.67 measured** |
 | 13 | 文件夹 · **维护** — `5.png` | `:78-97` | no (I3) | root `StackPanel` → single-row Grid; **[task B, measured]** the three buttons (`:88-95`) move into column 2 as a `tm-card-actions` strip rather than staying below. The empty right half in `5.png` is what this fixes. Card 104.67 → **62.67 measured** — an ordinary row |
 | 14 | 常用工具 · 显示"常用工具"分类 | `ToolsCard.axaml:17-41` | no (I3) | toggle class (`:25-26`); root `StackPanel` → two-row Grid with the list `Border` (`:33-39`) as `Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Classes="tm-card-expander"`, replacing `Margin="30,10,0,0"` with column 1 + 8. The list's left edge does not move; its right edge now reaches the content edge instead of stopping wherever its content did. Inner 9.33 DIP inset: conforming by §A.10 |
-| 15 | 更新 · 当前版本 | `UpdatesCard.axaml:20-28` | **deleted** | The version and its channel help move: the version to the new 关于 card (§C.2), the channel help (`UpdateHelpText`, `:25`, chosen at `UpdatesCard.axaml.cs:85-90`) onto row 16's expansion row as a wrapping `tm-card-sub`. Deleting it also retires the `E946` glyph clash the recon flagged (three consumers, two of them one card apart) |
+| 15 | 更新 · 当前版本 | `UpdatesCard.axaml:20-28` | **deleted** | The version and its channel help move: the version to the new 关于 card (§C.2), the channel help (`UpdateHelpText`, `:25`, chosen at `UpdatesCard.axaml.cs:85-90`) onto row 16's expansion row as a wrapping `tm-card-sub`. Deleting it also settles the `E946` clash the recon flagged — but **[task B review]** it does not retire the glyph, and the first wording here ("three consumers") invited reading it that way: the recon (`r5-about-rail.md:389-393`) names three consumers **app-wide**, of which this card was one; `InfoBar.axaml:24` and the rail's 关于 row (`MainWindow.axaml:471`) both still ship it. What the deletion removes is the *duplication* — this card and the future 关于 card would have carried it one card apart |
 | 16 | 更新 · **update status** — `6.png` | `:30-52` | no (I1, I3) | **gains a real title.** `UpdateStatusText` (`:35`) stops being the `tm-card-title` and becomes the `tm-card-sub`; a new `UpdateStatusTitle` `tm-card-title` is added above it, text from a new key `UpdateStatusTitle` = (更新状态, Update status). Its local `TextWrapping="Wrap"` goes — the sub class already wraps. `CheckUpdateBtn`/`UpdateActionBtn` (`:45-50`) move **from the expansion row into column 2** as a `tm-card-actions` strip — two actions, so §A.5's rule puts them trailing; that is what fixes the lone greyed button floating bottom-left in `6.png`. The `ProgressBar` (`:39-40`) stays on the expansion row and keeps `IsVisible="False"`. Channel help joins it there (row 15), so the two share one `Classes="tm-card-expander"` `StackPanel`. **[task B, measured]** Card 88 → **86.67**, not the 62.67 first written here: an always-visible help line on the expansion row costs 8 + 16 whatever the `ProgressBar` does. 62.67 would only have been right had the help line gone somewhere else, which row 15 says it does not |
 | 17 | **关于 · TanMenu** (new) | new `Views/Settings/AboutCard.axaml` | n/a | §C.2 |
 
@@ -824,11 +825,11 @@ automated behavioural coverage and §§C.1/C.2/5.4 are the only nets they get.
 | File | Delta |
 |---|---|
 | `Themes/Fluent2TokenTests.cs` | **no change**, and two of its four facts actively guard §A. `LauncherStyles_ContainNoColourLiterals` (`:43-55`) greps the **whole file, prose included** — every new rule and every new comment must be token-only, decimal RGB triples in prose (the warning already at `Launcher.axaml:632-634`). `EveryTokenTheLauncherReferences_IsDefinedInTokens` (`:57-69`) covers the new references — `LineHeightBody`, `LineHeightCaption`, `SurfaceLayerActiveBrush`, `AccentDefaultBrush`, `TextDisabledBrush`, `StrokeControlBrush`, `RadiusControl` — all of which `Tokens.axaml` already defines |
-| **new** `Themes/SettingsRowTests.cs` | **+3 facts.** Source tests in the same shape, over `src/TanMenu.Wpf/Views/Settings/*.axaml`: (1) every `<Border Classes="tm-card">` is immediately followed by `<Grid ColumnDefinitions="Auto,*,Auto"` — the invariant no style can carry (§A.2); (2) no card file contains `Margin="30,` or `MaxWidth="260"` — the two constants the spec moved into the theme; (3) per file, the count of the exact attribute `Classes="tm-card-title"` equals the count of `Classes="tm-card-sub"` — a cheap proxy for invariant I1 that value lines (`Classes="tm-card-sub tm-card-value"`) do not disturb, because it matches the attribute value exactly |
+| **new** `Themes/SettingsRowTests.cs` | **+4 facts.** Source tests in the same shape, over `src/TanMenu.Wpf/Views/Settings/*.axaml`: (1) every `<Border Classes="tm-card">` is immediately followed by `<Grid ColumnDefinitions="Auto,*,Auto"` — the invariant no style can carry (§A.2); (2) no card file contains `Margin="30,` or `MaxWidth="260"` — the two constants the spec moved into the theme; (3) per card, exactly one `Classes="tm-card-title"` and exactly one `Classes="tm-card-sub"` in the header cell — invariant I1, matched on the exact attribute value so that value lines (`Classes="tm-card-sub tm-card-value"`) do not disturb it; **[task B review]** (4) no AppLanguage string a header subtitle is populated from may contain a hard line break. (3) counts elements, and an explicit `\n` makes one element render two lines at every width — which is I1 broken by wording rather than by markup, and is what the shipped `PinToTaskbarFailed` did |
 | `Services/AppLanguageTests.cs` | **no change** — it asserts four behaviours and enumerates no keys, so the rename and the two additions are free |
 | everything else | untouched |
 
-Total after: **186**.
+Total after: **187** (186 after task B, plus the review's fourth `SettingsRowTests` fact).
 
 ## 5.4 Verification for a machine with no keyboard and no mouse
 
@@ -850,8 +851,16 @@ across all of them:
 1. **Icon box.** For every card: icon rect = (card.x + 17.33, card.y + 23.33, 16, 16). Today this holds
    for 11 of 16 and fails by up to 28.66 DIP on the folder rows.
 2. **Title box.** Title top = card.y + 13.33, height **20.0** (today 19.33). Subtitle top =
-   card.y + 33.33, height **16.0** (today 16.67 for CJK, 16.0 for ASCII). Assert the height is the same
-   value on every card, not merely close.
+   card.y + 33.33, height **16.0** (today 16.67 for CJK, 16.0 for ASCII).
+   **[task B review — the assertion as first written is not measurable, and this is the form that is.]**
+   "The same value on every card, not merely close" cannot be read off UIA rects: a card's children
+   quantise by up to **1.01 physical px** purely with the `ScrollViewer`'s offset, so one dump per card
+   at whatever stop happened to contain it records 热键 at 22.67/12.67/32.67 and 主文件夹 at 24/14/34
+   while the layout underneath is identical. Assert instead, over **every** stop at which a card lies
+   entirely inside the viewport: (a) each card reads the canonical triple — icon `dy 23.33 h 16`, title
+   `dy 13.33 h 20`, subtitle `dy 33.33 h 16` — at **at least one** such stop, and (b) no value moves by
+   more than 1 physical px across its own stops. Both hold on 15 of 15
+   (`scratchpad/fx-i1-fx.txt`, fourteen stops).
 3. **Control right edge.** For every card, the right-most interactive descendant's edge = card.x +
    1232.67. For the five `ToggleSwitch` rows the UIA rect will read 1244.67 (§A.7) — assert the *ink*
    instead: on a `PrintWindow` row through the pill's vertical centre, the last pixel that differs from
@@ -871,8 +880,8 @@ across all of them:
    disappears and the fix must be checked in both. Restore the config afterwards. Neither recon report
    saw dark at all — this is the round's one unmeasured surface.
 8. Item 1's four checks (§C.1) and item 2's six (§C.2).
-9. `dotnet test` — 186 green, no existing test file edited. `dotnet publish -c Release` (NativeAOT) with
-   0 warnings.
+9. `dotnet test` — **187** green (186 after task B, +1 for the review's fourth `SettingsRowTests` fact).
+   `dotnet publish -c Release` (NativeAOT) with 0 warnings.
 
 ## 5.5 Config contract
 

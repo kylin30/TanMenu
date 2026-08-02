@@ -68,8 +68,15 @@
           <TextBlock x:Name="PinTaskbarTitle" Classes="tm-card-title" />
           <!-- The pin state IS this row's description — "not pinned yet", "already pinned", "pinning
                needs a manual step" — so it is the subtitle, not a value line and not a below-row block.
-               ApplyTaskbarPinState (code-behind) rewrites it; the longest wording it can produce wraps
-               inside the text column, which is what tm-card-sub's Wrap is for. -->
+               The code-behind rewrites it from one of eight AppLanguage strings — five in
+               ApplyTaskbarPinState's switch, three more in the click handlers. None of the eight
+               contains a hard "\n", which is load-bearing rather than incidental: a
+               tm-card-sub renders an explicit break as a second line at EVERY window width, so one would
+               put this row's header at three lines and move its icon and its button off the y invariant
+               I1 centres every other row on. PinToTaskbarFailed carried one until this was written and
+               carries the comment saying why it may not; SettingsRowTests guards all eight.
+               Long-but-unbroken wording still wraps when the window narrows, the same as every other
+               row's subtitle, which is what tm-card-sub's Wrap is for. -->
           <TextBlock x:Name="PinTaskbarStatusText" Classes="tm-card-sub" />
         </StackPanel>
         <!-- The only button on this row, and — while there is still something useful for it to do

@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
+using TanMenu.Core.Services;
 using Xunit;
 
 namespace TanMenu.Core.Tests.Themes;
@@ -13,8 +15,8 @@ namespace TanMenu.Core.Tests.Themes;
 /// <remarks>
 /// <para>
 /// Round 5, item 3 put every part of a settings row's anatomy that has an <c>AvaloniaProperty</c>
-/// behind it into a style class. Three parts have none, so they are copied into every card file and
-/// only a source test can hold them:
+/// behind it into a style class. Four parts have none, so they live in the card files and the language
+/// table instead, and only a source test can hold them:
 /// </para>
 /// <list type="number">
 ///   <item>the column template itself — <c>Grid</c> has no <c>ColumnDefinitionsProperty</c>
@@ -26,7 +28,11 @@ namespace TanMenu.Core.Tests.Themes;
 ///   value outranks a style in Avalonia, so a card that keeps writing <c>MaxWidth="260"</c> or
 ///   <c>Margin="30,…"</c> silently opts out of the class that replaced it;</item>
 ///   <item>invariant I1, "the header is exactly one title line and one subtitle line" — a count of
-///   sibling elements is not a property of anything.</item>
+///   sibling elements is not a property of anything;</item>
+///   <item>I1 again, at the string level — no wording a subtitle can be given may contain a hard line
+///   break. A style cannot forbid one, and a two-element header still renders three lines when the
+///   text itself carries "\n". Added by the review of task B, which found the shipped
+///   <c>PinToTaskbarFailed</c> doing exactly that.</item>
 /// </list>
 /// <para>
 /// Like <see cref="Fluent2TokenTests"/> these are source tests, and for the same reason: every
@@ -157,6 +163,80 @@ public class SettingsRowTests
             "same in the other direction.");
     }
 
+    [Fact]
+    public void NoHeaderSubtitleString_ContainsAHardLineBreak()
+    {
+        // Invariant I1 again, one level below the element count above. A header of exactly two ELEMENTS
+        // is still a header of three LINES when the subtitle's own text carries "\n": a TextBlock renders
+        // an explicit break at every window width, wrap or no wrap, so the card grows past 62.67 DIP and
+        // its icon and trailing control leave the y every other row centres on. That is the same defect
+        // 7.png reported, arrived at from the string side instead of the markup side.
+        //
+        // AppLanguage's PinToTaskbarFailed shipped exactly that until the review that added this test,
+        // and the state was reachable and persistent: RefreshTaskbarPinStateAsync's catch builds
+        // new TaskbarPinState(TaskbarPinStatus.Failed, ex.Message) and ApplyTaskbarPinState writes the
+        // string into PinTaskbarStatusText, which is the 固定到任务栏 row's subtitle.
+        //
+        // Every subtitle on the page is populated from AppLanguage in its own card's code-behind, so the
+        // key set is recoverable from source: take the header cell's named tm-card-sub elements, collect
+        // every literal handed to L(…) / AppLanguage.Text(…) / AppLanguage.Format(…) inside the statements
+        // that assign that element's .Text, and read both languages of each key out of AppLanguage itself.
+        // Long wording is fine — this test is only about breaks the string forces, not about wrapping.
+        var offenders = new List<string>();
+        var cardCount = 0;
+        var subtitleCount = 0;
+
+        foreach (var (file, doc) in CardFiles())
+        {
+            var code = File.ReadAllText(Path.Combine(CardsDir, file + ".cs"));
+            cardCount += Cards(doc).Count;
+
+            foreach (var name in HeaderSubtitleNames(doc))
+            {
+                subtitleCount++;
+                var keys = LanguageKeysAssignedTo(code, name);
+
+                // Without this, a subtitle whose assignment the scan fails to recognise would make the
+                // test pass by checking nothing. Every one of them is code-populated today.
+                Assert.True(
+                    keys.Count > 0,
+                    $"{file}#{name}: no AppLanguage key found assigned to its .Text. Either this subtitle " +
+                    "stopped being populated from AppLanguage, or this test's source scan no longer " +
+                    "recognises how — it must not silently check nothing.");
+
+                foreach (var key in keys)
+                {
+                    var zh = AppLanguage.Text(key, AppLanguage.ZhHans);
+                    var en = AppLanguage.Text(key, AppLanguage.EnUs);
+
+                    // AppLanguage.Text returns the key itself when the key is unknown.
+                    Assert.True(
+                        zh != key && en != key,
+                        $"{file}#{name}: \"{key}\" is not a key AppLanguage defines.");
+
+                    if (zh.AsSpan().IndexOfAny('\n', '\r') >= 0 || en.AsSpan().IndexOfAny('\n', '\r') >= 0)
+                        offenders.Add($"{file}#{name} → AppLanguage[\"{key}\"]");
+                }
+            }
+        }
+
+        // Every card has exactly one header subtitle — EveryCardHeader_IsOneTitleLineAndOneSubtitleLine
+        // asserts that — so a shortfall here means one is unnamed and therefore unreachable by the scan,
+        // not that a row is exempt. Give it an x:Name and populate it from AppLanguage like the rest.
+        Assert.True(
+            subtitleCount == cardCount,
+            $"Found {subtitleCount} named header subtitles across {cardCount} cards. Every card's " +
+            "tm-card-sub needs an x:Name so its wording can be checked for hard line breaks.");
+
+        Assert.True(
+            offenders.Count == 0,
+            "A settings row's subtitle may not contain an explicit line break — it renders as a real " +
+            "second line at every window width and takes the header to three lines, moving that row's " +
+            "icon and control off the y invariant I1 puts every other row on. Reword the string (see " +
+            "PinToTaskbarFailed, which parenthesises its {0} instead of breaking before it); wrapping " +
+            "long text is what tm-card-sub is already for. Offending: " + string.Join(", ", offenders));
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────────────────────────
 
     private static string CardsDir =>
@@ -209,6 +289,43 @@ public class SettingsRowTests
     private static int ClassCount(IEnumerable<XElement> roots, string classes) =>
         roots.SelectMany(r => r.DescendantsAndSelf())
             .Count(e => (string?)e.Attribute("Classes") == classes);
+
+    /// <summary>
+    /// The <c>x:Name</c> of every header-cell subtitle in a card file, in document order. Exact class
+    /// match for the same reason <see cref="ClassCount"/> uses one: <c>"tm-card-sub tm-card-value"</c> is
+    /// an expansion-row value line, and those do not sit in the header cell anyway.
+    /// </summary>
+    private static List<string> HeaderSubtitleNames(XDocument doc) =>
+        Cards(doc)
+            .SelectMany(card => HeaderCell(card).SelectMany(e => e.DescendantsAndSelf()))
+            .Where(e => (string?)e.Attribute("Classes") == "tm-card-sub")
+            .Select(e => (string?)e.Attribute(XamlName))
+            .Where(n => !string.IsNullOrEmpty(n))
+            .Select(n => n!)
+            .ToList();
+
+    /// <summary>The <c>x:</c> namespace every card file declares, so <c>x:Name</c> can be read by name.</summary>
+    private static readonly XName XamlName =
+        XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml");
+
+    /// <summary>
+    /// Every distinct AppLanguage key handed to a localisation call inside a statement that assigns
+    /// <c>&lt;name&gt;.Text</c>. Non-greedy to the statement's own <c>;</c>, which is safe here because
+    /// none of these assignments — plain, ternary, or <c>switch</c> expression — contains one internally.
+    /// </summary>
+    private static List<string> LanguageKeysAssignedTo(string code, string name)
+    {
+        var statements = Regex.Matches(
+            code, @"\b" + Regex.Escape(name) + @"\.Text\s*=(?!=)(.*?);", RegexOptions.Singleline);
+
+        return statements
+            .SelectMany(s => Regex.Matches(
+                s.Groups[1].Value,
+                @"(?:AppLanguage\.(?:Text|Format)|(?<![\w.])L)\(\s*""([^""]+)"""))
+            .Select(m => m.Groups[1].Value)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+    }
 
     private static void AssertRatchet(
         IEnumerable<string> offenders, IReadOnlyCollection<string> pending, string rule)

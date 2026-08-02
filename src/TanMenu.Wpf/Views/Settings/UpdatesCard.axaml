@@ -18,8 +18,10 @@
        action group, and its version line would have been shown a second time one card apart once 关于
        moved into 设置 — so the version moves to the 关于 card and the channel-specific help line
        (UpdatePortableHelp / UpdateStoreManaged / UpdateUnavailable, chosen in the code-behind) moves onto
-       this card's expansion row, where it explains the status above it. Deleting that card also retires
-       its &#xE946; glyph, which this page used in three places.
+       this card's expansion row, where it explains the status above it. That card carried the 设置
+       page's only &#xE946;, so the page no longer paints it — but the GLYPH IS NOT FREE: Controls/
+       InfoBar.axaml and MainWindow.axaml's NavAboutItem rail row both still ship it, so do not re-use it
+       for something else here.
 
        The two buttons are two, so the row spec trails them in column 2 rather than putting them on the
        expansion row; that is what fixes the lone disabled 检查更新 floating at the card's bottom-left.
