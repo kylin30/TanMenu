@@ -8,124 +8,76 @@ public readonly record struct PlacementRect(double Left, double Top, double Widt
     public double Bottom => Top + Height;
 }
 
-/// <summary>Turns a saved (possibly stale or hostile) window placement into one that is guaranteed to
-/// be visible on the supplied work area.</summary>
+/// <summary>
+/// The app's one placement rule: a window is horizontally CENTRED on its work area and anchored LOW,
+/// a fixed gap above the work area's bottom edge (i.e. above the taskbar). Round 4, item 4 replaced
+/// the previous "restore a remembered rectangle and clamp it into view" rule with this one, and with
+/// it the two functions that implemented it (<c>Resolve</c> and <c>ChooseWorkArea</c>) — see
+/// <see cref="ResolveBottomCentred"/>'s remarks for why nothing is remembered any more.
+/// </summary>
 public static class WindowPlacement
 {
-    /// <param name="savedLeft">Remembered X, or null when there is none — centre instead.</param>
-    /// <param name="savedTop">Remembered Y, or null when there is none — centre instead.</param>
-    /// <param name="savedWidth">Remembered width; clamped into [min, work area].</param>
-    /// <param name="savedHeight">Remembered height; clamped into [min, work area].</param>
+    /// <summary>
+    /// Resolve a window rectangle from a desired SIZE alone: size clamps first, then horizontal
+    /// centring, then the bottom anchor — in that order, because both positions depend on the size.
+    /// </summary>
+    /// <param name="width">Desired width; clamped into [min, work area].</param>
+    /// <param name="height">Desired height; clamped into [min, work area].</param>
     /// <param name="workArea">The target monitor's work area (excludes the taskbar). Its origin is
-    /// NOT assumed to be (0,0): a monitor left of or above the primary one has negative coordinates.</param>
+    /// NOT assumed to be (0,0): a monitor left of or above the primary one has negative coordinates,
+    /// and both the centring and the anchor are computed relative to it.</param>
     /// <param name="minWidth">Floor for the resolved width, unless the work area is narrower.</param>
     /// <param name="minHeight">Floor for the resolved height, unless the work area is shorter.</param>
+    /// <param name="bottomGap">DIPs to leave between the resolved rectangle's bottom edge and the work
+    /// area's bottom edge.</param>
     /// <remarks>
     /// <para>
-    /// Size is resolved first, because position depends on it. A saved size is clamped to
+    /// Size is resolved first, because position depends on it. A desired size is clamped to
     /// [min, work-area]; when the work area itself is smaller than the minimum, FITTING THE SCREEN
     /// wins — a window larger than the display cannot be moved back into view, whereas one below the
-    /// nominal minimum is merely cramped.
+    /// nominal minimum is merely cramped. That inversion is <see cref="Clamp"/>'s <c>max &lt; min</c>
+    /// rule, kept byte-for-byte from the rule this replaced.
     /// </para>
     /// <para>
-    /// "No remembered position" is null, NOT a negative number. A monitor to the left of the primary
-    /// occupies negative coordinates, so a real remembered X can be negative; a negative sentinel
-    /// would silently discard it and re-centre the window on every restart.
+    /// The vertical clamp degenerates correctly rather than needing a special case: once the height
+    /// has been clamped it can never exceed the work area, so <c>workArea.Bottom - height</c> is never
+    /// above <c>workArea.Top</c>, and content that fills the work area exactly makes the two equal —
+    /// the window top-aligns and the gap is simply not available. A gap larger than the spare height
+    /// pins the top to <c>workArea.Top</c> instead of going negative.
+    /// </para>
+    /// <para>
+    /// There is no remembered position to honour any more, and no "which monitor did this rectangle
+    /// come from" question to answer: Round 4, item 4 retired <c>GeneralConfig.WindowLeft</c>/
+    /// <c>WindowTop</c> (kept deserializable, read by nothing) because "always appear in one
+    /// predictable place" and "come back where you dragged it" are mutually exclusive, and the caller
+    /// cannot tell a cold start from a hotkey summon — the same <c>WindowHost.RestorePlacement</c>
+    /// runs for both. The caller supplies the work area it wants; <c>WindowHost</c> uses the PRIMARY
+    /// monitor's at restore time and the window's CURRENT monitor's on a re-fit.
     /// </para>
     /// </remarks>
-    public static PlacementRect Resolve(
-        double? savedLeft,
-        double? savedTop,
-        double savedWidth,
-        double savedHeight,
+    public static PlacementRect ResolveBottomCentred(
+        double width,
+        double height,
         PlacementRect workArea,
         double minWidth,
-        double minHeight)
+        double minHeight,
+        double bottomGap)
     {
-        var width = Clamp(savedWidth, Math.Min(minWidth, workArea.Width), workArea.Width);
-        var height = Clamp(savedHeight, Math.Min(minHeight, workArea.Height), workArea.Height);
+        var w = Clamp(width, Math.Min(minWidth, workArea.Width), workArea.Width);
+        var h = Clamp(height, Math.Min(minHeight, workArea.Height), workArea.Height);
 
-        var left = savedLeft is { } l
-            ? Clamp(l, workArea.Left, workArea.Right - width)
-            : workArea.Left + (workArea.Width - width) / 2;
-        var top = savedTop is { } t
-            ? Clamp(t, workArea.Top, workArea.Bottom - height)
-            : workArea.Top + (workArea.Height - height) / 2;
+        var left = workArea.Left + (workArea.Width - w) / 2;
+        var top = Clamp(workArea.Bottom - bottomGap - h, workArea.Top, workArea.Bottom - h);
 
-        return new PlacementRect(left, top, width, height);
-    }
-
-    /// <summary>
-    /// Pick WHICH monitor a saved placement belongs to, before <see cref="Resolve"/> clamps against it.
-    /// </summary>
-    /// <param name="saved">The remembered window rectangle in DIPs, or null when there is no
-    /// remembered POSITION (a fresh config, or one carrying only a size) — that always means the
-    /// primary, because a centred window is centred on the primary.</param>
-    /// <param name="workAreas">Every connected monitor's work area in DIPs, in the platform's own
-    /// enumeration order.</param>
-    /// <param name="primaryIndex">Index of the primary monitor within <paramref name="workAreas"/>.
-    /// Out of range is treated as 0.</param>
-    /// <returns>An index into <paramref name="workAreas"/>, or -1 when the list is empty.</returns>
-    /// <remarks>
-    /// <para>
-    /// Exists because the obvious source for "which monitor" — asking the window itself — is WRONG at
-    /// restore time. The window has not been placed yet; it is wherever Win32 cascaded it, which is
-    /// normally the primary. Clamping a rectangle saved at x=9500 against the PRIMARY's work area
-    /// yanks it back onto the primary, and a window can then never be restored onto a secondary
-    /// monitor at all. The saved rectangle is the only thing that knows where the window belongs.
-    /// </para>
-    /// <para>
-    /// The test is the saved rectangle's CENTRE, not its origin: a window the user dragged so its
-    /// left edge hangs slightly off a monitor still belongs to that monitor, and an origin test would
-    /// hand it to the neighbour (or to the primary) and move it on the next launch.
-    /// </para>
-    /// <para>
-    /// A saved rectangle whose centre is on no connected monitor — unplugged, or the desktop
-    /// rearranged — falls back to the primary, where <see cref="Resolve"/> then clamps it into view.
-    /// </para>
-    /// <para>
-    /// Mixed-DPI caveat: the caller converts each monitor's work area with THAT monitor's own scaling,
-    /// which is exactly how the position was recorded, so a rectangle saved on monitor N matches
-    /// monitor N's converted work area. It does not make the converted rectangles a globally
-    /// consistent coordinate space — with different scalings they can overlap, in which case the
-    /// first match wins. That is a heuristic, not a proof; it is still strictly better than always
-    /// asking the primary.
-    /// </para>
-    /// </remarks>
-    public static int ChooseWorkArea(
-        PlacementRect? saved,
-        IReadOnlyList<PlacementRect> workAreas,
-        int primaryIndex = 0)
-    {
-        if (workAreas.Count == 0)
-            return -1;
-
-        var primary = primaryIndex >= 0 && primaryIndex < workAreas.Count ? primaryIndex : 0;
-        if (saved is not { } rect)
-            return primary;
-
-        var centreX = rect.Left + rect.Width / 2;
-        var centreY = rect.Top + rect.Height / 2;
-
-        for (var i = 0; i < workAreas.Count; i++)
-        {
-            var w = workAreas[i];
-            // Half-open on the far edges so two abutting monitors never both claim a centre that
-            // lands exactly on the seam.
-            if (centreX >= w.Left && centreX < w.Right && centreY >= w.Top && centreY < w.Bottom)
-                return i;
-        }
-
-        return primary;
+        return new PlacementRect(left, top, w, h);
     }
 
     /// <summary>
     /// Combine a measured page-content size with the shell chrome around it (the navigation rail and
-    /// the content pane's left border beside it, the title strip's fixed height above it) into a full
-    /// window size, then clamp/position it
-    /// exactly like <see cref="Resolve"/>. This is the one new piece of arithmetic Round 2's
-    /// fit-to-content feature needs on top of <see cref="Resolve"/>/<see cref="ChooseWorkArea"/> — pulled
-    /// out here, rather than left inline in <c>WindowHost</c>, so it is unit-testable without measuring a
+    /// the content pane's left border beside it, the title strip and the pane's top border above it)
+    /// into a full window size, then place it exactly like <see cref="ResolveBottomCentred"/>. This is
+    /// the arithmetic Round 2's fit-to-content feature needs on top of the placement rule — pulled out
+    /// here, rather than left inline in <c>WindowHost</c>, so it is unit-testable without measuring a
     /// real Avalonia visual tree.
     /// </summary>
     /// <param name="contentWidth">The active page's natural content width, as measured by Avalonia (e.g.
@@ -136,26 +88,27 @@ public static class WindowPlacement
     /// carries. This function only adds it — what it is composed of is the caller's business
     /// (<c>MainWindow.RefitToContent</c>).</param>
     /// <param name="chromeHeight">Everything above the content that still counts toward the window's own
-    /// Height: the title strip.</param>
-    /// <param name="currentLeft">Where to keep the window horizontally — the window's OWN current
-    /// position, not a saved config value: fit-to-content runs after the window is already placed and
-    /// shown, so there is always a real position to preserve. Null only centres, exactly like
-    /// <see cref="Resolve"/>'s <c>savedLeft</c>.</param>
-    /// <param name="currentTop">As <paramref name="currentLeft"/>, vertically.</param>
+    /// Height: the title strip, plus whatever top border the content pane carries
+    /// (<c>WindowHost.ChromeHeightDip</c>).</param>
+    /// <remarks>
+    /// A fit no longer takes a position at all. Before Round 4, item 4 it took the window's own current
+    /// Left/Top and re-clamped them, so a re-fit preserved wherever the window happened to be; now
+    /// position is a pure function of the resolved size, so every re-fit re-centres and re-anchors as
+    /// well as resizing. That is the whole point: a fit that only clamped could leave a window that
+    /// started centred-low 362 DIP off centre once the real content size landed.
+    /// </remarks>
     public static PlacementRect ResolveContentFit(
         double contentWidth,
         double contentHeight,
         double chromeWidth,
         double chromeHeight,
-        double? currentLeft,
-        double? currentTop,
         PlacementRect workArea,
         double minWidth,
-        double minHeight) =>
-        Resolve(
-            currentLeft, currentTop,
+        double minHeight,
+        double bottomGap) =>
+        ResolveBottomCentred(
             contentWidth + chromeWidth, contentHeight + chromeHeight,
-            workArea, minWidth, minHeight);
+            workArea, minWidth, minHeight, bottomGap);
 
     /// <summary>
     /// True when two resolved placements describe the same window rectangle to within
@@ -170,16 +123,24 @@ public static class WindowPlacement
     /// for a single user action; without this test each one would re-assign Width/Height/Position and
     /// re-log an identical "Window fit to content" line. It also makes a notice-driven re-fit that
     /// changes nothing genuinely inert, rather than merely landing on the same numbers after having
-    /// touched the platform window.
+    /// touched the platform window. Since Round 4, item 4 the stakes are the other way round too: a
+    /// re-fit MOVES the window as well as resizing it, so this test is also what guarantees a placement
+    /// that differs only in position is applied rather than mistaken for a no-op.
     /// <para>
     /// This function only compares two rectangles; WHICH second rectangle the caller supplies is the
-    /// caller's decision, and it is deliberately no longer the window's own live geometry. Round 3's
+    /// caller's decision, and it is deliberately not the window's own live geometry. Round 3's
     /// final fix wave changed <c>WindowHost.FitToContent</c> to pass the size the PREVIOUS fit itself
-    /// requested, because a platform that clamps a request (that window cannot render below roughly 605
-    /// DIP outer, whatever is asked of it) writes the clamped value back into <c>Width</c>/<c>Height</c>
-    /// and so guarantees the live size never equals the computed one in that regime — making the skip
-    /// unreachable exactly where it was needed. Do not "restore" a live-geometry comparison here or in
-    /// the caller on the assumption that the two are interchangeable; they are not.
+    /// requested, because a platform that clamps a request writes the clamped value back into
+    /// <c>Width</c>/<c>Height</c> and so guarantees the live size never equals the computed one in that
+    /// regime — making the skip unreachable exactly where it was needed. (The concrete clamp that
+    /// motivated it — this window could not render below roughly 605 DIP outer — is gone as of Round 4,
+    /// item 4, which removed <c>MainWindow.axaml</c>'s <c>MinHeight</c>; see
+    /// <c>WindowHost.MinWindowHeightDip</c>. The rule stands on its own regardless: a request-based
+    /// basis is what "the same placement" has to mean, and Round 4 made the whole RECTANGLE the basis
+    /// rather than just its size, because a live position mixed with a requested size can report "same
+    /// placement" for a rectangle whose position needs to move.) Do not "restore" a live-geometry
+    /// comparison here or in the caller on the assumption that the two are interchangeable; they are
+    /// not.
     /// </para>
     /// <para>
     /// The default tolerance is half a DIP, not exact equality: Avalonia's Win32 backend truncates DIP

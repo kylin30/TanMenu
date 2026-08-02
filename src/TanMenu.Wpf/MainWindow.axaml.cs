@@ -203,18 +203,23 @@ public partial class MainWindow : Window
     /// <para>
     /// That last claim — "a free no-op" — was FALSE for exactly the low-content-height regime this same
     /// Task 4 created (a small ColButtonCount, or the default's own natural height, both landing at or
-    /// below MinHeight="568"). <c>WindowHost.FitToContent</c> used to compare a fresh
-    /// <c>ResolveContentFit</c> result against the window's LIVE Width/Height, but this window cannot
-    /// physically render below 908 physical / 605.3 DIP outer (897 physical / 598 DIP client, at 150%
-    /// scale — see <c>GeneralConfig.ColButtonCount</c>'s own remarks) regardless of what is requested, so
+    /// below the then-declared <c>MinHeight="568"</c>). <c>WindowHost.FitToContent</c> used to compare a
+    /// fresh <c>ResolveContentFit</c> result against the window's LIVE Width/Height, and the window
+    /// could not then render below 908 physical / 605.3 DIP outer (897 physical / 598 DIP client, at
+    /// 150% scale) regardless of what was requested, so
     /// the live size Windows actually applied and the 568 DIP the fit had asked for never matched — the
     /// "free no-op" fired the whole Width/Height/Position/log/debounced-write path a second time on every
     /// cold start instead of skipping it (proof: the pre-fix log shows two <c>[INF] Window fit to
     /// content: 1724x568 DIP</c> lines 3 ms apart). Fixed by comparing against the PREVIOUS fit's own
-    /// requested size instead of the live window size (post-fix: one <c>[INF]</c> fit plus one
+    /// request instead of the live window size (post-fix: one <c>[INF]</c> fit plus one
     /// <c>[DBG] … nothing to apply</c>, 4 ms apart); the claim in this paragraph is accurate again as of
     /// that fix. Full log evidence:
     /// docs/superpowers/reports/2026-08-02-win11-shell-round3-findings.md.
+    /// <em>The floor itself is gone as of Round 4, item 4</em>, which deleted <c>MinHeight</c> from
+    /// <c>MainWindow.axaml</c> — it was an arithmetic consequence of that attribute, not a platform
+    /// constant; see <c>WindowHost.MinWindowHeightDip</c>. So a request is no longer clamped and the
+    /// live size would agree with it again. The request-based basis stays regardless: it is what "the
+    /// same placement" has to mean, and Round 4 widened it from a size to the whole rectangle.
     /// </para>
     /// </remarks>
     private async Task InitializeAndFitAsync()
@@ -243,8 +248,9 @@ public partial class MainWindow : Window
     /// THE GUARD IS LOAD-BEARING, not defensive tidiness (review finding 1, CRITICAL). Measuring
     /// <see cref="_appPage"/> while 设置 is the hosted page does REAL, REPRODUCED damage to the window's
     /// SIZE: reproduced live by temporarily removing this guard, the window latched at a wrong
-    /// 850x568 DIP for the rest of the session — 568 being <c>MainWindow.axaml</c>'s own
-    /// <c>MinHeight</c>, i.e. a measurement that had collapsed onto the floor. That reproduction is the
+    /// 850x568 DIP for the rest of the session — 568 being the app's own minimum height, declared on
+    /// <c>MainWindow.axaml</c> at the time and moved to <c>WindowHost.MinWindowHeightDip</c> by Round 4,
+    /// item 4, i.e. a measurement that had collapsed onto the floor. That reproduction is the
     /// observed fact this guard rests on; see
     /// docs/superpowers/reports/2026-08-02-win11-shell-round3-findings.md for the durable record (this
     /// paragraph previously cited "final-fix-report.md, finding 1," a file that did not exist at the

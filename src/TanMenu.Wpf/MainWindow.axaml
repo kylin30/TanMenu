@@ -4,7 +4,7 @@
         xmlns:vm="using:TanMenu.Wpf.ViewModels"
         x:Class="TanMenu.Wpf.MainWindow"
         Title="TanMenu"
-        Width="1000" Height="688" MinWidth="760" MinHeight="568"
+        Width="1000" Height="688" MinWidth="760"
         WindowStartupLocation="Manual"
         TransparencyLevelHint="Mica"
         Background="Transparent"
@@ -46,10 +46,20 @@
     ExtendClientAreaToDecorationsHint pulls the whole client area — including the strip where the OS
     used to paint its own title bar — under our control. ExtendClientAreaTitleBarHeightHint is pinned to
     48, the Windows 11 title bar height at 100% scaling, rather than -1 (OS default), so the strip below
-    lines up with it exactly. Height/MinHeight are 48 taller than round 1's 640/520: extending the
+    lines up with it exactly. Height is 48 taller than round 1's 640: extending the
     client area moves the strip's height OUT OF the OS-added frame and INTO the window's own client
     size, so without this the nav rail and page host would lose exactly the height the strip now
     occupies.
+
+    There is deliberately NO MinHeight here, and MinWidth stays. Round 4, item 4: Avalonia's
+    WM_GETMINMAXINFO handler sets ptMinTrackSize.Y to MinHeight × scale PLUS BorderThickness.Top+Bottom
+    (decompiled Win32.WindowImpl 12.1.0), which on this window's style is the full 45+11 px frame — but
+    ExtendClientAreaToDecorationsHint has already pulled the 45 px caption INTO the client area, so a
+    declared MinHeight="568" forced a 598 DIP client, 30 DIP more than any fit ever asked for, and made
+    a bottom anchor computed from the requested height overlap the taskbar. The horizontal case has no
+    such error (the 22 px AdjustWindowRectEx reports IS the real horizontal inset), so MinWidth="760"
+    stays declared. The app's own 568 DIP height floor now lives in WindowHost.MinWindowHeightDip, where
+    it is applied to the request instead of to the window.
 
     CORRECTED FACT (Task 1 review, established by decompiling Avalonia 12.1 — see the round-2 plan's
     "CORRECTION" note): the caption buttons this hint turns on are NOT drawn by Windows. Setting

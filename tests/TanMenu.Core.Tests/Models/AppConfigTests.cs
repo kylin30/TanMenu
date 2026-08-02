@@ -42,6 +42,9 @@ public class AppConfigTests
         Assert.False(general.AutoClose);
         Assert.False(general.TopMost);
         Assert.Equal(0, general.SchemaVersion); // 0 = "not yet stamped"; see ConfigService.Normalize
+        // WindowWidth/WindowHeight (Round 2) and WindowLeft/WindowTop (Round 4, item 4) are all retired
+        // in place — nothing reads or writes them. Their DEFAULTS still matter: an absent key in an old
+        // config.json deserializes to them, so pinning the defaults pins the retirement contract.
         Assert.Equal(1000, general.WindowWidth);
         Assert.Equal(640, general.WindowHeight);
         Assert.Null(general.WindowLeft);

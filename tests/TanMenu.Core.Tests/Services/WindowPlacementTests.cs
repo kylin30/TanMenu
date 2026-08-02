@@ -7,37 +7,94 @@ public class WindowPlacementTests
 {
     private static readonly PlacementRect Work = new(0, 0, 1920, 1040);
 
-    [Fact]
-    public void Resolve_SavedRectInsideWorkArea_IsKept()
-    {
-        var r = WindowPlacement.Resolve(200, 100, 1000, 640, Work, 760, 520);
+    /// <summary>The gap the app itself uses (<c>WindowHost.BottomGapDip</c>), mirrored here so the
+    /// expected numbers below read as the shipped behaviour rather than as an arbitrary fixture. Cases
+    /// that are about the gap itself pass their own value.</summary>
+    private const double Gap = 8;
 
-        Assert.Equal(new PlacementRect(200, 100, 1000, 640), r);
-    }
+    // ══════════════════════════════════════════════════════════════════════════════════════════
+    // ResolveBottomCentred — Round 4, item 4's one placement rule: clamp the size, centre it
+    // horizontally on the work area, then put its bottom edge Gap DIPs above the work area's.
+    //
+    // It replaced Resolve (a saved rectangle clamped into view) and ChooseWorkArea (which monitor a
+    // saved rectangle belonged to). Both are gone, together with every case that pinned them — a saved
+    // position is no longer read (GeneralConfig.WindowLeft/WindowTop are retired in place), so there is
+    // no remembered rectangle to keep, to pull back inside an edge, or to attribute to a monitor. The
+    // three-monitor fixture those cases shared went with them; its comment claimed "Work areas are
+    // DIPs" over numbers that were this machine's PHYSICAL pixels, so nothing here inherits it.
+    // ══════════════════════════════════════════════════════════════════════════════════════════
 
     [Fact]
-    public void Resolve_UnsetPosition_CentresOnWorkArea()
+    public void ResolveBottomCentred_CentresHorizontallyAndAnchorsLow()
     {
-        var r = WindowPlacement.Resolve(null, null, 1000, 640, Work, 760, 520);
+        var r = WindowPlacement.ResolveBottomCentred(1000, 640, Work, 760, 520, Gap);
 
         Assert.Equal(460, r.Left);   // (1920 - 1000) / 2
-        Assert.Equal(200, r.Top);    // (1040 - 640) / 2
+        Assert.Equal(392, r.Top);    // 1040 - 8 - 640
+        Assert.Equal(1000, r.Width);
+        Assert.Equal(640, r.Height);
     }
 
     [Fact]
-    public void Resolve_RectOffTheRightEdge_IsPulledBackInside()
+    public void ResolveBottomCentred_HonoursTheBottomGapExactly()
     {
-        // Saved on a second monitor that is no longer connected.
-        var r = WindowPlacement.Resolve(3000, 50, 1000, 640, Work, 760, 520);
+        // The anchor is stated as an invariant on the resolved rectangle, not as a literal Top: the
+        // bottom edge sits exactly Gap DIPs above the work area's, whatever the height turned out to be.
+        // (This absorbs the retired "unset position centres on the work area" case: there is no unset
+        // position any more — every placement is centred horizontally and anchored vertically.)
+        var r = WindowPlacement.ResolveBottomCentred(1000, 640, Work, 760, 520, Gap);
+        var tighter = WindowPlacement.ResolveBottomCentred(1000, 640, Work, 760, 520, Gap + 40);
 
-        Assert.Equal(920, r.Left);   // 1920 - 1000
-        Assert.Equal(50, r.Top);
+        Assert.Equal(Work.Bottom - Gap, r.Bottom);
+        Assert.Equal(Work.Left + (Work.Width - r.Width) / 2, r.Left);
+        Assert.Equal(r.Top - 40, tighter.Top);      // a larger gap lifts the window by exactly the delta
+        Assert.Equal(r.Left, tighter.Left);         // the gap is a vertical term only
     }
 
     [Fact]
-    public void Resolve_RectLargerThanWorkArea_IsShrunkToFit()
+    public void ResolveBottomCentred_ZeroGap_SitsFlushOnTheWorkAreaBottom()
     {
-        var r = WindowPlacement.Resolve(0, 0, 4000, 3000, Work, 760, 520);
+        // Not what the app ships (see WindowHost.BottomGapDip for why 8 and not 0), but the degenerate
+        // end of the same arithmetic: gap 0 must land the rectangle exactly on the work area's bottom
+        // edge, never one DIP past it.
+        var r = WindowPlacement.ResolveBottomCentred(1000, 640, Work, 760, 520, bottomGap: 0);
+
+        Assert.Equal(Work.Bottom, r.Bottom);
+        Assert.Equal(400, r.Top);   // 1040 - 0 - 640
+    }
+
+    [Fact]
+    public void ResolveBottomCentred_GapLargerThanTheSpareHeight_PinsTheTopToTheWorkArea()
+    {
+        // A gap bigger than what is left over after the height must not push the window off the TOP of
+        // the work area. 1040 - 200 - 1000 = -160, which clamps to the work area's own top.
+        var r = WindowPlacement.ResolveBottomCentred(1000, 1000, Work, 760, 520, bottomGap: 200);
+
+        Assert.Equal(1000, r.Height);
+        Assert.Equal(Work.Top, r.Top);
+        Assert.True(r.Bottom <= Work.Bottom);
+    }
+
+    [Fact]
+    public void ResolveBottomCentred_ContentAsTallAsTheWorkArea_TopAlignsAndFills()
+    {
+        // The clamp's degenerate case: once the height has been clamped it can never exceed the work
+        // area, so workArea.Bottom - height is never above workArea.Top, and a window that fills the
+        // work area exactly simply has no gap available. Both an exact fill and an over-tall request
+        // land on the same rectangle.
+        var exact = WindowPlacement.ResolveBottomCentred(1000, 1040, Work, 760, 568, Gap);
+        var over = WindowPlacement.ResolveBottomCentred(1000, 1200, Work, 760, 568, Gap);
+
+        Assert.Equal(Work.Top, exact.Top);
+        Assert.Equal(Work.Height, exact.Height);
+        Assert.Equal(Work.Bottom, exact.Bottom);
+        Assert.Equal(exact, over);
+    }
+
+    [Fact]
+    public void ResolveBottomCentred_SizeLargerThanWorkArea_IsShrunkToFit()
+    {
+        var r = WindowPlacement.ResolveBottomCentred(4000, 3000, Work, 760, 520, Gap);
 
         Assert.Equal(1920, r.Width);
         Assert.Equal(1040, r.Height);
@@ -46,20 +103,24 @@ public class WindowPlacementTests
     }
 
     [Fact]
-    public void Resolve_SizeBelowMinimum_IsRaisedToMinimum()
+    public void ResolveBottomCentred_SizeBelowMinimum_IsRaisedToMinimum()
     {
-        var r = WindowPlacement.Resolve(10, 10, 100, 80, Work, 760, 520);
+        var r = WindowPlacement.ResolveBottomCentred(100, 80, Work, 760, 520, Gap);
 
         Assert.Equal(760, r.Width);
         Assert.Equal(520, r.Height);
+        Assert.Equal(580, r.Left);   // (1920 - 760) / 2
+        Assert.Equal(512, r.Top);    // 1040 - 8 - 520
     }
 
     [Fact]
-    public void Resolve_WorkAreaSmallerThanMinimum_PrefersFittingTheScreen()
+    public void ResolveBottomCentred_WorkAreaSmallerThanMinimum_PrefersFittingTheScreen()
     {
+        // A window larger than the display cannot be moved back into view; one below the nominal
+        // minimum is merely cramped. Fitting the screen therefore wins over the minimum.
         var tiny = new PlacementRect(0, 0, 640, 400);
 
-        var r = WindowPlacement.Resolve(null, null, 1000, 640, tiny, 760, 520);
+        var r = WindowPlacement.ResolveBottomCentred(1000, 640, tiny, 760, 520, Gap);
 
         Assert.Equal(640, r.Width);
         Assert.Equal(400, r.Height);
@@ -68,123 +129,64 @@ public class WindowPlacementTests
     }
 
     [Fact]
-    public void Resolve_WorkAreaWithOffset_PositionsRelativeToIt()
+    public void ResolveBottomCentred_WorkAreaWithOffset_PositionsRelativeToIt()
     {
-        // A left-hand secondary monitor: the work area does not start at the origin.
+        // A left-hand secondary monitor: the work area does not start at the origin, and BOTH the
+        // centring and the anchor are relative to it. (WindowHost only ever anchors on the primary at
+        // restore time, but a re-fit uses whichever monitor the window is currently on.)
         var offset = new PlacementRect(-1920, 0, 1920, 1040);
 
-        var r = WindowPlacement.Resolve(null, null, 1000, 640, offset, 760, 520);
+        var r = WindowPlacement.ResolveBottomCentred(1000, 640, offset, 760, 520, Gap);
 
         Assert.Equal(-1460, r.Left);  // -1920 + (1920 - 1000) / 2
-        Assert.Equal(200, r.Top);
+        Assert.Equal(392, r.Top);     // 1040 - 8 - 640
     }
 
     // ══════════════════════════════════════════════════════════════════════════════════════════
-    // ChooseWorkArea — WHICH monitor a saved placement belongs to, decided before Resolve clamps
-    // ══════════════════════════════════════════════════════════════════════════════════════════
-
-    // The real three-display desktop this was found on: a 7680x2160 primary, a portrait panel far to
-    // its right at x=9216, and a third below. Work areas are DIPs, taskbar already excluded.
-    private static readonly PlacementRect[] ThreeMonitors =
-    [
-        new(9216, -689, 2592, 4536),  // secondary, to the right of the primary
-        new(0, 0, 7680, 2088),        // PRIMARY (index 1 — the platform does not enumerate it first)
-        new(2285, 2592, 2304, 1368),  // third, below the primary
-    ];
-
-    [Fact]
-    public void ChooseWorkArea_SavedRectOnSecondaryMonitor_ReturnsThatMonitor()
-    {
-        // The bug this exists for: asking the WINDOW which screen it is on returns the primary, because
-        // at restore time the window is still wherever Win32 cascaded it. A rectangle saved at x=9500
-        // would then be clamped against the primary's work area and yanked back onto it, making a
-        // secondary monitor impossible to restore onto at all.
-        var saved = new PlacementRect(9500, 100, 1000, 640);
-
-        var index = WindowPlacement.ChooseWorkArea(saved, ThreeMonitors, primaryIndex: 1);
-
-        Assert.Equal(0, index);
-    }
-
-    [Fact]
-    public void ChooseWorkArea_SavedRectOnDisconnectedMonitor_FallsBackToPrimary()
-    {
-        // The monitor that used to live at x=9216 has been unplugged, so nothing contains this centre.
-        var saved = new PlacementRect(9500, 100, 1000, 640);
-        PlacementRect[] primaryOnly = [new(0, 0, 7680, 2088)];
-
-        var index = WindowPlacement.ChooseWorkArea(saved, primaryOnly, primaryIndex: 0);
-
-        Assert.Equal(0, index);
-    }
-
-    [Fact]
-    public void ChooseWorkArea_NoSavedPosition_ReturnsPrimary()
-    {
-        // A fresh config remembers a size but no position, which means "centre me" — and centring
-        // belongs on the primary, not on whichever monitor happens to be enumerated first.
-        var index = WindowPlacement.ChooseWorkArea(null, ThreeMonitors, primaryIndex: 1);
-
-        Assert.Equal(1, index);
-    }
-
-    [Fact]
-    public void Resolve_RealNegativePosition_OnLeftHandMonitor_IsKept()
-    {
-        // A monitor to the LEFT of the primary occupies negative coordinates. This position is
-        // remembered, not unset, and must survive: a negative-sentinel design would centre it on the
-        // primary monitor instead, teleporting the window on every restart.
-        var leftMonitor = new PlacementRect(-1920, 0, 1920, 1040);
-
-        var r = WindowPlacement.Resolve(-1500, 120, 1000, 640, leftMonitor, 760, 520);
-
-        Assert.Equal(-1500, r.Left);
-        Assert.Equal(120, r.Top);
-    }
-
-    // ══════════════════════════════════════════════════════════════════════════════════════════
-    // ResolveContentFit — Round 2's "size is recomputed from content on every start" feature.
+    // ResolveContentFit — Round 2's "size is recomputed from content on every start" feature, now
+    // placed by the rule above rather than pinned to wherever the window happened to be.
     // The chrome terms below are 48/48 so each case reads as a concrete scenario rather than an
-    // abstract one. They are no longer the app's LIVE terms, and this comment used to claim they were:
-    // Round 4 item 1 added the content pane's left border to the width term and item 5 then added the
-    // pane's top border to the height term, so WindowHost now passes 49 on both axes
-    // (MainWindow.RailWidthDip + PaneBorderDip, and WindowHost.ChromeHeightDip). Nothing any case here
-    // asserts depends on which value is passed — ResolveContentFit only ADDS the term to the content —
-    // so they stay at 48 rather than being churned. 760x568 IS still the app's own minimum
-    // (MainWindow.axaml's MinWidth/MinHeight, the single source of truth WindowHost reads directly).
+    // abstract one. They are NOT the app's live terms: Round 4 item 1 added the content pane's left
+    // border to the width term and item 5 added the pane's top border to the height term, so WindowHost
+    // passes 49 on both axes (MainWindow.RailWidthDip + PaneBorderDip, and WindowHost.ChromeHeightDip).
+    // Nothing any case here asserts depends on which value is passed — ResolveContentFit only ADDS the
+    // term to the content, which the two chrome cases below pin directly — so they stay at 48 rather
+    // than being churned. 760x568 IS still the app's own minimum (WindowHost.MinWindowWidthDip /
+    // MinWindowHeightDip; MinWidth="760" is additionally declared in MainWindow.axaml, MinHeight
+    // deliberately is not — see MinWindowHeightDip's own remarks).
     // ══════════════════════════════════════════════════════════════════════════════════════════
 
     [Fact]
     public void ResolveContentFit_SmallContent_IsRaisedToTheAppMinimum()
     {
         // Very little content (e.g. one or two thin categories) plus 48+48 DIP of chrome still lands
-        // below 760x568 — the floor wins, exactly like a tiny saved size did before.
+        // below 760x568 — the floor wins, and the anchored position is computed from the FLOORED size.
         var r = WindowPlacement.ResolveContentFit(
             contentWidth: 300, contentHeight: 200,
             chromeWidth: 48, chromeHeight: 48,
-            currentLeft: 100, currentTop: 100,
-            workArea: Work, minWidth: 760, minHeight: 568);
+            workArea: Work, minWidth: 760, minHeight: 568, bottomGap: Gap);
 
         Assert.Equal(760, r.Width);
         Assert.Equal(568, r.Height);
+        Assert.Equal(580, r.Left);   // (1920 - 760) / 2
+        Assert.Equal(464, r.Top);    // 1040 - 8 - 568
     }
 
     [Fact]
     public void ResolveContentFit_ContentBetweenMinimumAndWorkArea_FitsExactly()
     {
         // The "5 categories: no scrollbar, no wasted space" case — content plus chrome above the
-        // minimum but well inside the work area must come back UNCHANGED, not inflated to fill the
-        // screen and not shrunk to the minimum.
+        // minimum but well inside the work area must come back UNCHANGED in SIZE, not inflated to fill
+        // the screen and not shrunk to the minimum. Its POSITION is the anchor, not a preserved one.
         var r = WindowPlacement.ResolveContentFit(
             contentWidth: 900, contentHeight: 700,
             chromeWidth: 48, chromeHeight: 48,
-            currentLeft: 200, currentTop: 150,
-            workArea: Work, minWidth: 760, minHeight: 568);
+            workArea: Work, minWidth: 760, minHeight: 568, bottomGap: Gap);
 
         Assert.Equal(948, r.Width);   // 900 + 48
         Assert.Equal(748, r.Height);  // 700 + 48
-        Assert.Equal(200, r.Left);
-        Assert.Equal(150, r.Top);
+        Assert.Equal(486, r.Left);    // (1920 - 948) / 2
+        Assert.Equal(284, r.Top);     // 1040 - 8 - 748
     }
 
     [Fact]
@@ -195,27 +197,32 @@ public class WindowPlacementTests
         var r = WindowPlacement.ResolveContentFit(
             contentWidth: 6000, contentHeight: 4000,
             chromeWidth: 48, chromeHeight: 48,
-            currentLeft: 0, currentTop: 0,
-            workArea: Work, minWidth: 760, minHeight: 568);
+            workArea: Work, minWidth: 760, minHeight: 568, bottomGap: Gap);
 
         Assert.Equal(1920, r.Width);
         Assert.Equal(1040, r.Height);
+        Assert.Equal(0, r.Left);
+        Assert.Equal(0, r.Top);
     }
 
     [Fact]
-    public void ResolveContentFit_UnsetPosition_CentresOnWorkArea()
+    public void ResolveContentFit_NegativeOriginWorkArea_CentresAndAnchorsRelativeToIt()
     {
-        // Fit-to-content always has a real current position by the time it runs (the window is already
-        // placed and shown) — this documents that the null path still falls through to Resolve's own
-        // centring, exercised directly by the other Resolve tests above.
-        var r = WindowPlacement.ResolveContentFit(
-            contentWidth: 952, contentHeight: 592,
-            chromeWidth: 48, chromeHeight: 48,
-            currentLeft: null, currentTop: null,
-            workArea: Work, minWidth: 760, minHeight: 568);
+        // A monitor above and to the left of the primary occupies negative coordinates on both axes.
+        // Nothing in the arithmetic may assume a (0,0) origin — an earlier design's negative-coordinate
+        // hazard was about a saved position, but the centring and the anchor have the same exposure.
+        var upperLeft = new PlacementRect(-1920, -300, 1920, 1040);
 
-        Assert.Equal(460, r.Left);   // (1920 - 1000) / 2
-        Assert.Equal(200, r.Top);    // (1040 - 640) / 2
+        var r = WindowPlacement.ResolveContentFit(
+            contentWidth: 900, contentHeight: 700,
+            chromeWidth: 48, chromeHeight: 48,
+            workArea: upperLeft, minWidth: 760, minHeight: 568, bottomGap: Gap);
+
+        Assert.Equal(948, r.Width);
+        Assert.Equal(748, r.Height);
+        Assert.Equal(-1434, r.Left);              // -1920 + (1920 - 948) / 2
+        Assert.Equal(-16, r.Top);                 // 740 - 8 - 748
+        Assert.Equal(upperLeft.Bottom - Gap, r.Bottom);
     }
 
     // ══════════════════════════════════════════════════════════════════════════════════════════
@@ -223,9 +230,9 @@ public class WindowPlacementTests
     // content-driven — "the category with the most items fits in a single column without wrapping,
     // clamped to the work area", with NO comfort cap softening a tall result. WindowHost.FitToContent
     // supplies that height by probing the page at an UNBOUNDED height (WPF-side, not testable here
-    // without a visual tree); what IS testable in Core is that Resolve/ResolveContentFit's own clamp
-    // never reintroduces a hidden ceiling below the work area, and still clamps independently per axis
-    // when content genuinely exceeds it.
+    // without a visual tree); what IS testable in Core is that the placement clamp never reintroduces a
+    // hidden ceiling below the work area, and still clamps independently per axis when content
+    // genuinely exceeds it.
     // ══════════════════════════════════════════════════════════════════════════════════════════
 
     [Fact]
@@ -237,11 +244,12 @@ public class WindowPlacementTests
         var r = WindowPlacement.ResolveContentFit(
             contentWidth: 216, contentHeight: 900,
             chromeWidth: 48, chromeHeight: 48,
-            currentLeft: 100, currentTop: 100,
-            workArea: Work, minWidth: 760, minHeight: 568);
+            workArea: Work, minWidth: 760, minHeight: 568, bottomGap: Gap);
 
         Assert.Equal(760, r.Width);  // 216 + 48 = 264 falls below the app minimum, raised to it
         Assert.Equal(948, r.Height); // 900 + 48, kept in full — well short of the 1040 work-area ceiling
+        Assert.Equal(580, r.Left);   // (1920 - 760) / 2
+        Assert.Equal(84, r.Top);     // 1040 - 8 - 948
     }
 
     [Fact]
@@ -249,47 +257,73 @@ public class WindowPlacementTests
     {
         // "A category taller than the work area clamps and wraps instead of growing off-screen" — the
         // two axes clamp INDEPENDENTLY: height clamps to the work area while width, comfortably under
-        // it, is left untouched.
+        // it, is left untouched. The height clamp then costs the gap, and the window top-aligns.
         var r = WindowPlacement.ResolveContentFit(
             contentWidth: 900, contentHeight: 5000,
             chromeWidth: 48, chromeHeight: 48,
-            currentLeft: 0, currentTop: 0,
-            workArea: Work, minWidth: 760, minHeight: 568);
+            workArea: Work, minWidth: 760, minHeight: 568, bottomGap: Gap);
 
         Assert.Equal(948, r.Width);   // 900 + 48, well under the work area — untouched
         Assert.Equal(1040, r.Height); // clamped to the work area's own height
+        Assert.Equal(486, r.Left);    // still centred
+        Assert.Equal(Work.Top, r.Top);
     }
 
     // ══════════════════════════════════════════════════════════════════════════════════════════
-    // Round 2 review, finding 2: the navigation rail's width is a term in the content fit, so
-    // expanding it (48 -> 200) has to widen the window by exactly that 152 DIP rather than take the
-    // space out of the content pane and put the horizontal scrollbar back.
+    // The chrome terms. Round 2 review, finding 2 pinned this as "expanding the rail (48 -> 200) must
+    // widen the WINDOW by exactly 152 rather than take the space out of the content pane and put the
+    // horizontal scrollbar back". Round 4, item 1 removed the rail's second width, so the scenario is
+    // gone; the invariant it protected is not, and it now has a vertical twin (item 5 gave the 应用 pane
+    // a 1 DIP top border, which WindowHost.ChromeHeightDip adds back).
     // ══════════════════════════════════════════════════════════════════════════════════════════
 
     [Fact]
-    public void ResolveContentFit_ExpandingTheRail_WidensTheWindowByTheRailDelta()
+    public void ResolveContentFit_ChromeWidthIsAddedToTheContentWidth()
     {
-        var collapsed = WindowPlacement.ResolveContentFit(
+        var bare = WindowPlacement.ResolveContentFit(
             contentWidth: 900, contentHeight: 600,
-            chromeWidth: 48, chromeHeight: 48,
-            currentLeft: 100, currentTop: 100,
-            workArea: Work, minWidth: 760, minHeight: 568);
+            chromeWidth: 0, chromeHeight: 49,
+            workArea: Work, minWidth: 760, minHeight: 568, bottomGap: Gap);
 
-        var expanded = WindowPlacement.ResolveContentFit(
+        var withChrome = WindowPlacement.ResolveContentFit(
             contentWidth: 900, contentHeight: 600,
-            chromeWidth: 200, chromeHeight: 48,
-            currentLeft: 100, currentTop: 100,
-            workArea: Work, minWidth: 760, minHeight: 568);
+            chromeWidth: 49, chromeHeight: 49,
+            workArea: Work, minWidth: 760, minHeight: 568, bottomGap: Gap);
 
-        Assert.Equal(948, collapsed.Width);
-        Assert.Equal(1100, expanded.Width);
-        Assert.Equal(152, expanded.Width - collapsed.Width);
-        Assert.Equal(collapsed.Height, expanded.Height); // the rail is a width term only
+        Assert.Equal(900, bare.Width);
+        Assert.Equal(949, withChrome.Width);
+        Assert.Equal(49, withChrome.Width - bare.Width);
+        Assert.Equal(bare.Height, withChrome.Height);          // a width term only
+        Assert.Equal(485.5, withChrome.Left);                  // (1920 - 949) / 2 — still centred
+    }
+
+    [Fact]
+    public void ResolveContentFit_ChromeHeightIsAddedToTheContentHeight()
+    {
+        var bare = WindowPlacement.ResolveContentFit(
+            contentWidth: 900, contentHeight: 600,
+            chromeWidth: 49, chromeHeight: 0,
+            workArea: Work, minWidth: 760, minHeight: 568, bottomGap: Gap);
+
+        var withChrome = WindowPlacement.ResolveContentFit(
+            contentWidth: 900, contentHeight: 600,
+            chromeWidth: 49, chromeHeight: 49,
+            workArea: Work, minWidth: 760, minHeight: 568, bottomGap: Gap);
+
+        Assert.Equal(600, bare.Height);
+        Assert.Equal(649, withChrome.Height);
+        Assert.Equal(49, withChrome.Height - bare.Height);
+        Assert.Equal(bare.Width, withChrome.Width);            // a height term only
+        Assert.Equal(bare.Bottom, withChrome.Bottom);          // both anchored: the TOP absorbs the 49
+        Assert.Equal(bare.Top - 49, withChrome.Top);
     }
 
     // ══════════════════════════════════════════════════════════════════════════════════════════
     // Round 2 review: several re-fit triggers can fire for one user action, so a fit that computes
-    // the geometry the window already has must be recognisable as a no-op before it is applied.
+    // the geometry the window already has must be recognisable as a no-op before it is applied. Since
+    // Round 4, item 4 the same test carries the opposite weight too: every re-fit re-places the window,
+    // so a placement that differs only in POSITION must not be mistaken for a no-op — which is why
+    // WindowHost's skip basis is the whole previously-requested rectangle, not just its size.
     // ══════════════════════════════════════════════════════════════════════════════════════════
 
     [Fact]
@@ -325,40 +359,70 @@ public class WindowPlacementTests
         Assert.False(WindowPlacement.IsSamePlacement(a, new PlacementRect(left, top, width, height)));
     }
 
+    // ══════════════════════════════════════════════════════════════════════════════════════════
+    // What a re-fit does to the window's position now. Round 2's review finding 7 asked for a
+    // deliberate decision and got "move only by the overflow, never on a shrink"; Round 4, item 4
+    // supersedes it — the bottom edge is the anchored one, so a shrink moves the window DOWN and growth
+    // is symmetric about the centre and cannot overflow at all.
+    // ══════════════════════════════════════════════════════════════════════════════════════════
+
     [Fact]
-    public void IsSamePlacement_ShrinkingFit_DoesNotMoveTheWindow()
+    public void ResolveContentFit_ShrinkingFit_MovesTheWindowDownByExactlyTheHeightDelta()
     {
-        // Round 2 review finding 7's other half, stated as a test rather than only in a comment: a fit
-        // that SHRINKS the window never re-clamps its position, because a smaller rectangle at the same
-        // origin is still inside the work area. Only a fit that would push the window off the right or
-        // bottom edge moves it, and then only by the overflow.
-        var start = new PlacementRect(1500, 800, 400, 200);
-
-        var smaller = WindowPlacement.ResolveContentFit(
-            contentWidth: 252, contentHeight: 102,
+        var before = WindowPlacement.ResolveContentFit(
+            contentWidth: 552, contentHeight: 402,
             chromeWidth: 48, chromeHeight: 48,
-            currentLeft: start.Left, currentTop: start.Top,
-            workArea: Work, minWidth: 0, minHeight: 0);
+            workArea: Work, minWidth: 0, minHeight: 0, bottomGap: Gap);
 
-        Assert.Equal(300, smaller.Width);
-        Assert.Equal(150, smaller.Height);
-        Assert.Equal(start.Left, smaller.Left);
-        Assert.Equal(start.Top, smaller.Top);
+        var after = WindowPlacement.ResolveContentFit(
+            contentWidth: 552, contentHeight: 202,
+            chromeWidth: 48, chromeHeight: 48,
+            workArea: Work, minWidth: 0, minHeight: 0, bottomGap: Gap);
+
+        Assert.Equal(450, before.Height);
+        Assert.Equal(250, after.Height);
+        Assert.Equal(before.Top + 200, after.Top);   // down by exactly the 200 DIP the window lost
+        Assert.Equal(before.Bottom, after.Bottom);   // because the BOTTOM edge is the anchored one
+        Assert.Equal(before.Left, after.Left);       // width unchanged, so the centring is unchanged
     }
 
     [Fact]
-    public void ResolveContentFit_GrowthPastTheEdge_MovesByExactlyTheOverflow()
+    public void ResolveContentFit_GrowthCannotOverflow_StaysCentredAndGapped()
     {
-        // The counterpart: growing a window that sits near the right edge moves it left by the overflow
-        // and no further — the minimum move that keeps the new size on screen.
+        // The counterpart of the shrink. A grown window used to be re-clamped left by its overflow;
+        // now it simply grows symmetrically about the work area's centre, and the size is clamped to
+        // the work area BEFORE the position is derived from it, so there is no overflow to correct.
         var grown = WindowPlacement.ResolveContentFit(
-            contentWidth: 552, contentHeight: 102,
+            contentWidth: 1800, contentHeight: 900,
             chromeWidth: 48, chromeHeight: 48,
-            currentLeft: 1500, currentTop: 800,
-            workArea: Work, minWidth: 0, minHeight: 0);
+            workArea: Work, minWidth: 760, minHeight: 568, bottomGap: Gap);
 
-        Assert.Equal(600, grown.Width);
-        Assert.Equal(1320, grown.Left); // 1920 - 600, i.e. 1500 shifted left by the 180 of overflow
-        Assert.Equal(800, grown.Top);   // vertically it still fits: 800 + 150 <= 1040
+        Assert.Equal(1848, grown.Width);
+        Assert.Equal(948, grown.Height);
+        Assert.Equal(36, grown.Left);                     // (1920 - 1848) / 2
+        Assert.True(grown.Right <= Work.Right);
+        Assert.Equal(Work.Bottom - Gap, grown.Bottom);
+    }
+
+    [Fact]
+    public void ResolveContentFit_EveryReFitReAnchors_EvenWhenOnlyTheWidthChanges()
+    {
+        // §6.1's invariant, at the arithmetic level: all five surviving re-fit triggers move the window
+        // as well as resizing it. A width-only change must re-centre — the two rectangles differ in
+        // Left, so WindowHost's skip test sees a different placement and applies it.
+        var narrow = WindowPlacement.ResolveContentFit(
+            contentWidth: 900, contentHeight: 700,
+            chromeWidth: 48, chromeHeight: 48,
+            workArea: Work, minWidth: 760, minHeight: 568, bottomGap: Gap);
+
+        var wide = WindowPlacement.ResolveContentFit(
+            contentWidth: 1100, contentHeight: 700,
+            chromeWidth: 48, chromeHeight: 48,
+            workArea: Work, minWidth: 760, minHeight: 568, bottomGap: Gap);
+
+        Assert.Equal(486, narrow.Left);   // (1920 - 948) / 2
+        Assert.Equal(386, wide.Left);     // (1920 - 1148) / 2
+        Assert.Equal(narrow.Top, wide.Top);
+        Assert.False(WindowPlacement.IsSamePlacement(narrow, wide));
     }
 }

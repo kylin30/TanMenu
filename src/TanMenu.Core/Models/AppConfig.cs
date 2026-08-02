@@ -70,14 +70,20 @@ public class GeneralConfig
     public double WindowWidth { get; set; } = 1000;
     public double WindowHeight { get; set; } = 640;
 
-    /// <summary>Restored window position, in DIPs. Null means "no remembered position — centre me",
-    /// which is what a first run gets.
-    /// <para>
-    /// Deliberately nullable rather than a negative sentinel: a monitor to the LEFT of the primary one
-    /// occupies negative coordinates, so a genuinely remembered position can be negative and must not
-    /// be mistaken for "unset". Treating `&lt; 0` as the sentinel would teleport such a window to the
-    /// primary monitor's centre on every restart.
-    /// </para></summary>
+    /// <summary>Legacy setting retained only so config files written before Round 4 deserialize
+    /// cleanly — the same treatment <see cref="WindowWidth"/>/<see cref="WindowHeight"/> above and
+    /// <see cref="NavRailExpanded"/>/<see cref="ShowInTaskbar"/>/<see cref="ButtonSize"/> below get.
+    /// These two used to hold the restored window position in DIPs, nullable rather than
+    /// negative-sentinelled because a monitor to the LEFT of the primary occupies negative coordinates.
+    /// Round 4, item 4 replaced "come back where you dragged it" with one predictable placement — the
+    /// window is always horizontally centred and anchored a fixed gap above the primary monitor's
+    /// taskbar, on a cold start, on every hotkey/tray summon and after every content re-fit (see
+    /// <c>TanMenu.Core.Services.WindowPlacement.ResolveBottomCentred</c> and
+    /// <c>WindowHost.RestorePlacement</c>). The two rules are mutually exclusive, and the code cannot
+    /// tell a cold start from a summon: the same method serves both. Nothing reads or writes these
+    /// properties any more; they are kept only so a config.json that carries a <c>windowLeft</c>/
+    /// <c>windowTop</c> key (every file saved by 0.12.0 and earlier has one) still loads without error.
+    /// A value in such a file has no effect on anything.</summary>
     public double? WindowLeft { get; set; }
     public double? WindowTop { get; set; }
 
@@ -133,19 +139,27 @@ public class GeneralConfig
     /// can still carry anything.
     /// </para>
     /// <para>
-    /// The window has a practical HEIGHT floor of 908 physical / 605.3 DIP outer (897 physical / 598 DIP
-    /// client, at 150% scale) — measured via a <c>SetWindowPos</c> probe that bypassed all app code;
-    /// Windows clamps any smaller request and writes the clamped value back into
-    /// <c>MainWindow.axaml</c>'s own <c>Width</c>/<c>Height</c> regardless of what a fit requests. Values
-    /// of roughly 13 and below all land on that same client height, so this setting only becomes
-    /// height-EFFECTIVE above that. Below it, lowering this value still visibly changes the layout, just
-    /// by trading height for WIDTH instead: fewer rows per column means more columns across, and a small
-    /// enough value (3, in testing) produced a 4648x568 DIP window. Not a defect — nothing in the Round 3
-    /// plan required this setting to be height-effective across its whole [1, 30] range, only that the
-    /// default not need a horizontal scrollbar, which holds — but worth knowing before assuming a low
-    /// value "does nothing" just because the window did not get shorter. Full measurement, including why
-    /// the ~30 DIP gap to <c>MinHeight="568"</c> is an unconfirmed numeric inference rather than a
-    /// decompiled fact:
+    /// The window has a minimum HEIGHT of 568 DIP (<c>WindowHost.MinWindowHeightDip</c>), which the
+    /// placement arithmetic clamps every fit up to, so every value low enough that its page plus the
+    /// shell chrome measures under 568 DIP produces the SAME window height. This setting therefore only
+    /// becomes height-EFFECTIVE above that cut-over. Below it, lowering this value still visibly changes
+    /// the layout, just by trading height for WIDTH instead: fewer rows per column means more columns
+    /// across, and a small enough value (3, in Round 3 testing) produced a 4648x568 DIP window. Not a
+    /// defect — nothing in the Round 3 plan required this setting to be height-effective across its
+    /// whole [1, 30] range, only that the default not need a horizontal scrollbar, which holds — but
+    /// worth knowing before assuming a low value "does nothing" just because the window did not get
+    /// shorter.
+    /// </para>
+    /// <para>
+    /// Round 3 measured that cut-over at roughly 13 against a HIGHER floor: the window then also carried
+    /// a platform floor of 908 physical / 605.3 DIP outer (897 physical / 598 DIP client, at 150%
+    /// scale), which Windows clamped every smaller request up to. Round 4, item 4 removed it — it was an
+    /// arithmetic consequence of <c>MainWindow.axaml</c>'s <c>MinHeight="568"</c> (Avalonia's
+    /// <c>WM_GETMINMAXINFO</c> handler adds the frame's <c>BorderThickness</c> to it, which for this
+    /// window double-counts the caption the extended client area already swallowed), not a platform
+    /// constant, so deleting the attribute deleted the floor. The cut-over is consequently a little
+    /// LOWER than 13 now; it was not re-measured in Round 4, so no exact value is claimed here.
+    /// Round 3's own measurements and the correction:
     /// docs/superpowers/reports/2026-08-02-win11-shell-round3-findings.md.
     /// </para></summary>
     public int ColButtonCount { get; set; } = 10;

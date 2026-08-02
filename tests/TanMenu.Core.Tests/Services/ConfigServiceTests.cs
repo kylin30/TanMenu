@@ -562,6 +562,13 @@ public class ConfigServiceTests
         var paths = NewPaths(out var root);
         try
         {
+            // Of the five properties below, only WindowMaximized is still live. WindowWidth/WindowHeight
+            // were retired by Round 2 and WindowLeft/WindowTop by Round 4, item 4 (the window is always
+            // placed centred-low on the primary monitor — see AppConfig's own remarks and
+            // WindowPlacement.ResolveBottomCentred). What this case guards for those four is the
+            // retirement contract itself, the same one ShowInTaskbar/NavRailExpanded/ButtonSize get: the
+            // properties still round-trip through the serializer, so a config.json written by any
+            // shipped build still loads. It deliberately asserts nothing about the window.
             var svc1 = new ConfigService(paths, NullLogger<ConfigService>.Instance);
             await svc1.LoadAsync();
             svc1.Config.General.WindowWidth = 1234;
@@ -649,6 +656,12 @@ public class ConfigServiceTests
         var paths = NewPaths(out var root);
         try
         {
+            // WindowLeft/WindowTop are RETIRED as of Round 4, item 4 — nothing reads or writes them any
+            // more. This case originally guarded that a genuinely negative saved position (a monitor to
+            // the LEFT of the primary) survived a round trip rather than being mistaken for "unset"; what
+            // it guards now is only that the serializer still round-trips the nullable doubles, including
+            // negative ones, so no shipped config.json fails to load. The test name predates the
+            // retirement and is kept so the case's history is greppable.
             var svc1 = new ConfigService(paths, NullLogger<ConfigService>.Instance);
             await svc1.LoadAsync();
             svc1.Config.General.WindowLeft = -1500;
