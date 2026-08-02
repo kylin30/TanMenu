@@ -448,7 +448,7 @@ public partial class MainWindow : Window
     /// <remarks>
     /// On 设置 it dismisses outright instead. <c>HandleSearchEscape</c> is two-stage — a non-empty filter
     /// is cleared and the window stays up — and on 设置 the filter belongs to a page the user cannot see
-    /// (review finding 4: it can no longer be TYPED there, since <see cref="ShowPage"/> disables the box,
+    /// (review finding 4: it can no longer be TYPED there, since <see cref="ShowPage"/> hides the box,
     /// but a filter carried over from 应用 is still non-empty), so routing through it would spend the
     /// user's first Escape clearing something invisible and only dismiss on the second.
     /// </remarks>
@@ -608,17 +608,37 @@ public partial class MainWindow : Window
         // are untouched by it.
         PagePane.Classes.Set("settings", page == ShellPage.Settings);
 
-        // Review finding 4: the title strip's search box is always attached and used to stay live on
-        // 设置, where typing silently filtered an invisible 应用 page and Enter reached
-        // LauncherViewModel.HandleSearchEnter — which LAUNCHES the first match. Task Manager disables
-        // its own search box on pages that do not support search; so does this. Neither write is
-        // redundant: SearchBox blocks the actual typing/Enter and (via its own :disabled style in
-        // Launcher.axaml) dims its text and placeholder; SearchField disables and dims the bordered
-        // box around it — a plain Border has no disabled behaviour of its own, so without this line a
-        // disabled SearchBox would sit inside a field that still looked fully live.
-        var searchable = page == ShellPage.App;
-        SearchField.IsEnabled = searchable;
-        SearchBox.IsEnabled = searchable;
+        // Round 6, item 1: the title strip's search box is always attached, and on 设置 — a page with
+        // nothing to search — it used to stay on screen greyed out (Round 3 review finding 4 disabled
+        // it because typing there silently filtered an invisible 应用 page and Enter reached
+        // LauncherViewModel.HandleSearchEnter, which LAUNCHES the first match). It is now simply not
+        // shown there, which is what the user asked for and which retires the greyed look entirely.
+        //
+        // ONE write, and it goes on the Border, not on the TextBox. SearchField is the only element
+        // carrying Grid.Column="1" in TitleStripContent (MainWindow.axaml), i.e. it is what occupies
+        // the centre Auto column's slot — hiding only SearchBox would leave the bordered box and its
+        // E721 glyph sitting there. A second write on SearchBox would add nothing: a hidden element is
+        // not measured and cannot take focus at all — FocusManager.CanFocus is
+        // "Focusable && IsEffectivelyEnabled && IsEffectivelyVisible" (decompiled) — so OnSearchKeyDown's
+        // Enter/Escape/Down are exactly as unreachable here as they were while the box was disabled.
+        //
+        // The strip does not shift. Avalonia.Layout.Layoutable.MeasureCore (Avalonia.Base 12.1.0,
+        // decompiled and re-checked against the shipped assembly this round) wraps its WHOLE body,
+        // including the "num += Margin.Left + Margin.Right" term, in "if (IsVisible)" and returns
+        // default(Size) otherwise — so the hidden field contributes 0 AND its Margin="12,0" contributes
+        // 0, the Auto column measures 0, and the two equal-weight star columns either side just split
+        // the freed width evenly. Column 0's content is left-aligned in a column that always starts at
+        // x = 0 and column 2's is right-aligned in a column that always ends at the strip's right edge,
+        // so neither flanking group can move. Measured on the live build at the fitted width and at
+        // MinWidth="760": both groups' screen rects are byte-identical with the field shown and hidden.
+        //
+        // If the field is hidden WHILE focused, InputElement.OnPropertyChanged reacts to IsVisible
+        // going false under IsKeyboardFocusWithin by calling FocusManager.ClearFocusOnElementRemoved,
+        // which ends in Focus(null) — the same end state IsEnabled=false already produced through
+        // IsEffectivelyEnabled's setter, so this introduces no new focus case. The accent underline
+        // self-clears with it: the focus loss raises LostFocus → OnSearchFocusChanged, which drops the
+        // "focused" class Launcher.axaml's focusbar rules key off.
+        SearchField.IsVisible = page == ShellPage.App;
 
         if (page != ShellPage.App)
             return;

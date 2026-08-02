@@ -374,14 +374,10 @@
   <Style Selector="Border.tm-searchfield.focused Border.tm-searchfield-focusbar">
     <Setter Property="Background" Value="{DynamicResource AccentDefaultBrush}" />
   </Style>
-  <!-- Disabled (设置 page — MainWindow.ShowPage sets SearchField.IsEnabled off ShellPage.App): the
-       same recipe TmButton's own ^:disabled uses above (Foreground/Root dimming), applied here since
-       this field is plain markup rather than a ControlTheme template. A bare Border has no built-in
-       disabled look of its own, so without this rule the box stayed at full, "live" contrast while it
-       silently rejected input. -->
-  <Style Selector="Border.tm-searchfield:disabled">
-    <Setter Property="Opacity" Value="0.6" />
-  </Style>
+  <!-- There is deliberately NO :disabled rule for this field. Round 6, item 1: on pages that cannot
+       be searched the field is now HIDDEN rather than greyed out (MainWindow.ShowPage sets
+       SearchField.IsVisible off ShellPage.App), so nothing in this app ever disables it and a rule
+       for that state would have no producer left. -->
 
   <Style Selector="TextBox.tm-search">
     <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
@@ -391,15 +387,13 @@
     <Setter Property="MinHeight" Value="30" />
     <Setter Property="Padding" Value="0" />
   </Style>
-  <!-- This Style-precedence Foreground above outranks the Fluent TextBox ControlTheme's own built-in
-       :disabled foreground (a Style selector always wins over a ControlTheme template setter), so
-       disabling the box left its text at full TextPrimaryBrush contrast. Overriding Foreground AND
-       PlaceholderForeground at the same precedence, plus the field-level Opacity above, is what
-       actually reaches the screen — dimmed text, dimmed placeholder, dimmed field, in both themes. -->
-  <Style Selector="TextBox.tm-search:disabled">
-    <Setter Property="Foreground" Value="{DynamicResource TextDisabledBrush}" />
-    <Setter Property="PlaceholderForeground" Value="{DynamicResource TextDisabledBrush}" />
-  </Style>
+  <!-- There is deliberately no ":disabled" companion to the rule above either. It used to repaint
+       Foreground and PlaceholderForeground to TextDisabledBrush, because the Foreground set above at
+       Style precedence outranks the Fluent TextBox ControlTheme's own built-in :disabled foreground
+       and so left the text at full contrast. Round 6, item 1 hides the whole field on a page that
+       cannot be searched instead of disabling it, so nothing in this app puts this TextBox into
+       :disabled any more. Avalonia's own Fluent :disabled styling for TextBox — which also repaints
+       Border#PART_BorderElement with a grey slab, and which this file never overrode — goes with it. -->
   <!-- Round 3, Task 1 (user item 2): the actual source of the old "heavy accent rectangle" was never
        Border.tm-searchfield.focused above — it was Avalonia's OWN default TextBox ControlTheme, whose
        "^:focus /template/ Border#PART_BorderElement" style (Avalonia.Themes.Fluent 12.1.0's
@@ -408,9 +402,10 @@
        Background="Transparent" BorderThickness="0" (MainWindow.axaml) cannot block this: those locals
        win only for the OUTER TextBox's own properties, while the built-in style targets a DIFFERENT
        object — the named part living inside TextBox's control template — which has no competing local
-       value of its own. The fix uses the exact precedence this file already relies on for
-       TextBox.tm-search:disabled above (a Style declared here outranks a ControlTheme's own template
-       setter): re-targeting the SAME part name, at the SAME pseudo-class, forces it back to invisible,
+       value of its own. The fix uses the exact precedence this file relies on wherever it reaches into
+       a stock template (TextBox.tm-keycap's own PART_BorderElement rules below are the other case): a
+       Style declared here outranks a ControlTheme's own template setter, so re-targeting the SAME part
+       name, at the SAME pseudo-class, forces it back to invisible,
        leaving Border.tm-searchfield.focused (this field's own fill/underline) as the ONLY focus signal
        that reaches the screen. Confirmed by pixel-sampling a screenshot before this rule existed: a
        solid accent-coloured band sat exactly over PART_BorderElement's own measured bounds (inset from
