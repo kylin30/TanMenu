@@ -115,13 +115,24 @@ public class SettingsRowTests
         // now column 1 plus tm-card-expander's own 8. MaxWidth="260" was repeated on three value lines;
         // it is now tm-card-value's, together with the HorizontalAlignment that stops MaxWidth centring
         // the line.
-        string[] retired = { "Margin=\"30,", "MaxWidth=\"260\"" };
+        //
+        // Matched over ATTRIBUTES, not over the file's text. Both retired constants are documented in
+        // the prose of the very card files that have to be rewritten to stop using them (FoldersCard's
+        // class-level remark explains the MaxWidth, and ToolsCard's and UpdatesCard's explain the 30px
+        // indent), so a text scan would fail the migration on a comment that correctly describes what
+        // was removed. XDocument hands us the markup with the comments already gone.
         var offenders = new List<string>();
 
-        foreach (var file in CardFileNames())
+        foreach (var (file, doc) in CardFiles())
         {
-            var text = File.ReadAllText(Path.Combine(CardsDir, file));
-            offenders.AddRange(retired.Where(text.Contains).Select(c => $"{file}:{c}"));
+            var attributes = doc.Descendants().Attributes().ToList();
+
+            if (attributes.Any(a => a.Name.LocalName == "Margin"
+                                    && a.Value.StartsWith("30,", StringComparison.Ordinal)))
+                offenders.Add($"{file}:Margin=\"30,");
+
+            if (attributes.Any(a => a.Name.LocalName == "MaxWidth" && a.Value == "260"))
+                offenders.Add($"{file}:MaxWidth=\"260\"");
         }
 
         AssertRatchet(

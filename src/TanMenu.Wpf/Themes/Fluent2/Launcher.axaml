@@ -722,10 +722,29 @@
        below both set theirs. Measured cost of the omission on the live page: a title line box of
        19.33 DIP instead of the token's 20, a subtitle box of 16.67 instead of 16, and 0.67 DIP of
        drift WITHIN the subtitle class (the two pure-ASCII path lines measured 16.0 while every
-       subtitle containing CJK measured 16.67). Setting both makes the header block exactly
-       20 + 16 = 36 DIP on every card, which is what lets one VerticalAlignment="Center" put the icon
-       and the trailing control at the same y on every row. It costs no card height: 19.33 + 16.67 is
-       already 36. -->
+       subtitle containing CJK measured 16.67). Setting both pins a title-over-subtitle header block at
+       exactly 20 + 16 = 36 DIP, which is what lets one VerticalAlignment="Center" put the icon and the
+       trailing control at the same y on every row that HAS such a block. Three rows do not have one
+       yet: PinTaskbarTitle and HotkeyTitle (BehaviorCard) and UpdateStatusText (UpdatesCard) are bare
+       tm-card-titles in column 1 with no tm-card-sub beside them, so their header block measures 20
+       DIP, not 36. The row spec's part B moves each of those rows' loose line into the header, and
+       SettingsRowTests.PendingTwoLineHeader lists all three until it does.
+
+       WHAT IT COSTS IN CARD HEIGHT — it is not free, and one card GREW. Measured before and after on
+       the same window at 150 %, each card scrolled fully into view first and read from the card
+       Border's own UIA rect (physical px): twelve of the page's sixteen cards did not change, three
+       lost 1-2 px and one gained 1. Two effects cancel on a conforming row — the title gains 0.67 and
+       a CJK subtitle loses 0.67 — and a row whose column 2 holds a 32 DIP button or ToggleSwitch
+       absorbs the title's gain outright, because that grid row was already the control's height. The
+       SIGN of every delta follows from those two; the exact pixel counts do not reproduce from the
+       line-box arithmetic alone, because each UIA rect is a separately rounded pair of doubles at 1.5x,
+       so they are quoted as measured. Three cards lost: PinTaskbarStatusText's card 125 -> 124 and
+       HotkeyHelpText's 126 -> 125 (one lone CJK line below the Grid each, title gain absorbed by the
+       control in column 2), and DataFolderTitle's 219 -> 217 (two CJK lines against one title, around
+       an unchanged ASCII path line). One card gained: UpdatesCard's status card, 132 -> 133 — a bare
+       title, no subtitle to cancel it, and an empty column 2, so nothing absorbs it. One physical pixel
+       on the one card part B rebuilds from the header down (it gains a real title and demotes
+       UpdateStatusText to the subtitle), so it is recorded here rather than chased. -->
   <Style Selector="TextBlock.tm-card-title">
     <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
     <Setter Property="LineHeight" Value="{DynamicResource LineHeightBody}" />
@@ -800,8 +819,17 @@
        restate it: a NoWrap + CharacterEllipsis TextBlock reports its full
        untrimmed single-line advance as its desired width (trimming is a paint-time concern), so without
        a cap one long path inflates the whole card's desired width and pushes the trailing controls past
-       the visible edge. 260 is the shipped, screenshot-confirmed value, inherited rather than derived;
-       the full text stays one hover away because each consumer sets a matching ToolTip. -->
+       the visible edge. 260 is the shipped, screenshot-confirmed value, inherited rather than derived.
+
+       Where the bound can actually bite, the full text stays one hover away — but that is the
+       CONSUMER'S job, not this class's, and not every consumer needs one. FoldersCard's two path lines
+       are unbounded user data and set a matching ToolTip in code (FoldersCard.axaml.cs:102, 138, 220).
+       Its third value line, DataInfoText, sets none on purpose: its text is the fixed
+       CurrentDataSize / CurrentDataPending format over one of four short kind literals plus a
+       formatted byte count, and it measures 124 DIP of ink against the 260 bound (PrintWindow scan at
+       150 %, where DataPathText beside it is already ellipsized at 258), so a ToolTip there would only
+       repeat the line already on screen. A value line whose text CAN outgrow the bound and has no
+       ToolTip is a defect in that card. -->
   <Style Selector="TextBlock.tm-card-value">
     <Setter Property="TextWrapping" Value="NoWrap" />
     <Setter Property="TextTrimming" Value="CharacterEllipsis" />
