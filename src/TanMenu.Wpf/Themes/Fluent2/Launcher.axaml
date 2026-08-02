@@ -624,10 +624,18 @@
 
   <!-- ══ The content pane ═════════════════════════════════════════════════════════════════════════
        Round 4, item 5: MainWindow.axaml's PagePane — the Border that hosts whichever page is showing.
-       The two rules below are MUTUALLY EXCLUSIVE by construction (:not(.settings) against .settings),
-       not a base rule plus an override, and that is deliberate: see "WHY THESE LIVE HERE" below.
+       The two rules below are MUTUALLY EXCLUSIVE by construction (.app against :not(.app)), not a base
+       rule plus an override, and that is deliberate: see "WHY THESE LIVE HERE" below.
 
-       ── 应用 (the :not(.settings) rule) ────────────────────────────────────────────────────────────
+       Round 6, item 2 flipped which page is the exception. Until then the class was "settings" and the
+       painted rule was :not(.settings), i.e. the white bordered pane was the DEFAULT and 设置 was the
+       opt-out. The user's sentence is the other way round (除了应用页，其他页面使用和窗口相同的材质面板),
+       so the class is now "app": a page that is not 应用 comes up on the window's own material, and a
+       hypothetical third page would come up on the material rather than silently white. ShellPage has
+       exactly two members today (Services/IShellNavigator.cs), so this changes nothing that is on
+       screen except 设置 — it changes which way the default points.
+
+       ── 应用 (the .app rule) ───────────────────────────────────────────────────────────────────────
        A pure white pane with a 1 DIP hairline on its TOP and LEFT edges only and an 8 DIP top-left
        corner, flush against the rail and against the title strip with zero inset — it is not a floating
        card. Every one of those four facts is measured off the user's reference capture of Task Manager
@@ -657,20 +665,82 @@
        WindowHost.ChromeHeightDip does the same for the top one — see both constants' own remarks. Do
        not change this thickness without changing those.
 
-       ── 设置 (the .settings rule) ──────────────────────────────────────────────────────────────────
-       Keeps SurfaceBaseBrush, no border, no corner. This is NOT an oversight and NOT a partial
-       implementation of "the content page is pure white": the reference does not make its own two pages
-       agree either. The user's second capture (1.png) is the SAME Task Manager window on its Settings
-       page, and there the content pane samples (243,243,243) — the same value as its own rail — over the
-       whole block x 68..96 / y 70..96, with y = 77 reading 243 at x = 200/600/1200/1800/1900, i.e. flat,
-       borderless and square-cornered, carrying (251,251,251) cards with (229,229,229) outlines.
-       Our settings cards (Border.tm-card, below) are SurfaceLayerBrush, white at alpha 179, which
-       composites to (251,251,251) over a 243 pane — matching that reference exactly — but to
-       (255,255,255) over a white one, i.e. a card the literal colour of the page behind it. So 设置
-       stays on the base surface and only 应用 goes white.
-       Verified after the change on a live PrintWindow capture of the 设置 page: the pane reads
-       (243,243,243) with no hairline at the pane's first column and no arc anywhere in the top-left
-       block, and a card reads (251,251,251) behind a (229,229,229) outline.
+       ── every other page (the :not(.app) rule) ─────────────────────────────────────────────────────
+       Paints NOTHING: Transparent, no border, no corner, so the window's own surface — Mica when the
+       platform grants it, otherwise whatever ApplyBackdrop put on Window.Background — runs unbroken
+       from the rail and the title strip straight through the content. That is what Windows' own
+       Settings does — measured on it during the Round 6 reconnaissance, not assumed: at image y = 470
+       its capture reads exactly (243,242,249) at x = 20, 100, 200, 300, 400, 450, 480, 490 and 499,
+       nine samples and one value, straight through where a pane edge would be. It has no content pane
+       at all; nav column and content column are one continuous surface with no border, no corner and
+       no seam.
+
+       ROUND 6, ITEM 2 OVERRULES ROUND 4 HERE — deliberately, on new measurements, not by accident.
+       Round 4 gave this half of the pane SurfaceBaseBrush and argued: our cards are SurfaceLayerBrush
+       (white at alpha 179), which composites to (251,251,251) over a 243 pane — a Δ8 separation — but
+       to (255,255,255) over a WHITE one, Δ0, i.e. a card the literal colour of the page behind it. That
+       arithmetic is right, and it is an argument about WHITE. White is not what this pane becomes.
+       Card minus backdrop, both sampled at the same y in the SAME capture — the first four rows on the
+       pre-change build during the Round 6 reconnaissance, the last two on the build this comment ships
+       with:
+
+                                              fill − backdrop      border − backdrop
+         Light, over SurfaceBaseBrush (was)       (8,8,8)            (−14,−14,−14)
+         Light, over Mica, window left edge      (12,10,0)           (−14,−14,−15)
+         Light, over Mica, window right edge      (6,11,7)           (−14,−14,−14)
+         Dark,  over SurfaceBaseBrush (was)       (8,8,8)             (16,16,16)
+         Light, AFTER, this build                (12,9,4)            (−13,−14,−15)
+         Dark,  AFTER, this build                 (9,8,6)             (16,16,15)
+
+       Mica under this window measures 238..247 Light and 30..34 Dark, i.e. it STRADDLES SurfaceBaseBrush
+       (243 / 32); it is nowhere near SurfacePageBrush (255 / 44). So the card-to-page separation is
+       unchanged to within 2-4 levels and the card's outline is unchanged to within 1. Round 4's Δ0 never
+       arises. NOTE that the fill's blue delta can legitimately reach 0 near the window's left edge (it
+       did, measured on the pre-change build) — the outline is what draws the card, and it is Δ13-16
+       everywhere. ABSOLUTE RGBs on this surface are NOT portable: PrintWindow composites the DWM
+       backdrop itself, so a Mica pane photographs as the blurred wallpaper behind that window's own
+       screen position. Only the relationships above are, which is why they are what is written down.
+
+       And that is not a projection. Border.tm-searchfield (above) uses the SAME three tokens as
+       Border.tm-card — SurfaceLayerBrush over a 1 DIP StrokeControlBrush at RadiusControl — and already
+       sits directly on this window's real Mica in the title strip. Measured there: Light backdrop
+       (244,240,248) gives fill (252,251,253) and border (230,226,233); Dark backdrop (33,31,35) gives
+       fill (41,40,42) and border (49,47,51). Predicted from the token alphas: (252,251,253)/(230,226,233)
+       and (41,39,42)/(49,47,50) — within 1 level on every channel. A settings card on Mica is already on
+       screen; it is the search field.
+
+       WHAT THIS BUYS, HONESTLY. Two seams disappear. On the PRE-CHANGE build the vertical rail→pane
+       step at image x 82 → 83 in Light measured (+5,+2,−12) at y = 150, (+5,+1,−12) at y = 400 and
+       (+4,+1,−10) at y = 700 — small per channel, but a straight 780 px line between a neutral grey and
+       a tinted gradient — and the horizontal strip→pane step at y 71 → 72 measured (−2,+4,−4) at
+       x = 1500. In DARK the same steps were (+2,0,−6)..(+2,0,−7) and (−2,+1,−2): close to invisible, so
+       the payoff is almost entirely a Light-theme payoff and this comment says so rather than
+       overselling it. On THIS build both steps measure (0,0,0) at every one of those points, in both
+       variants.
+
+       Background is Transparent and is never simply omitted. It states the intent where a missing setter
+       reads as an oversight, and a null-background Border is not hit-testable in Avalonia, so the gaps
+       between settings cards would stop absorbing pointer input.
+
+       THIS PANE DOES NOT PAINT ITS OWN MICA FALLBACK, and must not be given one. When the platform
+       refuses Mica, MainWindow.ApplyBackdrop subscribes Window.Background to SurfaceBaseBrush (a
+       resource observable, so it follows the theme variant), and everything transparent above it shows
+       that colour. A second fallback brush here would be a second source of truth for "what colour is
+       this window's surface", and it would be wrong in exactly the case it exists for: the window's
+       surface is Window.Background, whatever that resolves to.
+
+       WHAT IS AND IS NOT ESTABLISHED ABOUT THAT FALLBACK. The refused path was NOT exercised. It was
+       attempted in full while this item shipped — EnableTransparency cleared in the registry, the
+       window hidden and re-summoned so Opened and therefore ApplyBackdrop genuinely re-ran, then an
+       ImmersiveColorSet broadcast and a cold restart — and this machine kept granting Mica through all
+       three, so ActualTransparencyLevel never left Mica and the branch was never entered. Do not read
+       "the fallback works" into this comment. What IS established: the mechanism it relies on is not
+       new, because the rail and the title strip (TitleBarBackgroundBrush = Transparent, Tokens.axaml)
+       are already Transparent over Window.Background, and this pane measured continuous with both to
+       (0,0,0) at every sampled point. What the fallback WOULD produce is arithmetic over the tokens,
+       computed and not measured: flat (243,243,243) Light / (32,32,32) Dark, with (251,251,251) /
+       (40,40,40) cards behind (229,229,229) / (48,48,48) outlines — i.e. the same colours 设置 had
+       before this change, when the pane painted SurfaceBaseBrush itself.
 
        ── WHY THESE LIVE HERE, AND NOT AS LOCAL VALUES ON THE BORDER ─────────────────────────────────
        Because a style setter cannot override a local value in Avalonia, in either direction. A class
@@ -681,17 +751,17 @@
        side — see the SearchBox TextBox's own remarks in MainWindow.axaml, where a LOCAL Background is
        what stops Avalonia's :pointerover style repainting the field. So writing the 应用 look as
        Background/BorderThickness/CornerRadius attributes on PagePane and then trying to switch it with a
-       ".settings" class would silently do nothing at all: the pane would stay white on 设置. Both states
+       class toggle would silently do nothing at all: the pane would stay white everywhere. Both states
        are therefore styles, and they are written as non-overlapping selectors so the result does not
        depend on this file's rule ORDER either. -->
-  <Style Selector="Border.tm-page-pane:not(.settings)">
+  <Style Selector="Border.tm-page-pane.app">
     <Setter Property="Background" Value="{DynamicResource SurfacePageBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource StrokeControlBrush}" />
     <Setter Property="BorderThickness" Value="1,1,0,0" />
     <Setter Property="CornerRadius" Value="{DynamicResource RadiusPaneTopLeft}" />
   </Style>
-  <Style Selector="Border.tm-page-pane.settings">
-    <Setter Property="Background" Value="{DynamicResource SurfaceBaseBrush}" />
+  <Style Selector="Border.tm-page-pane:not(.app)">
+    <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderThickness" Value="0" />
     <Setter Property="CornerRadius" Value="0" />
   </Style>

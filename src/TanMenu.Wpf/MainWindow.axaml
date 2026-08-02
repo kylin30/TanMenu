@@ -526,25 +526,32 @@
         </Grid>
       </Border>
 
-      <!-- ══ Content pane: a solid surface, not Mica ════════════════════════════════════════════════
-           Task Manager's shape: the backdrop shows through the title strip and the nav rail, but the
-           page underneath them is an opaque layer. Neither page paints an opaque surface of its own —
+      <!-- ══ Content pane: an opaque surface on 应用, the window's own material everywhere else ══════
+           Task Manager's shape: the backdrop shows through the title strip and the nav rail, and on the
+           应用 page it is covered by an opaque layer. Neither page paints a surface of its own —
            SettingsPage's root ScrollViewer sets no Background at all and AppPage's root Panel sets only
-           Transparent — which is what lets this single Border stand in for the solid pane under EITHER
-           page instead of each page having to paint it separately. (An earlier revision of this comment
-           said both were "left with no background of their own"; AppPage's root does carry
+           Transparent — which is what lets this single Border decide the surface under EITHER page
+           instead of each page having to paint it separately. (An earlier revision of this comment said
+           both were "left with no background of their own"; AppPage's root does carry
            Background="Transparent", so that was half wrong.)
 
-           Round 4, item 5 gave the two pages two DIFFERENT looks on this one Border, so it is no longer
-           "one opaque surface colour" — an earlier revision of this comment argued at length that
-           reusing SurfaceBaseBrush here kept that phrase meaning exactly one thing, and that is now
-           false in both halves. 应用 gets a pure white pane with a 1 DIP top+left hairline and an 8 DIP
-           top-left corner (all four values measured off the user's Task Manager reference); 设置 keeps
-           SurfaceBaseBrush, flat and borderless, because that is what the SAME reference does on ITS
-           settings page and because our settings cards would otherwise composite to the exact colour of
-           a white page. ShowPageCore (code-behind) toggles the "settings" class; the measurements, the
-           arithmetic and the reason both looks are STYLES rather than local attributes here all live in
-           Launcher.axaml's "Border.tm-page-pane" block.
+           Round 4, item 5 gave the two pages two DIFFERENT looks on this one Border. 应用 gets a pure
+           white pane with a 1 DIP top+left hairline and an 8 DIP top-left corner — all four values
+           measured off the user's Task Manager reference — and that half is unchanged.
+
+           Round 6, item 2 changed the other half and OVERRULES Round 4 §5.1(d)/§7.1, which kept 设置 on
+           SurfaceBaseBrush. Every page that is not 应用 now paints NOTHING: Transparent, no border, no
+           corner, so the window's own surface runs unbroken from the rail and the strip through the
+           content, which is exactly what Windows' own Settings page does (measured: it has no content
+           pane at all — nine samples across where a pane edge would be read one value). Round 4's
+           objection was that our SurfaceLayerBrush cards composite to the exact colour of a WHITE page;
+           Mica is not white — it measures 238..247 Light / 30..34 Dark under this window, straddling
+           SurfaceBaseBrush — so the card separation survives. ShowPageCore (code-behind) toggles the
+           "app" class, and it is "app" rather than "settings" on purpose: "on the window material" is
+           now the default, so a third page cannot silently come up white. Every measurement, the
+           Mica-refused fallback (Window.Background, set by ApplyBackdrop, is the single source of truth
+           — this Border must never grow a fallback of its own) and the reason both looks are STYLES
+           rather than local attributes here all live in Launcher.axaml's "Border.tm-page-pane" block.
 
            ClipToBounds — AND A PIECE OF EVIDENCE THAT NO LONGER EXISTS. Round 4 recorded here that a
            Border DOES clip its child to its CORNER RADIUS rather than to its bounds rectangle. That was
@@ -578,7 +585,7 @@
            So nothing left in the page can reproduce that capture, and ClipToBounds is once again
            defensive rather than load-bearing. It stays for exactly that reason: it costs nothing and it
            is what would keep a future full-bleed child inside the arc.
-           设置 still has no radius at all under the .settings rule. -->
+           A page that is not 应用 still has no radius at all under the :not(.app) rule. -->
       <Border Grid.Column="1"
               x:Name="PagePane"
               Classes="tm-page-pane"

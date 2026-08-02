@@ -57,7 +57,17 @@ The reference measurements that exist in this repo are Task Manager's, taken in 
 
 * its settings pane is `(243,243,243)`, flat, borderless, square-cornered, carrying `(251,251,251)`
   cards with `(229,229,229)` outlines — which is exactly what `Border.tm-card` over `SurfaceBaseBrush`
-  already composites to (`Launcher.axaml:658-671`, Round 4 §5.1(d));
+  composites to (Round 4 §5.1(d));
+
+  > **Half of that sentence went stale on 2026-08-03, Round 6 item 2.** The reading of Task Manager is
+  > untouched — it is a capture and it still says what it says. What changed is *our* side: 设置 no
+  > longer sits on `SurfaceBaseBrush`, so those three absolute RGBs are no longer what our own build
+  > measures. Our 设置 pane now paints nothing and the window's surface shows through, which on a
+  > Mica-granted machine has no portable absolute value; the card's *relationships* to whatever is
+  > behind it are what survive, and Round 6 §2.2 measures them as unchanged to within 2-4 levels. The
+  > `Launcher.axaml:658-671` line reference in the original sentence is also dead — `Border.tm-card`
+  > is at `:765` in the current tree. Nothing in §A depends on either, since §A takes no number from
+  > this bullet.
 * its section headings and its card titles measure the **same ink height** and are told apart by weight
   alone; its page title's ink is ~1.4× its section headings' — the measurement behind
   `tm-group-head` / `tm-page-title` (`Launcher.axaml:730-743`).

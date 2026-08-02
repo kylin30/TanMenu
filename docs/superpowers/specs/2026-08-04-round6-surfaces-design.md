@@ -3,12 +3,15 @@
 > **Status when written: DESIGN ONLY.** No source file was edited and nothing was committed while
 > this document was written; the repository was clean at `ef79481` throughout.
 >
-> **Status now (2026-08-03).** **Item 1 is implemented** — `cc550da`, *feat: hide the search field off
-> 应用 instead of disabling it* — and its §1.4 steps 2, 3 and 6 were **corrected after that item's
-> review**: two of them were bars a correct build fails, and one rested on a measurement its
-> instrument could not support. The corrections are marked in place and dated. Items 2, 3 and 4 are
-> still design only. Verified against the tree before this note was written: `ShowPageCore` still
-> writes `PagePane.Classes.Set("settings", …)`, i.e. item 2's class flip has not shipped.
+> **Status now (2026-08-03).** **Items 1 and 2 are implemented.** Item 1 shipped in `cc550da`, *feat:
+> hide the search field off 应用 instead of disabling it*, and its §1.4 steps 2, 3 and 6 were
+> **corrected after that item's review**: two of them were bars a correct build fails, and one rested
+> on a measurement its instrument could not support. The corrections are marked in place and dated.
+> Item 2 shipped next; `ShowPageCore` now writes `PagePane.Classes.Set("app", page == ShellPage.App)`
+> and the two selectors are `Border.tm-page-pane.app` / `:not(.app)`, verified against the tree as this
+> note was written. **One correction to §2.5 came out of running it** — step 6, the deliberate
+> Mica-refused case, **could not be executed on this machine**; the correction is marked in place at
+> that step. Items 3 and 4 are still design only.
 >
 > **Scope.** The four items the user asked for after reviewing the Round 5 build:
 >
@@ -522,6 +525,33 @@ item, but it says nothing about which surface that is. So:
    Capture: pane, rail and strip must all read `(243,243,243)` with no step at either seam, and a card
    must read `(251,251,251)` behind a `(229,229,229)` outline. Restore `EnableTransparency` and the
    config backup.
+
+   > **Corrected 2026-08-03, while implementing item 2: this step does not work on this machine, and
+   > the item shipped with its refused path UNTESTED.** The procedure above was carried out in full and
+   > **the platform kept granting Mica throughout**, so it never reached the branch it exists to
+   > exercise. What was actually done, in order: `EnableTransparency` read as `1` (DWord) and set to
+   > `0`; the window hidden with a posted `WM_CLOSE` (which `MainWindow.OnClosing` cancels into
+   > `_host.Hide()` — confirmed, `IsWindowVisible` went `True → False` with the process alive) and
+   > re-summoned by re-launching the exe, so `Opened` and therefore `ApplyBackdrop` genuinely re-ran;
+   > then, when that changed nothing, `WM_SETTINGCHANGE`/`ImmersiveColorSet` broadcast to
+   > `HWND_BROADCAST` and the process killed and restarted cold, so `ApplyBackdrop` ran on a brand-new
+   > window. **All three captures still photograph the wallpaper gradient**: title strip y = 6 reads
+   > `(239,241,253) (243,240,249) (245,240,248) (246,239,245) (244,240,247)` across x = 100..2400 — a
+   > 14-level spread — and the rail at x = 40, y = 400 reads `(238,241,255)`, not the flat
+   > `(243,243,243)` the fallback would paint. `ActualTransparencyLevel` was therefore still
+   > `Mica`, `ApplyBackdrop` still took its early return, and `_backdropFallback` was never created.
+   > `EnableTransparency` was restored to `1` (DWord) and re-broadcast.
+   >
+   > **Conclusion to carry forward, and it is a limitation, not a pass.** On this machine
+   > (Windows 11 26xxx) DWM does not withdraw the Mica backdrop when `EnableTransparency` is cleared in
+   > the registry, so **the refused path cannot be exercised here at all** and nobody should write
+   > that it was. What *is* established: the mechanism the fallback relies on — a `Transparent` element
+   > showing `Window.Background` — is not a new claim, because the rail (`MainWindow.axaml`) and the
+   > title strip (`TitleBarBackgroundBrush = Transparent`, `Tokens.axaml`) already work exactly that
+   > way, and steps 1 and 2 measured the pane continuous with both to `(0,0,0)` at every sampled point.
+   > The untested part is narrower than the whole step: it is whether `ActualTransparencyLevel` reports
+   > non-`Mica` on a machine that really refuses it. That is pre-existing shipped code
+   > (`MainWindow.axaml.cs`, unchanged by item 2), not something this item introduced.
 7. **Source.** `grep -rn 'Classes.Set("settings"' src/` returns nothing;
    `grep -n "tm-page-pane" src/TanMenu.Wpf/Themes/Fluent2/Launcher.axaml` shows `.app` and `:not(.app)`.
    `grep -n "#[0-9A-Fa-f]\{3,8\}" src/TanMenu.Wpf/Themes/Fluent2/Launcher.axaml` returns nothing.

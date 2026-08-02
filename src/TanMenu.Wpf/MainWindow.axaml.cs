@@ -598,15 +598,26 @@ public partial class MainWindow : Window
             ? _settingsPage ??= new SettingsPage()
             : _appPage;
 
-        // Round 4, item 5: the two pages get two different content-pane looks — 应用 a white pane with a
-        // hairline and a rounded top-left corner, 设置 the flat base surface — and this method is
+        // Round 4, item 5: the two pages get two different content-pane looks and this method is
         // already the single authority for which page is on screen, so the class toggle belongs here
-        // rather than in either page. Both looks are styles in Launcher.axaml
-        // ("Border.tm-page-pane"), which is also where the reason they cannot be local attributes on
-        // the Border is written down. The class lands on PagePane, the always-attached host, never on
-        // anything inside _appPage — so RefitToContent's detach guard and the measurement it protects
-        // are untouched by it.
-        PagePane.Classes.Set("settings", page == ShellPage.Settings);
+        // rather than in either page. Both looks are styles in Launcher.axaml ("Border.tm-page-pane"),
+        // which is also where the reason they cannot be local attributes on the Border is written down.
+        // The class lands on PagePane, the always-attached host, never on anything inside _appPage — so
+        // RefitToContent's detach guard and the measurement it protects are untouched by it.
+        //
+        // Round 6, item 2: the class is "app", NOT "settings", and the flip is the point rather than a
+        // rename. 应用 keeps the white pane with the hairline and the rounded top-left corner; every
+        // OTHER page now paints nothing and lets the window's own surface (Mica, or ApplyBackdrop's
+        // SurfaceBaseBrush when the platform refuses it) run straight through, the way Windows' own
+        // Settings page does — measured: it has no content pane at all. Encoding it as "app" makes "on
+        // the window material" the DEFAULT, so a third ShellPage member would come up on the material
+        // instead of silently coming up white, which is the opposite of what was asked. This overrules
+        // Round 4 §5.1(d) deliberately: that ruling kept 设置 on SurfaceBaseBrush because our cards
+        // composite to the exact colour of a WHITE page, and Mica is not white — it measures 238..247
+        // Light / 30..34 Dark under this window, straddling SurfaceBaseBrush, so the card separation is
+        // unchanged to within a few levels. The measurements are in the Launcher.axaml block. Do not
+        // "restore" the grey.
+        PagePane.Classes.Set("app", page == ShellPage.App);
 
         // Round 6, item 1: the title strip's search box is always attached, and on 设置 — a page with
         // nothing to search — it used to stay on screen greyed out (Round 3 review finding 4 disabled

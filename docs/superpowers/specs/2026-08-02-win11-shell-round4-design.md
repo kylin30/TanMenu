@@ -1004,6 +1004,28 @@ frame x 73, the border's outer edge is x 74), flush at the body's top, and runs 
 and row with **no right or bottom border**. It is *not* a floating card; r4-theme §3.4 refutes that
 explicitly.
 
+> **Superseded by Round 6, item 2 — see
+> `docs/superpowers/specs/2026-08-04-round6-surfaces-design.md` §2.1-§2.5. The shipped code is the
+> authority.** 设置 no longer keeps `SurfaceBaseBrush`. Every page that is not 应用 now paints
+> **nothing** — `Background="Transparent"`, no border, no corner — so the window's own surface (Mica,
+> or `ApplyBackdrop`'s `SurfaceBaseBrush` when the platform refuses it) runs unbroken from the rail
+> and the title strip through the content. The class was also flipped from `settings` to `app`, so the
+> selectors are now `Border.tm-page-pane.app` and `Border.tm-page-pane:not(.app)` and `ShowPageCore`
+> writes `PagePane.Classes.Set("app", page == ShellPage.App)`.
+>
+> **The Δ0 argument below is correct and does not apply.** It is an argument about **white**, and
+> white is not what the pane became. Measured on this window's real Mica in Round 6: Light card fill −
+> backdrop `(12,10,0)` at the window's left edge and `(6,11,7)` at its right, border − backdrop
+> `(−14,−14,−15)` / `(−14,−14,−14)`, against `(8,8,8)` / `(−14,−14,−14)` over the old grey pane; Dark
+> `(8,8,7)` / `(16,16,16)` against `(8,8,8)` / `(16,16,16)`. Mica measures 238-247 Light / 30-34 Dark
+> under this window, i.e. it straddles `SurfaceBaseBrush` (243 / 32) and is nowhere near
+> `SurfacePageBrush` (255 / 44). Re-measured on the shipped Round 6 build: Light border − backdrop
+> `(−13,−14,−15)` and fill − backdrop `(12,9,4)`; Dark `(16,16,15)` and `(9,8,6)`.
+>
+> The 应用 half of this item — (a), (b), (c), (e), (f) — is **unchanged and still shipping**.
+> Re-measured on the Round 6 build: 应用 pane `(255,255,255)` Light / `(44,44,44)` Dark, inner border
+> column `(240,240,240)` / `(59,59,59)`, top-left arc present, no right or bottom border.
+
 **(d) 设置 keeps the base surface.** `ShowPageCore` (`MainWindow.axaml.cs:513-515`) is already the single
 authority for which page is on screen; it gains one line —
 `PagePane.Classes.Set("settings", page == ShellPage.Settings);` — and `Launcher.axaml` gains one rule:
@@ -1065,6 +1087,15 @@ window's fallback surface tracks the variant. Item 5's whole requirement is "tit
 one background"; that must hold in both variants **and** in both backdrop states, and today it does not.
 
 ### 5.2 Why
+
+> **Partially superseded by Round 6, item 2 (`docs/superpowers/specs/2026-08-04-round6-surfaces-design.md`
+> §2.2). Stated precisely rather than blanket-marked, because most of this section is still true.** The
+> ruling this section justifies is §5.1(d), and §5.1(d)'s 设置 half is overruled — see the box there.
+> **None of the five bullets below is itself falsified**: they are about the 应用 pane, the token test's
+> coverage gap, and the tiles on the white 应用 page, all of which still ship exactly as written. What
+> the reader must not carry forward is the *conclusion* this reasoning was assembled for, namely that
+> the app's two pages should be given two different opaque surfaces. Round 6 gives 应用 an opaque
+> surface and every other page the window's own.
 
 * **The user's complaint, as a number.** At the same x, Task Manager's title bar and rail differ by
   **≤ 1 level**; ours differ by **14, 14, 6** (x = 35 and x = 60, two independent captures — r4-theme
@@ -1189,6 +1220,19 @@ measured basis; `MainWindow.axaml.cs:442-444` (`ApplyBackdrop`'s summary).
    then measure `(243,243,243)` with **no** border pixel at x = 83 and **no** arc at the top-left, and
    the cards must measure `#FBFBFB` with `#E5E5E5` borders. If the provider refuses the pattern, fall
    back to asserting the `Border.settings` rule by source inspection plus (6)'s token check.
+
+   > **Superseded by Round 6, item 2; do not run this step as written — a correct build fails it.**
+   > `Border.settings` no longer exists (the selectors are `Border.tm-page-pane.app` and
+   > `:not(.app)`), and the pane no longer measures `(243,243,243)`: it paints nothing, so it measures
+   > whatever the window's surface measures at that pixel. On a Mica-granted machine that is a
+   > wallpaper gradient with **no portable absolute value**. The equivalent that holds today is
+   > `docs/superpowers/specs/2026-08-04-round6-surfaces-design.md` §2.5: assert **continuity** across
+   > the rail→pane seam at image x 82→83 and the strip→pane seam at y 71→72 (|Δ| ≤ 1 per channel), and
+   > assert the card's **relationships** to the backdrop measured in the same capture, never its
+   > absolute RGB. The `(243,243,243)` figure survives only as the **Mica-refused fallback's**
+   > expectation, where `ApplyBackdrop` paints `SurfaceBaseBrush` on the window and the transparent
+   > pane shows it. Measured on the shipped Round 6 build in Light: both seam deltas `(0,0,0)` at every
+   > sampled point.
 8. **If the white title band survives step 1**, do not iterate blindly: the remaining candidate cause is
    a `PrintWindow`/`DwmExtendFrameIntoClientArea` artefact (r4-theme §3.3), which means the band was never
    on screen at all. Confirm against a human looking at the actual window before doing more work.
@@ -1296,6 +1340,14 @@ that does not exist and need an `x:DataType`); and the tile grid keeps its two n
 Exactly one survives. Everything else in this document is decided.
 
 **7.1 — Does the 设置 page's content pane go white too?**
+
+> **Answered by the user in Round 6, and neither way this question offered.** The user asked for
+> *除了应用页，其他页面使用和窗口相同的材质面板* — every page except 应用 uses a pane made of the same
+> material as the window. So the 设置 pane is neither the grey this section defends nor the white its
+> alternative proposed: it paints **nothing**, and the window's own surface shows through. Round 6,
+> item 2 shipped that; see `docs/superpowers/specs/2026-08-04-round6-surfaces-design.md` §2.1-§2.5 and
+> the box on §5.1(d) above for the measurements that retire the Δ0 objection below. The question is
+> closed — do not re-open it as a binary.
 
 *This design says no* (§5.1(d)): 应用 becomes white with the 1 DIP top+left border and the 8 DIP top-left
 corner; 设置 keeps `SurfaceBaseBrush` with no border and no corner. The basis is the user's own second

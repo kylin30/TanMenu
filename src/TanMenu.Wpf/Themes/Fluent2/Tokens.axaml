@@ -49,9 +49,10 @@
                Manager's content pane samples exactly (255,255,255) at (1700,100) and (100,600) in the
                user's reference capture 3.png, and at (1709,100) in an independent PrintWindow capture of
                the live Task Manager taken during the Round 4 survey. Consumed by
-               "Border.tm-page-pane" (Launcher.axaml) and by nothing else — the rail and the title strip
-               deliberately keep showing the window backdrop through them, and 设置 keeps
-               SurfaceBaseBrush (see that pane style's own remarks for the measured reason). -->
+               "Border.tm-page-pane" (Launcher.axaml) and by nothing else, and since Round 6, item 2 only
+               by that rule's ".app" half — the rail, the title strip AND every page other than 应用
+               deliberately show the window's own surface through them (see that pane style's own remarks
+               for the measurements that overruled Round 4's grey 设置 pane). -->
           <SolidColorBrush x:Key="SurfacePageBrush"          Color="#FFFFFF" />
           <SolidColorBrush x:Key="SurfaceLayerBrush"         Color="#B3FFFFFF" />
           <!-- The same neutral as SurfaceLayerBrush, just more opaque, for the round-3 Task 1 ask that

@@ -52,6 +52,12 @@
 >   legacy deserialize-only field.
 > - **§2 app page** — the in-page header (search, overflow, hide glyph) is deleted; the content pane is
 >   a solid `SurfaceBaseBrush` layer rather than Mica, and shortcut tiles are button-styled.
+>   *(The pane clause has since been overtaken twice and is kept only as a record of this round.
+>   **Round 4, item 5** made the 应用 pane `SurfacePageBrush` — pure white with a 1 DIP top+left
+>   hairline and an 8 DIP top-left corner — not `SurfaceBaseBrush`; **Round 6, item 2**
+>   (`docs/superpowers/specs/2026-08-04-round6-surfaces-design.md` §2) then made every page that is
+>   **not** 应用 paint nothing at all, so on those pages the content really is the window's Mica. The
+>   deleted header and the button-styled tiles are unaffected and still describe the build.)*
 >
 > **Round 2's outstanding human verification**, in addition to the five above: a literal Alt+F4 (twice
 > — cold start, and after a maximize/restore cycle); Alt+F4 on a window still maximized across a
