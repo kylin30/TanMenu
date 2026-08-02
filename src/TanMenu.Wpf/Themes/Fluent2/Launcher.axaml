@@ -717,16 +717,154 @@
     <Setter Property="Padding" Value="16,12" />
     <Setter Property="Margin" Value="0,0,0,4" />
   </Style>
+  <!-- Round 5, item 3: LineHeight was the one half of the type ramp these two classes skipped, and
+       they were the ONLY text classes in this file that skipped it — tm-group-head and tm-page-title
+       below both set theirs. Measured cost of the omission on the live page: a title line box of
+       19.33 DIP instead of the token's 20, a subtitle box of 16.67 instead of 16, and 0.67 DIP of
+       drift WITHIN the subtitle class (the two pure-ASCII path lines measured 16.0 while every
+       subtitle containing CJK measured 16.67). Setting both makes the header block exactly
+       20 + 16 = 36 DIP on every card, which is what lets one VerticalAlignment="Center" put the icon
+       and the trailing control at the same y on every row. It costs no card height: 19.33 + 16.67 is
+       already 36. -->
   <Style Selector="TextBlock.tm-card-title">
     <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
+    <Setter Property="LineHeight" Value="{DynamicResource LineHeightBody}" />
   </Style>
   <Style Selector="TextBlock.tm-card-sub">
     <Setter Property="FontSize" Value="{DynamicResource FontSizeCaption}" />
+    <Setter Property="LineHeight" Value="{DynamicResource LineHeightCaption}" />
     <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
     <!-- Wrap rather than overflow: the middle column is whatever is left after the leading icon and
          the trailing control, which is narrower than several of these descriptions' natural width. -->
     <Setter Property="TextWrapping" Value="Wrap" />
   </Style>
+
+  <!-- ══ The row spec's shared classes ═════════════════════════════════════════════════════════
+       Round 5, item 3 (设置页每个设置项统一设计规范). One anatomy for every settings row: a 16 DIP icon,
+       a header of EXACTLY one title line and one subtitle line, the control trailing in column 2, and
+       an optional expansion row starting at column 1's own origin. Everything in that anatomy which
+       has an AvaloniaProperty behind it is a class here.
+
+       ONE PART OF THE ANATOMY CANNOT BE A STYLE. Grid exposes ShowGridLinesProperty, RowSpacingProperty,
+       ColumnSpacingProperty, ColumnProperty, RowProperty, ColumnSpanProperty, RowSpanProperty and
+       IsSharedSizeScopeProperty — and no ColumnDefinitionsProperty or RowDefinitionsProperty at all
+       (checked by reflection over the shipped Avalonia.Controls.dll 12.1.0). ColumnDefinitions and
+       RowDefinitions are plain CLR properties, and a Setter needs an AvaloniaProperty, so
+       ColumnDefinitions="Auto,*,Auto" is written literally in every card and guarded by a source test
+       instead (tests/TanMenu.Core.Tests/Themes/SettingsRowTests.cs).
+
+       RowSpacing IS a StyledProperty and could have carried the header-to-expansion gap. It deliberately
+       does not: a row gap is charged between row definitions even when the expansion row's only child is
+       IsVisible="False" (UpdatesCard's ProgressBar), which would leave 8 DIP of dead space on that card
+       in its normal state. The gap lives on the expansion child's own Margin instead (tm-card-expander),
+       and an invisible child contributes no margin at all.
+
+       These rules are declared AFTER the two they refine, the same ordering this file already relies on
+       for TextBlock.tm-icon.subtle overriding TextBlock.tm-icon's Foreground. -->
+
+  <!-- The icon box. :is(Control) rather than a TextBlock-scoped selector so the same class boxes a row
+       whose leading mark is not a glyph — an Image, say — without a second rule.
+       Width 16 fixes the column independently of the glyph: all fifteen
+       distinct glyphs the page uses already measure exactly 16 DIP wide, so this changes nothing today
+       and stops a future glyph from moving the title. Height is deliberately NOT set — the 16 DIP box is
+       Segoe Fluent Icons' own line box at FontSize 16, and pinning a height would clip the glyph if the
+       Windows 10 fallback face (Segoe MDL2 Assets) measures taller. -->
+  <Style Selector=":is(Control).tm-card-icon">
+    <Setter Property="Width" Value="16" />
+    <Setter Property="Margin" Value="0,0,14,0" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+
+  <!-- The header text column: title over subtitle, nothing else. 12 is the gutter to the trailing
+       control; Center is what pairs with the icon's own Center so both land on one y once the header is
+       always two lines. -->
+  <Style Selector="StackPanel.tm-card-text">
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Margin" Value="0,0,12,0" />
+  </Style>
+
+  <!-- A value line — a path, a size, a version: a subtitle that is one ellipsized line rather than a
+       wrapping paragraph. Used WITH tm-card-sub (Classes="tm-card-sub tm-card-value") so it inherits
+       size, colour and line height and states only the four things that differ.
+
+       HorizontalAlignment="Left" is not cosmetic and must not be dropped. Avalonia 12.1.0's
+       Layoutable.ArrangeCore clamps the arranged width to MaxWidth and then runs the Stretch case
+       THROUGH Center's centring arithmetic (the two labels share one switch case), so a MaxWidth with no
+       stated alignment centres the line inside its column. That is what put the two folder rows' path
+       lines 384.67 and 456.67 DIP right of their own titles on the shipped build; the arithmetic
+       reproduces both measurements exactly, and applying this class to one of them put it back on its
+       title's own x, measured. The same mechanism is load-bearing in SettingsPage.axaml, which uses it
+       deliberately to centre CardStack at its own cap.
+
+       MaxWidth is a MEASURE-time bound, not a display cap, and it lives here so no value line has to
+       restate it: a NoWrap + CharacterEllipsis TextBlock reports its full
+       untrimmed single-line advance as its desired width (trimming is a paint-time concern), so without
+       a cap one long path inflates the whole card's desired width and pushes the trailing controls past
+       the visible edge. 260 is the shipped, screenshot-confirmed value, inherited rather than derived;
+       the full text stays one hover away because each consumer sets a matching ToolTip. -->
+  <Style Selector="TextBlock.tm-card-value">
+    <Setter Property="TextWrapping" Value="NoWrap" />
+    <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    <Setter Property="HorizontalAlignment" Value="Left" />
+    <Setter Property="MaxWidth" Value="260" />
+  </Style>
+
+  <!-- The expansion row's own top gap, on the child rather than on the Grid — see the RowSpacing note
+       above. 8 is a step on the spacing ramp, so it is the value the below-row action strips that state
+       10 today normalise DOWN to as they adopt this class; 10 is not a step, and the two below-row text
+       margins in BehaviorCard already state 8. -->
+  <Style Selector=":is(Control).tm-card-expander">
+    <Setter Property="Margin" Value="0,8,0,0" />
+  </Style>
+  <Style Selector="StackPanel.tm-card-expander">
+    <Setter Property="Spacing" Value="8" />
+  </Style>
+  <!-- Value lines stack tighter than blocks do. Declared after tm-card-expander so a panel carrying both
+       classes resolves to 2: at equal specificity the later rule wins, and a stack OF value lines is
+       what the smaller gap is for. -->
+  <Style Selector="StackPanel.tm-card-values">
+    <Setter Property="Spacing" Value="2" />
+  </Style>
+
+  <!-- Every action strip on the page, in column 2 AND on the expansion row. HorizontalAlignment="Right"
+       is inert in column 2 (that column is Auto-sized to the strip) and is what puts an expansion-row
+       strip on the card's content right edge, so one class puts every control's right edge on the same x
+       in both places. VerticalAlignment="Center" on the strip is also what makes the per-button
+       VerticalAlignment attributes unnecessary: a horizontal StackPanel stretches its children to its own
+       height. -->
+  <Style Selector="StackPanel.tm-card-actions">
+    <Setter Property="Orientation" Value="Horizontal" />
+    <Setter Property="Spacing" Value="8" />
+    <Setter Property="HorizontalAlignment" Value="Right" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+
+  <!-- The settings toggle. Blanking OnContent/OffContent moves out of the cards that each repeat it:
+       Avalonia's default is the untranslated English "On"/"Off", which would sit next to a Chinese row
+       label whenever AppLanguage is zh-Hans.
+
+       THE NEGATIVE RIGHT MARGIN IS NOT SLOP — do not remove it without re-reading this. Fluent's stock
+       ToggleSwitch template builds an inner Grid of three columns: Auto, then a hard 12 pixel column with
+       MaxWidth 12, then Auto for the content presenters (decompiled from Avalonia.Themes.Fluent 12.1.0).
+       That fixed spacer is charged whether or not the presenters are empty, so blanking the content
+       collapses column 2 and leaves column 1: the element measures 52 DIP wide while its visible pill is
+       40, and the pill's ink stopped 12 DIP short of every other row's control on the shipped build. A
+       ColumnDefinition is not a Control, so no /template/ selector can reach it, and the only other fix
+       is a full ~150-line ToggleSwitch ControlTheme this project does not have. The margin makes the
+       desired width 40, so the Auto column measures 40 and ArrangeCore deflates the slot by the negative
+       margin — the pill lands on the content edge and the 12 DIP of empty presenter overhangs into the
+       card's own 16 DIP right padding, where it draws nothing. Checked on a live PrintWindow capture
+       with this class applied to one toggle: the pill's last ink pixel landed on the SAME screen column
+       as a ComboBox's right border two cards above it, against the 18 physical px it fell short by
+       before. If a future Avalonia changes that column, the toggle rows shift by whatever the change
+       is. -->
+  <Style Selector="ToggleSwitch.tm-card-toggle">
+    <Setter Property="OnContent" Value="" />
+    <Setter Property="OffContent" Value="" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Margin" Value="0,0,-12,0" />
+  </Style>
+
   <!-- Round 3, Task 3 (user item 9): the actual PAGE title ("设置") and each card GROUP'S own heading
        ("外观"/"行为"/"文件夹"/"常用工具"/"更新") both used to share this one class at FontSizeSubtitle
        (20) — the page title was too close in size to its own subsections. Live-measured Task Manager's
