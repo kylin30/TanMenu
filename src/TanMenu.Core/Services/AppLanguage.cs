@@ -35,8 +35,10 @@ public static class AppLanguage
             ["AppearanceDark"] = ("深色", "Dark"),
             ["Font"] = ("字体", "Font"),
             // "ButtonSize"/"SizeSmall"/"SizeMedium"/"SizeLarge"/"SizeCardSub" went with the 按钮大小
-            // setting itself (Round 3, Task 4) — tiles are always the one size that setting used to
-            // call "小" now. See GeneralConfig.ButtonSize's own remarks.
+            // setting itself (Round 3, Task 4), which left every tile at the width that setting had
+            // called "小" (168 DIP). Round 4, item 3 removed that fixed width too — a tile is as wide
+            // as its own icon-plus-label content — so no string here names a tile size at all any
+            // more. See GeneralConfig.ButtonSize's own remarks.
             ["ColButtonCount"] = ("每列个数", "Items per column"),
             // Secondary lines for the 设置 page's 外观 cards (Task 8). The old TabItem-based dialog
             // never had room for a description under each row, so these are new wording rather than

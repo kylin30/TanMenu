@@ -10,10 +10,15 @@
        is the 应用 page's own content: the update notice, the categories, and the three non-menu states
        (loading, nothing configured, nothing matched). -->
 
-  <!-- Round 3, Task 4 removed the 小/中/大 button-size setting: tiles are always the one size that
-       setting used to call "小" (Themes/Fluent2/Launcher.axaml's TmTileButton), so the Classes.size-*
-       bindings this Panel used to carry (each wired to LauncherViewModel.IsSmallButtons/
-       IsMediumButtons/IsLargeButtons, both since deleted) went with it. -->
+  <!-- Round 3, Task 4 removed the 小/中/大 button-size setting, so the Classes.size-* bindings this
+       Panel used to carry (each wired to LauncherViewModel.IsSmallButtons/IsMediumButtons/
+       IsLargeButtons — bindings and properties alike since deleted) went with it. Task 4 left every
+       tile at the single fixed width that setting had called "小" (a 168 DIP Width Setter on
+       TmTileButton); Round 4, item 3 deleted that Setter in turn, so TmTileButton
+       (Themes/Fluent2/Launcher.axaml) now sets no Width at all and a tile is as wide as its own
+       icon-plus-label content. Its header comment has the 48 DIP chrome arithmetic and the reason
+       columns still come out uniform — the ABSENCE of a HorizontalAlignment on the tile Button
+       further down this file. -->
   <Panel x:Name="Root"
          Background="Transparent">
 

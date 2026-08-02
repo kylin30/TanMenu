@@ -301,10 +301,13 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
         AppFonts.Resolve(_cfg.General.FontFamily, whenBlank: AppFonts.DefaultDisplay);
 
     // The 小/中/大 button-size setting (IsSmallButtons/IsMediumButtons/IsLargeButtons + the
-    // Classes.size-* bindings AppPage.axaml used to set) went away in Round 3, Task 4: tiles are
-    // always the one size that setting used to call "小" — see GeneralConfig.ButtonSize's own remarks
-    // and Themes/Fluent2/Launcher.axaml's TmTileButton. GeneralConfig.ColButtonCount took its place as
-    // the live 外观 setting; see ApplyGroupSettings below for how it reaches each MenuGroupVm.
+    // Classes.size-* bindings AppPage.axaml used to set) went away in Round 3, Task 4, which left
+    // every tile at the one width that setting had called "小" (a 168 DIP Width Setter on
+    // TmTileButton). Round 4, item 3 deleted that Setter too, so Themes/Fluent2/Launcher.axaml's
+    // TmTileButton sets no Width at all and a tile is as wide as its own icon-plus-label content —
+    // see GeneralConfig.ButtonSize's own remarks. Either way nothing on this view model has named a
+    // tile size since Task 4. GeneralConfig.ColButtonCount took its place as the live 外观 setting;
+    // see ApplyGroupSettings below for how it reaches each MenuGroupVm.
 
     private void RaiseAppearanceChanged()
     {

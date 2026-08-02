@@ -62,8 +62,12 @@
       </Grid>
     </Border>
 
-    <!-- Round 3, Task 4: replaces the removed 按钮大小 (小/中/大) row — tiles are always the one size
-         that setting used to call "小" now (Themes/Fluent2/Launcher.axaml's TmTileButton). A
+    <!-- Round 3, Task 4: replaces the removed 按钮大小 (小/中/大) row. Nothing on this page names a
+         tile width any more — Task 4 fixed every tile at the width that row had called "小" (168 DIP),
+         and Round 4, item 3 removed that fixed width too, so a tile is as wide as its own
+         icon-plus-label content (see GeneralConfig.ButtonSize's remarks, and TmTileButton in
+         Themes/Fluent2/Launcher.axaml, which carries no Width Setter). This row governs how many
+         shortcuts a column holds before wrapping, not how big a tile is. A
          NumericUpDown, not a ComboBox like the other rows here: the value is an integer the user
          picks from a small range, not one of a short list of named choices, and Avalonia ships
          NumericUpDown as a plain control (no extra NuGet package) that already gives a spinner AND
