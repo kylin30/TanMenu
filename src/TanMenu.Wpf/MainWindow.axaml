@@ -373,7 +373,11 @@
 
                Round 4, item 1: each row's content is now its icon alone — see NavAppsItem above for why
                the label TextBlocks and their StackPanels are gone and where the centring moved to. The
-               row's ToolTip.Tip and AutomationProperties.Name (ApplyRailText) are its only label. -->
+               row's ToolTip.Tip and AutomationProperties.Name (ApplyRailText) are its only label.
+               Classes="tm-nav-row" below is kept for the same reason NavRailContent keeps
+               Classes="tm-nav-rail" — as these rows' own name for anything that needs to scope a rule
+               to them — but as of item 1 NO Launcher.axaml selector keys off it either: its only reader
+               was one of the three rail-state rules item 1 deleted. -->
           <StackPanel Grid.Row="1">
             <Button x:Name="NavOpenRootItem"
                     Theme="{StaticResource TmNavRowButton}"

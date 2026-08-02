@@ -324,10 +324,21 @@ public partial class MainWindow : Window
     /// <summary>
     /// The navigation rail's width, mirroring <c>MainWindow.axaml</c>'s literal <c>Width="48"</c> on
     /// <c>NavRailPane</c> — the single source of truth; this constant has to be kept in step with it.
-    /// A literal here (rather than a read of the pane's live <c>Width</c>/<c>Bounds</c>) is deliberate:
-    /// a fit can run before the pane has ever been arranged. Round 4, item 1 is what made this a
+    /// A literal here (rather than a read of the pane's live <c>Width</c>/<c>Bounds</c>) is what the
+    /// design asked for, and the reason it gives is that the fit term then depends on nothing but the
+    /// XAML it mirrors — no layout state, no visual-tree lookup. Round 4, item 1 is what made this a
     /// constant at all — until then the rail had two widths and this term was read out of the config on
     /// every call.
+    /// <para>
+    /// An earlier draft of this remark justified the literal by claiming a fit can run before the pane
+    /// has ever been arranged. That is withdrawn: it was never verified, and the call sites say
+    /// otherwise — all four indirect ones POST <see cref="RefitToContent"/> at
+    /// <see cref="DispatcherPriority.Loaded"/>, which sits strictly below the layout job's Render
+    /// priority, and the one direct caller (<see cref="OnNoticeVisibilityChanged"/>) is a runtime
+    /// event long after the first layout pass. It would also not have argued against reading
+    /// <c>NavRailPane.Width</c>, which is a local styled-property value set by the XAML and reads back
+    /// 48 whether or not a layout pass has run — only <c>Bounds</c> needs an arrange.
+    /// </para>
     /// </summary>
     private const double RailWidthDip = 48;
 
