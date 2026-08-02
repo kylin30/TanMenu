@@ -39,6 +39,15 @@
         <ResourceDictionary x:Key="Light">
           <!-- Surfaces -->
           <SolidColorBrush x:Key="SurfaceBaseBrush"          Color="#F3F3F3" />
+          <!-- The CONTENT PAGE's own surface, one step lighter than SurfaceBaseBrush: Round 4, item 5
+               ("任务栏和左侧导航栏应该是背景色相同，右侧内容页是纯白底"). MEASURED, not chosen — Task
+               Manager's content pane samples exactly (255,255,255) at (1700,100) and (100,600) in the
+               user's reference capture 3.png, and at (1709,100) in an independent PrintWindow capture of
+               the live Task Manager taken during the Round 4 survey. Consumed by
+               "Border.tm-page-pane" (Launcher.axaml) and by nothing else — the rail and the title strip
+               deliberately keep showing the window backdrop through them, and 设置 keeps
+               SurfaceBaseBrush (see that pane style's own remarks for the measured reason). -->
+          <SolidColorBrush x:Key="SurfacePageBrush"          Color="#FFFFFF" />
           <SolidColorBrush x:Key="SurfaceLayerBrush"         Color="#B3FFFFFF" />
           <!-- The same neutral as SurfaceLayerBrush, just more opaque, for the round-3 Task 1 ask that
                a focused search field's fill "lightens slightly" rather than changing colour — no WinUI3
@@ -78,6 +87,13 @@
         <ResourceDictionary x:Key="Dark">
           <!-- Surfaces -->
           <SolidColorBrush x:Key="SurfaceBaseBrush"          Color="#202020" />
+          <!-- DERIVED, NOT MEASURED — the one value in the Round 4 palette that is arithmetic rather
+               than observation, and it is flagged here so nobody later cites it as a reference match.
+               The Light pane sits 12 levels above the Light rail (255 vs 243); #202020 + 12 = #2C2C2C
+               preserves that same relationship in Dark. Measuring the real figure needs this machine's
+               Windows theme switched to Dark and Task Manager recaptured, which the Round 4 survey did
+               not do. -->
+          <SolidColorBrush x:Key="SurfacePageBrush"          Color="#2C2C2C" />
           <SolidColorBrush x:Key="SurfaceLayerBrush"         Color="#4D3A3A3A" />
           <!-- See the Light dictionary's own remark: same neutral, more opaque, for the focused search
                field only. -->
@@ -111,6 +127,28 @@
       <!-- Fluent 2 shape scale. 4 for controls, 8 for the overlay/window surface. -->
       <CornerRadius x:Key="RadiusControl">4</CornerRadius>
       <CornerRadius x:Key="RadiusOverlay">8</CornerRadius>
+
+      <!-- The content pane's ONE rounded corner (Round 4, item 5). Declared beside RadiusOverlay for the
+           same reason RadiusControlInner is declared beside RadiusControl: it is a derived literal and
+           belongs next to the value it was derived from.
+
+           8 DIP comes from the user's reference capture (3.png, a 1:1 native-resolution crop of Task
+           Manager's DWM frame bounds, so its pixels are physical and DIP = px / 1.5). Re-measured during
+           this implementation rather than taken on trust: the pane's outer edges are at frame x = 74 and
+           y = 77, and scanning for the row/column where the border's OUTER edge reaches its steady
+           position gives y = 87 and x = 84 — 10 physical px of arc in each axis. The Round 4 survey
+           reported 12 px (y = 89 / x = 86) for the same corner; the gap is entirely where one calls the
+           boundary among the antialiased pixels, and neither reading is a whole-DIP figure on its own.
+           8 DIP is the design value that reproduces it: rendered at 8 DIP, this app's own pane measures
+           10-11 px of visible arc on a PrintWindow capture — the SAME 10 px as the reference under the
+           identical scan. A stroked rounded rectangle shows radius minus about half the stroke, which is
+           why a 12 px radius reads as a ~10-11 px arc rather than 12.
+
+           Only the top-left corner is rounded, and that is measured too, not assumed: in 3.png the
+           top-right block (x 1898..1923, y 72..96) and the bottom-left block (x 68..92, y 1585..1608)
+           contain no arc — the top border and the pane fill run straight to the frame edge in both, so
+           the other three corners are 0 rather than "not looked at". -->
+      <CornerRadius x:Key="RadiusPaneTopLeft">8,0,0,0</CornerRadius>
 
       <!-- RadiusControl MINUS ONE, for a layer that sits just INSIDE a control's own 1px border — the
            hover/pressed state layer in TmTileButton and TmButton (Launcher.axaml). At the same radius as
@@ -159,14 +197,48 @@
       <FontFamily x:Key="IconFontFamily">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
 
       <!-- ══ Overrides that reach Avalonia's own control templates ═════════════════════════════
-           These three keys are read with {DynamicResource} by FluentTheme's templates, so setting
-           them here re-proportions every standard control — the settings page's dropdowns,
-           checkboxes, text boxes and scrollbars, and the shared message box — from Avalonia's
-           defaults (3 px radius, bundled Inter) to Fluent 2's. Verified by measurement; colour keys
-           do NOT work this way (see the header). -->
+           These four keys are read with {DynamicResource} by FluentTheme's templates, so setting
+           them here reaches every standard control — the settings page's dropdowns,
+           checkboxes, text boxes and scrollbars, and the shared message box. The first three
+           re-proportion those controls from Avalonia's defaults (3 px radius, bundled Inter) to
+           Fluent 2's. Verified by measurement; colour keys defined in FluentTheme's own dictionaries do
+           NOT work this way (see the header) — TitleBarBackgroundBrush is not one of those, see below. -->
       <CornerRadius x:Key="ControlCornerRadius">4</CornerRadius>
       <CornerRadius x:Key="OverlayCornerRadius">8</CornerRadius>
       <FontFamily x:Key="ContentControlThemeFontFamily">Segoe UI Variable Text, Segoe UI, Microsoft YaHei UI</FontFamily>
+
+      <!-- Round 4, item 5 — the white band across the top of the launcher window.
+           MEASURED before this line existed, on a PrintWindow(flag 2) capture of the live Debug build:
+           the title strip read (255,255,255) and the nav rail one row below read (241,241,249) at the
+           SAME x (35 and 60) — the 14,14,6 difference the user's item 5 is about. Afterwards both read
+           (241,241,249), i.e. the Mica backdrop, at every one of those four sample points.
+
+           WHY THIS KEY. Avalonia's drawn-decorations template (WindowDrawnDecorationsContent, used
+           because MainWindow sets ExtendClientAreaToDecorationsHint) builds an UNDERLAY — the layer
+           TopLevelHost inserts BEHIND the window's own content — containing a Panel named PART_TitleBar,
+           VerticalAlignment=Top, Height bound to TitleBarHeight (48 in this app), Background bound to
+           {DynamicResource TitleBarBackgroundBrush}. Read out of the compiled XAML with
+           ilspycmd -t "CompiledAvaloniaXaml.!AvaloniaResources" on Avalonia.Themes.Fluent 12.1.0, then
+           confirmed on the RUNNING app with a temporary GetVisualDescendants() dump through
+           TopLevelHost: "Panel name=PART_TitleBar bounds=0,0,1000,48 vis=true bg=White", immediately
+           before MainWindow in the same tree. The band was really on screen — the alternative
+           explanation this project carried until now, a PrintWindow artefact of
+           DwmExtendFrameIntoClientArea, is ruled OUT by that dump.
+
+           WHY NOT A STYLE SETTER IN MainWindow's WindowDecorationsTheme, which is where every other
+           override of this template lives. Tried and MEASURED to fail: a
+           "^ /template/ Panel#PART_TitleBar" rule setting Background="Transparent" left the part at
+           bg=White and the band on screen. The selector is not the problem — an Opacity setter added to
+           the SAME rule as a probe reported back as op=0.5 on the same run, so the rule matched. The
+           template applies this Background as a BINDING on the part itself, which a style setter for
+           the same property does not outrank. The resource key is the seam that does work, and this
+           is the same mechanism the three keys above already use.
+
+           SCOPE. Only MainWindow sets ExtendClientAreaToDecorationsHint (grep: it appears in no other
+           .axaml), so this is the only window in the app with drawn decorations to tint at all. It is
+           deliberately variant-INDEPENDENT: the requirement is that the strip show the window backdrop
+           through it, exactly as the rail beside it does, and that is true in Light and Dark alike. -->
+      <SolidColorBrush x:Key="TitleBarBackgroundBrush" Color="Transparent" />
 
     </ResourceDictionary>
   </Styles.Resources>

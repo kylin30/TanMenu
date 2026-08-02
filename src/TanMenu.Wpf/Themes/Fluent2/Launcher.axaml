@@ -620,6 +620,80 @@
     <Setter Property="Background" Value="{DynamicResource StrokeDividerBrush}" />
   </Style>
 
+  <!-- ══ The content pane ═════════════════════════════════════════════════════════════════════════
+       Round 4, item 5: MainWindow.axaml's PagePane — the Border that hosts whichever page is showing.
+       The two rules below are MUTUALLY EXCLUSIVE by construction (:not(.settings) against .settings),
+       not a base rule plus an override, and that is deliberate: see "WHY THESE LIVE HERE" below.
+
+       ── 应用 (the :not(.settings) rule) ────────────────────────────────────────────────────────────
+       A pure white pane with a 1 DIP hairline on its TOP and LEFT edges only and an 8 DIP top-left
+       corner, flush against the rail and against the title strip with zero inset — it is not a floating
+       card. Every one of those four facts is measured off the user's reference capture of Task Manager
+       (3.png, 1:1 at native resolution, so DIP = px / 1.5). NOTE that no colour below is written as a
+       hex literal, in comments included: Fluent2TokenTests.LauncherStyles_ContainNoColourLiterals greps
+       this WHOLE FILE, prose and all, and fails the build on one. Decimal RGB triples throughout.
+
+         fill    (255,255,255) at (1700,100) and (100,600) — both re-sampled off 3.png during this
+                 implementation                                -> SurfacePageBrush
+         border  2 physical px on the top and left edges only, measuring (232,227,233) at x = 74,75
+                 y = 600 and (229,228,234) at y = 77,78 x = 400 — the pane fill starts at x = 76 / y = 79.
+                 Both are re-sampled here. On the RIGHT edge x = 1916..1921 reads (240,240,240) from
+                 y = 400 down but pure white at y = 200, i.e. a scrollbar track and not a border; there
+                 is no right or bottom border. StrokeControlBrush is the right token for it without a new
+                 one being minted: its Light value is black at alpha 15, and 15/255 = 0.0588 multiplies
+                 what is behind it by 0.9412, so over this app's own white pane it predicts
+                 255 x 0.9412 = 240 — and the app's border measures exactly (240,240,240). Authored as
+                 1 DIP rather than the measured 1.33: 2 physical px IS a 1 DIP stroke layout-rounded at
+                 this machine's 150%, and 1.33 would be wrong at every other scale.
+         corner  top-left ONLY -> RadiusPaneTopLeft (that token carries the arc measurement, this app's
+                 rendered arc beside the reference's, and the reason 8 DIP is the right value for it)
+         inset   0 on all four edges; the reference's pane starts at the first pixel after the rail
+                 (x = 73 is still backdrop, the border's outer edge is x = 74)
+
+       The 1 DIP left and top borders are laid out INSIDE this Border, so they take 1 DIP each away from
+       the page. MainWindow.RefitToContent hands that DIP back through PaneBorderDip, and
+       WindowHost.ChromeHeightDip does the same for the top one — see both constants' own remarks. Do
+       not change this thickness without changing those.
+
+       ── 设置 (the .settings rule) ──────────────────────────────────────────────────────────────────
+       Keeps SurfaceBaseBrush, no border, no corner. This is NOT an oversight and NOT a partial
+       implementation of "the content page is pure white": the reference does not make its own two pages
+       agree either. The user's second capture (1.png) is the SAME Task Manager window on its Settings
+       page, and there the content pane samples (243,243,243) — the same value as its own rail — over the
+       whole block x 68..96 / y 70..96, with y = 77 reading 243 at x = 200/600/1200/1800/1900, i.e. flat,
+       borderless and square-cornered, carrying (251,251,251) cards with (229,229,229) outlines.
+       Our settings cards (Border.tm-card, below) are SurfaceLayerBrush, white at alpha 179, which
+       composites to (251,251,251) over a 243 pane — matching that reference exactly — but to
+       (255,255,255) over a white one, i.e. a card the literal colour of the page behind it. So 设置
+       stays on the base surface and only 应用 goes white.
+       Verified after the change on a live PrintWindow capture of the 设置 page: the pane reads
+       (243,243,243) with no hairline at the pane's first column and no arc anywhere in the top-left
+       block, and a card reads (251,251,251) behind a (229,229,229) outline.
+
+       ── WHY THESE LIVE HERE, AND NOT AS LOCAL VALUES ON THE BORDER ─────────────────────────────────
+       Because a style setter cannot override a local value in Avalonia, in either direction. A class
+       selector's setters are applied at BindingPriority.StyleTrigger, which the framework's own
+       documentation on that member describes as overriding a TEMPLATE value; LocalValue is a strictly
+       higher priority than both (Avalonia 12.1.0's BindingPriority: Animation, LocalValue, StyleTrigger,
+       Template, Style, Inherited, Unset). The app already relies on the same ranking from the other
+       side — see the SearchBox TextBox's own remarks in MainWindow.axaml, where a LOCAL Background is
+       what stops Avalonia's :pointerover style repainting the field. So writing the 应用 look as
+       Background/BorderThickness/CornerRadius attributes on PagePane and then trying to switch it with a
+       ".settings" class would silently do nothing at all: the pane would stay white on 设置. Both states
+       are therefore styles, and they are written as non-overlapping selectors so the result does not
+       depend on this file's rule ORDER either. -->
+  <Style Selector="Border.tm-page-pane:not(.settings)">
+    <Setter Property="Background" Value="{DynamicResource SurfacePageBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource StrokeControlBrush}" />
+    <Setter Property="BorderThickness" Value="1,1,0,0" />
+    <Setter Property="CornerRadius" Value="{DynamicResource RadiusPaneTopLeft}" />
+  </Style>
+  <Style Selector="Border.tm-page-pane.settings">
+    <Setter Property="Background" Value="{DynamicResource SurfaceBaseBrush}" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="0" />
+  </Style>
+
   <!-- NO MaxWidth here. A cap would only clamp the width the group REPORTS to the horizontal
        StackPanel of categories; the columns ItemsControl inside (AppPage.axaml, bound to
        MenuGroupVm.Columns) keeps laying out however many columns MenuLayout.ChunkIntoColumns

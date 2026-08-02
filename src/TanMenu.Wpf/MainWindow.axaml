@@ -91,6 +91,23 @@
   <Window.WindowDecorationsTheme>
     <ControlTheme TargetType="chrome:WindowDrawnDecorations"
                   BasedOn="{StaticResource {x:Type chrome:WindowDrawnDecorations}}">
+      <!-- ══ Round 4, item 5: NOT here, and that is the finding ════════════════════════════════════
+           The user's item 5 ("任务栏和左侧导航栏应该是背景色相同") turned out to be a real, opaque WHITE
+           band painted across the client's top 48 DIP at full width — measured at (255,255,255) against
+           the rail's (241,241,249) one row below it, at the same x, on a PrintWindow capture of the live
+           build. It is painted by a Panel named PART_TitleBar in Avalonia's drawn-decorations UNDERLAY,
+           from {DynamicResource TitleBarBackgroundBrush}.
+
+           A rule HERE — "^ /template/ Panel#PART_TitleBar" with Background="Transparent" — was written
+           first, because this ControlTheme is where every other override of that template lives, and it
+           MEASURABLY DID NOT WORK: the part still reported bg=White and the band was still on screen.
+           The selector is fine; an Opacity setter added to the same rule as a probe came back applied
+           (op=0.5) on the same run. The template binds that Background on the part itself, and a style
+           setter for the same property does not outrank it. Do not re-add such a rule here.
+           What DOES work is overriding the resource key, in Themes/Fluent2/Tokens.axaml beside the three
+           other Fluent template keys this app overrides — that file carries the full write-up, the
+           decompile it came from and the before/after numbers. -->
+
       <!-- Both parts named here are Avalonia's own default drawn-decorations content, not ours — see
            the CORRECTED FACT note above. Ground-truthed against the LIVE running app (a temporary
            GetVisualDescendants() dump reached via TopLevelHost, the real internal Control that wraps
@@ -492,17 +509,35 @@
         </Grid>
       </Border>
 
-      <!-- ══ Content pane: a solid Fluent 2 surface, not Mica ═══════════════════════════════════════
+      <!-- ══ Content pane: a solid surface, not Mica ════════════════════════════════════════════════
            Task Manager's shape: the backdrop shows through the title strip and the nav rail, but the
-           page underneath them is an opaque layer. SurfaceBaseBrush is the SAME "opaque Fluent surface
-           colour" this window's own ApplyBackdrop (code-behind) already paints across the WHOLE window
-           when Mica itself is refused (Windows 10, "show transparency" off, remote desktop), and that
-           MessageBoxWindow and the 关于 overlay below already use for the same reason — reusing it here
-           rather than minting a new token keeps "the app's one opaque surface colour" meaning exactly
-           one thing. AppPage's root Panel and SettingsPage's root ScrollViewer are both left with no
-           background of their own, which is what lets this single Border stand in for the solid pane
-           under EITHER page instead of each page having to paint it separately. -->
-      <Border Grid.Column="1" Background="{DynamicResource SurfaceBaseBrush}">
+           page underneath them is an opaque layer. Neither page paints an opaque surface of its own —
+           SettingsPage's root ScrollViewer sets no Background at all and AppPage's root Panel sets only
+           Transparent — which is what lets this single Border stand in for the solid pane under EITHER
+           page instead of each page having to paint it separately. (An earlier revision of this comment
+           said both were "left with no background of their own"; AppPage's root does carry
+           Background="Transparent", so that was half wrong.)
+
+           Round 4, item 5 gave the two pages two DIFFERENT looks on this one Border, so it is no longer
+           "one opaque surface colour" — an earlier revision of this comment argued at length that
+           reusing SurfaceBaseBrush here kept that phrase meaning exactly one thing, and that is now
+           false in both halves. 应用 gets a pure white pane with a 1 DIP top+left hairline and an 8 DIP
+           top-left corner (all four values measured off the user's Task Manager reference); 设置 keeps
+           SurfaceBaseBrush, flat and borderless, because that is what the SAME reference does on ITS
+           settings page and because our settings cards would otherwise composite to the exact colour of
+           a white page. ShowPageCore (code-behind) toggles the "settings" class; the measurements, the
+           arithmetic and the reason both looks are STYLES rather than local attributes here all live in
+           Launcher.axaml's "Border.tm-page-pane" block.
+
+           ClipToBounds is defensive. Whether Avalonia's Border clips its child to the CORNER RADIUS as
+           opposed to the bounds rectangle was not verified, and nothing here depends on it: on 应用 the
+           tile body is inset 16 DIP by SurfacePadding (the Body StackPanel's Margin, Views/AppPage.axaml)
+           and the nearest thing to the corner is a docked notice at Margin="12,0,12,8" — both clear the
+           8 DIP arc horizontally — and 设置 has no radius at all under the .settings rule. -->
+      <Border Grid.Column="1"
+              x:Name="PagePane"
+              Classes="tm-page-pane"
+              ClipToBounds="True">
         <ContentControl x:Name="PageHost" />
       </Border>
     </Grid>

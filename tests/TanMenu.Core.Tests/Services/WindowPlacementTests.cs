@@ -144,16 +144,21 @@ public class WindowPlacementTests
 
     // ══════════════════════════════════════════════════════════════════════════════════════════
     // ResolveContentFit — Round 2's "size is recomputed from content on every start" feature.
-    // Uses this app's own real constants (48 DIP rail collapsed, 48 DIP title strip, 760x568 minimum —
-    // MainWindow.axaml's own MinWidth/MinHeight, the single source of truth WindowHost reads directly)
-    // so each case reads as a directly meaningful scenario, not an abstract one.
+    // The chrome terms below are 48/48 so each case reads as a concrete scenario rather than an
+    // abstract one. They are no longer the app's LIVE terms, and this comment used to claim they were:
+    // Round 4 item 1 added the content pane's left border to the width term and item 5 then added the
+    // pane's top border to the height term, so WindowHost now passes 49 on both axes
+    // (MainWindow.RailWidthDip + PaneBorderDip, and WindowHost.ChromeHeightDip). Nothing any case here
+    // asserts depends on which value is passed — ResolveContentFit only ADDS the term to the content —
+    // so they stay at 48 rather than being churned. 760x568 IS still the app's own minimum
+    // (MainWindow.axaml's MinWidth/MinHeight, the single source of truth WindowHost reads directly).
     // ══════════════════════════════════════════════════════════════════════════════════════════
 
     [Fact]
     public void ResolveContentFit_SmallContent_IsRaisedToTheAppMinimum()
     {
-        // Very little content (e.g. one or two thin categories) plus the 48 DIP rail and 48 DIP title
-        // strip still lands below 760x568 — the floor wins, exactly like a tiny saved size did before.
+        // Very little content (e.g. one or two thin categories) plus 48+48 DIP of chrome still lands
+        // below 760x568 — the floor wins, exactly like a tiny saved size did before.
         var r = WindowPlacement.ResolveContentFit(
             contentWidth: 300, contentHeight: 200,
             chromeWidth: 48, chromeHeight: 48,

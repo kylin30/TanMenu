@@ -30,9 +30,21 @@ public sealed partial class WindowHost : IWindowHost
     /// <summary>MainWindow.axaml's own <c>ExtendClientAreaTitleBarHeightHint</c> — the title strip's
     /// fixed height, which sits ABOVE the page host and is therefore not part of what a page's own
     /// content measures. Duplicated here as a constant rather than read off the live window because
-    /// nothing on <c>Window</c> exposes it as a public property; <see cref="FitToContent"/> adds it back
-    /// on top of the measured page size to get the window's own full content-driven height.</summary>
+    /// nothing on <c>Window</c> exposes it as a public property.</summary>
     private const double TitleStripHeightDip = 48;
+
+    /// <summary>
+    /// Everything ABOVE the page that still counts toward the window's own Height, which
+    /// <see cref="FitToContent"/> adds back on top of the measured page size: the title strip, plus the
+    /// content pane's own 1 DIP TOP border. The +1 is the exact vertical counterpart of the
+    /// <c>chromeWidth</c> term the caller composes as <c>MainWindow.RailWidthDip + PaneBorderDip</c> —
+    /// a <c>Border</c> draws its <c>BorderThickness</c> inside its own bounds and arranges its child
+    /// inside that, so the 应用 pane's <c>BorderThickness="1,1,0,0"</c>
+    /// (<c>Border.tm-page-pane</c>, Themes/Fluent2/Launcher.axaml, Round 4 item 5) takes 1 DIP off the
+    /// page on each of those two axes and the fit has to hand both back. Change that thickness and this
+    /// constant and <c>MainWindow.PaneBorderDip</c> both have to change with it.
+    /// </summary>
+    private const double ChromeHeightDip = TitleStripHeightDip + 1;
 
     /// <summary>Placeholder Width/Height <see cref="RestorePlacement"/> applies on the very FIRST show
     /// of the process, before the launcher's startup build — an async disk scan — has produced anything
@@ -693,7 +705,7 @@ public sealed partial class WindowHost : IWindowHost
 
             var placement = WindowPlacement.ResolveContentFit(
                 desired.Width, desired.Height,
-                chromeWidth, TitleStripHeightDip,
+                chromeWidth, ChromeHeightDip,
                 currentLeft, currentTop,
                 work, _window.MinWidth, _window.MinHeight);
 
@@ -756,10 +768,10 @@ public sealed partial class WindowHost : IWindowHost
 
             Serilog.Log.Information(
                 "Window fit to content: {Width}x{Height} DIP (page {ContentWidth}x{ContentHeight} + " +
-                "chrome {ChromeWidth} + title strip {TitleStrip}) on work area " +
+                "chrome {ChromeWidth}x{ChromeHeight}) on work area " +
                 "{WorkLeft},{WorkTop} {WorkWidth}x{WorkHeight} at scale {Scale}",
                 placement.Width, placement.Height, desired.Width, desired.Height, chromeWidth,
-                TitleStripHeightDip, work.Left, work.Top, work.Width, work.Height, scale);
+                ChromeHeightDip, work.Left, work.Top, work.Width, work.Height, scale);
         }
         catch (Exception ex)
         {

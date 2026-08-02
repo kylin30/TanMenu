@@ -38,6 +38,11 @@ public partial class MainWindow : Window
     private readonly AppPage _appPage = new();
     private SettingsPage? _settingsPage;
 
+    /// <summary>The live subscription <see cref="ApplyBackdrop"/> creates when Mica was refused, kept so
+    /// the repeated <c>OnOpened</c> of every summon reuses the one it already made instead of stacking a
+    /// second, third and n-th observer on the same resource.</summary>
+    private IDisposable? _backdropFallback;
+
     // Guards OnNavSelectionChanged against the SelectionChanged events XAML's own SelectedIndex="0"
     // (and Attach's own ShowPage call, if a navigation arrived before the window existed) raise
     // synchronously WHILE this constructor is still running — see OnNavSelectionChanged.
@@ -365,12 +370,12 @@ public partial class MainWindow : Window
     /// bounds and arranges its child inside that, so a left border takes exactly that much away from
     /// the page and the fit has to hand it back or <c>AppPage</c>'s horizontal scrollbar returns.
     /// <para>
-    /// STATE AT THE TIME OF WRITING (Round 4, item 1): <c>MainWindow.axaml</c>'s content-pane Border
-    /// still carries no <c>BorderThickness</c> of its own, so this 1 DIP currently makes the fitted
-    /// window 1 DIP wider than the page strictly needs. It is stated here because Round 4's item 5 —
-    /// the white content pane with a 1 DIP top+left hairline — is what the term exists for; a reader
-    /// who finds that border still absent and this term still present may simply have found this note
-    /// before item 5 landed.
+    /// Round 4, item 5 landed the border this term was reserved for: <c>Border.tm-page-pane</c>
+    /// (Launcher.axaml) gives the 应用 pane <c>BorderThickness="1,1,0,0"</c>, so the 1 DIP here is now
+    /// live rather than provisional. Its vertical twin is <c>WindowHost.ChromeHeightDip</c>, which adds
+    /// the same 1 DIP for the pane's TOP border. The 设置 pane's border is 0 and the fit never runs on
+    /// 设置 anyway (see the guard at the top of <see cref="RefitToContent"/>), so one constant covers
+    /// every case the fit can actually see.
     /// </para>
     /// </summary>
     private const double PaneBorderDip = 1;
@@ -495,10 +500,29 @@ public partial class MainWindow : Window
     /// <summary>Mica is a request, not a guarantee: Windows 10, "show transparency" turned off and
     /// remote desktop all refuse it, and the window would then be a hole rather than a surface. Paint
     /// the opaque Fluent surface colour when it was not granted. (Same guard SettingsWindow used.)</summary>
+    /// <remarks>
+    /// Round 4, item 5 replaced a one-shot <c>FindResource</c> + assignment with this subscription. The
+    /// old form resolved the brush OBJECT once and assigned it, which made the fallback a snapshot of
+    /// whichever <see cref="Avalonia.Styling.ThemeVariant"/> was live at the first
+    /// <see cref="OnOpened"/>: <see cref="AppTheme.Apply"/> — which the settings window calls on every
+    /// 外观 change — only writes <c>Application.RequestedThemeVariant</c>, and nothing re-ran this, so a
+    /// Mica-refused window kept the previous variant's surface for the rest of the process. Subscribing
+    /// to the resource instead makes it follow the variant. It matters to item 5 specifically: the item
+    /// asks for the title strip and the rail to share ONE background, and on a machine that refuses Mica
+    /// that background is this brush, so it has to be the right one in both variants.
+    /// <para>
+    /// The <c>?? Brushes.White</c> is carried over verbatim from the old form: a missing key would
+    /// otherwise leave <c>Background</c> null, i.e. a window that paints nothing at all — the exact
+    /// failure the fallback exists to prevent.
+    /// </para>
+    /// </remarks>
     private void ApplyBackdrop()
     {
-        if (ActualTransparencyLevel != WindowTransparencyLevel.Mica)
-            Background = this.FindResource("SurfaceBaseBrush") as IBrush ?? Brushes.White;
+        if (ActualTransparencyLevel == WindowTransparencyLevel.Mica)
+            return;
+
+        _backdropFallback ??= this.GetResourceObservable("SurfaceBaseBrush")
+            .Subscribe(new AnonymousObserver<object?>(v => Background = v as IBrush ?? Brushes.White));
     }
 
     /// <summary>Closing hides to the tray; the app exits only through 退出 (tray menu or overflow
@@ -566,6 +590,16 @@ public partial class MainWindow : Window
         PageHost.Content = page == ShellPage.Settings
             ? _settingsPage ??= new SettingsPage()
             : _appPage;
+
+        // Round 4, item 5: the two pages get two different content-pane looks — 应用 a white pane with a
+        // hairline and a rounded top-left corner, 设置 the flat base surface — and this method is
+        // already the single authority for which page is on screen, so the class toggle belongs here
+        // rather than in either page. Both looks are styles in Launcher.axaml
+        // ("Border.tm-page-pane"), which is also where the reason they cannot be local attributes on
+        // the Border is written down. The class lands on PagePane, the always-attached host, never on
+        // anything inside _appPage — so RefitToContent's detach guard and the measurement it protects
+        // are untouched by it.
+        PagePane.Classes.Set("settings", page == ShellPage.Settings);
 
         // Review finding 4: the title strip's search box is always attached and used to stay live on
         // 设置, where typing silently filtered an invisible 应用 page and Enter reached
