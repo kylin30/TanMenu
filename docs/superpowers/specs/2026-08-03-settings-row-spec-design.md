@@ -64,13 +64,18 @@ The reference measurements that exist in this repo are Task Manager's, taken in 
   > longer sits on `SurfaceBaseBrush`, so those three absolute RGBs are no longer what our own build
   > measures. Our 设置 pane now paints nothing and the window's surface shows through, which on a
   > Mica-granted machine has no portable absolute value; the card's *relationships* to whatever is
-  > behind it are what survive, and Round 6 §2.2 measures them as unchanged to within 2-4 levels. The
-  > `Launcher.axaml:658-671` line reference in the original sentence is also dead — `Border.tm-card`
-  > is at `:765` in the current tree. Nothing in §A depends on either, since §A takes no number from
-  > this bullet.
+  > behind it are what survive, and Round 6 §2.2 puts them unchanged to within 2-4 levels — measured in
+  > Dark and on the search field, composited for the Light-over-Mica rows; the pane style's own comment
+  > in `Launcher.axaml` labels each row. The `Launcher.axaml:658-671` line reference in the original
+  > sentence is also dead — `Border.tm-card` is at `:799` as of this correction (2026-08-03, after the
+  > Round 6 item 2 comment rewrite and its review fix). **Grep the selector rather than trusting any
+  > number here**: this one pointer has now gone stale three times inside two days, because the block
+  > comment above the rule keeps growing and every line added to it moves the rule down. Nothing in §A
+  > depends on it, since §A takes no number from this bullet.
 * its section headings and its card titles measure the **same ink height** and are told apart by weight
   alone; its page title's ink is ~1.4× its section headings' — the measurement behind
-  `tm-group-head` / `tm-page-title` (`Launcher.axaml:730-743`).
+  `tm-group-head` / `tm-page-title` (`Launcher.axaml:1091-1105` as of 2026-08-03; the original
+  `:730-743` was dead too — same caveat, grep the selectors).
 
 Everything numeric in §A therefore comes from one of three places, and each value below says which:
 **(a)** the Fluent 2 type/space ramp already in `Tokens.axaml`, **(b)** a live measurement in

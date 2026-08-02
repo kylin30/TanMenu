@@ -680,34 +680,49 @@
        (white at alpha 179), which composites to (251,251,251) over a 243 pane — a Δ8 separation — but
        to (255,255,255) over a WHITE one, Δ0, i.e. a card the literal colour of the page behind it. That
        arithmetic is right, and it is an argument about WHITE. White is not what this pane becomes.
-       Card minus backdrop, both sampled at the same y in the SAME capture — the first four rows on the
-       pre-change build during the Round 6 reconnaissance, the last two on the build this comment ships
-       with:
+       Card minus backdrop, both terms taken at the same y. FOUR OF THESE SIX ROWS ARE PHOTOGRAPHS and
+       two are arithmetic; the rows say which, because they were not all obtained the same way. MEASURED
+       rows: the two "over SurfaceBaseBrush" rows are the real 设置 cards on the pre-change build, and the
+       two "AFTER" rows are this build, each pair sampled in one capture. COMPUTED rows: before this
+       change the 设置 pane was opaque, so no settings card on Mica existed to photograph — those two
+       rows composite the card's token alphas over Mica backdrops that WERE measured, at image x = 78 and
+       x ≈ 2000 on the pre-change build (Round 6 reconnaissance, r6-material §3.2, whose own heading
+       likewise says "Composited"). The paragraph after the table gives the measured card-token-on-Mica
+       deltas that do exist.
 
-                                              fill − backdrop      border − backdrop
-         Light, over SurfaceBaseBrush (was)       (8,8,8)            (−14,−14,−14)
-         Light, over Mica, window left edge      (12,10,0)           (−14,−14,−15)
-         Light, over Mica, window right edge      (6,11,7)           (−14,−14,−14)
-         Dark,  over SurfaceBaseBrush (was)       (8,8,8)             (16,16,16)
-         Light, AFTER, this build                (12,9,4)            (−13,−14,−15)
-         Dark,  AFTER, this build                 (9,8,6)             (16,16,15)
+                                                     fill − backdrop      border − backdrop
+         Light, over SurfaceBaseBrush (was)  MEASURED    (8,8,8)             (−14,−14,−14)
+         Light, over Mica, window left edge  computed   (12,10,0)            (−14,−14,−15)
+         Light, over Mica, window right edge computed    (6,11,7)            (−14,−14,−14)
+         Dark,  over SurfaceBaseBrush (was)  MEASURED    (8,8,8)              (16,16,16)
+         Light, AFTER, this build            MEASURED   (12,9,4)             (−13,−14,−15)
+         Dark,  AFTER, this build            MEASURED    (9,8,6)              (16,16,15)
 
        Mica under this window measures 238..247 Light and 30..34 Dark, i.e. it STRADDLES SurfaceBaseBrush
        (243 / 32); it is nowhere near SurfacePageBrush (255 / 44). So the card-to-page separation is
        unchanged to within 2-4 levels and the card's outline is unchanged to within 1. Round 4's Δ0 never
-       arises. NOTE that the fill's blue delta can legitimately reach 0 near the window's left edge (it
-       did, measured on the pre-change build) — the outline is what draws the card, and it is Δ13-16
-       everywhere. ABSOLUTE RGBs on this surface are NOT portable: PrintWindow composites the DWM
+       arises. NOTE that the fill's blue delta can legitimately reach 0 near the window's left edge — that
+       is the computed left-edge row, and it is a ceiling effect rather than a surprise: Mica measures 255
+       blue there, which a white-at-alpha fill cannot exceed. The outline is what draws the card, and it
+       is Δ13-16 everywhere. ABSOLUTE RGBs on this surface are NOT portable: PrintWindow composites the DWM
        backdrop itself, so a Mica pane photographs as the blurred wallpaper behind that window's own
        screen position. Only the relationships above are, which is why they are what is written down.
 
        And that is not a projection. Border.tm-searchfield (above) uses the SAME three tokens as
        Border.tm-card — SurfaceLayerBrush over a 1 DIP StrokeControlBrush at RadiusControl — and already
-       sits directly on this window's real Mica in the title strip. Measured there: Light backdrop
+       sits directly on this window's real Mica in the title strip. Measured there AT REST: Light backdrop
        (244,240,248) gives fill (252,251,253) and border (230,226,233); Dark backdrop (33,31,35) gives
        fill (41,40,42) and border (49,47,51). Predicted from the token alphas: (252,251,253)/(230,226,233)
        and (41,39,42)/(49,47,50) — within 1 level on every channel. A settings card on Mica is already on
-       screen; it is the search field.
+       screen; it is the search field. As card-minus-backdrop, the same shape as the table above and
+       PHOTOGRAPHED rather than composited: Light fill (8,11,5) and border (−14,−14,−15); Dark fill
+       (8,9,7) and border (16,16,16). Those are the two MEASURED card-token-on-Mica rows the table above
+       could not supply, and they land inside the same envelope as its computed pair.
+       AT REST is load-bearing when re-measuring this: Border.tm-searchfield.focused (above) swaps the
+       fill to SurfaceLayerActiveBrush, and the app focuses the field on show, so a capture taken straight
+       after a cold start photographs the WRONG token. Dark reads (43,42,44) focused against (41,40,42) at
+       rest — a Δ(10,11,9) that looks like a regression and is not. Navigate away and back (or check for
+       the 2 px accent underline at the field's bottom edge) before sampling.
 
        WHAT THIS BUYS, HONESTLY. Two seams disappear. On the PRE-CHANGE build the vertical rail→pane
        step at image x 82 → 83 in Light measured (+5,+2,−12) at y = 150, (+5,+1,−12) at y = 400 and

@@ -347,20 +347,24 @@ fully opaque and cannot move.
 `#FFFFFF` on a white pane (Δ0) — a card that is literally the same colour as the page it sits on"
 (Round 4 §5.1(d)), and §7.1 offered "both white" as the alternative and defaulted to no.
 
-**That argument is correct about white and does not transfer to Mica.** Measured this round
-(r6-material §3.2):
+**That argument is correct about white and does not transfer to Mica.** From r6-material §3.1
+(*Measured*) and §3.2 (*Composited*) — the unbolded rows are arithmetic over the card tokens' alphas
+and a Mica backdrop that was itself measured, because no settings card on Mica existed to photograph
+while the pane was still opaque:
 
 | Light | card fill − backdrop | card border − backdrop |
 |---|---|---|
 | over `SurfaceBaseBrush` (today's 设置) | **(8,8,8)** measured | **(−14,−14,−14)** measured |
-| over Mica at the window's left edge | (12,10,0) | (−14,−14,−15) |
-| over Mica at the window's right edge | (6,11,7) | (−14,−14,−14) |
+| over Mica at the window's left edge | (12,10,0) *computed* | (−14,−14,−15) *computed* |
+| over Mica at the window's right edge | (6,11,7) *computed* | (−14,−14,−14) *computed* |
+| `tm-searchfield` on real Mica `(244,240,248)` | **(8,11,5)** measured | **(−14,−14,−15)** measured |
 
 | Dark | card fill − backdrop | card border − backdrop |
 |---|---|---|
 | over `SurfaceBaseBrush` (today) | **(8,8,8)** measured | **(16,16,16)** measured |
-| over Mica `(30,32,38)` | (8,8,6) | (16,16,15) |
-| over Mica `(33,31,35)` | (8,8,7) **measured** | (16,16,16) **measured** |
+| over Mica `(30,32,38)` | (8,8,6) *computed* | (16,16,15) *computed* |
+| over Mica `(33,31,35)` | (8,8,7) *computed* | (16,16,16) *computed* |
+| `tm-searchfield` on real Mica `(33,31,35)` | **(8,9,7)** measured | **(16,16,16)** measured |
 
 Mica's measured luminance under this window is **238-247 Light / 30-34 Dark**, i.e. it straddles
 `SurfaceBaseBrush` (243 / 32), not `SurfacePageBrush` (255 / 44). The card-to-page separation is
@@ -498,8 +502,10 @@ would catch a regression here; the only net is §2.5.**
    6 ± 2)`; `border − backdrop` = `(16 ± 1, 16 ± 1, 15 ± 2)`. **Assert the relationships, never the
    absolute RGBs** — the absolutes move with the wallpaper and the window's screen position.
    Note explicitly: the fill's blue-channel delta can legitimately reach **0** near the window's left
-   edge (measured, r6-material §3.2). That is the reference's own behaviour too and is not a failure;
-   the border is what draws the card and it is Δ14-16 everywhere.
+   edge (*computed*, r6-material §3.2 — that section's heading says "Composited", and it is a ceiling
+   effect: Mica measures 255 blue there, which a white-at-alpha fill cannot exceed). That is the
+   reference's own behaviour too and is not a failure; the border is what draws the card and it is
+   Δ14-16 everywhere.
 
 **What it cannot prove: that the surface is Mica.** If the platform refused Mica, `ApplyBackdrop`
 paints `SurfaceBaseBrush` on the window, the pane is transparent over it, and **steps 1-3 pass

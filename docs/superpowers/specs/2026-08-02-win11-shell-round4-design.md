@@ -1014,13 +1014,27 @@ explicitly.
 > writes `PagePane.Classes.Set("app", page == ShellPage.App)`.
 >
 > **The Δ0 argument below is correct and does not apply.** It is an argument about **white**, and
-> white is not what the pane became. Measured on this window's real Mica in Round 6: Light card fill −
-> backdrop `(12,10,0)` at the window's left edge and `(6,11,7)` at its right, border − backdrop
-> `(−14,−14,−15)` / `(−14,−14,−14)`, against `(8,8,8)` / `(−14,−14,−14)` over the old grey pane; Dark
-> `(8,8,7)` / `(16,16,16)` against `(8,8,8)` / `(16,16,16)`. Mica measures 238-247 Light / 30-34 Dark
-> under this window, i.e. it straddles `SurfaceBaseBrush` (243 / 32) and is nowhere near
-> `SurfacePageBrush` (255 / 44). Re-measured on the shipped Round 6 build: Light border − backdrop
-> `(−13,−14,−15)` and fill − backdrop `(12,9,4)`; Dark `(16,16,15)` and `(9,8,6)`.
+> white is not what the pane became. Card minus backdrop, three sources, each labelled — an earlier
+> version of this box called all of them "measured", which two of them were not:
+>
+> * **Measured on the shipped Round 6 build**, real 设置 cards on the live Mica pane: Light fill −
+>   backdrop `(12,9,4)`, border − backdrop `(−13,−14,−15)`; Dark `(9,8,6)` and `(16,16,15)`.
+> * **Measured on `Border.tm-searchfield` at rest** — the only instance of the card's three tokens that
+>   already sat on this window's real Mica before the change: Light `(8,11,5)` and `(−14,−14,−15)`;
+>   Dark `(8,9,7)` and `(16,16,16)`. Taken in the Round 6 reconnaissance and re-taken on the shipped
+>   build. *At rest* matters: `.focused` swaps the fill to `SurfaceLayerActiveBrush` and the app focuses
+>   that field on show, so a cold-start capture measures the wrong token (Dark reads `(43,42,44)`
+>   focused against `(41,40,42)` at rest).
+> * **Composited, not photographed** (r6-material §3.2, whose heading says so): for the pane region,
+>   Light `(12,10,0)` at the window's left edge and `(6,11,7)` at its right, border `(−14,−14,−15)` /
+>   `(−14,−14,−14)`; Dark `(8,8,6)` / `(8,8,7)` and `(16,16,15)` / `(16,16,16)`. These are the card
+>   tokens' alphas over Mica backdrops that *were* measured. No settings card on Mica could be
+>   photographed before the change, because the pane was opaque.
+>
+> Against `(8,8,8)` / `(−14,−14,−14)` Light and `(8,8,8)` / `(16,16,16)` Dark over the old grey pane,
+> every one of those is the same relationship to within a few levels. Mica measures 238-247 Light /
+> 30-34 Dark under this window, i.e. it straddles `SurfaceBaseBrush` (243 / 32) and is nowhere near
+> `SurfacePageBrush` (255 / 44).
 >
 > The 应用 half of this item — (a), (b), (c), (e), (f) — is **unchanged and still shipping**.
 > Re-measured on the Round 6 build: 应用 pane `(255,255,255)` Light / `(44,44,44)` Dark, inner border
@@ -1091,11 +1105,13 @@ one background"; that must hold in both variants **and** in both backdrop states
 > **Partially superseded by Round 6, item 2 (`docs/superpowers/specs/2026-08-04-round6-surfaces-design.md`
 > §2.2). Stated precisely rather than blanket-marked, because most of this section is still true.** The
 > ruling this section justifies is §5.1(d), and §5.1(d)'s 设置 half is overruled — see the box there.
-> **None of the five bullets below is itself falsified**: they are about the 应用 pane, the token test's
-> coverage gap, and the tiles on the white 应用 page, all of which still ship exactly as written. What
-> the reader must not carry forward is the *conclusion* this reasoning was assembled for, namely that
-> the app's two pages should be given two different opaque surfaces. Round 6 gives 应用 an opaque
-> surface and every other page the window's own.
+> **Four of the five bullets below stand unchanged**: they are about the 应用 pane, the token test's
+> coverage gap, and the tiles on the white 应用 page, all of which still ship exactly as written. **The
+> fourth bullet's closing clause is falsified** and carries its own box; its conclusion — do not change
+> `SurfaceLayerBrush` — survives, but the reason given for it does not. What the reader must not carry
+> forward is the *conclusion* this reasoning was assembled for, namely that the app's two pages should
+> be given two different opaque surfaces. Round 6 gives 应用 an opaque surface and every other page the
+> window's own.
 
 * **The user's complaint, as a number.** At the same x, Task Manager's title bar and rail differ by
   **≤ 1 level**; ours differ by **14, 14, 6** (x = 35 and x = 60, two independent captures — r4-theme
@@ -1120,6 +1136,13 @@ one background"; that must hold in both variants **and** in both backdrop states
   card rather than a *filled* one — which is exactly what the reference's white pane shows (it has no
   filled cards at all). `SurfaceLayerBrush` is **not** changed, because it is also the settings cards'
   fill and those stay on the grey pane where it works.
+
+  > **The last clause went stale on 2026-08-03, Round 6 item 2.** The settings cards do **not** stay on
+  > the grey pane — that is exactly what that item changed; they now sit on the window's own Mica. The
+  > bullet's *ruling* is unaffected and still shipping: `SurfaceLayerBrush` is not changed. Only its
+  > stated reason is dead, and the replacement reason is in §5.1(d)'s box above — over Mica the card's
+  > fill − backdrop stays positive on at least two channels and its outline stays Δ13-16, so the token
+  > still works where it now lands. Do not carry "those stay on the grey pane" forward as current fact.
 * **Dark is not damaged the same way**: `#4D3A3A3A` (α 0.302) over `#202020` gives ~`#282828`, and over a
   `#2C2C2C` pane gives ~`#303030` — still separated.
 
