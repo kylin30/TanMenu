@@ -292,7 +292,16 @@ the old feel. See §6 for how existing configs — which carry `true` explicitly
   `Button`s. **Superseded by Round 5, items 1–2** (`871504b`): Round 4 had ordered that footer
   退出 · separator · 关于 · 打开主目录 · 刷新 · 设置 with four commands; 退出 moved to the bottom
   (the separator travelling with it), and 关于 left the rail entirely for a card at the end of the
-  设置 page (`Views/Settings/AboutCard.axaml`).
+  设置 page (`Views/Settings/AboutCard.axaml`). **The selected look above is superseded by Round 6,
+  item 3** (`docs/superpowers/specs/2026-08-04-round6-surfaces-design.md` §3): "Fluent 2's 3 px accent
+  bar on its leading edge" was a `BorderThickness="3,0,0,0"`, which ran the row's full 36 DIP height
+  and consumed layout. Measured against Task Manager, the accent is a **16 DIP pill centred on the row**
+  — the authored width stays 3 DIP — and it is a `Border` in a `Panel` **over** the content, so
+  selecting a row no longer pushes its icon 1.33 DIP right. The selected fill moved
+  `SubtleFillTertiaryBrush` → `SubtleFillSecondaryBrush` and the rail's glyphs to `TextPrimaryBrush`,
+  both because those are the tokens Task Manager's own values solve to. The three rules keyed off
+  `Classes="tm-nav"` are gone with the class; the row is a `ControlTheme` (`TmNavRowItem`,
+  `Themes/Fluent2/Launcher.axaml`).
 - The page host is a `ContentControl` swapping two `UserControl`s. `MainWindow.axaml` keeps only the
   shell so it does not grow into the 300-line file it is today.
 - The overflow menu (`···`) keeps 打开主目录 / 刷新 / 关于 / 退出 and **loses 选项** — the rail is now

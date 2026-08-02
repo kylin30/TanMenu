@@ -933,6 +933,15 @@ The shipped build logs `1713.8333,816 1692.3333x568 DIP (page 1643.3333x471.3333
 set and settings; if it is not, something in item 2's deletions reached `AppPage`, and that is the signal
 to stop.
 
+> **That log line is Round 5's, and it is no longer what the app logs.** Round 6, item 4 put every
+> 应用 category in a panel and halved the inter-category gap, which moves the page input to this same
+> formula — see `docs/superpowers/specs/2026-08-04-round6-surfaces-design.md` §4.4. The current build
+> logs `1681.1667,816 1757.6667x568 DIP (page 1708.6667x494 + chrome 49x49)`. **The zero-delta claim
+> above was a Round 5 acceptance bar and it passed** (the pre- and post-round lines were byte-identical
+> at the figure quoted); it is not a standing description of the window. Every term of the arithmetic
+> block still holds, including the `+1` pane border — Round 6, item 2 took the border off the 设置
+> pane, but the fit only ever measures 应用, whose border is still 1.
+
 ## 5.3 Test-suite delta
 
 **[new — counted this session]** 183 cases today: 125 `[Fact]` + 58 `[InlineData]` rows under 11

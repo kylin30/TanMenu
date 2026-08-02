@@ -447,6 +447,18 @@ the tile's horizontal chrome (2 border + 16 padding + 20 icon box + 10 icon marg
 `Tokens.axaml:130`; group `Spacing="24"`, `AppPage.axaml:105`; columns abut with no spacing,
 `AppPage.axaml:148`).
 
+> **Superseded by Round 6, item 4 — see
+> `docs/superpowers/specs/2026-08-04-round6-surfaces-design.md` §4.4 and §4.6. The shipped code is the
+> authority.** The tile arithmetic above is untouched; the *page* line has two terms it no longer has.
+> Every category is now wrapped in a `Border Classes="tm-group-panel"`, and the inter-category
+> `Spacing` went **24 → 12** because the panels supply that separation themselves. The page is
+> `32 + Σ columns + N × panel chrome + 12 × (groups − 1)`, where the panel chrome is **22.6667** per
+> axis on this machine — `12 + 8` of padding plus two 1 DIP strokes that each lay out as 2 physical px
+> = 1.3333 DIP at 150 %, so re-derive it with the authored 1 at another scale. Measured on the shipped
+> build: the page went `1643.3333` → `1708.6667` wide, `+65.3333 = 5 × 22.6667 − 4 × 12`. The line
+> reference is dead too — the categories `ItemsPanel` is not at `AppPage.axaml:105` any more; grep
+> `Spacing=` inside the `ItemsPanelTemplate` rather than trusting the number.
+
 ### 3.2 The cost, quantified — and the bound
 
 Measured on the user's real data (74 items, 5 groups, `每列个数 = 10`, `rootFolder = D:\0.Documents\Desktop`)
@@ -1317,6 +1329,21 @@ rendered 30 DIP taller than requested.
 > **The formula was right and the input was wrong** — the page came in at 1643.33 rather than the
 > predicted 1627.2, because item 3's per-column label-advance model under-measured. §3.2's box has
 > the per-column table and the reason. Nothing about items 4 or 5 contributed to the miss.
+
+> **Those shipped figures are Round 4's, and Round 6, item 4 moved them — see
+> `docs/superpowers/specs/2026-08-04-round6-surfaces-design.md` §4.4 and §5.2.** The composition above
+> still holds term for term (`page + chrome 49 × 49`, the 568 floor, the placement formula); only the
+> page input changed, because every category gained a panel and the inter-category gap halved. The
+> current build logs
+>
+> ```
+> Window fit to content: 1681.1666666666665,816 1757.6666666666667x568 DIP
+>   (page 1708.6666666666667x494 + chrome 49x49) on work area 0,0 5120x1392 at scale 1.5
+> ```
+>
+> i.e. **1757.6667 × 568 at Left 1681.1667, Top 816** — `+65.3333` in width and `−32.6667` in Left,
+> which is again one error appearing twice with opposite signs. Do not quote `1692.33` as this app's
+> width; it is the Round 4 figure.
 
 ### 6.3 Test-suite delta
 

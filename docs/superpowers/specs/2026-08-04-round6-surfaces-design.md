@@ -1366,6 +1366,16 @@ same property on the same `x:DataType`. No reflection, no new type.
    > the one to keep** — the pane's corner reads 12 / 12 in both variants in the same captures.
    > `Tokens.axaml`'s `RadiusPanel` block was rewritten to say exactly this instead of asserting the
    > band. Instruments: `r6i4-arc.ps1` plus the block dumps recorded in this session's report.
+   >
+   > **One digit moved again on the whole-round review's own captures (2026-08-03), and it is the pane's,
+   > not the panel's.** The four rows above reproduced digit for digit under the ±1-level criterion, but
+   > on a strict exact match that review read `tm-page-pane` at **13** in both variants against the
+   > panel's 12 — where the run above read it at 12. Two runs of the same scan, one level apart, on
+   > captures taken a session apart: that spread IS the antialiasing ambiguity, and it is the reason the
+   > comparative claim must be stated with its criterion attached. **The bound that survives every
+   > reading taken so far is "the two 8 DIP corners land within 1 px of each other in both variants";
+   > "they agree exactly in Dark" holds only under the ±1-level criterion.** `Tokens.axaml`'s
+   > `RadiusPanel` block now says that, and names the criterion beside every digit it quotes.
 8. **Filtering — the failure mode the test in §4.5 guards, checked once on screen too.**
    `ValuePattern.SetValue` on `SearchBox` = a string that matches exactly one category (the recon used
    `"Steam"`). Capture. Scan the row at the surviving panel's vertical centre from the items panel's

@@ -26,10 +26,12 @@ were replaced by the current shell.
 - **`tests/TanMenu.Core.Tests`** — xUnit. Covers the on-disk JSON contracts (config, link cache, icon
   cache), the source-generated shell-link COM, the launcher's match/filter rules, the Fluent 2
   token layer (no colour literals outside `Tokens.axaml`; every referenced token defined in both
-  variants), and the settings row spec (every card wraps the standard column Grid; no card restates a
+  variants), the settings row spec (every card wraps the standard column Grid; no card restates a
   constant the theme owns; every header is exactly one title line and one subtitle line; no subtitle
-  wording carries a hard line break). The last two read the `.axaml` and language sources directly —
-  they are source tests, because every failure they catch is silent at run time.
+  wording carries a hard line break), and the 应用 page's category panel (the panel `Border`, never the
+  `StackPanel` inside it, carries the category's visibility binding — with it on the inner panel a
+  filtered-out category renders as an empty bordered box). The last three read the `.axaml` and language
+  sources directly — they are source tests, because every failure they catch is silent at run time.
 
 Tech: .NET 10 (`net10.0-windows10.0.19041.0`, x64), Avalonia 12.1, NativeAOT, Serilog,
 source-generated `System.Text.Json`, `Microsoft.Extensions.DependencyInjection`, Velopack.
@@ -47,12 +49,20 @@ source-generated `System.Text.Json`, `Microsoft.Extensions.DependencyInjection`,
 - **Fluent 2** UI drawn natively: a Mica backdrop with an opaque fallback, categories laid out as
   horizontally-scrolling groups with column-filling tiles (each tile as wide as its own label, uniform
   within a column, never ellipsised), and one look rendered **light or dark** (following the OS by
-  default). Colour comes from one token file; the accent is read from Windows personalization. The
-  应用 page is a pure white pane under the shared Mica of the title strip and rail; 设置 keeps the
-  grey surface, because its cards are a translucent white that would vanish on a white page.
+  default). Colour comes from one token file; the accent is read from Windows personalization. Each
+  category sits in **its own panel** — a hairline outline, an 8 DIP corner and a fill one step off the
+  page — with a 12 DIP gutter between panels. The 应用 page is a pure white pane under the shared Mica
+  of the title strip and rail; **every other page paints nothing at all**, so the window's own material
+  runs unbroken from the strip and the rail through the content and the settings cards float on it, the
+  way the Windows 11 Settings app arranges its own.
 - **Search-first**: the search box sits centred in the title strip and typing genuinely filters —
-  non-matches are removed and empty sections disappear. `↑↓←→` walk the tile grid, `Enter` launches,
-  `Esc` clears then hides.
+  non-matches are removed and empty sections disappear. It is shown **only on 应用** — on any other page
+  it is not displayed at all, rather than sitting there greyed out. `↑↓←→` walk the tile grid, `Enter`
+  launches, `Esc` clears then hides.
+- **A navigation rail measured against Task Manager's**, rather than approximated: the selected row is
+  marked by a 16 DIP accent pill centred on the row — not a bar down its full height — painted as an
+  overlay, so selecting a row never nudges its icon sideways, and the selected fill and the icon colour
+  are the tokens whose values were read off Task Manager itself.
 - Folder scanning + `.lnk` resolution + real Win32 icon extraction. A shortcut whose target is gone
   stays visible but greyed and unlaunchable.
 - **A resizable window that places itself.** It opens at 1000×688 DIP on a process's very first show

@@ -178,8 +178,18 @@
            Dark, and in Light 12 px on an exact match or 11 px if a 1-level tolerance is allowed. So the
            panel does NOT sit inside a 10-11 px band in both variants. What survives the instrument is the
            comparative reading, taken in the SAME captures: Border.tm-page-pane, this app's other
-           authored-8-DIP corner, gives 12 px in both axes in both variants, so the two 8 DIP corners
-           agree exactly in Dark and to within that one level in Light. The four-criterion table is in
+           authored-8-DIP corner, lands WITHIN 1 PX of the panel in both variants on every criterion
+           tried. Name the criterion whenever quoting a digit from here, because the digits move with it
+           and only that comparative bound holds across all of them. Under the ±1-level "steady-value"
+           criterion the measuring script implements — the border's outer pixel accepted once it is
+           within one level of its straight-run value — the panel reads 11 Light / 12 Dark against the
+           pane's 12 / 12. Under a STRICT exact match the panel reads 12 in both variants, and two runs
+           of that same scan, on captures taken a session apart, have put the pane at 12 and at 13: that
+           spread is the antialiasing ambiguity this block keeps warning about, not a disagreement about
+           the shape. No criterion separates the two corners by more than 1 px and none makes them equal
+           in BOTH variants, so the claim to carry is "within 1 px in both variants on every criterion
+           tried" — not "exactly equal in Dark", which holds only under the tolerance criterion. The
+           four-criterion table is in
            docs/superpowers/specs/2026-08-04-round6-surfaces-design.md, section 4.6 step 7.
 
            OverlayCornerRadius further down this file is also 8 and is deliberately NOT reused. That key
