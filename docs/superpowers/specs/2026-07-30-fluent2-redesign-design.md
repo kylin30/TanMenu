@@ -39,6 +39,13 @@ because control templates consume those with `{DynamicResource}`.
 So: **metrics and typography can be corrected globally with a few keys; colour cannot.** That splits
 the work cleanly and is the reason for the file layout below.
 
+*(Over-general, corrected by Round 4, item 5 — `2026-08-02-win11-shell-round4-design.md` §5.1(e).
+What finding 2 above really rules out is retinting a base palette colour and expecting the brushes
+DERIVED from it to follow; a **leaf** colour key that a template reads with `{DynamicResource}` can
+be overridden from Tokens.axaml just like a scalar, and `TitleBarBackgroundBrush` — a colour key
+FluentTheme itself defines in both of its theme dictionaries — now is. See the block comment over
+that key in `Themes/Fluent2/Tokens.axaml` for the decompile and the before/after pixels.)*
+
 Also measured: `SystemAccentColor` is a hardcoded `#FF0078D7` in the theme, not the user's
 personalization accent (this machine's is `#0078D4`). The accent therefore has to come from
 `PlatformSettings` at run time.
@@ -99,7 +106,8 @@ worse than the documented default.
 The same dictionary overrides the three Avalonia keys that measurement showed do propagate:
 `ControlCornerRadius` → 4, `OverlayCornerRadius` → 8, `ContentControlThemeFontFamily` → the resolved
 UI font. That is what pulls the settings window and the message box into Fluent 2 proportions
-without touching a single control template.
+without touching a single control template. *(Round 4, item 5 added a fourth,
+`TitleBarBackgroundBrush`; Tokens.axaml's own block comment is the current list.)*
 
 The settings window otherwise stays on Avalonia's own control colours. That is deliberate and
 unchanged from the previous design: a settings dialog is where users expect the platform's controls,

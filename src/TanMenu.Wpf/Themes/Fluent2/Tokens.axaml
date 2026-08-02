@@ -20,10 +20,15 @@
     #FF000000. Do not try that shortcut again.
 
     ── What CAN be corrected globally ───────────────────────────────────────────────────────────
-    Scalar theme keys are consumed by control templates with {DynamicResource}, so overriding them
-    here really does reach every standard control. The three at the bottom of this file are what
-    pull the settings window and the message box into Fluent 2 proportions and typography without
-    touching a single control template.
+    Anything a control template reads with {DynamicResource}. Whether FluentTheme defines the key
+    itself is NOT what decides it: Application.Styles is searched last-first
+    (Avalonia.Styling.Styles.TryGetResource counts DOWN from Count-1 — decompiled from
+    Avalonia.Base 12.1.0) and App.axaml lists this file after FluentTheme, so a key redefined here
+    wins the lookup. The FOUR keys at the bottom of this file are the ones this app overrides that
+    way: three metric/typography keys, which is what pulls the settings window and the message box
+    into Fluent 2 proportions without touching a single control template, plus
+    TitleBarBackgroundBrush. Their block comment carries the evidence, and the reason this does not
+    contradict the paragraph above.
 
     ── Values ───────────────────────────────────────────────────────────────────────────────────
     The neutrals are alpha over the surface, not opaque greys, which is what lets the acrylic
@@ -198,11 +203,27 @@
 
       <!-- ══ Overrides that reach Avalonia's own control templates ═════════════════════════════
            These four keys are read with {DynamicResource} by FluentTheme's templates, so setting
-           them here reaches every standard control — the settings page's dropdowns,
-           checkboxes, text boxes and scrollbars, and the shared message box. The first three
-           re-proportion those controls from Avalonia's defaults (3 px radius, bundled Inter) to
-           Fluent 2's. Verified by measurement; colour keys defined in FluentTheme's own dictionaries do
-           NOT work this way (see the header) — TitleBarBackgroundBrush is not one of those, see below. -->
+           them here reaches every standard control — the settings page's dropdowns, checkboxes,
+           text boxes and scrollbars, and the shared message box. The first three re-proportion
+           those controls from Avalonia's defaults (3 px radius, bundled Inter) to Fluent 2's.
+
+           ALL FOUR ARE KEYS FLUENTTHEME ITSELF DEFINES, and that is not an obstacle — being Fluent's
+           own key is not what would block an override. The first three sit in its top-level,
+           variant-independent dictionary (ControlCornerRadius 3, OverlayCornerRadius 5,
+           ContentControlThemeFontFamily deferred). TitleBarBackgroundBrush, the one that looks
+           least likely, is defined in BOTH of FluentTheme 12.1.0's theme dictionaries
+           (ilspycmd over Avalonia.Themes.Fluent.dll: AddDeferred("TitleBarBackgroundBrush",
+           Build_666) under ThemeVariant.Default and Build_1345 under ThemeVariant.Dark, each
+           returning {StaticResource SystemControlBackgroundAltHighBrush}, which resolves through
+           SystemAltHighColor to White under Default and Black under Dark — the White is exactly what
+           the live dump recorded below). Overriding it here still lands.
+
+           WHAT THE HEADER'S "retinting does not work" ACTUALLY RULES OUT is the other thing:
+           redefining a BASE palette colour does not reach the DERIVED brushes, because every derived
+           brush baked that colour with {StaticResource} at parse time. TitleBarBackgroundBrush is
+           itself such a derivative, so overriding SystemControlBackgroundAltHighBrush here would NOT
+           have moved the title strip. Override the leaf key the template actually names, never its
+           ancestor, and the seam works for a colour as readily as for a radius. -->
       <CornerRadius x:Key="ControlCornerRadius">4</CornerRadius>
       <CornerRadius x:Key="OverlayCornerRadius">8</CornerRadius>
       <FontFamily x:Key="ContentControlThemeFontFamily">Segoe UI Variable Text, Segoe UI, Microsoft YaHei UI</FontFamily>

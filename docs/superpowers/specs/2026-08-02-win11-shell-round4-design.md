@@ -940,6 +940,17 @@ IL in `Avalonia.Themes.Fluent.dll` 12.1.0 and could not be read), or it is a `Pr
 `DwmExtendFrameIntoClientArea` band. The Setter is **correct either way** — the app wants the backdrop to
 show through the strip — and it is the only lever available without instrumenting a build.
 
+> **Superseded during implementation (commit `3581976`); the code is the authority.** The Setter above
+> does not compile — `WindowDrawnDecorations` has no `Background` property (`AVLN2000`) — and a
+> `^ /template/ Panel#PART_TitleBar` rule setting `Background="Transparent"` was then tried and
+> **measured to fail** (the part still reported `bg=White`; an `Opacity` probe in the same rule applied,
+> so the selector matched). The cause **is** now verified and the `PrintWindow` artefact is ruled out:
+> the IL *was* read (`ilspycmd` over `Avalonia.Themes.Fluent.dll` 12.1.0), and a live
+> `GetVisualDescendants()` dump found `Panel name=PART_TitleBar bounds=0,0,1000,48 bg=White` in the
+> drawn-decorations underlay, its `Background` bound to `{DynamicResource TitleBarBackgroundBrush}`.
+> What shipped is a `TitleBarBackgroundBrush` override in `Tokens.axaml`, whose block comment carries the
+> full write-up.
+
 **(f) Make the Mica fallback follow the theme.** `MainWindow.axaml.cs:445-449` resolves its brush with
 `FindResource` and assigns the resulting object, so the fallback is a snapshot of whichever variant was
 live at `OnOpened` and does not follow a later `AppTheme.Apply`
@@ -1022,6 +1033,16 @@ measured basis; `MainWindow.axaml.cs:442-444` (`ApplyBackdrop`'s summary).
    same value.
 4. Corner: map the block x = 83..111, y = 72..102. The vertical border must straighten at y = 84 and the
    horizontal at x = 95 (12 px of arc in each axis from the outer edges at x = 83 / y = 72).
+
+   > **Steps 3 and 4 measured differently, and the expectations above are what is wrong** (commit
+   > `3581976`, re-measured in the fix round). Step 3: only the pane's *inner* column/row reads
+   > `(240,240,240)`; the outer one (x = 83 / y = 72) is the same stroke composited over the Mica
+   > backdrop instead of over white — `(226,227,236)` — because a `Border` paints its background inside
+   > the stroke. The reference capture `3.png` does the same thing, measuring `(232,227,233)` on its own
+   > left border. Step 4: the arc is **10–11 px**, not 12 — and `3.png` measures **10 px** under the
+   > identical scan, so the 8 DIP token reproduces the reference to within a pixel; the 12 came from a
+   > looser antialias threshold in the survey. Step 6's `~(48,48,48)` is likewise the Dark stroke over
+   > the *rail* (`#202020`), not over the `#2C2C2C` pane, where it computes and measures `(59,59,59)`.
 5. Right and bottom edges: no border pixel — the white must run to the last client column and row.
 6. **Dark theme.** Write `"appearance": "Dark"` into `Data\config.json`, restart. The pane must be
    `(44,44,44)`, the title strip and rail must again match each other within 1 level, and the border must
