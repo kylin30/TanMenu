@@ -3,10 +3,10 @@
 A Windows desktop launcher: an ordinary Windows 11 application window — Task Manager's shape, with a
 Mica backdrop, an app-drawn 48 DIP title strip (app name on the left, search box centred) and a
 48 DIP icon-only navigation rail on the left — 应用 at the top, and a bottom-pinned footer of
-退出 · 关于 · 打开主目录 · 刷新 · 设置. The 应用 page scans configured folders for apps / `.lnk`
-shortcuts and lays them out as horizontally-scrolling categories; the 设置 page holds every setting as
-a Windows 11 setting card, applied immediately, with no separate settings window any more. Pin its
-permanent taskbar entry for one-click recall, or use the tray fallback.
+打开主目录 · 刷新 · 设置, then a hairline separator, then 退出 last. The 应用 page scans configured
+folders for apps / `.lnk` shortcuts and lays them out as horizontally-scrolling categories; the 设置
+page holds every setting as a Windows 11 setting card, applied immediately, with no separate settings
+window any more. Pin its permanent taskbar entry for one-click recall, or use the tray fallback.
 
 The UI is drawn with native Avalonia controls in the **Fluent 2** design language — a Mica backdrop
 (an opaque Fluent 2 surface colour where the OS refuses it), a 4 px control radius, the system UI
@@ -24,9 +24,12 @@ were replaced by the current shell.
   hotkey, the nav-rail shell (应用/设置 pages), the settings page's card groups, launcher UI, and the
   app-level services (menu build, updates, autostart, taskbar pin, data location).
 - **`tests/TanMenu.Core.Tests`** — xUnit. Covers the on-disk JSON contracts (config, link cache, icon
-  cache), the source-generated shell-link COM, the launcher's match/filter rules, and the Fluent 2
+  cache), the source-generated shell-link COM, the launcher's match/filter rules, the Fluent 2
   token layer (no colour literals outside `Tokens.axaml`; every referenced token defined in both
-  variants).
+  variants), and the settings row spec (every card wraps the standard column Grid; no card restates a
+  constant the theme owns; every header is exactly one title line and one subtitle line; no subtitle
+  wording carries a hard line break). The last two read the `.axaml` and language sources directly —
+  they are source tests, because every failure they catch is silent at run time.
 
 Tech: .NET 10 (`net10.0-windows10.0.19041.0`, x64), Avalonia 12.1, NativeAOT, Serilog,
 source-generated `System.Text.Json`, `Microsoft.Extensions.DependencyInjection`, Velopack.
@@ -63,14 +66,21 @@ source-generated `System.Text.Json`, `Microsoft.Extensions.DependencyInjection`,
   than anything asked for — and the app's own 568 DIP height floor is applied to the placement
   *request* instead. Only the **maximized state** is remembered in config; neither the size nor the
   position is.
-- Recall: permanent taskbar pin, system tray (left-click toggle, show/exit menu), single instance.
+- Recall: permanent taskbar pin, system tray (left-click toggle, a 显示 / 设置 / 退出 menu), single
+  instance.
 - Optional **autostart** (per-user registry Run entry; deliberately unavailable in portable mode).
-- A **settings page** (not a separate window) grouped into Windows 11 setting cards — appearance
-  (language/light-dark/font/items per column), behavior (auto-hide-on-blur and always-on-top, both off by
-  default; autostart; taskbar pinning; a configurable global hotkey), folders (main folder, a
-  relocatable data folder, cache/backup/restore), common tools, and updates. Every control applies
-  immediately; only the three actions that move or overwrite real data (change/reset the data folder,
-  restore from backup) still confirm first.
+- A **settings page** (not a separate window) grouped into six Windows 11 setting-card groups —
+  appearance (language/light-dark/font/items per column), behavior (auto-hide-on-blur and always-on-top,
+  both off by default; autostart; taskbar pinning; a configurable global hotkey), folders (main folder, a
+  relocatable data folder, cache/backup/restore), common tools, updates, and 关于 (the product tile, the
+  publisher, the current version and the copyright — there is no About window, no overlay and no rail
+  row). Every control applies immediately; only the three actions that move or
+  overwrite real data (change/reset the data folder, restore from backup) still confirm first.
+  All **sixteen** rows across those groups obey one row spec — a 16 DIP icon, a header of exactly one
+  title line and one subtitle line, the control trailing with its right edge on one shared line, and any
+  extra content on a row of its own starting at the title's left edge — carried by shared style classes
+  in `Themes/Fluent2/Launcher.axaml` and guarded by source tests
+  (`tests/TanMenu.Core.Tests/Themes/SettingsRowTests.cs`).
 - **No bundled fonts.** The UI uses Segoe UI Variable Text → Segoe UI, with Microsoft YaHei UI for
   CJK, which is both the Fluent 2 typeface and a third of the payload saved.
 

@@ -1,7 +1,17 @@
 # TanMenu — Windows 11 shell, Round 4 design
 
-> **Status: DESIGN ONLY. Nothing here is implemented.** No source file was edited and nothing was
-> committed while this document was written. The implementation plan is a separate artefact.
+> **Status: IMPLEMENTED, and PARTLY SUPERSEDED BY ROUND 5. The shipped build is the authority, not
+> this document.** All five items below shipped in `e1546ec..908967e` (the document itself was first
+> tracked mid-round by `0b327f3` and corrected twice afterwards, by `961a78b` and `d493e18`). Where an
+> implementation measured something this design had predicted or inherited, the section carries a
+> **"Superseded during implementation"** box naming the commit — §3.2, §5(e) and §4 have one. The
+> sentence this header used to carry, "DESIGN ONLY. Nothing here is implemented.", was true only while
+> the document was being written and contradicted its own body from `0b327f3` onwards.
+>
+> **Round 5 reversed item 2 outright.** The footer order this document specifies — 退出 first, 关于 in
+> the rail — is **not** what ships. See §2's own superseded boxes, and
+> `docs/superpowers/specs/2026-08-03-settings-row-spec-design.md` (§C.1, §C.2) for what replaced it.
+> Do not execute §2 or its acceptance criteria as written.
 >
 > **Scope.** The five items the user asked for after reviewing the Round 3 build (0.12.0):
 >
@@ -208,6 +218,8 @@ already `Focusable="False"` (`MainWindow.axaml:317`).
    (y = 0..71) and 应用, and 应用's glyph centre must be **y = 120 ± 3 px** (today: 185.5).
 5. Walk the UI Automation tree of the window; every one of the six rail rows must expose a non-empty
    `Name` (应用 / 打开主目录 / 刷新 / 关于 / 退出 / 设置 in the configured language).
+   *(Superseded by Round 5 (`871504b`): there are **five** rows and 关于 is not one of them — 应用 /
+   打开主目录 / 刷新 / 设置 / 退出. The "non-empty `Name` on every row" requirement itself still holds.)*
 6. Write `"navRailExpanded": true` into `Data\config.json`, restart the process: the rail band must
    still measure 72 px and the log's fit line must still report the same chrome term as before. Then
    confirm the key is **not** rewritten by the app on the next save.
@@ -221,6 +233,22 @@ already `Focusable="False"` (`MainWindow.axaml:317`).
 
 **Top to bottom: 退出 · ── separator ── · 关于 · 打开主目录 · 刷新 · 设置.** One separator, immediately
 below 退出. 设置 stays bottom-most.
+
+> **Superseded by Round 5 (`871504b`); the shipped build is the authority.** This order shipped in
+> `1e0fb94` and was replaced one round later. The footer today is **打开主目录 · 刷新 · 设置 ──
+> separator ── 退出**, five rows became four, and **关于 is not in the rail at all** — its row and the
+> full-pane overlay it raised were deleted, and 关于 is now the last group on the 设置 page
+> (`Views/Settings/AboutCard.axaml`). The user asked for both changes directly (退出移动到最下,
+> 关于集成到设置页中); see `docs/superpowers/specs/2026-08-03-settings-row-spec-design.md` §C.1 and
+> §C.2, and the ordering block in `MainWindow.axaml` above the footer `StackPanel`, which records why
+> the separator travelled down with 退出.
+>
+> **§2.2's argument is not wrong, it was overruled by the user, and its mitigation survived.** (b)'s
+> point — that 退出 must not sit directly above 设置 — is still honoured: the separator now fences 退出
+> below 设置 instead of above it. Everything §2.2–§2.4 says about 关于 as "the natural buffer" and as
+> "the only row that cannot be reached any other way" is dead: `LauncherViewModel.OpenAbout`,
+> `ShowAbout`, `CloseAbout` and `OnAboutClick` no longer exist, so the "one correctness fix" §2.3
+> ships with the reorder (navigate to 应用 before `OpenAbout()`) went with them.
 
 ### 2.2 Why this order and not another
 
@@ -357,6 +385,17 @@ prefer it over any order that moves 设置 up.
 **Tests:** none change. Nothing under `tests/` references the footer.
 
 ### 2.5 Verification
+
+> **Superseded by Round 5 (`871504b`); do not run these as written.** Every criterion below asserts the
+> order this round shipped and Round 5 replaced. Steps 1, 3 and 4 assert a 关于 row that no longer
+> exists and a 退出 that is no longer first, so all three fail against the current build **by design**.
+> The equivalents that hold today: the footer's five `Nav*` rows are 应用 · 打开主目录 · 刷新 · 设置 ·
+> 退出, with 退出 bottom-most and the hairline immediately above it; the pitch exception (49 DIP rather
+> than 40) is now on 设置→退出, not 退出→关于. Step 2's separator geometry is unchanged and still holds —
+> `Border.tm-nav-separator` was moved, not restyled. Step 5 holds (the footer is still untested prose;
+> nothing under `tests/` references it). See
+> `docs/superpowers/specs/2026-08-03-settings-row-spec-design.md` §C.1's own verification for the
+> criteria that were actually run.
 
 1. `PrintWindow` capture; detect glyph bands over x = 20..75 in the footer region. Top to bottom the
    centres must be: 退出 (`E7E8`, power), then a 1 DIP rule, then 关于 (`E946`), 打开主目录 (`E8B7`),
@@ -1089,6 +1128,11 @@ applied at `AppPage.axaml:94-96`), which clears the 8 DIP arc entirely; `Setting
 > the top eleven rows — an arc, flush with the pane's inner edge. Both candidate clippers (the
 > overlay's own `RadiusOverlay` `Border` and this pane) are `Border`s with the same 8 DIP arc, so the
 > conclusion holds either way. Recorded in `MainWindow.axaml`'s own pane comment.
+>
+> *Round 5 (`871504b`) deleted the 关于 overlay, `RadiusOverlay` included, so this measurement is no
+> longer reproducible from this tree — do not treat "re-run the capture" as an open action.
+> `MainWindow.axaml`'s pane comment says so and enumerates why no current `OverlayPanel` child restages
+> it.*
 
 **Tests:** all four `Fluent2TokenTests` keep passing and two of them actively guard this change. No test
 file is edited.
@@ -1168,7 +1212,7 @@ Everything still routes through `MainWindow.RefitToContent` (`MainWindow.axaml.c
 | 2 | Docked notice opened/closed | `:333` (sub. `:117`; sources `AppPage.axaml.cs:81-85`, `:87-91`) | unchanged; now also re-anchors |
 | ~~3~~ | ~~Rail expand/collapse~~ | ~~`:699`~~ | **deleted by item 1** |
 | 4 | Launcher rebuild — 每列个数 / 字体 / 语言 / 刷新 / summon | `:353-354` (sub. `:124`; raised at `LauncherViewModel.cs:658`) | unchanged trigger; item 3 makes it change column **widths** as well as counts |
-| 5 | 设置 → 应用 switch | `:542-543`, gated on `wasSettings` (`:509`) | unchanged; also newly reached by 关于 from 设置 (§2.3) |
+| 5 | 设置 → 应用 switch | `:542-543`, gated on `wasSettings` (`:509`) | unchanged; also newly reached by 关于 from 设置 (§2.3) — *that second path went with 关于 in Round 5 (`871504b`); the rail-click path is unchanged* |
 | 6 | Maximized → Normal | `:437-439` | unchanged; now also re-anchors |
 
 **Five triggers, and every one of them now moves the window as well as resizing it.**

@@ -1,7 +1,7 @@
 ## TanMenu 0.12.0
 
 - 主界面改成常规应用窗口，采用任务管理器式布局：左侧导航（应用 / 设置），右侧内容。原先失焦即隐的弹出面板不再是主界面。
-- 左侧导航固定为图标模式，不再有展开 / 收缩，每项都有工具提示。原先标题栏「更多」菜单里的 打开主目录 / 刷新 / 关于 / 退出 移到导航栏底部，顺序为 退出 · 分隔线 · 关于 · 打开主目录 · 刷新 · 设置：退出 不再紧挨着最常用的 设置，中间隔了四行和一条分隔线。
+- 左侧导航固定为图标模式，不再有展开 / 收缩，每项都有工具提示。原先标题栏「更多」菜单里的 打开主目录 / 刷新 / 退出 移到导航栏底部，自上而下是 打开主目录 · 刷新 · 设置 · 分隔线 · 退出：退出 在最下面，和最常用的 设置 之间隔着一条分隔线，而不是和其余项排成一串没有分组的按钮。同一个菜单里的 关于 没有进导航栏，改成了 设置 页里的一个分组。
 - 搜索框移到标题栏中央，改用 Windows 11 的文本框聚焦样式：保留 1px 常态边框，聚焦时在底边加 2px 强调色下划线，而不是整圈强调色描边。
 - 分类恢复横向排列，每个分类的快捷方式纵向填满一列再换下一列。
 - 「每列个数」重新成为可设置项，默认 10（0.11.0 曾移除它）。这直接决定窗口高度：一个 47 项的分类，改动前窗口高达 1392 DIP（占满整个工作区），现在是 568 DIP。
@@ -9,6 +9,8 @@
 - 快捷方式改为按钮样式：细边框、圆角、完整的悬停 / 按下 / 焦点状态。标题栏与左侧导航栏改为同一背景色，Mica 透过两者；应用内容页改为纯白底，左上角一个 8 DIP 圆角，上边和左边各一条 1 DIP 细线。设置页保留原来的浅灰底，因为设置卡片本身是半透明白，放在纯白页上就看不见了。
 - 窗口每次启动都按当前内容重新计算大小，并且每次启动、每次重新适配内容，都把自己放到主屏工作区的水平正中、底边距工作区底部（任务栏上沿）8 DIP。窗口位置不再记忆。手动拖走的窗口会留在原处，直到内容变化或再次唤起；会话中手动调整过大小的，本次会话内不再自动改回。
 - 设置改为主界面内的一页，Windows 11 卡片布局，每项改动即时生效并立即写盘；独立的设置窗口已删除。
+- 设置页的每一项都按同一套行规范排布：左边一个 16 DIP 图标，中间一行标题加一行说明，控件一律靠右、右边缘对齐在同一条线上，附加内容（文件夹路径、占用大小、更新渠道说明与进度条、常用工具勾选列表）另起一行，从标题的左边缘开始。十六行全部照此重建，由共用的样式类承担，而不是每张卡片各写各的。这条规范抹平的差异：按钮不再有的靠右、有的孤零零落在卡片左下角；文件夹路径和占用大小不再浮在卡片中间，改为在说明行下方左对齐；更新卡片有了固定标题「更新状态」，原先顶在标题位置的动态状态句降为说明行；标题与说明之间的空隙统一（「固定到任务栏」和「热键」两行原先各多出 14 DIP 左右）；热键输入框禁用时的底色改用和周围禁用按钮相同的 (253,253,253)，不再是深了 52 级的 (201,201,201)。
+- 「关于」在 设置 页里，是最后一个分组、一张卡片：产品磁贴、TanMenu、由 TanSoft 出品、当前版本 和版权行。它不在左侧导航栏里，也没有独立的关于窗口或浮层。「更新」分组里不再单列「当前版本」卡片，版本号在设置页上只出现一次。
 - 「固定到任务栏」不再弹窗提示，改为主界面内的内嵌提示；应用已固定时该按钮显示为禁用态，而不是可点击的强调色按钮。
 - 修复：设置页最底部约 47px 高的内容无法滚动到。
 - 配置、快捷方式缓存与图标缓存三个文件的磁盘格式保持不变，升级后无需重新扫描或重新提取图标。
@@ -16,7 +18,7 @@
 ---
 
 - The main window is now an ordinary app window laid out like Task Manager: navigation on the left (Apps / Settings), content on the right. The hide-on-blur popup panel is no longer the main surface.
-- The navigation rail is permanently icon-only — there is no expand/collapse any more — and every entry carries a tooltip. Open home folder / Refresh / About / Exit moved out of the title bar's "More" menu and into the bottom of the rail, ordered Exit · separator · About · Open home folder · Refresh · Settings: Exit no longer sits right next to the most-used Settings, but four rows and a divider away from it.
+- The navigation rail is permanently icon-only — there is no expand/collapse any more — and every entry carries a tooltip. Open home folder / Refresh / Exit moved out of the title bar's "More" menu and into the bottom of the rail, ordered top to bottom Open home folder · Refresh · Settings · separator · Exit: Exit is last, one divider away from the most-used Settings, rather than sitting in an undifferentiated run of rows. About, from the same menu, did not go into the rail — it became a group on the Settings page.
 - Search moved to the centre of the title bar and adopts the Windows 11 text-box focus treatment: it keeps its 1 px resting border and gains a 2 px accent underline on the bottom edge, rather than an accent ring around the whole field.
 - Categories are laid out side by side again, each filling one column top to bottom before wrapping to the next.
 - Items per column is a setting again, defaulting to 10 (0.11.0 had removed it). It drives the window height directly: a 47-item category previously produced a 1392 DIP window — the full work area — and now produces 568 DIP.
@@ -24,6 +26,8 @@
 - Shortcuts render as buttons: hairline border, rounded corners, and real hover / pressed / focus states. The title bar and the rail now share one background with Mica showing through both, and the Apps content page is pure white with a single 8 DIP top-left corner and a 1 DIP hairline along its top and left edges. The Settings page deliberately keeps the grey surface, because the settings cards are a translucent white that would become invisible on a white page.
 - The window re-fits itself to its content on every launch, and on every launch and every re-fit it places itself horizontally centred on the primary screen's work area with its bottom edge 8 DIP above the work area (the top of the taskbar). Its position is no longer remembered. A window you have dragged stays where you put it until its content changes or you summon it again; a manual resize during a session sticks for the rest of that session.
 - Settings is a page inside the main window using Windows 11 cards, and every change applies and persists immediately. The separate settings window has been deleted.
+- Every row on the settings page follows one layout spec: a 16 DIP icon on the left, a header of exactly one title line and one subtitle line, the control trailing with its right edge on one shared line, and any extra content (folder paths, folder size, the update channel note and its progress bar, the common-tools checklist) on a row of its own starting at the title's left edge. All sixteen rows were rebuilt to it, carried by shared style classes rather than by per-card markup. What the spec levelled out: buttons no longer trail on some cards and sit alone at the bottom-left of others; the folder path and size lines no longer float in mid-card but are left-aligned under the subtitle; the update card gained a real title ("Update status") with the dynamic status sentence demoted from the title slot to the subtitle; the gap between a title and its subtitle is uniform (the "Pin to taskbar" and "Hotkey" rows each carried about 14 DIP too much); and the disabled hotkey box now uses the same (253,253,253) as every disabled button around it instead of a (201,201,201) that was 52 levels darker.
+- About lives on the settings page, as its last group and one card: the product tile, TanMenu, by TanSoft, the current version and the copyright line. It is not in the navigation rail, and there is no separate About window or overlay. The Updates group no longer carries a separate "Current version" card — the version appears exactly once on the page.
 - Pinning to the taskbar no longer prompts in a dialog — the prompt is inline in the main window — and the button renders as disabled once the app is already pinned, rather than as a clickable accent button.
 - Fixed: roughly 47 px of content at the bottom of the settings page could never be scrolled into view.
 - The on-disk formats of the config, shortcut cache and icon cache are unchanged, so upgrading needs no rescan and no icon re-extraction.

@@ -76,6 +76,8 @@
 > - **§1 title strip** — the `···` overflow button is gone; 打开主目录 / 刷新 / 关于 / 退出 are rail
 >   entries pinned to the bottom. The search box is centred in the strip and uses the Windows 11 focus
 >   treatment (1 px resting border plus a 2 px accent underline), not an accent ring.
+>   **关于 is superseded by Round 5, item 2** (`871504b`): it is not a rail entry — the footer's
+>   commands are 打开主目录 / 刷新 / 退出, and 关于 is the last group on the 设置 page.
 > - **§3 外观 card** — 按钮大小 is deleted along with the whole size-class plumbing; tiles are always
 >   the former "小" size at a fixed 168 DIP. `GeneralConfig.ButtonSize` is retained as a legacy field
 >   only. 每列个数 takes its place in the card. **The fixed 168 DIP is superseded by Round 4, item 3**
@@ -274,13 +276,17 @@ the old feel. See §6 for how existing configs — which carry `true` explicitly
   entries it would be decoration, and `MinWidth=760` guarantees room.~~ It is declared inline in
   `MainWindow.axaml` (a `ListBox` with two `ListBoxItem`s, lines 26–46) rather than as a separate
   `Controls/NavigationRail.axaml`: two static rows do not justify a control.
-  **Current (Round 2, then Round 4, item 1):** the rail is **48 DIP, icon-only, permanently** —
-  `MainWindow.axaml:322`'s literal `Width="48"` is its single source of truth, mirrored by
-  `MainWindow.RailWidthDip` for the window fit. Round 2 made it collapsible (48 ⇄ 200 with a width
-  transition); Round 4 deleted the toggle, the 200 px state, the transition and the six row labels,
-  so the tooltips `ApplyRailText` already set are now the only naming of each row. It holds 应用 in a
-  `*`-sized `ListBox` plus a bottom-pinned footer of 退出 · separator · 关于 · 打开主目录 · 刷新 ·
-  设置, where only 设置 is a second `ListBoxItem` and the four commands are plain `Button`s.
+  **Current (Round 2, then Round 4, item 1, then Round 5, items 1–2):** the rail is **48 DIP,
+  icon-only, permanently** — `MainWindow.axaml:322`'s literal `Width="48"` is its single source of
+  truth, mirrored by `MainWindow.RailWidthDip` for the window fit. Round 2 made it collapsible
+  (48 ⇄ 200 with a width transition); Round 4 deleted the toggle, the 200 px state, the transition and
+  the six row labels, so the tooltips `ApplyRailText` already set are now the only naming of each row.
+  It holds 应用 in a `*`-sized `ListBox` plus a bottom-pinned footer of 打开主目录 · 刷新 · 设置 ·
+  separator · 退出, where only 设置 is a second `ListBoxItem` and the three commands are plain
+  `Button`s. **Superseded by Round 5, items 1–2** (`871504b`): Round 4 had ordered that footer
+  退出 · separator · 关于 · 打开主目录 · 刷新 · 设置 with four commands; 退出 moved to the bottom
+  (the separator travelling with it), and 关于 left the rail entirely for a card at the end of the
+  设置 page (`Views/Settings/AboutCard.axaml`).
 - The page host is a `ContentControl` swapping two `UserControl`s. `MainWindow.axaml` keeps only the
   shell so it does not grow into the 300-line file it is today.
 - The overflow menu (`···`) keeps 打开主目录 / 刷新 / 关于 / 退出 and **loses 选项** — the rail is now

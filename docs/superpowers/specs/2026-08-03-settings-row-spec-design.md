@@ -9,6 +9,11 @@
 > `Padding`; card-height predictions in §B and §5.4 that followed from the old §A.5 are corrected with
 > the heights actually measured. Task C made three, all small and all in §C.2 — see the marks there.
 >
+> The whole-round review then took the one measurement §A.6 and §6.2 had deferred, and it reversed
+> their decision: `tm-card-value`'s `MaxWidth="260"` is **deleted** from the shipped class. Corrections
+> from that pass are marked **[post-round-5 review, measured]** and sit in §A.2, §A.6 and §6.2. The
+> shipped comments in `Themes/Fluent2/Launcher.axaml` are the authority for the current state.
+>
 
 > **Scope.** The three items the user asked for after reviewing the Round 4 build (0.12.0):
 >
@@ -135,10 +140,13 @@ puts every new rule after the two it refines — the same ordering the file alre
 ```xml
 <!-- The icon box. Shared by the glyph rows and by 关于's product image, hence :is(Control) rather
      than a TextBlock-scoped selector. Width 16 fixes the column independently of the glyph: all
-     nine glyphs on the page measure exactly 16 DIP wide today, so this changes nothing and stops a
-     future glyph from moving the title. Height is deliberately NOT set — the measured 16 DIP box is
-     Segoe Fluent Icons' own line box at FontSize 16, and pinning a height would clip the glyph if
-     the Windows 10 fallback face (Segoe MDL2 Assets) measures taller. -->
+     fifteen distinct glyphs the settings page carried when this was measured already measured
+     exactly 16 DIP wide (fourteen since part B deleted the 当前版本 card and with it the page's only
+     E946), so this changes nothing and stops a future glyph from moving the title. Height is
+     deliberately NOT set — the measured 16 DIP box is Segoe Fluent Icons' own line box at FontSize
+     16, and pinning a height would clip the glyph if the Windows 10 fallback face (Segoe MDL2
+     Assets) measures taller. An Image has no line box to supply one, so that ONE row states
+     Height="16" locally; every glyph row still must not. -->
 <Style Selector=":is(Control).tm-card-icon">
   <Setter Property="Width" Value="16" />
   <Setter Property="Margin" Value="0,0,14,0" />
@@ -194,6 +202,11 @@ puts every new rule after the two it refines — the same ordering the file alre
   <Setter Property="Margin" Value="0,0,-12,0" />
 </Style>
 ```
+
+> **[post-round-5 review, measured] `tm-card-value`'s `MaxWidth="260"` is not in the shipped class.**
+> The snippet above is the design as proposed and is kept for the record; the Setter was deleted after
+> the round, and the icon-box comment's glyph count was already corrected during implementation (see
+> §A.6 and `Themes/Fluent2/Launcher.axaml` for the shipped text, which is the authority).
 
 and two `Setter`s added to rules that already exist:
 
@@ -347,6 +360,29 @@ path inflates the card's desired width and pushes the trailing controls past the
 that. 260 is the shipped, working value; raising it would need the same re-measure at `MinWidth="760"`
 that §A.5 defers. The full text stays one hover away — `ReloadFromConfig` already sets a matching
 `ToolTip` (`FoldersCard.axaml.cs:138`).
+
+> **[post-round-5 review, measured] The bound did not stay. It was deleted, and the deferred
+> re-measure is the reason.** This paragraph's own escape clause ("raising it would need the same
+> re-measure at `MinWidth="760"`") was taken after the round shipped, and the mechanism it protects
+> against does not survive this section's *other* decision. Moving the value lines onto a
+> `Grid.Row="1" Grid.ColumnSpan="2"` expansion row took them out of column 1, where the desired-width
+> inflation had been measured; `SettingsPage.axaml`'s `ScrollViewer` never enables horizontal
+> scrolling, so `ScrollContentPresenter` measures `CardStack` against the real viewport width, the
+> card `Border` stretches to it, and a spanning child's desired width has nowhere to inflate into.
+>
+> Measured with the Setter deleted and `DataPathText` fed a ~250-character path — still ellipsized at
+> **1182.00 DIP** on the widest row this page has, so at least twice the row it sits on below — at the
+> platform floor `SetWindowPos` clamps to: `GetWindowRect` 1162 px =
+> 760 DIP client, card **664.00 DIP**, content box 629.33, expansion span **599.33** — in **both**
+> languages: every card still 664.00 DIP with unchanged heights, every trailing control still on the
+> content right edge (0.00 DIP over, 12.00 on the five toggle rows per §A.7), and `SettingsScroll`
+> still `HorizontallyScrollable=False` with the vertical bar as its only `ScrollBar`.
+>
+> What the bound cost was real: `DataPathText` sat clamped at 259.33 DIP and already ellipsized
+> (258 DIP of ink) on a row measured at **1185.33 DIP** at the fitted width. The same real path is
+> 522.67 DIP untrimmed and now renders whole; it still ellipsizes at the floor (591.33 DIP of the
+> probe path). `HorizontalAlignment="Left"` stays, with a different job — see the shipped class
+> remark in `Themes/Fluent2/Launcher.axaml`, which is the authority.
 
 ## A.7 Variant 4 — the toggle, and the 12 DIP that is not ours
 
@@ -1037,8 +1073,8 @@ is clipping, and there is none. Captures: `b-760-folders.png`, `b-760-folders-en
 | Is the row spec enforced by a `ControlTheme` / style, or by copied markup? | **Both, split at a verified line.** Seven style classes carry everything that has an `AvaloniaProperty`; the `Grid`'s column template has none, so it is literal markup guarded by a source test | §A.2, §5.3 |
 | Icon pinned to the title line, or centred on the text block? | **Centred — unchanged.** Enforcing "the header is always two lines" makes centring land on one y for all 16 rows and leaves 11 rows byte-identical. Pinning would have changed 13 | §A.1 (I1/I2) |
 | Where do path / status / version lines live? | **The expansion row, never the header stack.** That is what keeps the header two lines, which is what keeps the icon and the trailing control at one y | §A.6 |
-| Centred path text | **`HorizontalAlignment="Left"`** on `tm-card-value`. Cause proved against decompiled `ArrangeCore`; `Stretch` shares `Center`'s offset arithmetic under a `MaxWidth` | §A.6 |
-| Keep `MaxWidth="260"`? | **Yes**, as a measure-time bound, moved from three literals into the class. Raising it would need its own 760 DIP re-measure — 6.1(b)'s does not cover it, because it was taken with the bound in place | §A.6 |
+| Centred path text | **`HorizontalAlignment="Left"`** on `tm-card-value`. Cause proved against decompiled `ArrangeCore`; `Stretch` shares `Center`'s offset arithmetic under a `MaxWidth`. **[post-round-5 review]** the Setter it stays kept, but for a different reason once the `MaxWidth` went — see §A.6's box | §A.6 |
+| Keep `MaxWidth="260"`? | **Decided Yes here; reversed after the round.** **[post-round-5 review, measured]** the deferred 760 DIP re-measure was taken and the bound bounds nothing on a spanning expansion row, so the Setter was deleted — see §A.6's box for the numbers | §A.6 |
 | The update card's missing title | **New static `UpdateStatusTitle` (更新状态 / Update status)**; the dynamic string is demoted to `tm-card-sub` and loses its local `TextWrapping` | §B row 16 |
 | 固定到任务栏 / 热键's 14 DIP gap | **Both status lines become the header's subtitle**; the root `StackPanel` and the `30,8,0,0` margin go. The original "the control needs more room" justification does not bind — both controls leave ≥ 350 DIP of text column even at `MinWidth="760"` | §B rows 8, 10 |
 | 热键's grey box | **`TextBox.tm-keycap`, four `/template/` rules**, using the precedence `tm-search` already proved. It also gains a real focus state, which the key-capture interaction needs | §A.8 |
