@@ -20,7 +20,16 @@
 > against §3.2(e), marked in place. **Item 3's review then found one stale sentence** — the
 > `TmNavRowItem` block comment still asserted, in the present tense, the 4 px indicator its own change
 > had replaced with a 5 px one — so that comment was corrected and §3.3(b) was given the outcome note
-> §3.3(e) already had; both are marked in place. Item 4 is still design only.
+> §3.3(e) already had; both are marked in place. **Item 4 shipped last**, in `c4aabcb`, *feat: give
+> every 应用 category a panel, measured*, exactly as §4.3 specifies. **Three corrections to §4 came out
+> of running it**, all marked in place and all one root cause or its consequences: §4.4's arithmetic
+> uses the **authored** border `B = 1`, where at this machine's 150 % a 1 DIP stroke lays out as 2
+> physical px = 1.3333 DIP, so the real per-panel chrome is **22.6667** per axis and every figure
+> derived from 22.00 is 0.67 per panel low — §4.4, §4.6 steps 1, 2 and 10 and §5.2's predicted window
+> line are corrected at each site. §4.6 step 7's "10-11 px" corner bar is also corrected: it is
+> instrument-dependent, and the correction records the panel's arc beside the app's own other
+> authored-8-DIP corner measured in the same capture. Everything else in §4 held as written, including
+> every RGB in §4.2's Dark table, which was computed and measured exactly.
 >
 > **Scope.** The four items the user asked for after reviewing the Round 5 build:
 >
@@ -1067,6 +1076,25 @@ At the chosen numbers (`P = 12,12,8,8`, `B = 1`, `G = 12`, `N = 5`):
 ΔH = 12 + 8 + 2                              = +22.00
 ```
 
+> **Corrected 2026-08-03, while implementing item 4: `B = 1` is the AUTHORED value and the layout
+> value on this machine is 4/3.** At 150 % a 1 DIP stroke lays out as 2 physical px = 1.3333 DIP, so
+> `2B` is **2.6667**, not 2, and the per-panel chrome is **22.6667 DIP per axis**, not 22. This is not
+> a new mechanism — it is the same rounding `Launcher.axaml`'s pane-border remark and `PaneBorderDip`
+> already record for the content pane's own 1 DIP border, and the design failed to carry it into this
+> arithmetic. Corrected:
+>
+> ```
+> ΔW = 5·(12 + 8 + 2.6667) + 4·(12 − 24) = 113.3333 − 48 = +65.3333
+> ΔH =      12 + 8 + 2.6667                             = +22.6667
+> ```
+>
+> **Measured on the shipped build**, and the model reproduces it exactly: the logged page went
+> `1643.3333x471.3333` → `1708.6667x494`, i.e. **+65.3333 / +22.6667**. The five UIA container widths
+> sum to **1628.6667** against `Σgroups 1515.33 + 5 × 22.6667 = 1628.6667`, and the measured insets are
+> **L 13.3333, T 13.3333, R 9.3333** (12 + 1.3333 and 8 + 1.3333) rather than 13 / 13 / 9. Every row of
+> the alternatives table below is therefore `N × 0.6667` low in ΔW and 0.67 low in the height request;
+> the **ordering of the five rows is unchanged**, so the choice the table was built to justify stands.
+
 Alternatives evaluated, so the choice is visible rather than asserted (r6-panels §3.5 supplies rows a-d;
 the chosen row is computed the same way):
 
@@ -1098,6 +1126,12 @@ closed, so no Fluent-plausible padding is free.
 
 **So panels move the point at which the window starts growing vertically from 每列个数 = 12 to
 每列个数 = 11.** That is the item's only height cost and it is stated rather than discovered later.
+
+> **Outcome, 2026-08-03.** The conclusion held and the numbers moved by the 0.67 above. Measured by
+> setting 每列个数 through 设置 on the shipped build and reading the fit line: `R = 10` logs
+> `page …x494` ⇒ request **543** ⇒ window **568** (floor), and `R = 11` logs `page 1719.3333x534` ⇒
+> **window 583**, not 568. The corrected model is `142.9999 + 40·R` (= `120.33 + 22.6667 + 40·R`),
+> which gives 543 and 583 exactly. The threshold moves to 每列个数 = 11 as predicted.
 
 ### 4.5 Blast radius
 
@@ -1138,7 +1172,13 @@ and no `ScrollBar` element exists under `Body` in the UIA tree. After the change
 and the equality holds. The bar can still only appear when the fit does not get the width it asked for:
 (a) the work-area clamp (5120 DIP here, against a new 1754.33 — a very long way off), (b) `_userResized`
 latched (`WindowHost.cs:759`), (c) maximized, (d) a manual drag to `MinWidth="760"`. Cases (a) and (d)
-come 62 DIP closer. Whether a shown horizontal bar steals layout height from `Body` or overlays it was
+come 62 DIP closer.
+
+> **Outcome, 2026-08-03: it holds, at 65.33 rather than 62 (§4.4's correction).** Measured on the
+> shipped build at the default: the page's desired width is 1708.6667 and `Body`'s viewport is
+> `window 1757.6667 − chrome 49` = **1708.6667**, equal to the digit, and an uncapped raw UIA walk of
+> the whole window finds **no `ScrollBar` element anywhere**. Same reading with the filter applied and
+> after it was cleared. Whether a shown horizontal bar steals layout height from `Body` or overlays it was
 **not determined** (r6-panels §4.4) and this item does not depend on it.
 
 **Empty state and both docked notices: untouched.** `ShowEmpty` (`AppPage.axaml:233-243`) and
@@ -1179,36 +1219,156 @@ same property on the same `x:DataType`. No reflection, no new type.
 1. **The fit line.** `Data\cache\logs\log-<date>.txt` must read
    `page 1705.3333…x493.3333… + chrome 49x49` and the window `1754.3333…x568 DIP` at
    `1682.8333…,816`. **This is a prediction — see §5.2 for its basis and its error bars.**
+
+   > **Outcome, 2026-08-03. The prediction missed by +3.33 DIP in page width and +0.67 in page height,
+   > and the cause is fully diagnosed — see §4.4's correction: the arithmetic used the authored 1 DIP
+   > border where the layout value at 150 % is 1.3333.** Measured, and logged byte-for-byte:
+   > `Window fit to content: 1681.1666666666665,816 1757.6666666666667x568 DIP (page
+   > 1708.6666666666667x494 + chrome 49x49) on work area 0,0 5120x1392 at scale 1.5`. Against the
+   > prediction: page W 1708.6667 vs 1705.3333, page H 494 vs 493.3333, window 1757.6667 vs 1754.3333,
+   > Left 1681.1667 vs 1682.8333 (exactly −ΔW/2), Top 816 and height 568 (the floor) both exact. The
+   > corrected model reproduces all five to the last logged digit. The **pre-change** line measured in
+   > the same session, from a build of `4bd1b13` with only these three files reverted, was
+   > `1713.8333333333335,816 1692.3333333333333x568 DIP (page 1643.3333333333333x471.3333333333333 +
+   > chrome 49x49)` — byte-identical to §5.2's "today", so the whole difference is this item's, and the
+   > `page 1658.6667` jitter §5.2 warns about did not occur in any of the six runs taken.
 2. **Panel chrome, by UIA.** Walk the raw tree with a depth cap of at least 80 (the tile Buttons sit at
    depth 33-39; a depth-30 walk silently finds none — r6-panels §0). For each of the five group
    containers: `container.Width − (Σ over its columns of (tile width + 4))` must be **22.00 DIP**, and
    the same for height on the tallest.
+
+   > **Corrected 2026-08-03, while implementing item 4, twice over.**
+   >
+   > * The width bar is **22.6667 DIP**, not 22.00 (§4.4's correction). Measured on the shipped build,
+   >   the five containers give **22.6666 / 22.6666 / 23.3333 / 22.6667 / 22.6667**. The 23.3333 is the
+   >   ten-column group and is the accumulation of ten independently px-rounded column rects, which is
+   >   the same class of residual §5.2 already flags for the five group rects; the bar should be
+   >   **22.6667 ± 0.7**.
+   > * **The height half of this step cannot be read off the arranged rect at all, and a correct build
+   >   fails it as written.** The window's height is clamped UP to the 568 floor from a 543 request, so
+   >   `Body` hands its content ~24.67 DIP more height than it asked for and the panels, being
+   >   `Stretch`, take it: every container measures **478.6667** where the tallest category's own
+   >   content is 431.3333, a 47.33 gap of which only 22.6667 is chrome. The bar that does hold is the
+   >   **desired** height, and the fit line is the instrument for it: page H moved 471.3333 → 494, i.e.
+   >   exactly +22.6667 on the tallest category (step 1). Measured insets corroborate it per panel:
+   >   L 13.3333, T 13.3333, R 9.3333, and B 9.3333 **plus** that panel's share of the clamp slack.
 3. **Equal height.** All five group containers must report the **same** height. Today they are
    231.33 / 431.33 / 431.33 / 271.33 / 271.33.
+
+   > **Outcome, 2026-08-03.** All five measure **478.6667 DIP**, one value, on the shipped build.
 4. **The gap.** For each adjacent pair, `container[i+1].x − (container[i].x + container[i].Width)` must
    be **12.00 DIP** (18 px). Today 24.00.
+   > **Outcome, 2026-08-03.** **12 / 12.0001 / 12 / 12 DIP**, 18 px at every one of the four boundaries.
 5. **Arrow-key invariant.** All nine columns' first tile must report the **same y**. Today all report
    image y = 1381; after, all must report one value ≈ 1400.
+
+   > **Outcome, 2026-08-03, and it was strengthened into the check the item actually needs.** All nine
+   > columns' first tile report **y = 1400**, one value, and every tile centre falls on one of exactly
+   > **10** distinct y values both before and after, on a 40 DIP row pitch against an 18 → 18.3333 DIP
+   > `sameRow` bar. That is only the geometric precondition; the decision itself was verified directly.
+   > `FindAdjacentTile`'s scoring (`AppPage.axaml.cs`, transcribed verbatim, including that `<` keeps
+   > the first candidate on a tie) was replayed over **two measured tile geometries** — the shipped
+   > build's, and a build of `4bd1b13` with only these three files reverted, both dumped by raw UIA
+   > walk in the same session, the same 74 tiles in the same document order — for all four directions
+   > from every tile. **All 296 decisions are identical** (Left 74/74, Right 74/74, Up 74/74,
+   > Down 74/74, agreeing also on which 10 / 10 / 9 / 5 of them are "no move"). Instrument:
+   > `r6i4-arrows.ps1` in the scratchpad.
 6. **Pixels, Light.** `PrintWindow`. Scan a row through a panel between its heading and its first tile
    row, crossing a panel boundary: the sequence must be pane `(255,255,255)` → panel border
    `(240,240,240)` → panel fill `(249,249,249)`. Then scan a row through a tile: panel fill
    `(249,249,249)` → tile border `(234,234,234)` → tile fill `(253,253,253)`. **The two hairlines must
    differ** (240 against 234) — that is the "not two identical nested outlines" criterion.
+
+   > **Outcome, 2026-08-03: every value exact, and one fact the design did not anticipate.** Measured
+   > on the shipped build at image row y = 172 (between the heading and the first tile row): pane
+   > `(255,255,255)` through x = 108, panel border at x = 109, panel fill `(249,249,249)` from x = 111.
+   > At y = 200 (through a tile): panel fill `(249,249,249)` through x = 128, tile border at x = 129,
+   > tile fill `(253,253,253)` from x = 131. The unanticipated part: a 1 DIP stroke is **2 physical px**
+   > here (the same rounding §4.4's correction is about), and the two pixels are NOT the same colour —
+   > the panel's read `(240,240,240)` then `(234,234,234)`, the tile's `(234,234,234)` then
+   > `(238,238,238)`. That is `StrokeControlBrush` composited over what lies under each pixel, 255 and
+   > 249 respectively, and it is arithmetic the design already has; it just did not say the stroke
+   > would show both. **The criterion as written holds at the outer pixel of each stroke: 240 against
+   > 234, Δ6.** The gutter between two panels scans 18 px of pure `(255,255,255)`.
 7. **Corner.** Block-dump the panel's top-left 16x16: the arc must span **10-11 px** in each axis, the
    same figure `RadiusPaneTopLeft` was validated against (`Tokens.axaml:154-157`) and the same the
    reference's large tiles measure.
+
+   > **Corrected 2026-08-03, while implementing item 4: "10-11 px" is not a bar a single reading can
+   > pass or fail, because the number depends entirely on where the antialiased boundary is called —
+   > which is what `Tokens.axaml`'s own `RadiusPaneTopLeft` remark already says (it records 10 px for
+   > one instrument and Round 4's 12 px for another on the SAME corner).** So the panel's arc was
+   > measured at four criteria and, in the same captures, **so was the app's own other authored-8-DIP
+   > corner**, `Border.tm-page-pane`'s. That comparison is the claim that actually matters and no
+   > instrument artefact can fake it. Coverage bars are `|G − outside| / |border − outside|`;
+   > "steady-value" is the criterion `Tokens.axaml` describes, the row/column at which the border's
+   > outer pixel reaches its straight-run value:
+   >
+   > | corner, same capture | 0.05 | 0.50 | 0.90 | steady-value |
+   > |---|---|---|---|---|
+   > | `tm-group-panel`, **Light** | 8 px | 9 px | 11 px | **11 px** |
+   > | `tm-page-pane`, **Light** | 8 px | 10 px | 12 px | 12 px |
+   > | `tm-group-panel`, **Dark** | 8 px | 10 px | 12 px | **12 px** |
+   > | `tm-page-pane`, **Dark** | 8 px | 10 px | 12 px | 12 px |
+   >
+   > Identical in each axis for every row. **In Dark the two corners agree exactly at all four
+   > criteria**; in Light the panel reads 1 px shorter at three of them, and the coverage metric is
+   > biased against it there because a pure-fill pixel inside the panel is 249 against a 255 outside
+   > and a 240 border, i.e. already 0.4 "covered" before any ink — the pane, whose inside is 255, has
+   > no such term. **Ruled: the panel renders the same 8 DIP arc the pane does, to within the
+   > instrument's own 1 px ambiguity, and the design's 10-11 px band is met at the steady-value
+   > criterion in Light (11) and missed by 1 px in Dark (12) by exactly as much as the pane misses it.**
+   > No change to the authored 8. Instrument: `r6i4-arc.ps1` in the scratchpad.
 8. **Filtering — the failure mode the test in §4.5 guards, checked once on screen too.**
    `ValuePattern.SetValue` on `SearchBox` = a string that matches exactly one category (the recon used
    `"Steam"`). Capture. Scan the row at the surviving panel's vertical centre from the items panel's
    origin rightwards: the whole **48 DIP lead-in must be pure pane colour** — `(255,255,255)` Light —
    with **no border pixel and no fill**. If four empty 22 DIP boxes appear, the `IsVisible` binding did
    not move. Restore the filter to `""` and re-verify 74 tiles / 5 groups.
+
+   > **Outcome, 2026-08-03.** With the box set to `"Steam"` through `ValuePattern`, **four of the five
+   > generated containers report an empty UIA rect** and the fifth is 114 DIP wide with one tile. It
+   > starts **48.0000 DIP** after the items panel's own origin, and the pixel scan of that lead-in —
+   > 72 px at the surviving panel's vertical centre — is **`(255,255,255)` on every one of them**, with
+   > the panel's border appearing at exactly the 73rd. Clearing the filter restored **74 tiles in 5
+   > groups** with byte-identical container geometry.
+   >
+   > One thing this step incidentally exposed and which is **NOT this item's**: with a filter that
+   > matches *nothing*, the 未找到匹配项 overlay renders **zero pixels** — the three UIA nodes
+   > (`未找到匹配项`, `没有名称包含该关键词的快捷方式。`, `清除搜索`) exist in the tree with empty rects.
+   > **Measured identically on a build of `4bd1b13` with these three files reverted**, so it predates
+   > item 4 and item 4 neither causes nor fixes it. Hypothesis, stated as one and not verified:
+   > `OverlayPanel.MeasureOverride` measures every overlay against `children[0].DesiredSize`, and with
+   > the categories `ItemsControl` collapsed that first child's desired size falls to the
+   > `SurfacePadding`, leaving the centred overlay nothing to measure into. The `ShowEmpty` state could
+   > not be exercised at all here — it needs `HasGroups` false, i.e. a machine with no shortcuts.
 9. **Dark.** `"appearance": "Dark"` in `Data\config.json`, restart, repeat 6-7 with pane `(44,44,44)` →
    panel border `(59,59,59)` → panel fill `(53,53,53)`, and tile border `(67,67,67)` → tile fill
    `(55,55,55)`. These are **computed**, not measured — accept ± 2 levels. Restore.
+
+   > **Outcome, 2026-08-03: all five computed values measured EXACTLY, zero levels of error on every
+   > channel.** Pane `(44,44,44)` → panel border `(59,59,59)` → panel fill `(53,53,53)`; panel fill
+   > `(53,53,53)` → tile border `(67,67,67)` → tile fill `(55,55,55)`. The panel's second stroke pixel
+   > reads `(67,67,67)` and the tile's `(69,69,69)`, the Dark counterpart of step 6's finding, and the
+   > two outer hairlines differ by 8 (59 against 67). Gutter: 18 px of `(44,44,44)`. `Data\config.json`
+   > was backed up before the edit and restored from that backup afterwards; SHA-256
+   > `DFEFF028…46F65F` before and after.
 10. **每列个数 = 11**, set through 设置, then re-read the fit line: the window height must be
     **582.33**, not 568 (§4.4). Restore the setting.
+
+    > **Outcome, 2026-08-03.** Driven through 设置 for real — `SelectionItemPattern.Select` on
+    > `NavSettingsItem` from a side runspace (2.08 s), `ValuePattern` on `ColCountUpDown`'s inner
+    > `Edit`, committed by `SetFocus` off it, then back to 应用 — so this exercised re-fit **trigger 4**,
+    > not a cold start. Logged: `1675.8333333333335,801 1768.3333333333333x583 DIP (page
+    > 1719.3333333333333x534 + chrome 49x49)`. **The window height is 583, not 568** — the threshold
+    > moved to 每列个数 = 11 as designed. The absolute figure is 583 against the predicted 582.33,
+    > the same +0.67 border term §4.4's correction covers. The setting was returned to 10 the same way
+    > and the fit line came back byte-identical to step 1's.
 11. `dotnet test` — **188** green. `dotnet publish -c Release` (NativeAOT) with 0 warnings.
+
+    > **Outcome, 2026-08-03.** `dotnet test -c Release`: **188 passed, 0 failed, 0 skipped** (187 at
+    > `4bd1b13`, counted in the same session before the change). `dotnet publish -c Release`:
+    > **0 warnings, 0 errors**, ILC link step included.
 
 ---
 
@@ -1266,6 +1426,32 @@ Left   = (5120 − 1754.33)/2 = 1682.83        Top = 1392 − 8 − 568 = 816
 ```
 
 **PREDICTED: `1682.8333,816 1754.3333x568 DIP (page 1705.3333x493.3333 + chrome 49x49)`.**
+
+> **Outcome, 2026-08-03: MEASURED `1681.1667,816 1757.6667x568 DIP (page 1708.6667x494 + chrome
+> 49x49)`. The prediction missed by +3.3333 DIP in page width and +0.6667 in page height, and the
+> cause is the one modelled term.** The two paragraphs below were right that the *measured* inputs
+> (`Σgroups`, `Htallest`, the closed-`PinNotice` band) would hold — they reproduced to the third of a
+> DIP — and right to name "the panel chrome, pure arithmetic over authored constants" as the only
+> modelled term. That is exactly where the miss is: the arithmetic used **the authored 1 DIP border
+> where this machine lays out 2 physical px = 1.3333 DIP**, so every panel costs 22.6667 rather than
+> 22, and `5 × 0.6667 = +3.3333` in width, `+0.6667` in height. §4.4 carries the corrected arithmetic.
+> Corrected, the model reproduces all five logged figures exactly:
+>
+> ```
+> page W = 16 + (1515.33 + 5·22.6667) + 4·12 + 16 = 16 + 1628.6667 + 48 + 16 = 1708.6667  ← logged
+> page H = 8 + 16 + (431.33 + 22.6667) + 16                                  =  494.0000  ← logged
+> window = 1708.6667 + 49 × max(568, 494 + 49 = 543)         = 1757.6667 × 568            ← logged
+> Left   = (5120 − 1757.6667)/2 = 1681.1667                  Top = 816                    ← logged
+> ```
+>
+> Neither error source this section names actually fired: the `page 1658.6667` width jitter did not
+> occur in any of the six runs taken (every pre-change run logged `1643.3333`), and the two 0.67
+> residuals it flags are a different quantity from the 0.67-per-panel border term above — the five UIA
+> container rects still sum 0.67 short of the page arithmetic for the reason given there.
+>
+> **Items 1, 2 and 3 did not move this line**, as this section required: a build of `4bd1b13` with only
+> item 4's three files reverted logged `1713.8333,816 1692.3333x568 DIP (page 1643.3333x471.3333 +
+> chrome 49x49)`, byte-identical to the "today" recorded above.
 
 **This is a prediction, and Round 4's equivalent missed by 16.13 DIP.** The difference in confidence,
 stated so it can be judged rather than trusted: Round 4's miss came from a *modelled input* — its
@@ -1345,7 +1531,7 @@ Neutral across all four items, provided three rules hold — the same three ever
 | **Item 3** — selected fill | α 10/255 black; over the measured rail backdrop → `(230,232,243)` | α 15/255 white; over `(30,32,38)` → `(43,45,51)` |
 | **Item 3** — pill | `(0,103,192)`, unchanged hue | `(76,194,255)`, unchanged hue |
 | **Item 3** — rail glyph | `TextPrimaryBrush` α 0.894, matching TM's measured 0.893 | `TextPrimaryBrush` opaque white, matching TM's measured `(255,255,255)` |
-| **Item 4** — panel | fill `(249,249,249)` on a `(255,255,255)` pane (Δ6), border `(240,240,240)` (Δ15); tile gains a Δ4 fill it does not have today | fill `(53,53,53)` on `(44,44,44)` (Δ9), border `(59,59,59)` (Δ15); tile fill Δ2, tile border Δ14. **Computed, not measured** — §4.6 step 9 measures it |
+| **Item 4** — panel | fill `(249,249,249)` on a `(255,255,255)` pane (Δ6), border `(240,240,240)` (Δ15); tile gains a Δ4 fill it does not have today. **All four measured exactly, 2026-08-03** | fill `(53,53,53)` on `(44,44,44)` (Δ9), border `(59,59,59)` (Δ15); tile fill Δ2, tile border Δ14. Written as *computed*; **§4.6 step 9 measured all five with zero levels of error on every channel, 2026-08-03** |
 | **Item 1** | nothing to compute — the field is absent on 设置 in both variants | same |
 
 One pre-existing divergence this round neither creates nor fixes, recorded so it is not rediscovered:
