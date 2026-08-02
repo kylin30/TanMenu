@@ -31,13 +31,16 @@
        untranslated English, which is acceptable inside a branded splash card and is not acceptable as a
        settings-row subtitle.
 
-       NEITHER VALUE LINE SETS A ToolTip, and that is deliberate rather than an omission. tm-card-value
-       carries a 260 DIP measure-time bound, and its rule in Launcher.axaml states that a value line
-       whose text CAN outgrow that bound and has no ToolTip is a defect in the card. Neither of these
-       can: both are fixed formats over fixed content, not user data. Measured live at 150 % on this
-       page, 当前版本：0.12.0 is 91.33 DIP of ink and the copyright line 186 — the same reasoning
-       FoldersCard's DataInfoText records for going without one, and the opposite of its two path lines,
-       which are user data and do set one. -->
+       NEITHER VALUE LINE SETS A ToolTip, and that is deliberate rather than an omission. tm-card-value's
+       rule in Launcher.axaml states that a value line whose text CAN outgrow the row it sits on and has
+       no ToolTip is a defect in the card. Neither of these can: both are fixed formats over fixed
+       content, not user data. Measured live at 150 % on this page, 当前版本：0.12.0 is 91.33 DIP of ink
+       and the copyright line 186.00, against an expansion row that is 599.33 DIP wide even at the app's
+       minimum window width — the same reasoning FoldersCard's DataInfoText records for going without
+       one, and the opposite of its two path lines, which are user data and do set one. (An earlier
+       revision of this note put the test against tm-card-value's own "260 DIP measure-time bound";
+       that Setter was measured inert on a spanning expansion row and deleted — see the class's own
+       remark.) -->
   <StackPanel>
     <TextBlock x:Name="GroupHead" Classes="tm-group-head" />
 

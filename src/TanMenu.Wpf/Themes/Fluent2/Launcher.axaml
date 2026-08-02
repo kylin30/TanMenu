@@ -817,37 +817,58 @@
 
   <!-- A value line — a path, a size, a version: a subtitle that is one ellipsized line rather than a
        wrapping paragraph. Used WITH tm-card-sub (Classes="tm-card-sub tm-card-value") so it inherits
-       size, colour and line height and states only the four things that differ.
+       size, colour and line height and states only the three things that differ.
 
-       HorizontalAlignment="Left" is not cosmetic and must not be dropped. Avalonia 12.1.0's
-       Layoutable.ArrangeCore clamps the arranged width to MaxWidth and then runs the Stretch case
-       THROUGH Center's centring arithmetic (the two labels share one switch case), so a MaxWidth with no
-       stated alignment centres the line inside its column. That is what put the two folder rows' path
-       lines 384.67 and 456.67 DIP right of their own titles on the shipped build; the arithmetic
-       reproduces both measurements exactly, and applying this class to one of them put it back on its
-       title's own x, measured. The same mechanism is load-bearing in SettingsPage.axaml, which uses it
-       deliberately to centre CardStack at its own cap.
+       THERE IS NO MaxWidth HERE ANY MORE, AND RE-ADDING ONE NEEDS THIS PARAGRAPH READ FIRST. The class
+       shipped with MaxWidth="260" — a MEASURE-time bound, on the argument that a NoWrap +
+       CharacterEllipsis TextBlock reports its full untrimmed single-line advance as its desired width
+       (trimming is a paint-time concern), so one long path would inflate the card's desired width and
+       push the trailing controls past the visible edge. That mechanism was measured when a path line
+       lived in column 1, BESIDE those controls. Round 5 moved every value line onto a Grid.Row="1"
+       ColumnSpan="2" expansion row, and it does not reach there — re-measured rather than reasoned:
+       with the Setter deleted and DataPathText fed a ~250-character path still ellipsized at 1182.00 DIP
+       on the widest row this page has — so at least twice the row it sits on below — at the app's own
+       floor (MainWindow's MinWidth="760"; SetWindowPos
+       clamps at GetWindowRect 1162 px = 760 DIP client, card 664.00 DIP, content box 629.33, expansion
+       span 599.33) in BOTH languages: every card still measures 664.00 DIP with unchanged heights, every
+       trailing control still lands on the content right edge (0.00 DIP over; 12.00 on the five toggle
+       rows, the documented tm-card-toggle overhang), and SettingsScroll still reports
+       HorizontallyScrollable=False with a vertical ScrollBar as its only one. It cannot reach there:
+       SettingsPage's ScrollViewer never enables horizontal scrolling, so ScrollContentPresenter measures
+       CardStack against the real viewport width, the card Border stretches to it, and a spanning child's
+       desired width has nowhere to inflate into.
 
-       MaxWidth is a MEASURE-time bound, not a display cap, and it lives here so no value line has to
-       restate it: a NoWrap + CharacterEllipsis TextBlock reports its full
-       untrimmed single-line advance as its desired width (trimming is a paint-time concern), so without
-       a cap one long path inflates the whole card's desired width and pushes the trailing controls past
-       the visible edge. 260 is the shipped, screenshot-confirmed value, inherited rather than derived.
+       What the bound did cost was visible: DataPathText sat clamped at 259.33 DIP and already ellipsized
+       (258 DIP of ink) on a row measured at 1185.33 DIP at the app's fitted width — some 925 DIP of
+       empty space immediately right of a truncated path. That same real path measures 522.67 DIP
+       untrimmed and now renders whole. It still ellipsizes when the row genuinely runs out (591.33 DIP
+       of the probe path at the floor), which is what the trimming is for.
 
-       Where the bound can actually bite, the full text stays one hover away — but that is the
-       CONSUMER'S job, not this class's, and not every consumer needs one. FoldersCard's two path lines
-       are unbounded user data and set a matching ToolTip in code (FoldersCard.axaml.cs:102, 138, 220).
-       Its third value line, DataInfoText, sets none on purpose: its text is the fixed
-       CurrentDataSize / CurrentDataPending format over one of four short kind literals plus a
-       formatted byte count, and it measures 124 DIP of ink against the 260 bound (PrintWindow scan at
-       150 %, where DataPathText beside it is already ellipsized at 258), so a ToolTip there would only
-       repeat the line already on screen. A value line whose text CAN outgrow the bound and has no
-       ToolTip is a defect in that card. -->
+       HorizontalAlignment="Left" STAYS, but its job changed with the bound's removal. It is no longer
+       what stops the accidental centring — Avalonia 12.1.0's Layoutable.ArrangeCore clamps the arranged
+       width to MaxWidth and then runs the Stretch case THROUGH Center's centring arithmetic (the two
+       labels share one switch case), so a MaxWidth with no stated alignment centres the line, which is
+       exactly what put the two folder rows' path lines 384.67 and 456.67 DIP right of their own titles
+       on the shipped build. With no MaxWidth there is nothing to centre. What Left does now is keep the
+       element's bounds equal to its TEXT: a Stretch line arranges to the whole span instead — measured
+       against UpdateHelpText, a plain tm-card-sub on the same kind of row, which reports 1185.33 DIP
+       fitted and 599.33 at the floor, the full span both times — which would spread the two path lines'
+       ToolTip across the empty width beside them. The centring mechanism is separately load-bearing in
+       SettingsPage.axaml, which uses it deliberately to centre CardStack at its own cap.
+
+       THE ToolTip RULE SURVIVES THE BOUND, restated against the row rather than against 260: a value
+       line whose text CAN outgrow the row it sits on and has no ToolTip is a defect in that card, and
+       supplying one is the CONSUMER'S job, not this class's. FoldersCard's two path lines are unbounded
+       user data — a long one still ellipsizes at the floor — and set a matching ToolTip in code
+       (FoldersCard.axaml.cs:102, 138, 220). Its third value line, DataInfoText, sets none on purpose:
+       its text is the fixed CurrentDataSize / CurrentDataPending format over one of four short kind
+       literals plus a formatted byte count, and it measures 124.67 DIP Chinese / 142.00 English against
+       the floor's 599.33 span, so it can never be trimmed and a ToolTip would only repeat the line
+       already on screen. AboutCard's two lines (91.33 and 186.00) go without one for the same reason. -->
   <Style Selector="TextBlock.tm-card-value">
     <Setter Property="TextWrapping" Value="NoWrap" />
     <Setter Property="TextTrimming" Value="CharacterEllipsis" />
     <Setter Property="HorizontalAlignment" Value="Left" />
-    <Setter Property="MaxWidth" Value="260" />
   </Style>
 
   <!-- The expansion row's own top gap, on the child rather than on the Grid — see the RowSpacing note

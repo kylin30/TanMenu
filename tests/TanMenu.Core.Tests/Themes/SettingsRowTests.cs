@@ -24,9 +24,13 @@ namespace TanMenu.Core.Tests.Themes;
 ///   <c>ShowGridLines</c>/<c>RowSpacing</c>/<c>ColumnSpacing</c>/<c>Column</c>/<c>Row</c>/
 ///   <c>ColumnSpan</c>/<c>RowSpan</c>/<c>IsSharedSizeScope</c> and nothing else), and a
 ///   <c>Setter</c> needs one;</item>
-///   <item>the two constants the theme now owns — a style cannot delete a local value, and a local
+///   <item>the two constants the row spec retired — a style cannot delete a local value, and a local
 ///   value outranks a style in Avalonia, so a card that keeps writing <c>MaxWidth="260"</c> or
-///   <c>Margin="30,…"</c> silently opts out of the class that replaced it;</item>
+///   <c>Margin="30,…"</c> silently opts out of the class that replaced it. (<c>Margin="30,…"</c> was
+///   replaced by <c>tm-card-expander</c>; <c>MaxWidth="260"</c> briefly moved onto
+///   <c>tm-card-value</c> and was then measured inert on the spanning expansion row and deleted
+///   outright, so today the guard keeps a retired constant from coming back rather than keeping it in
+///   one place);</item>
 ///   <item>invariant I1, "the header is exactly one title line and one subtitle line" — a count of
 ///   sibling elements is not a property of anything;</item>
 ///   <item>I1 again, at the string level — no wording a subtitle can be given may contain a hard line
@@ -58,8 +62,8 @@ public class SettingsRowTests
     private static readonly string[] PendingColumnGrid = Array.Empty<string>();
 
     /// <summary>File + constant pairs still written locally instead of taken from the theme. Empty since
-    /// Round 5 task B: the 30px indent is now column 1 plus <c>tm-card-expander</c>, and the 260 bound is
-    /// <c>tm-card-value</c>'s.</summary>
+    /// Round 5 task B: the 30px indent is now column 1 plus <c>tm-card-expander</c>, and the 260 bound
+    /// went to <c>tm-card-value</c> and has since been deleted from there too.</summary>
     private static readonly string[] PendingLocalConstants = Array.Empty<string>();
 
     /// <summary>Cards whose header cell is not exactly one title line plus one subtitle line. Empty since
@@ -103,8 +107,10 @@ public class SettingsRowTests
     {
         // Margin="30,…" was the hand-written indent that put below-row content under the title; it is
         // now column 1 plus tm-card-expander's own 8. MaxWidth="260" was repeated on three value lines;
-        // it is now tm-card-value's, together with the HorizontalAlignment that stops MaxWidth centring
-        // the line.
+        // it moved onto tm-card-value and was then deleted from there as well, once the value lines'
+        // move to a spanning expansion row was measured to leave it bounding nothing (see
+        // tm-card-value's remark in Launcher.axaml). So this half of the guard now keeps a retired
+        // constant from being reintroduced locally, rather than keeping it in one place.
         //
         // Matched over ATTRIBUTES, not over the file's text. Both retired constants are documented in
         // the prose of the very card files that have to be rewritten to stop using them (FoldersCard's
