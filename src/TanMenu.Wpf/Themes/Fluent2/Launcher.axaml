@@ -878,16 +878,86 @@
     <Setter Property="CornerRadius" Value="0" />
   </Style>
 
-  <!-- NO MaxWidth here. A cap would only clamp the width the group REPORTS to the horizontal
+  <!-- ══ 应用 categories ═══════════════════════════════════════════════════════════════════════
+       NO MaxWidth on EITHER of the two rules below — the panel Border as much as the StackPanel it
+       wraps. A cap would only clamp the width the group REPORTS to the horizontal
        StackPanel of categories; the columns ItemsControl inside (AppPage.axaml, bound to
        MenuGroupVm.Columns) keeps laying out however many columns MenuLayout.ChunkIntoColumns
        produced and nothing clips it, so a category with more columns than the cap allows would
        render straight over its right-hand neighbour. Round 4, item 3 removed the tile's fixed width,
        which changes the premise but not the conclusion: a column is as wide as its own widest label,
        so a group's honest desired width is a finite sum of finite column widths — still bounded, and
-       still what the scroller needs. -->
+       still what the scroller needs. Round 6, item 4 added the Border around the StackPanel, and a cap
+       there would fail the same way one level further out.
+
+       VerticalAlignment="Top" stays on the StackPanel and is deliberately ABSENT from the Border, and
+       the pair is what makes the panels equal height with their content hugging the top. In a
+       horizontal StackPanel a child at the default Stretch is arranged to the row's height, so every
+       panel Border comes out as tall as the tallest category; the inner StackPanel's Top then keeps
+       each heading and tile grid at the top of its own panel and leaves the slack at the bottom of the
+       shorter ones. Ragged panels were the alternative and were rejected: measured today the five
+       categories are 231.33 / 431.33 / 431.33 / 271.33 / 271.33 DIP, and five bordered boxes of five
+       different heights side by side read as an error, where Windows 11 Settings' own large
+       side-by-side tiles are equal height. It costs nothing in the fit, because Stretch changes the
+       ARRANGE and the panel's DESIRED height is still its own content — WindowHost.FitToContent
+       measures the tallest exactly as before. -->
   <Style Selector="StackPanel.tm-group">
     <Setter Property="VerticalAlignment" Value="Top" />
+  </Style>
+
+  <!-- Round 6, item 4 (应用页面每个分类增加一个面板样式): each category on the 应用 page sits in a
+       panel. This is a deliberate DEPARTURE from Windows 11 rather than a match to it, and saying so is
+       the point of this paragraph: the reference draws no container around a labelled group at all —
+       measured on ms-settings:privacy, where the three group labels' ink starts at x = 500/500/501
+       against their row cards' outer edge at x = 498, i.e. the label sits on the page above a bare
+       stack of cards. What the reference DOES supply, and what every number here comes from, is the
+       scale of its large side-by-side containers (RadiusPanel's own remarks in Tokens.axaml carry that
+       measurement).
+
+       FILL: SubtleFillTertiaryBrush, and the choice was made by measurement on the white 应用 pane, not
+       by taste. Three candidates were measured or composited against SurfacePageBrush there:
+         SurfaceLayerBrush        renders (255,255,255) — measured; the pane and a tile's interior both
+                                  read pure white, so a tm-card-style panel here would be an outline
+                                  drawn around tiles that are themselves outlines. Invisible.
+         SubtleFillSecondaryBrush renders (245,245,245) — which is EXACTLY the colour a tile turns on
+                                  hover (TmTileButton's StateLayer, this file). A panel resting at the
+                                  hover colour is a collision, not a surface.
+         SubtleFillTertiaryBrush  renders (249,249,249). Delta 6 from the pane, delta 4 from hover, and it
+                                  coincides only with a tile's PRESSED wash, which is transient.
+       SurfaceBaseBrush was ruled out on sight: (243,243,243) opaque is the grey pane Round 4, item 5
+       removed from this page.
+
+       And the panel repairs something the recon measured on the way past. A tile on this page has NO
+       fill today — pane and tile interior both (255,255,255), delta 0; it is an outline, not a surface.
+       Over a 249 panel the same tile composites to (253,253,253), a real delta 4, while hover keeps its
+       present strength (245 over 255 today, 243 over 253 now — delta 10 either way). The two hairlines
+       differ too, which is the "not two identical nested outlines" property: StrokeControlBrush over
+       the pane's 255 gives the panel's own (240,240,240), over the panel's 249 it gives the tile's
+       (234,234,234). Dark is computed from the same alphas and separates MORE, not less: pane
+       (44,44,44), panel fill (53,53,53), panel border (59,59,59), tile fill (55,55,55), tile border
+       (67,67,67).
+
+       PADDING 12,12,8,8 is a UNIFORM 12 DIP visible inset. The asymmetry corrects for something already
+       in the tile grid: every tile carries Margin="0,0,4,4" (AppPage.axaml), so the grid already
+       contributes 4 DIP on its own right and bottom inside the group box — measured on the running
+       build, where the single-column 常用工具 group reports 122.67 DIP against its tile's 118.67, and
+       the 工具 group reports 431.33 = 31.33 + 10 x (36 + 4). A symmetric Padding="12" would render
+       12/12/16/16. The 12 is Space3 and is the reference's measured large-tile gutter, which is also
+       what AppPage.axaml's categories panel now uses between panels, so the inset and the gutter are
+       one number rather than two.
+
+       NOT Border.tm-card, though the anatomy looks similar. tm-card encodes a specific 设置 row — its
+       Border must wrap one Auto,*,Auto Grid holding exactly one tm-card-title and one tm-card-sub, and
+       SettingsRowTests enforces that over Views/Settings. A category panel has none of those parts, so
+       reusing the class would be a semantic collision that passes CI today only because that test's
+       CardsDir does not reach Views/AppPage.axaml — one careless widening away from failing four tests
+       at once. Its fill does not transfer either, per the measurement above. -->
+  <Style Selector="Border.tm-group-panel">
+    <Setter Property="Background" Value="{DynamicResource SubtleFillTertiaryBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource StrokeControlBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{DynamicResource RadiusPanel}" />
+    <Setter Property="Padding" Value="12,12,8,8" />
   </Style>
 
   <!-- ══ 设置 cards ═══════════════════════════════════════════════════════════════════════════

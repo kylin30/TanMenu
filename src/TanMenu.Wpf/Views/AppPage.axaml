@@ -97,18 +97,28 @@
         <ScrollViewer x:Name="Body"
                       HorizontalScrollBarVisibility="Auto"
                       VerticalScrollBarVisibility="Disabled">
+          <!-- No Spacing on this panel. It has exactly ONE child — the categories ItemsControl below —
+               so the Spacing="14" it carried until Round 6, item 4 never applied to anything; it was
+               removed rather than left, because the very next edit to add a second child here would
+               have silently activated a 14 DIP gap nobody chose. -->
           <StackPanel Orientation="Horizontal"
-                      Margin="{DynamicResource SurfacePadding}"
-                      Spacing="14">
+                      Margin="{DynamicResource SurfacePadding}">
 
-            <!-- 1. The categories, running left to right. Each is a heading plus columns of tiles
-                 that fill top-to-bottom, wrapping into a new column once a column reaches
-                 ColButtonCount items (设置 → 外观 → 每列个数, default 10); a category with no visible
-                 items after filtering removes itself. -->
+            <!-- 1. The categories, running left to right. Each is a PANEL (Border.tm-group-panel,
+                 Round 6, item 4 — that style carries the fill/radius/padding measurements and why the
+                 page departs from Windows 11 here) wrapping a heading plus columns of tiles that fill
+                 top-to-bottom, wrapping into a new column once a column reaches ColButtonCount items
+                 (设置 → 外观 → 每列个数, default 10); a category with no visible items after filtering
+                 removes itself.
+
+                 Spacing 12, not the 24 this panel carried before item 4: 12 is the gutter Windows 11
+                 puts between its large side-by-side tiles, and the panels now supply the separation the
+                 wider gap was doing on its own. Halving it also pays for most of the panels' chrome —
+                 the page grows 5 x 22 DIP for the five panels and gives 4 x 12 back here, a net +62. -->
             <ItemsControl IsVisible="{Binding HasVisibleItems}" ItemsSource="{Binding Groups}">
               <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
-                  <StackPanel Orientation="Horizontal" Spacing="24" />
+                  <StackPanel Orientation="Horizontal" Spacing="12" />
                 </ItemsPanelTemplate>
               </ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
@@ -122,86 +132,98 @@
                        whole page with an UNBOUNDED height probe: an item-count cap decided in the data
                        survives that probe unchanged, whereas a height-based wrap would never wrap at
                        all under an infinite budget — see that method's own remarks). -->
-                  <StackPanel Classes="tm-group" IsVisible="{Binding HasVisibleItems}">
+                  <!-- Round 6, item 4 puts every category in a panel. The wrapping Border is what carries
+                       IsVisible, and MOVING the binding off the StackPanel onto it is load-bearing rather
+                       than cosmetic: the recon measured that when a filter hides a category, the generated
+                       ItemsControl CONTAINER stays visible at zero size and only the bound child collapses
+                       (with the box set to "Steam", four of five group containers reported an empty UIA
+                       rect while the items panel still measured 187.33 DIP = the surviving group's 91.33
+                       plus 4 x the inter-category gap). Leave the binding on the inner StackPanel and every
+                       filtered-out category renders as an empty bordered box 22 DIP wide.
+                       AppPageGroupTests guards exactly that, because nothing else would see it until
+                       somebody types in the search box. -->
+                  <Border Classes="tm-group-panel" IsVisible="{Binding HasVisibleItems}">
+                    <StackPanel Classes="tm-group">
 
-                    <!-- A null tooltip shows nothing, which is how the inert 常用工具 heading
-                         stays inert. The folder glyph only fades in for a real directory. -->
-                    <Border Classes="tm-section-head"
-                            Classes.clickable="{Binding IsDirectoryClickable}"
-                            ToolTip.Tip="{Binding TitleTooltip}"
-                            PointerPressed="OnGroupTitlePressed"
-                            Margin="0,0,0,6"
-                            HorizontalAlignment="Left">
-                      <StackPanel Orientation="Horizontal" Spacing="6">
-                        <TextBlock Classes="tm-section" Text="{Binding DirectoryName}"
-                                   MaxWidth="320" TextTrimming="CharacterEllipsis" />
-                        <TextBlock Classes="tm-icon subtle small tm-folder"
-                                   IsVisible="{Binding IsDirectoryClickable}"
-                                   Text="&#xE8B7;" />
-                      </StackPanel>
-                    </Border>
+                      <!-- A null tooltip shows nothing, which is how the inert 常用工具 heading
+                           stays inert. The folder glyph only fades in for a real directory. -->
+                      <Border Classes="tm-section-head"
+                              Classes.clickable="{Binding IsDirectoryClickable}"
+                              ToolTip.Tip="{Binding TitleTooltip}"
+                              PointerPressed="OnGroupTitlePressed"
+                              Margin="0,0,0,6"
+                              HorizontalAlignment="Left">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                          <TextBlock Classes="tm-section" Text="{Binding DirectoryName}"
+                                     MaxWidth="320" TextTrimming="CharacterEllipsis" />
+                          <TextBlock Classes="tm-icon subtle small tm-folder"
+                                     IsVisible="{Binding IsDirectoryClickable}"
+                                     Text="&#xE8B7;" />
+                        </StackPanel>
+                      </Border>
 
-                    <!-- Columns, left to right; each holds at most ColButtonCount items, top to
-                         bottom — the pre-Avalonia layout's own shape, restored. The outer ItemsControl
-                         below walks MenuGroupVm.Columns (one MenuColumnVm per column); the inner one
-                         walks that column's own Items. Two levels, not one WrapPanel, because
-                         compiled bindings (required for the NativeAOT publish) need a concrete
-                         x:DataType per DataTemplate, and a bare IReadOnlyList&lt;MenuItemVm&gt; has no
-                         name of its own to bind against — see MenuColumnVm's own remarks. -->
-                    <ItemsControl ItemsSource="{Binding Columns}">
-                      <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                          <StackPanel Orientation="Horizontal" />
-                        </ItemsPanelTemplate>
-                      </ItemsControl.ItemsPanel>
-                      <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="vm:MenuColumnVm">
-                          <ItemsControl ItemsSource="{Binding Items}">
-                            <ItemsControl.ItemsPanel>
-                              <ItemsPanelTemplate>
-                                <StackPanel Orientation="Vertical" />
-                              </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
-                              <DataTemplate x:DataType="vm:MenuItemVm">
-                                <Button Classes="tm-tile"
-                                        Theme="{StaticResource TmTileButton}"
-                                        Margin="0,0,4,4"
-                                        IsEnabled="{Binding !IsDisabled}"
-                                        Click="OnItemClick"
-                                        PointerEntered="OnItemPointerEntered">
-                                  <DockPanel>
-                                    <!-- The icon slot is always occupied (the build always assigns at
-                                         least a fallback), which is why the async icon fill never
-                                         reflows the grid. -->
-                                    <Image Classes="tm-tile-icon"
-                                           DockPanel.Dock="Left"
-                                           Source="{Binding Icon}"
-                                           Margin="0,0,10,0"
-                                           Stretch="Uniform"
-                                           VerticalAlignment="Center" />
-                                    <!-- NoWrap and NO TextTrimming: Round 4, item 3 sizes the tile to
-                                         this label instead of trimming the label to the tile, so
-                                         there is nothing left for a trimmer to do — measured on the
-                                         running build, all 74 labels' ink ended inside their tile's
-                                         padding box, the tightest with 0.67 DIP to spare. NoWrap is
-                                         load-bearing twice: it is what makes the label's desired
-                                         width a single-line advance, and it keeps every tile the
-                                         same height, which is what FindAdjacentTile's sameRow test
-                                         keys off (code-behind, current.Bounds.Height / 2). -->
-                                    <TextBlock Text="{Binding Name}"
-                                               TextWrapping="NoWrap"
-                                               VerticalAlignment="Center" />
-                                  </DockPanel>
-                                </Button>
-                              </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                          </ItemsControl>
-                        </DataTemplate>
-                      </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                      <!-- Columns, left to right; each holds at most ColButtonCount items, top to
+                           bottom — the pre-Avalonia layout's own shape, restored. The outer ItemsControl
+                           below walks MenuGroupVm.Columns (one MenuColumnVm per column); the inner one
+                           walks that column's own Items. Two levels, not one WrapPanel, because
+                           compiled bindings (required for the NativeAOT publish) need a concrete
+                           x:DataType per DataTemplate, and a bare IReadOnlyList&lt;MenuItemVm&gt; has no
+                           name of its own to bind against — see MenuColumnVm's own remarks. -->
+                      <ItemsControl ItemsSource="{Binding Columns}">
+                        <ItemsControl.ItemsPanel>
+                          <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" />
+                          </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="vm:MenuColumnVm">
+                            <ItemsControl ItemsSource="{Binding Items}">
+                              <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                  <StackPanel Orientation="Vertical" />
+                                </ItemsPanelTemplate>
+                              </ItemsControl.ItemsPanel>
+                              <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:MenuItemVm">
+                                  <Button Classes="tm-tile"
+                                          Theme="{StaticResource TmTileButton}"
+                                          Margin="0,0,4,4"
+                                          IsEnabled="{Binding !IsDisabled}"
+                                          Click="OnItemClick"
+                                          PointerEntered="OnItemPointerEntered">
+                                    <DockPanel>
+                                      <!-- The icon slot is always occupied (the build always assigns at
+                                           least a fallback), which is why the async icon fill never
+                                           reflows the grid. -->
+                                      <Image Classes="tm-tile-icon"
+                                             DockPanel.Dock="Left"
+                                             Source="{Binding Icon}"
+                                             Margin="0,0,10,0"
+                                             Stretch="Uniform"
+                                             VerticalAlignment="Center" />
+                                      <!-- NoWrap and NO TextTrimming: Round 4, item 3 sizes the tile to
+                                           this label instead of trimming the label to the tile, so
+                                           there is nothing left for a trimmer to do — measured on the
+                                           running build, all 74 labels' ink ended inside their tile's
+                                           padding box, the tightest with 0.67 DIP to spare. NoWrap is
+                                           load-bearing twice: it is what makes the label's desired
+                                           width a single-line advance, and it keeps every tile the
+                                           same height, which is what FindAdjacentTile's sameRow test
+                                           keys off (code-behind, current.Bounds.Height / 2). -->
+                                      <TextBlock Text="{Binding Name}"
+                                                 TextWrapping="NoWrap"
+                                                 VerticalAlignment="Center" />
+                                    </DockPanel>
+                                  </Button>
+                                </DataTemplate>
+                              </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
 
-                  </StackPanel>
+                    </StackPanel>
+                  </Border>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>

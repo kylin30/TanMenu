@@ -130,8 +130,8 @@
 
       <!-- ══ Variant-independent: shape, spacing, type ═════════════════════════════════════════ -->
 
-      <!-- Fluent 2 shape scale. 4 for controls; the 8 DIP step of that scale is now carried by
-           RadiusPaneTopLeft below and nothing else.
+      <!-- Fluent 2 shape scale. 4 for controls; the 8 DIP step of that scale has two carriers below,
+           RadiusPaneTopLeft and RadiusPanel. It had one until Round 6, item 4 added the second.
 
            RadiusOverlay (a flat 8) used to be declared here. Its only consumer anywhere was the 关于
            overlay's Border in AppPage.axaml, and Round 5, item 2 deleted that overlay — 关于 is a
@@ -162,6 +162,23 @@
            contain no arc — the top border and the pane fill run straight to the frame edge in both, so
            the other three corners are 0 rather than "not looked at". -->
       <CornerRadius x:Key="RadiusPaneTopLeft">8,0,0,0</CornerRadius>
+
+      <!-- The 应用 page's category panel (Round 6, item 4 — Border.tm-group-panel in Launcher.axaml).
+           Declared beside RadiusPaneTopLeft because it is the same 8 DIP step of the shape scale and
+           was derived the same way: Windows 11 Settings draws two DIFFERENT container shapes, and the
+           recon measured both on ms-settings:about at this machine's 150%. Its ROW cards show a 7 px
+           arc (⇒ 4 DIP, which is what RadiusControl already gives Border.tm-card), and its LARGE
+           side-by-side tiles (存储 / 显卡) show a 10 px arc with an 18 px gutter (⇒ 8 DIP at a 12 DIP
+           gap). A category panel is the second kind of object — a large container holding a heading and
+           a grid, sitting beside its siblings — so it takes the second shape. Same "radius minus about
+           half the stroke" rule of thumb RadiusPaneTopLeft records above: authored at 8, a 1 DIP-stroked
+           panel renders 10-11 px of visible arc, which is the reference's own 10.
+
+           OverlayCornerRadius further down this file is also 8 and is deliberately NOT reused. That key
+           is a FluentTheme OVERRIDE — it reaches Avalonia's own flyout and popup templates — so binding
+           our panel to it would make one key mean two unrelated things and couple this app's category
+           panels to any future change to popup geometry. See that block's own remarks. -->
+      <CornerRadius x:Key="RadiusPanel">8</CornerRadius>
 
       <!-- RadiusControl MINUS ONE, for a layer that sits just INSIDE a control's own 1px border — the
            hover/pressed state layer in TmTileButton and TmButton (Launcher.axaml). At the same radius as
