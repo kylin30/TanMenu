@@ -17,7 +17,10 @@
 > out of running it** — step 3's cap test is an instrument that is far more sensitive in Dark than in
 > Light and reads a correct pill as square-ended there; the correction, with the coverage numbers that
 > replace it, is marked in place at that step. Step 9 also needed one sentence of disambiguation
-> against §3.2(e), marked in place. Item 4 is still design only.
+> against §3.2(e), marked in place. **Item 3's review then found one stale sentence** — the
+> `TmNavRowItem` block comment still asserted, in the present tense, the 4 px indicator its own change
+> had replaced with a 5 px one — so that comment was corrected and §3.3(b) was given the outcome note
+> §3.3(e) already had; both are marked in place. Item 4 is still design only.
 >
 > **Scope.** The four items the user asked for after reviewing the Round 5 build:
 >
@@ -741,14 +744,27 @@ icons. The glyph is the second of the two reasons the rail does not read like Ta
 `TextPrimaryBrush` to the level in both. Changing it is therefore a lookup, not a taste call. It is
 scoped to the rail because the rest of the app's `tm-icon` uses were not measured against anything.
 
-**(b) Why the authored indicator width does not change.** Ours renders 4 px from a declared 3 DIP;
-TM's renders 5 px. 3 DIP at 150 % is 4.5 px, so both readings are consistent with the same authored
-3 DIP resolving differently under layout rounding, and pixels alone cannot separate 3.0 from 3.33
-(r6-shell, open questions). Authoring 3.33 would be wrong at every other scale — the identical argument
+**(b) Why the authored indicator width does not change.** Ours renders 4 px from a declared 3 DIP
+(*pre-change, and see the outcome note below*); TM's renders 5 px. 3 DIP at 150 % is 4.5 px, so both
+readings are consistent with the same authored 3 DIP resolving differently under layout rounding, and
+pixels alone cannot separate 3.0 from 3.33 (r6-shell, open questions). Authoring 3.33 would be wrong
+at every other scale — the identical argument
 Round 4 used to author the pane border at 1 DIP against a measured 1.33
 (`Launcher.axaml:652-654`). **So the authored number stays 3, the render may shift by a pixel as a side
 effect of moving from a `BorderThickness` to an element, and §3.5 accepts 4 **or** 5 px.** The
 acceptance criteria that carry this item are height, centring, shape and non-displacement.
+
+> **Outcome, 2026-08-03, added after item 3's review.** The anticipated shift happened, so the
+> present tense above describes only the **pre-change** build. Measured on the shipped build with the
+> coverage instrument §3.5 step 3 settles on: the indicator is **5 px** wide through its centre in
+> **both** Light and Dark (image x 17..21), against **4 px** before the change (`x 17..20` on the body
+> scanlines of `r6i3-before-app-light.png`, re-measured with the same instrument at the same box
+> geometry). UIA independently reports the `SelectionIndicator` `Border` at **5x24 px** on both rail
+> rows. So ours now renders the same 5 px TM does — **from the authored 3 that did not move**, which
+> is the point of this paragraph and not an invitation to reopen it: the agreement is a rounding
+> coincidence at 150 %, and authoring 3.33 to *guarantee* it would still be wrong at every other
+> scale. `TmNavRowItem`'s block comment in `Launcher.axaml` asserted the pre-change "ours renders
+> 4 px" as a present-tense fact and was corrected to say both numbers.
 
 **(c) Why hover is not touched, and what follows from that.** The fill change makes the selected row
 `SubtleFillSecondaryBrush` — which is what `:pointerover` already uses

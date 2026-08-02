@@ -338,11 +338,13 @@
          over the content in a Panel, hit-test invisible, transparent until :selected paints it. The
          three numbers stay literals rather than becoming tokens, following Border.tm-nav-separator's
          precedent further down — they are one indivisible measured shape, not a step on a scale.
-         Width stays the 3 DIP this file has always authored: ours renders 4 px and TM's 5 px, and
-         3 DIP at 150% is 4.5, so a single authored 3 explains both under layout rounding while
-         authoring 3.33 would be wrong at every other scale (the same argument Round 4 used for the
-         1 DIP pane border). Height 16 is TM's 24 px / 1.5. The radius is half the width; TM's
-         measured cap radius is about 1.67 DIP.
+         Width stays the 3 DIP this file has always authored, and moving from a BorderThickness to an
+         element did shift the render by a pixel: measured at 150%, ours was 4 px wide before this
+         change and is 5 px now — the same 5 px TM draws — from an authored number that never moved.
+         3 DIP at 150% is 4.5, so layout rounding covers 4 and 5 alike and pixels cannot separate a
+         3.0 from a 3.33. Do NOT "correct" the width to 3.33 to chase TM's 5 px: it would be wrong at
+         every other scale (the same argument Round 4 used for the 1 DIP pane border). Height 16 is
+         TM's 24 px / 1.5. The radius is half the width; TM's measured cap radius is about 1.67 DIP.
 
          The selected fill moved from SubtleFillTertiaryBrush to SubtleFillSecondaryBrush, and that is
          a LOOKUP, not a taste call: TM's selected row solves to alpha 9.4/255 black in Light and
