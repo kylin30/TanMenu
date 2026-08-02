@@ -724,15 +724,17 @@
        drift WITHIN the subtitle class (the two pure-ASCII path lines measured 16.0 while every
        subtitle containing CJK measured 16.67). Setting both pins a title-over-subtitle header block at
        exactly 20 + 16 = 36 DIP, which is what lets one VerticalAlignment="Center" put the icon and the
-       trailing control at the same y on every row that HAS such a block. Three rows do not have one
-       yet: PinTaskbarTitle and HotkeyTitle (BehaviorCard) and UpdateStatusText (UpdatesCard) are bare
-       tm-card-titles in column 1 with no tm-card-sub beside them, so their header block measures 20
-       DIP, not 36. The row spec's part B moves each of those rows' loose line into the header, and
-       SettingsRowTests.PendingTwoLineHeader lists all three until it does.
+       trailing control at the same y on every row that HAS such a block. When this was written three
+       rows did not: PinTaskbarTitle and HotkeyTitle (BehaviorCard) and UpdateStatusText (UpdatesCard)
+       were bare tm-card-titles in column 1 with no tm-card-sub beside them, so their header block
+       measured 20 DIP, not 36. Part B gave all three a real two-line header, and
+       SettingsRowTests.PendingTwoLineHeader — which listed exactly those three — is now empty. Every
+       row on the page has the block.
 
        WHAT IT COSTS IN CARD HEIGHT — it is not free, and one card GREW. Measured before and after on
        the same window at 150 %, each card scrolled fully into view first and read from the card
-       Border's own UIA rect (physical px): twelve of the page's sixteen cards did not change, three
+       Border's own UIA rect (physical px), over the sixteen cards the page had at the time (part B
+       deleted one of them): twelve did not change, three
        lost 1-2 px and one gained 1. Two effects cancel on a conforming row — the title gains 0.67 and
        a CJK subtitle loses 0.67 — and a row whose column 2 holds a 32 DIP button or ToggleSwitch
        absorbs the title's gain outright, because that grid row was already the control's height. The
@@ -743,8 +745,9 @@
        control in column 2), and DataFolderTitle's 219 -> 217 (two CJK lines against one title, around
        an unchanged ASCII path line). One card gained: UpdatesCard's status card, 132 -> 133 — a bare
        title, no subtitle to cancel it, and an empty column 2, so nothing absorbs it. One physical pixel
-       on the one card part B rebuilds from the header down (it gains a real title and demotes
-       UpdateStatusText to the subtitle), so it is recorded here rather than chased. -->
+       on the one card part B rebuilt from the header down (it gained a real title, demoted
+       UpdateStatusText to the subtitle and moved its buttons into column 2), so it was recorded here
+       rather than chased. -->
   <Style Selector="TextBlock.tm-card-title">
     <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
     <Setter Property="LineHeight" Value="{DynamicResource LineHeightBody}" />
@@ -784,8 +787,9 @@
   <!-- The icon box. :is(Control) rather than a TextBlock-scoped selector so the same class boxes a row
        whose leading mark is not a glyph — an Image, say — without a second rule.
        Width 16 fixes the column independently of the glyph: all fifteen
-       distinct glyphs the page uses already measure exactly 16 DIP wide, so this changes nothing today
-       and stops a future glyph from moving the title. Height is deliberately NOT set — the 16 DIP box is
+       distinct glyphs the settings page carried when this was measured already measured exactly 16 DIP
+       wide (fourteen since part B deleted the 当前版本 card and with it the page's only E946), so this
+       changes nothing and stops a future glyph from moving the title. Height is deliberately NOT set — the 16 DIP box is
        Segoe Fluent Icons' own line box at FontSize 16, and pinning a height would clip the glyph if the
        Windows 10 fallback face (Segoe MDL2 Assets) measures taller. -->
   <Style Selector=":is(Control).tm-card-icon">
@@ -838,9 +842,10 @@
   </Style>
 
   <!-- The expansion row's own top gap, on the child rather than on the Grid — see the RowSpacing note
-       above. 8 is a step on the spacing ramp, so it is the value the below-row action strips that state
-       10 today normalise DOWN to as they adopt this class; 10 is not a step, and the two below-row text
-       margins in BehaviorCard already state 8. -->
+       above. 8 rather than the 10 three of the old below-row blocks stated: 8 is a step on the spacing
+       ramp and 10 is not, and the two below-row TEXT margins the page already had were 8. Part B put
+       every action strip in column 2, so what this class now spaces is full-width expansion content —
+       FoldersCard's value lines, ToolsCard's bordered list, UpdatesCard's help line and progress bar. -->
   <Style Selector=":is(Control).tm-card-expander">
     <Setter Property="Margin" Value="0,8,0,0" />
   </Style>
@@ -854,12 +859,14 @@
     <Setter Property="Spacing" Value="2" />
   </Style>
 
-  <!-- Every action strip on the page, in column 2 AND on the expansion row. HorizontalAlignment="Right"
-       is inert in column 2 (that column is Auto-sized to the strip) and is what puts an expansion-row
-       strip on the card's content right edge, so one class puts every control's right edge on the same x
-       in both places. VerticalAlignment="Center" on the strip is also what makes the per-button
-       VerticalAlignment attributes unnecessary: a horizontal StackPanel stretches its children to its own
-       height. -->
+  <!-- Every action strip on the page. Part B put them all in column 2, however many buttons they hold:
+       the old "three or more go below" rule rested on a 760 DIP overflow that was re-measured once the
+       value lines left column 1, and no longer exists (see FoldersCard's class remark for the numbers).
+       HorizontalAlignment="Right" is therefore inert today — column 2 is Auto-sized to the strip — and
+       is kept because it is what would put a full-width expansion-row strip on the content edge, so the
+       one class satisfies "every control's right edge is the card's" in either position.
+       VerticalAlignment="Center" on the strip is what makes the per-button VerticalAlignment attributes
+       unnecessary: a horizontal StackPanel stretches its children to its own height. -->
   <Style Selector="StackPanel.tm-card-actions">
     <Setter Property="Orientation" Value="Horizontal" />
     <Setter Property="Spacing" Value="8" />
@@ -891,6 +898,70 @@
     <Setter Property="OffContent" Value="" />
     <Setter Property="VerticalAlignment" Value="Center" />
     <Setter Property="Margin" Value="0,0,-12,0" />
+  </Style>
+
+  <!-- The hotkey capture box (BehaviorCard's HotkeyBox), and the reason this class exists at all: it was
+       the ONE control on the 设置 page carrying no Classes and no Theme, so it fell through to stock
+       Fluent in every state. The visible consequence was its DISABLED fill. Fluent's TextBox
+       ControlTheme repaints Border#PART_BorderElement's Background to TextControlBackgroundDisabled ->
+       SystemControlBackgroundBaseLowBrush -> SystemBaseLowColor, which is 20% black; over the card that
+       measures (201,201,201), against the (253,253,253) every disabled TmButton on the same page
+       measures. Two disabled vocabularies 50 RGB levels apart on one page — the heavy grey box the user
+       screenshotted.
+
+       The box IS legitimately disabled whenever 启用全局热键 is off (BehaviorCard's
+       UpdateHotkeyEnabledState), and that logic is correct and untouched. Only its paint changes.
+
+       Targeting the named template part is what reaches the screen: an app-level Style outranks a
+       ControlTheme's own rule for the same part at the same pseudo-class — the precedence written up in
+       full at TextBox.tm-search:focus above, which beats Fluent's built-in focus repaint the same way.
+       The :disabled recipe is deliberately TmButton's own (TextDisabledBrush plus Opacity 0.6 over the
+       resting surface), so the page has one disabled vocabulary rather than two.
+
+       The focus state is not decoration here. "Click the box, then press the combination" IS the
+       interaction (the tunneling KeyDown handler in BehaviorCard's ctor), so the box has to say when it
+       is listening. One accent hairline, not Fluent's filled accent band — the same conclusion Round 3,
+       Task 1 reached for the search field. -->
+  <Style Selector="TextBox.tm-keycap">
+    <Setter Property="Width" Value="160" />
+    <Setter Property="MinHeight" Value="32" />
+    <!-- Vertical padding 0, exactly as TmButton states it, and for the same reason: the height then
+         comes from MinHeight rather than from font metrics plus padding, so the box matches the button
+         standing beside it in the same action strip. The card's inherited Padding="8,5" did not — it
+         put the box's own content over 32 DIP, so MinHeight stopped binding. Measured on the live page
+         at 150 %, reading the box's UIA rect at each of the eight scroll stops: with 8,5 it was
+         50/50/49/48/49/49 physical px against a TmButton's flat 48 at every stop, and because a
+         horizontal StackPanel stretches its children to its own height, 清除 was stretched to the same
+         50. With 8,0 it is 49/48/48/47/48/48 — the same value as the button at every stop but one, and
+         the ±1 that remains is rect quantisation, not layout: it tracks the scroll offset, and at the
+         same stops this card's title and subtitle read 29-30 and 24-25 for a box that never changes.
+         Setting an explicit Height instead of MinHeight was tried and measured byte-for-byte identical,
+         so MinHeight stays — it is what TmButton uses and it cannot clip a taller font fallback.
+         VerticalContentAlignment centres the text in whatever height MinHeight settles on. -->
+    <Setter Property="Padding" Value="8,0" />
+    <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="TextBox.tm-keycap /template/ Border#PART_BorderElement">
+    <Setter Property="Background" Value="{DynamicResource SurfaceLayerBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource StrokeControlBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{DynamicResource RadiusControl}" />
+  </Style>
+  <Style Selector="TextBox.tm-keycap:pointerover /template/ Border#PART_BorderElement">
+    <Setter Property="Background" Value="{DynamicResource SurfaceLayerActiveBrush}" />
+  </Style>
+  <Style Selector="TextBox.tm-keycap:focus /template/ Border#PART_BorderElement">
+    <Setter Property="Background" Value="{DynamicResource SurfaceLayerActiveBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource AccentDefaultBrush}" />
+  </Style>
+  <Style Selector="TextBox.tm-keycap:disabled">
+    <Setter Property="Foreground" Value="{DynamicResource TextDisabledBrush}" />
+    <Setter Property="Opacity" Value="0.6" />
+  </Style>
+  <Style Selector="TextBox.tm-keycap:disabled /template/ Border#PART_BorderElement">
+    <Setter Property="Background" Value="{DynamicResource SurfaceLayerBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource StrokeControlBrush}" />
   </Style>
 
   <!-- Round 3, Task 3 (user item 9): the actual PAGE title ("设置") and each card GROUP'S own heading

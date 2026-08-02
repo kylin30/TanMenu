@@ -37,46 +37,30 @@ namespace TanMenu.Core.Tests.Themes;
 /// </para>
 /// <para>
 /// <b>The three <c>Pending…</c> arrays are a ratchet, not an exemption.</b> Round 5 task A shipped the
-/// style classes; task B migrates the sixteen rows onto them. Until it does, the cards below are the
-/// exact set that still violates each invariant, and each test asserts the violation set MATCHES that
-/// list — so a NEW violation fails, and so does a listed one that has been fixed without being struck
-/// off. Every array is empty when the migration is complete, at which point each test reads as the
-/// plain invariant it is named for. Do not add an entry to buy time; add one only to record a state
-/// the very next commit removes.
+/// style classes and listed, in these arrays, the exact set of cards that still violated each
+/// invariant; task B migrated all sixteen rows and emptied all three. Each test asserts the violation
+/// set MATCHES its list, so a NEW violation fails, and so does a listed one that has been fixed
+/// without being struck off. Now that every array is empty, each test reads as the plain invariant it
+/// is named for. Do not add an entry to buy time; add one only to record a state the very next commit
+/// removes.
 /// </para>
 /// </remarks>
 public class SettingsRowTests
 {
-    /// <summary>Cards whose <c>Border</c> does not directly wrap the standard column Grid.</summary>
-    private static readonly string[] PendingColumnGrid =
-    {
-        "BehaviorCard.axaml#4",   // 固定到任务栏 — root StackPanel, status line below the Grid
-        "BehaviorCard.axaml#6",   // 热键 — root StackPanel, help line below the Grid
-        "FoldersCard.axaml#2",    // 数据文件夹 — root StackPanel, buttons below the Grid
-        "FoldersCard.axaml#3",    // 维护 — root StackPanel, buttons below the Grid
-        "ToolsCard.axaml#1",      // 显示"常用工具"分类 — root StackPanel, tool list below the Grid
-        "UpdatesCard.axaml#2",    // update status — root StackPanel, progress + buttons below the Grid
-    };
+    /// <summary>Cards whose <c>Border</c> does not directly wrap the standard column Grid. Empty since
+    /// Round 5 task B: every card group's rows are the Grid itself.</summary>
+    private static readonly string[] PendingColumnGrid = Array.Empty<string>();
 
-    /// <summary>File + constant pairs still written locally instead of taken from the theme.</summary>
-    private static readonly string[] PendingLocalConstants =
-    {
-        "BehaviorCard.axaml:Margin=\"30,",
-        "FoldersCard.axaml:MaxWidth=\"260\"",
-        "FoldersCard.axaml:Margin=\"30,",
-        "ToolsCard.axaml:Margin=\"30,",
-        "UpdatesCard.axaml:Margin=\"30,",
-    };
+    /// <summary>File + constant pairs still written locally instead of taken from the theme. Empty since
+    /// Round 5 task B: the 30px indent is now column 1 plus <c>tm-card-expander</c>, and the 260 bound is
+    /// <c>tm-card-value</c>'s.</summary>
+    private static readonly string[] PendingLocalConstants = Array.Empty<string>();
 
-    /// <summary>Cards whose header cell is not exactly one title line plus one subtitle line.</summary>
-    private static readonly string[] PendingTwoLineHeader =
-    {
-        "BehaviorCard.axaml#4",   // 固定到任务栏 — bare title, status line lives below the Grid
-        "BehaviorCard.axaml#6",   // 热键 — bare title, help line lives below the Grid
-        "FoldersCard.axaml#1",    // 主文件夹 — path line is a third line inside the header
-        "FoldersCard.axaml#2",    // 数据文件夹 — path and size are a third and fourth line
-        "UpdatesCard.axaml#2",    // update status — the dynamic status wears tm-card-title, no subtitle
-    };
+    /// <summary>Cards whose header cell is not exactly one title line plus one subtitle line. Empty since
+    /// Round 5 task B: the two bare titles gained the line that used to hang below their card, the two
+    /// folder rows' path/size lines moved to the expansion row, and the update card gained a static
+    /// title.</summary>
+    private static readonly string[] PendingTwoLineHeader = Array.Empty<string>();
 
     /// <summary>The column template every card repeats because no style can carry it.</summary>
     private const string StandardColumns = "Auto,*,Auto";

@@ -1,4 +1,3 @@
-using System.Reflection;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
@@ -10,10 +9,17 @@ using TanMenu.Wpf.Services;
 namespace TanMenu.Wpf.Views.Settings;
 
 /// <summary>
-/// 更新 card group: the current version + a channel-specific help line, and update status/progress/
-/// actions. Ported from <c>SettingsWindow</c>'s 更新 tab (<c>GetCurrentVersion</c>,
-/// <c>Updates_StateChanged</c>, <c>RenderUpdateState</c>, <c>CheckUpdate_Click</c>,
-/// <c>UpdateAction_Click</c>). Unlike every other card group, this one writes no config at all —
+/// 更新 card group: one card carrying the update status, a channel-specific help line, the download
+/// progress and the check/download actions. Ported from <c>SettingsWindow</c>'s 更新 tab
+/// (<c>Updates_StateChanged</c>, <c>RenderUpdateState</c>, <c>CheckUpdate_Click</c>,
+/// <c>UpdateAction_Click</c>).
+/// <para>
+/// Round 5, item 3 deleted this group's second card, 当前版本 — an information row with no control in an
+/// action group, whose version line would otherwise have been shown twice one card apart once 关于 moved
+/// into 设置. The version now lives on the 关于 card and the channel help line moved onto this card's
+/// expansion row; <c>SettingsWindow</c>'s <c>GetCurrentVersion</c> port went with the card.
+/// </para>
+/// Unlike every other card group, this one writes no config at all —
 /// <see cref="IAppUpdateService"/> IS the state, the same way <see cref="IAutoStartService"/> is for
 /// 开机自启 in <see cref="BehaviorCard"/> — so there is no <see cref="SettingsWrite.CommitAsync"/> call
 /// anywhere in this file.
@@ -81,7 +87,7 @@ public partial class UpdatesCard : UserControl, ISettingsCard
 
         GroupHead.Text = AppLanguage.Text("Updates", lang);
 
-        CurrentVersionText.Text = L("CurrentVersion", GetCurrentVersion());
+        UpdateStatusTitle.Text = AppLanguage.Text("UpdateStatusTitle", lang);
         UpdateHelpText.Text = _updates.State.Status switch
         {
             AppUpdateStatus.StoreManaged => L("UpdateStoreManaged"),
@@ -91,9 +97,6 @@ public partial class UpdatesCard : UserControl, ISettingsCard
 
         RenderUpdateState();
     }
-
-    private static string GetCurrentVersion() =>
-        Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "0.0.0";
 
     /// <summary>Velopack's download-progress callback runs on a thread-pool thread, not the UI thread
     /// (see <see cref="IAppUpdateService.StateChanged"/>'s remarks) — ported verbatim from

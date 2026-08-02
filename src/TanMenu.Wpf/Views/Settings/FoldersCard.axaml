@@ -1,99 +1,96 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="TanMenu.Wpf.Views.Settings.FoldersCard">
-  <!-- Three Windows 11 Settings-style rows: an icon, a title + secondary line(s), and the control(s)
-       trailing — same Grid(Auto,*,Auto) shape AppearanceCard established (see its code-behind for the
-       full ReloadFromConfig contract every settings card group follows, and for why this is a Grid and
-       never a DockPanel).
+  <!-- Three settings rows: an icon, a title + secondary line, the controls trailing, and — on the two
+       folder rows — a live path (and, for 数据文件夹, its kind and size) on the expansion row below. See
+       the "row spec's shared classes" block in Themes/Fluent2/Launcher.axaml for the anatomy, and
+       AppearanceCard's code-behind for the full ReloadFromConfig contract every settings card group
+       follows (and for why every row here is a Grid and never a DockPanel).
 
-       主文件夹 adds its live path as an extra TextBlock inside the SAME Grid.Column="1" stack as the
-       title/sub, not below the Grid as a sibling: an absolute path has no whitespace for Wrap to break
-       on, so putting it below the Grid (in its own StackPanel, the way BehaviorCard's pin-status/
-       hotkey-help lines do) let its unbroken width dictate the whole card's width instead of being
-       clamped by the star column — confirmed by screenshot, where a long path pushed 选择… to the
-       window's edge. Moving it inside column 1 was necessary but not sufficient on its own: a NoWrap +
-       CharacterEllipsis TextBlock still reports its full, un-ellipsized single-line text as its
-       MEASURE-time desired width (trimming is a paint-time concern, applied only once the width it's
-       actually given at arrange time is narrower than that) — so an untruncated long path still inflated
-       column 1's minimum, just less catastrophically than Wrap's version. An explicit MaxWidth on the
-       path TextBlock is what actually bounds the desired width fed into measurement, independent of the
-       text's own length. ReloadFromConfig sets a matching ToolTip so the full path is one hover away.
+       WHY THE PATH LINES ARE NOT IN THE HEADER. They used to be a third (and, on 数据文件夹, a fourth)
+       TextBlock inside the Grid.Column="1" stack, which is what put that row's icon 28.33 DIP below
+       where every other row's icon sat: the icon centres on the header block, and that block was twice
+       the height it is anywhere else. They are value lines, so they go on the expansion row, and they
+       carry tm-card-value. The class is also what stopped them floating in mid-card, which is the defect
+       the user screenshotted: an unstated HorizontalAlignment plus a MaxWidth centres a line in Avalonia
+       (ArrangeCore runs Stretch through Center's arithmetic), and the two lines measured 384.67 and
+       456.67 DIP right of their own titles. They now start on their title's own x. The MaxWidth that
+       provokes it is still needed and still applied — from the class — because a NoWrap +
+       CharacterEllipsis TextBlock reports its untrimmed width at measure time; the code-behind sets a
+       matching ToolTip on both path lines so the full text stays one hover away.
 
-       数据文件夹 and 维护 each need THREE trailing buttons rather than 主文件夹's two, and even with the
-       path fix above, three buttons sharing column 2 with column 1's title/sub/path left no room at the
-       app's own documented minimum window width (MainWindow.axaml's MinWidth="760"): 重置为默认/恢复… were
-       clipped past the visible edge — confirmed by resizing to exactly that minimum and re-screenshotting,
-       not by inspection. Column 2 is left empty on these two rows; their buttons go on their own full-width
-       row below instead, indented to align under the title (30px = the icon column's width + its right
-       margin, the same indent BehaviorCard uses for its own below-row content) — full card width is far
-       more room than a shared trailing column, and there is nothing else competing for it. -->
+       WHY ALL THREE BUTTONS TRAIL, INCLUDING ON 数据文件夹 AND 维护. Until Round 5 they sat on their own
+       full-width row below, because three buttons sharing column 2 with a column 1 that ALSO held a
+       260 DIP NoWrap path line were measured to clip past the visible edge at the app's documented
+       minimum window width (MainWindow.axaml's MinWidth="760"). With the path lines off the header that
+       premise is gone, and the measurement was retaken rather than inherited: the live window was shrunk
+       with SetWindowPos until the platform clamped it at its enforced minimum (GetWindowRect 1162 px =
+       760 DIP client + the 22 px horizontal inset), and every button on the page was read from its UIA
+       rect. Nothing clips. On both rows the three-button strip ends exactly on the card's content right
+       edge, with the standard 12 DIP gutter to the text column, and it does so in English too — the
+       worse case, where 重置为默认 (104.67 DIP) becomes Reset to Default (133.33). So the row spec needs
+       no "three or more go below" exception: controls trail, full-width content goes below, and 主文件夹
+       and 数据文件夹 are finally the same shape.
+
+       What 760 DIP does cost is wrapping: at that width 数据文件夹's subtitle takes two lines in Chinese
+       and three in English. That is not the buttons' doing and moving them would not fix the page — at
+       the same width 每列个数's English subtitle wraps with nothing but a 220 DIP ComboBox beside it, and
+       主文件夹's wraps with only two buttons. tm-card-sub wraps on purpose; a header of exactly two
+       RENDERED lines is a property of the width the app actually opens at, not of any button placement. -->
   <StackPanel>
     <TextBlock x:Name="GroupHead" Classes="tm-group-head" />
 
     <Border Classes="tm-card">
-      <Grid ColumnDefinitions="Auto,*,Auto">
-        <TextBlock Grid.Column="0" Classes="tm-icon" Text="&#xE8B7;" Margin="0,0,14,0" VerticalAlignment="Center" />
-        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,12,0">
+      <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
+        <TextBlock Grid.Column="0" Classes="tm-icon tm-card-icon" Text="&#xE8B7;" />
+        <StackPanel Grid.Column="1" Classes="tm-card-text">
           <TextBlock x:Name="MainFolderTitle" Classes="tm-card-title" />
           <TextBlock x:Name="MainFolderSub" Classes="tm-card-sub" />
-          <TextBlock x:Name="RootPathText" Classes="tm-card-sub" TextWrapping="NoWrap"
-                     TextTrimming="CharacterEllipsis" MaxWidth="260" Margin="0,6,0,0" />
         </StackPanel>
-        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
-          <Button x:Name="OpenRootBtn" Theme="{StaticResource TmButton}"
-                  Click="OnOpenRootClick" VerticalAlignment="Center" />
-          <Button x:Name="PickRootBtn" Theme="{StaticResource TmButton}"
-                  Click="OnPickRootClick" VerticalAlignment="Center" />
+        <StackPanel Grid.Column="2" Classes="tm-card-actions">
+          <Button x:Name="OpenRootBtn" Theme="{StaticResource TmButton}" Click="OnOpenRootClick" />
+          <Button x:Name="PickRootBtn" Theme="{StaticResource TmButton}" Click="OnPickRootClick" />
+        </StackPanel>
+        <StackPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2"
+                    Classes="tm-card-expander tm-card-values">
+          <TextBlock x:Name="RootPathText" Classes="tm-card-sub tm-card-value" />
         </StackPanel>
       </Grid>
     </Border>
 
     <Border Classes="tm-card">
-      <StackPanel>
-        <Grid ColumnDefinitions="Auto,*,Auto">
-          <TextBlock Grid.Column="0" Classes="tm-icon" Text="&#xE8B7;" Margin="0,0,14,0" VerticalAlignment="Center" />
-          <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,12,0">
-            <TextBlock x:Name="DataFolderTitle" Classes="tm-card-title" />
-            <TextBlock x:Name="DataFolderSub" Classes="tm-card-sub" />
-            <TextBlock x:Name="DataPathText" Classes="tm-card-sub" TextWrapping="NoWrap"
-                       TextTrimming="CharacterEllipsis" MaxWidth="260" Margin="0,6,0,0" />
-            <!-- Short (kind + size) and never really at risk of overflow, but trimmed too rather than
-                 left as the one inconsistent sibling. -->
-            <TextBlock x:Name="DataInfoText" Classes="tm-card-sub" TextWrapping="NoWrap"
-                       TextTrimming="CharacterEllipsis" MaxWidth="260" Margin="0,2,0,0" />
-          </StackPanel>
-          <!-- Column 2 deliberately empty here — see the class-level remark above. -->
-        </Grid>
-        <StackPanel Orientation="Horizontal" Spacing="8" Margin="30,10,0,0">
-          <Button x:Name="OpenDataBtn" Theme="{StaticResource TmButton}"
-                  Click="OnOpenDataClick" VerticalAlignment="Center" />
-          <Button x:Name="ChangeDataBtn" Theme="{StaticResource TmButton}"
-                  Click="OnChangeDataClick" VerticalAlignment="Center" />
-          <Button x:Name="ResetDataBtn" Theme="{StaticResource TmButton}"
-                  Click="OnResetDataClick" VerticalAlignment="Center" />
+      <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
+        <TextBlock Grid.Column="0" Classes="tm-icon tm-card-icon" Text="&#xE8B7;" />
+        <StackPanel Grid.Column="1" Classes="tm-card-text">
+          <TextBlock x:Name="DataFolderTitle" Classes="tm-card-title" />
+          <TextBlock x:Name="DataFolderSub" Classes="tm-card-sub" />
         </StackPanel>
-      </StackPanel>
+        <StackPanel Grid.Column="2" Classes="tm-card-actions">
+          <Button x:Name="OpenDataBtn" Theme="{StaticResource TmButton}" Click="OnOpenDataClick" />
+          <Button x:Name="ChangeDataBtn" Theme="{StaticResource TmButton}" Click="OnChangeDataClick" />
+          <Button x:Name="ResetDataBtn" Theme="{StaticResource TmButton}" Click="OnResetDataClick" />
+        </StackPanel>
+        <StackPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2"
+                    Classes="tm-card-expander tm-card-values">
+          <TextBlock x:Name="DataPathText" Classes="tm-card-sub tm-card-value" />
+          <TextBlock x:Name="DataInfoText" Classes="tm-card-sub tm-card-value" />
+        </StackPanel>
+      </Grid>
     </Border>
 
     <Border Classes="tm-card">
-      <StackPanel>
-        <Grid ColumnDefinitions="Auto,*,Auto">
-          <TextBlock Grid.Column="0" Classes="tm-icon" Text="&#xE74D;" Margin="0,0,14,0" VerticalAlignment="Center" />
-          <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,12,0">
-            <TextBlock x:Name="MaintenanceTitle" Classes="tm-card-title" />
-            <TextBlock x:Name="MaintenanceSub" Classes="tm-card-sub" />
-          </StackPanel>
-          <!-- Column 2 deliberately empty here — see the class-level remark above. -->
-        </Grid>
-        <StackPanel Orientation="Horizontal" Spacing="8" Margin="30,10,0,0">
-          <Button x:Name="ClearCacheBtn" Theme="{StaticResource TmButton}"
-                  Click="OnClearCacheClick" VerticalAlignment="Center" />
-          <Button x:Name="BackupBtn" Theme="{StaticResource TmButton}"
-                  Click="OnBackupConfigClick" VerticalAlignment="Center" />
-          <Button x:Name="RestoreBtn" Theme="{StaticResource TmButton}"
-                  Click="OnRestoreConfigClick" VerticalAlignment="Center" />
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <TextBlock Grid.Column="0" Classes="tm-icon tm-card-icon" Text="&#xE74D;" />
+        <StackPanel Grid.Column="1" Classes="tm-card-text">
+          <TextBlock x:Name="MaintenanceTitle" Classes="tm-card-title" />
+          <TextBlock x:Name="MaintenanceSub" Classes="tm-card-sub" />
         </StackPanel>
-      </StackPanel>
+        <StackPanel Grid.Column="2" Classes="tm-card-actions">
+          <Button x:Name="ClearCacheBtn" Theme="{StaticResource TmButton}" Click="OnClearCacheClick" />
+          <Button x:Name="BackupBtn" Theme="{StaticResource TmButton}" Click="OnBackupConfigClick" />
+          <Button x:Name="RestoreBtn" Theme="{StaticResource TmButton}" Click="OnRestoreConfigClick" />
+        </StackPanel>
+      </Grid>
     </Border>
   </StackPanel>
 </UserControl>

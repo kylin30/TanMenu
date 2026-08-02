@@ -1,12 +1,22 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="TanMenu.Wpf.Views.Settings.ToolsCard">
-  <!-- One Windows 11 Settings-style row (icon, title + secondary line, master ToggleSwitch — same
-       Grid(Auto,*,Auto) shape AppearanceCard established, see its code-behind for the full
-       ReloadFromConfig contract every settings card group follows), plus a bordered, scrolling list of
-       per-tool CheckBoxes below it inside the SAME tm-card Border — same below-row placement
-       BehaviorCard's hotkey help text and FoldersCard's maintenance buttons use, indented 30px (the
-       icon column's width + its right margin) to align under the title.
+  <!-- One settings row — icon, title + secondary line, master ToggleSwitch — with a bordered, scrolling
+       list of per-tool CheckBoxes on its expansion row, inside the same tm-card Border. See the "row
+       spec's shared classes" block in Themes/Fluent2/Launcher.axaml for the anatomy, and
+       AppearanceCard's code-behind for the full ReloadFromConfig contract every settings card group
+       follows.
+
+       Round 5, item 3: the list used to hang below the row's Grid inside a wrapping StackPanel, indented
+       by a hand-written Margin="30,10,0,0". It is now the Grid's own second row spanning columns 1-2, so
+       its left edge comes from column 1 rather than from a constant that happened to equal the icon
+       column's width plus its margin, and its right edge reaches the card's content edge instead of
+       stopping wherever the widest tool name did.
+
+       The CheckBoxes inside the bordered list sit a further 9.33 DIP in — the list Border's own
+       Padding="8,4" and 1 px stroke, plus each CheckBox's own template padding. That is the list
+       control's business, not the row spec's: the spec constrains where a row's expansion CONTENT
+       starts, which is this Border's left edge.
 
        MaxHeight="240" on the ScrollViewer (ported verbatim from SettingsWindow's 常用工具 tab) is what
        keeps a long DefaultTools list (config.json is user-editable — see the code-behind) from pushing
@@ -15,29 +25,28 @@
     <TextBlock x:Name="GroupHead" Classes="tm-group-head" />
 
     <Border Classes="tm-card">
-      <StackPanel>
-        <Grid ColumnDefinitions="Auto,*,Auto">
-          <TextBlock Grid.Column="0" Classes="tm-icon" Text="&#xE90F;" Margin="0,0,14,0" VerticalAlignment="Center" />
-          <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,12,0">
-            <TextBlock x:Name="ShowToolsTitle" Classes="tm-card-title" />
-            <TextBlock x:Name="ShowToolsSub" Classes="tm-card-sub" />
-          </StackPanel>
-          <ToggleSwitch Grid.Column="2" x:Name="ShowToolsToggle" OnContent="" OffContent=""
-                        VerticalAlignment="Center" IsCheckedChanged="OnShowToolsChanged" />
-        </Grid>
+      <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
+        <TextBlock Grid.Column="0" Classes="tm-icon tm-card-icon" Text="&#xE90F;" />
+        <StackPanel Grid.Column="1" Classes="tm-card-text">
+          <TextBlock x:Name="ShowToolsTitle" Classes="tm-card-title" />
+          <TextBlock x:Name="ShowToolsSub" Classes="tm-card-sub" />
+        </StackPanel>
+        <ToggleSwitch Grid.Column="2" x:Name="ShowToolsToggle" Classes="tm-card-toggle"
+                      IsCheckedChanged="OnShowToolsChanged" />
 
         <!-- Disabled (not hidden) while ShowToolsToggle is off — ported verbatim from
              SettingsWindow.BuildToolCheckboxes ("Unchecking only disables the list; the individual
              states stay and are still persisted"): the per-tool Show values keep whatever the user set
              so re-enabling the category does not silently reset which tools it contains. -->
-        <Border Margin="30,10,0,0" Padding="8,4"
+        <Border Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Classes="tm-card-expander"
+                Padding="8,4"
                 BorderBrush="{DynamicResource StrokeControlBrush}" BorderThickness="1"
                 CornerRadius="{DynamicResource RadiusControl}">
           <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="240">
             <StackPanel x:Name="ToolsPanel" />
           </ScrollViewer>
         </Border>
-      </StackPanel>
+      </Grid>
     </Border>
   </StackPanel>
 </UserControl>

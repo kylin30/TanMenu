@@ -65,8 +65,12 @@ public static class AppLanguage
             ["PinToTaskbarHelp"] = ("固定后，点击任务栏图标即可显示主界面。系统支持时由 Windows 确认，否则打开快捷方式供手动固定。", "Once pinned, click the taskbar icon to show TanMenu. Windows confirms when supported; otherwise TanMenu opens its shortcut for manual pinning."),
             ["PinnedToTaskbarHelp"] = ("TanMenu 已永久固定。点击任务栏图标可随时显示主界面。", "TanMenu is permanently pinned. Click its taskbar icon whenever you want to show the launcher."),
             ["PinToTaskbarWorking"] = ("正在请求 Windows 固定 TanMenu…", "Asking Windows to pin TanMenu…"),
-            ["PinToTaskbarNotAllowed"] = ("Windows 当前不允许应用发起固定。点击上方按钮打开 TanMenu 快捷方式，再右键选择“固定到任务栏”。", "Windows is not allowing an app-initiated pin. Use the button above to open the TanMenu shortcut, then right-click it and choose Pin to taskbar."),
-            ["PinToTaskbarUnsupported"] = ("当前 Windows（包括部分 Windows 10 环境）不支持应用内固定。点击上方按钮打开 TanMenu 快捷方式，再右键选择“固定到任务栏”。", "This Windows environment, including some Windows 10 systems, does not support in-app pinning. Use the button above to open the TanMenu shortcut, then right-click it and choose Pin to taskbar."),
+            // 右侧按钮 / "the button on the right", not 上方 / "above": Round 5, item 3 made these two
+            // strings the 固定到任务栏 row's own SUBTITLE, beside PinTaskbarBtn in the trailing column,
+            // instead of a line hanging below the whole row. The row spec's invariant I3 puts every
+            // interactive control on the card's right edge, so the direction is stable.
+            ["PinToTaskbarNotAllowed"] = ("Windows 当前不允许应用发起固定。点击右侧按钮打开 TanMenu 快捷方式，再右键选择“固定到任务栏”。", "Windows is not allowing an app-initiated pin. Use the button on the right to open the TanMenu shortcut, then right-click it and choose Pin to taskbar."),
+            ["PinToTaskbarUnsupported"] = ("当前 Windows（包括部分 Windows 10 环境）不支持应用内固定。点击右侧按钮打开 TanMenu 快捷方式，再右键选择“固定到任务栏”。", "This Windows environment, including some Windows 10 systems, does not support in-app pinning. Use the button on the right to open the TanMenu shortcut, then right-click it and choose Pin to taskbar."),
             ["PinToTaskbarFailed"] = ("固定失败：{0}\n请右键开始菜单中的 TanMenu → 固定到任务栏。", "Pinning failed: {0}\nRight-click TanMenu in Start and choose Pin to taskbar."),
             ["PinToTaskbarManualOpened"] = ("已打开 TanMenu 快捷方式。请右键它并选择“固定到任务栏”；完成后，下次显示主界面会自动识别。", "The TanMenu shortcut is open. Right-click it and choose Pin to taskbar; TanMenu will detect it the next time the launcher is shown."),
             ["PinToTaskbarManualOpenFailed"] = ("无法打开 TanMenu 快捷方式位置。请从开始菜单找到 TanMenu，右键选择“固定到任务栏”。", "Could not open the TanMenu shortcut location. Find TanMenu in Start, right-click it, and choose Pin to taskbar."),
@@ -79,7 +83,9 @@ public static class AppLanguage
             ["Hotkey"] = ("热键", "Hotkey"),
             ["HotkeyTooltip"] = ("点击后按下组合键来设置（需包含 Ctrl/Alt/Shift/Win）", "Click and press a key combo including Ctrl/Alt/Shift/Win"),
             ["Clear"] = ("清除", "Clear"),
-            ["HotkeyHelp"] = ("默认无热键。点击上方输入框并按下组合键来自定义。", "No hotkey by default. Click the box above and press a key combo to customize it."),
+            // 右侧输入框 / "the box on the right" for the same reason as PinToTaskbarNotAllowed above:
+            // this line is now the 热键 row's subtitle and HotkeyBox sits beside it, not above it.
+            ["HotkeyHelp"] = ("默认无热键。点击右侧输入框并按下组合键来自定义。", "No hotkey by default. Click the box on the right and press a key combo to customize it."),
             ["None"] = ("(无)", "(None)"),
             // Secondary lines for the 设置 page's 行为 cards (Task 9) — same rationale as the 外观
             // cards' *CardSub keys: the old TabItem-based dialog had no room for a description under
@@ -118,6 +124,11 @@ public static class AppLanguage
             ["UpdatePortableHelp"] = ("绿色版会自动检查 GitHub Releases；发现新版本后会在主界面提示，只有确认后才会下载和安装。", "The portable edition checks GitHub Releases automatically. New versions appear in the launcher and are downloaded and installed only after confirmation."),
             ["UpdateStoreManaged"] = ("Microsoft Store 版本由 Microsoft Store 管理更新。", "Updates for the Microsoft Store edition are managed by Microsoft Store."),
             ["UpdateUnavailable"] = ("当前运行方式不支持应用内更新。请使用 Microsoft Store 版，或从 GitHub Release 下载绿色版。", "This build cannot update itself. Use the Microsoft Store edition or download the portable edition from GitHub Releases."),
+            // The update-status card's STATIC title. Round 5, item 3: that card used to have no title at
+            // all — the dynamic status sentence itself wore tm-card-title, so the row read as a
+            // paragraph with a button under it rather than as a settings row. The sentence is now the
+            // subtitle and this is the title above it.
+            ["UpdateStatusTitle"] = ("更新状态", "Update status"),
             ["UpdateStoreManagedStatus"] = ("无需在这里操作，请在 Microsoft Store 中检查更新。", "No action is needed here. Check for updates in Microsoft Store."),
             ["UpdateDisabledStatus"] = ("应用内更新未启用。", "In-app updates are not enabled."),
             ["UpdateIdle"] = ("正在等待检查更新。", "Ready to check for updates."),
