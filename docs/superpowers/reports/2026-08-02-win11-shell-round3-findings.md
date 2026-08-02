@@ -127,6 +127,14 @@ detach is every app-level, **class-scoped** style frame the page depends on — 
 padding, `StackPanel.tm-group`'s alignment, the search field's geometry, and so on — which of those
 specifically produced the corrupted measurement below was not isolated.
 
+> **Superseded in part by Round 4, item 3** (`docs/superpowers/specs/2026-08-02-win11-shell-round4-design.md`
+> §3.4). The decompiled `FrameType` mechanism above stands unchanged. The 168 DIP example does not:
+> that `Width` Setter is deleted, so a tile is sized by its content, and both terms of that content —
+> the class-scoped `Image.tm-tile-icon` box listed here as *lost* on detach, and the label's face,
+> which `MainWindow.ApplyWindowFont` sets on the window rather than on the tile — are things the
+> detach breaks. A detached measurement now corrupts **width as well as height**, which makes
+> `RefitToContent`'s guard more load-bearing than this section left it, not less.
+
 **`DispatcherPriority.Loaded` ordering — confirmed by decompile.** The comment on
 `MainWindow.InitializeAndFitAsync` (and the identical claim in `2af2401`) asserts that Avalonia
 processes pending layout invalidations before running Loaded-priority work, which is why deferring

@@ -669,8 +669,10 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
     /// Raised at the end of every (re)build, once everything that decides how large this page MEASURES
     /// has been applied to it: the groups themselves, each group's column layout (每列个数,
     /// <see cref="TanMenu.Core.Models.GeneralConfig.ColButtonCount"/> — Round 3, Task 4 replaced the
-    /// 小/中/大 tile-size class this used to name; every tile is now a fixed 168 DIP regardless of any
-    /// setting), the 字体 face, and every localized string.
+    /// 小/中/大 tile-size class this used to name, and Round 4, item 3 removed the fixed 168 DIP width
+    /// that replaced it, so a tile is as wide as its own label now and no setting names a width), the
+    /// 字体 face — which since item 3 decides tile widths, not just the text inside them — and every
+    /// localized string.
     /// </summary>
     /// <remarks>
     /// Round 2's review finding 2: the window is sized from this page's natural size again, but a

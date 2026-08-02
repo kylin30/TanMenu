@@ -73,7 +73,10 @@
 >   treatment (1 px resting border plus a 2 px accent underline), not an accent ring.
 > - **§3 外观 card** — 按钮大小 is deleted along with the whole size-class plumbing; tiles are always
 >   the former "小" size at a fixed 168 DIP. `GeneralConfig.ButtonSize` is retained as a legacy field
->   only. 每列个数 takes its place in the card.
+>   only. 每列个数 takes its place in the card. **The fixed 168 DIP is superseded by Round 4, item 3**
+>   (`docs/superpowers/specs/2026-08-02-win11-shell-round4-design.md` §3): the `Width` Setter is gone
+>   and a tile is as wide as its own icon-plus-label content, uniform within a column. 按钮大小 stays
+>   deleted and `ButtonSize` stays legacy.
 > - **§3 settings cards** — cards stretch to the content width (capped at 1250 DIP) instead of sitting
 >   at a fixed width; section headings dropped to Body/SemiBold against a Subtitle page title; and
 >   固定到任务栏 renders disabled, not accent-styled, once the app is pinned.

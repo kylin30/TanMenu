@@ -29,10 +29,27 @@
          nothing rather than just dimming it — stay self-contained. Unlike the retro build, pressing
          does NOT offset the content — Fluent 2 signals press by going a shade quieter, not by moving.
 
-         Width is a Setter here (168 DIP), not a class-scoped style: Round 3, Task 4 removed the
-         小/中/大 button-size setting (tiles are always this one size, what that setting used to call
-         "小"), which removed the only reason a tile's width ever varied. See Image.tm-tile-icon below
-         for the matching icon-box size. -->
+         There is deliberately NO Width Setter here any more. Round 3, Task 4 removed the 小/中/大
+         button-size setting and left every tile at one fixed 168 DIP; Round 4, item 3 deleted that
+         fixed width too, because it was what forced long labels through TextTrimming. A tile is now
+         as wide as its own content: 2 DIP of border + 16 DIP of Padding (both below) + the 20 DIP
+         icon box (Image.tm-tile-icon further down) + the icon's own 10 DIP right margin
+         (Views/AppPage.axaml) + the label's single-line advance = 48 DIP of chrome plus the label.
+
+         What keeps that from reading as a ragged right edge is the ABSENCE of a HorizontalAlignment
+         on the tile Button, so do not add one: each tile stretches to the width of the column
+         StackPanel it sits in, and a vertical StackPanel is as wide as its widest child, so a column
+         comes out uniform and only differs from the next column. Measured on the running build with
+         UI Automation bounding rectangles (Round 4, item 3, on a 74-item folder): exactly one width
+         and one right edge per column, and every one of the nine columns a different width, from
+         118.67 to 204 DIP.
+
+         A MinWidth and a MaxWidth are equally deliberately absent: MaxWidth would bring the ellipsis
+         straight back, and a MinWidth floor would only re-pad the columns that came out short. The
+         bound that matters is applied where the screen is actually visible — WindowPlacement clamps
+         the fitted window to the work area and AppPage's Body ScrollViewer scrolls whatever is past
+         it. Both were exercised at 每列个数 = 2, where the page asked for 5644 DIP, the window was
+         clamped to the 5120 DIP work area, and Body reported itself horizontally scrollable. -->
     <ControlTheme x:Key="TmTileButton" TargetType="Button">
       <Setter Property="Background" Value="{DynamicResource SurfaceLayerBrush}" />
       <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
@@ -41,7 +58,6 @@
       <Setter Property="CornerRadius" Value="{DynamicResource RadiusControl}" />
       <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
       <Setter Property="Padding" Value="8,7" />
-      <Setter Property="Width" Value="168" />
       <Setter Property="HorizontalContentAlignment" Value="Stretch" />
       <Setter Property="VerticalContentAlignment" Value="Center" />
       <Setter Property="Cursor" Value="Hand" />
@@ -406,10 +422,16 @@
 
   <!-- ══ Tile icon size ═══════════════════════════════════════════════════════════════════════
        Round 3, Task 4 removed the 小/中/大 button-size setting, which used to drive tile width, icon
-       box and type size together as three size classes (Panel.size-small/medium/large). Tiles are
-       always the one size that setting used to call "小" now — TmTileButton's own Width Setter above
-       carries the tile width and FontSize; this is the matching fixed icon-box size, no longer
-       class-scoped since there is only the one size left to scope it to. -->
+       box and type size together as three size classes (Panel.size-small/medium/large). This rule is
+       what is left of that: one icon box, with no size class left to scope it under.
+
+       Round 4, item 3 then deleted TmTileButton's own Width Setter, which makes this 20x20 more
+       load-bearing than it looks — it is no longer just how big the icon draws, it is a term in every
+       tile's WIDTH (48 DIP of chrome = 2 border + 16 padding + 20 here + 10 icon margin). TmTileButton
+       above still carries the FontSize, the other term the label's advance depends on. Note that this
+       is a class-scoped style, i.e. a FrameType.Style frame that a logical-tree detach drops, whereas
+       TmTileButton is an element-local theme frame that survives one — see MainWindow.RefitToContent's
+       guard, which item 3 made more load-bearing for exactly this reason. -->
   <Style Selector="Image.tm-tile-icon">
     <Setter Property="Width" Value="20" />
     <Setter Property="Height" Value="20" />
@@ -602,9 +624,10 @@
        StackPanel of categories; the columns ItemsControl inside (AppPage.axaml, bound to
        MenuGroupVm.Columns) keeps laying out however many columns MenuLayout.ChunkIntoColumns
        produced and nothing clips it, so a category with more columns than the cap allows would
-       render straight over its right-hand neighbour. The tile has one fixed width now (168 DIP,
-       TmTileButton), so a group's honest desired width is exactly columns × column width —
-       bounded, and what the scroller needs. -->
+       render straight over its right-hand neighbour. Round 4, item 3 removed the tile's fixed width,
+       which changes the premise but not the conclusion: a column is as wide as its own widest label,
+       so a group's honest desired width is a finite sum of finite column widths — still bounded, and
+       still what the scroller needs. -->
   <Style Selector="StackPanel.tm-group">
     <Setter Property="VerticalAlignment" Value="Top" />
   </Style>

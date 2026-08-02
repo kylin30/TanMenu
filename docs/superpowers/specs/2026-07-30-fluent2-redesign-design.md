@@ -159,7 +159,10 @@ duplicates of "hide" and a fixed-size popup can do neither.
 └────────────────────────────────────────────────────────────┘
 ```
 
-- **Tile**: 168 px wide, 20 px icon + Body label, radius 4, transparent at rest,
+- **Tile**: 168 px wide *(superseded by Round 4, item 3 —
+  `docs/superpowers/specs/2026-08-02-win11-shell-round4-design.md` §3: the fixed width is deleted and a
+  tile sizes to its content, uniform per column; the 20 px icon box and radius 4 below still hold)*,
+  20 px icon + Body label, radius 4, transparent at rest,
   `SubtleFillSecondary` on hover, `SubtleFillTertiary` pressed with no content offset (Fluent 2 does
   not shift content the way the bevel did). A tile whose target is missing renders `TextDisabled`
   and does not react to the pointer.

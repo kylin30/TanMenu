@@ -174,9 +174,17 @@
                                            Margin="0,0,10,0"
                                            Stretch="Uniform"
                                            VerticalAlignment="Center" />
+                                    <!-- NoWrap and NO TextTrimming: Round 4, item 3 sizes the tile to
+                                         this label instead of trimming the label to the tile, so
+                                         there is nothing left for a trimmer to do — measured on the
+                                         running build, all 74 labels' ink ended inside their tile's
+                                         padding box, the tightest with 0.67 DIP to spare. NoWrap is
+                                         load-bearing twice: it is what makes the label's desired
+                                         width a single-line advance, and it keeps every tile the
+                                         same height, which is what FindAdjacentTile's sameRow test
+                                         keys off (code-behind, current.Bounds.Height / 2). -->
                                     <TextBlock Text="{Binding Name}"
                                                TextWrapping="NoWrap"
-                                               TextTrimming="CharacterEllipsis"
                                                VerticalAlignment="Center" />
                                   </DockPanel>
                                 </Button>

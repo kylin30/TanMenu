@@ -167,10 +167,11 @@ public class GeneralConfig
     /// <summary>Legacy setting retained only so old config files deserialize cleanly — the same
     /// treatment <see cref="WindowWidth"/>/<see cref="WindowHeight"/> above get, and
     /// <see cref="ColButtonCount"/> itself got for a while. Round 3, Task 4 removed the 按钮大小
-    /// (小/中/大) setting entirely: launcher tiles are always the one size that used to be called "小"
-    /// (Small, 168 DIP) — see <c>Themes/Fluent2/Launcher.axaml</c>'s <c>TmTileButton</c>. Nothing reads
-    /// this field any more; it is kept only so a config.json written before Round 3 — which can carry
-    /// "Medium" or "Large" — still deserializes without error.</summary>
+    /// (小/中/大) setting entirely, leaving every tile at the fixed width that setting used to call
+    /// "小" (168 DIP), and Round 4, item 3 removed that fixed width too: a launcher tile is now as wide
+    /// as its own icon-plus-label content — see <c>Themes/Fluent2/Launcher.axaml</c>'s
+    /// <c>TmTileButton</c>. Nothing reads this field any more; it is kept only so a config.json written
+    /// before Round 3 — which can carry "Medium" or "Large" — still deserializes without error.</summary>
     public string ButtonSize { get; set; } = "Small";
 
     /// <summary>Show the built-in "常用工具" group (common system tools) before the folder groups.</summary>

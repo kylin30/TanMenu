@@ -265,18 +265,29 @@ public partial class MainWindow : Window
     /// likewise not cleared.
     /// </para>
     /// <para>
-    /// So the previous wording here was wrong in both halves and is corrected: the tiles do NOT lose
-    /// their 168 DIP width. That width is a <c>Width</c> Setter on the <c>TmTileButton</c> ControlTheme
-    /// (<c>Themes/Fluent2/Launcher.axaml</c>), applied element-locally as
-    /// <c>Theme="{StaticResource TmTileButton}"</c> in <c>Views/AppPage.axaml</c> — there is no
-    /// <c>Button.tm-tile</c> style setting Width anywhere, and a theme frame survives the detach.
-    /// What IS lost is every APP-LEVEL, class-scoped style frame the page depends on, which is still
-    /// plenty to corrupt a measurement: <c>Image.tm-tile-icon</c>'s 20x20 icon box, <c>TextBlock
-    /// .tm-section</c>'s size/line-height/weight, <c>Border.tm-section-head</c>'s padding,
-    /// <c>StackPanel.tm-group</c>'s alignment, the search field's whole geometry, and so on. Which of
-    /// those produced 850x568 specifically was not isolated, and is not claimed here — the guard is
-    /// justified by the reproduction, and the mechanism above is stated only as far as the decompile
-    /// actually supports it.
+    /// So the previous wording here was wrong in both halves and is corrected. What survives a detach
+    /// is the tile's ControlTheme: <c>TmTileButton</c> (<c>Themes/Fluent2/Launcher.axaml</c>) is applied
+    /// element-locally as <c>Theme="{StaticResource TmTileButton}"</c> in <c>Views/AppPage.axaml</c>, so
+    /// its Setters are a theme frame and the detach does not touch them. What IS lost is every
+    /// APP-LEVEL, class-scoped style frame the page depends on, which is plenty to corrupt a
+    /// measurement: <c>Image.tm-tile-icon</c>'s 20x20 icon box, <c>TextBlock.tm-section</c>'s
+    /// size/line-height/weight, <c>Border.tm-section-head</c>'s padding, <c>StackPanel.tm-group</c>'s
+    /// alignment, the search field's whole geometry, and so on. Which of those produced 850x568
+    /// specifically was not isolated, and is not claimed here — the guard is justified by the
+    /// reproduction, and the mechanism above is stated only as far as the decompile actually supports
+    /// it.
+    /// </para>
+    /// <para>
+    /// Round 4, item 3 made this guard MORE load-bearing, not less, and inverted the reassurance the
+    /// paragraph above used to end on. Until then the surviving theme frame carried a fixed
+    /// <c>Width</c> Setter (168 DIP), so the page's WIDTH was the one dimension a detached measurement
+    /// could still get right. That Setter is deleted: a tile is now as wide as its own content, and one
+    /// of that content's two terms is the very icon box listed above as lost —
+    /// <c>Image.tm-tile-icon</c>'s 20x20 is class-scoped, so a detached tile no longer has a 20 DIP icon
+    /// slot in its width at all. The other term is the label's own advance, and the face it is measured
+    /// in is not set on the label either: <see cref="ApplyWindowFont"/> sets it on the WINDOW, and a
+    /// page sitting outside the window's logical tree is not below that window to take it from. A fit
+    /// taken while the page is detached would therefore now corrupt width as well as height.
     /// </para>
     /// <para>
     /// A SECOND, worse-sounding claim does NOT belong here as established fact: that the launcher then
@@ -288,12 +299,17 @@ public partial class MainWindow : Window
     /// flag already set and no-ops — traced in the same decompile. But it was NOT observed as such: in
     /// both live pre-fix reproductions the launcher looked normal again once it was reattached to 应用.
     /// The evidence recorded for that at the time was "the tiles came back at their correct width (192
-    /// DIP — this predates Round 3, Task 4's later change to a fixed 168 DIP regardless of any
-    /// setting)", and Round 3's residual review retired that particular piece of evidence: tile width
-    /// comes from <c>TmTileButton</c>'s <c>Width</c> Setter, i.e. a <c>FrameType.Theme</c> frame that
-    /// the detach never removed in the first place (see the previous paragraph), so a correct tile
-    /// width proves nothing either way about whether STYLE frames were re-applied. The observation
-    /// that the page looked right stands; the inference drawn from that one measurement does not.
+    /// DIP)". Round 3's residual review retired that piece of evidence on the ground that tile width
+    /// came from <c>TmTileButton</c>'s <c>Width</c> Setter — a theme frame the detach never removed —
+    /// so a correct width proved nothing about STYLE frames. Round 4, item 3 had to re-check that
+    /// ground and found it wrong twice over, so it is withdrawn rather than repeated: 192 DIP was
+    /// <c>Panel.size-medium Button.tm-tile</c>, a CLASS-SCOPED style (verified against the tree at
+    /// <c>921d7f7</c>, before <c>2af2401</c> collapsed the three size classes into one Setter), so the
+    /// reason did not describe the build the observation was made on; and item 3 deleted the Setter, so
+    /// it does not describe today's build either. What remains true is the narrow point the paragraph
+    /// rests on: the launcher LOOKED right on reattach in both reproductions. Nothing here converts
+    /// that into a measurement of whether style frames were re-applied, and no one has re-observed it
+    /// on a build whose tile width is style-dependent again.
     /// A candidate explanation also recorded at the time —
     /// <see cref="TanMenu.Wpf.ViewModels.LauncherViewModel.ReloadAsync"/> replaces the tile containers
     /// outright when a rebuild reports a change and only relabels the existing ones otherwise, so some
@@ -367,8 +383,15 @@ public partial class MainWindow : Window
     /// The launcher finished a (re)build, so anything derived from settings that changes what it
     /// MEASURES has already been applied to it: each group's column layout (每列个数,
     /// <c>GeneralConfig.ColButtonCount</c> — Round 3, Task 4 replaced the 小/中/大 tile-size class this
-    /// used to name; every tile is now a fixed 168 DIP regardless of any setting), the 字体 face, and
-    /// every localized string on the page.
+    /// used to name, and Round 4, item 3 then removed the fixed width that replaced it, so no setting
+    /// names a tile width any more: a tile is as wide as its own label), the 字体 face, and every
+    /// localized string on the page.
+    /// <para>
+    /// The 字体 face is doubly relevant since item 3: it no longer only re-flows text inside a tile of
+    /// known width, it decides the tile's WIDTH, and through it the whole page's. That is another
+    /// reason this signal — raised after the rebuild, not off <c>SettingsChanged</c> — is the only
+    /// valid moment to re-measure.
+    /// </para>
     /// </summary>
     /// <remarks>
     /// Review finding 2: none of those re-fitted the window, so a settings change could re-render the
