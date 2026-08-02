@@ -344,7 +344,8 @@ public sealed partial class WindowHost : IWindowHost
     /// reject it: this
     /// latches <see cref="_userResized"/> to true and records whatever client size Windows itself chose
     /// for the restore, not the fit's. The one re-fit that already ran keeps its result on screen, but
-    /// every LATER re-fit trigger for the rest of the process — a rail toggle, a 每列个数 change, another
+    /// every LATER re-fit trigger for the rest of the process — a docked notice opening, a 每列个数
+    /// change, another
     /// un-maximize — is silently disabled from this point on, exactly as a genuine manual resize disables
     /// it. This is pre-existing behaviour, not introduced by this remark, and the user has not been asked
     /// whether a maximize-then-drag-to-restore gesture should count as "I chose a size" the same way an
@@ -778,10 +779,15 @@ public sealed partial class WindowHost : IWindowHost
             // That has one behavioural consequence, stated rather than glossed. A pure MOVE — a title-bar
             // drag, an external SetWindowPos — reaches PositionChanged, never Resized (decompiled
             // Win32.WindowImpl: WM_MOVE raises PositionChanged, only WM_SIZE raises Resized), so it sets
-            // neither _userResized nor _fitBasisStale. Under the old mixed basis a content-unchanged
-            // re-fit then saw "live position != computed position" and snapped the window back to the
-            // anchor; under this one it sees the rectangle it last requested, matches, and skips, so the
-            // window stays where it was dragged until the content actually changes. It is re-anchored on
+            // neither _userResized nor _fitBasisStale. Had the mixed basis been kept alongside the new
+            // anchoring rule, a content-unchanged re-fit would see "live position != computed position"
+            // and snap the window back to the anchor; against the whole rectangle it sees the one it
+            // last requested, matches, and skips, so the window stays where it was dragged until the
+            // content actually changes. (The counterfactual is deliberate: the PRE-Round-4 code did not
+            // snap a dragged window back either, but only because its resolver derived the position by
+            // clamping the live one, so the live position appeared on BOTH sides of the comparison and
+            // cancelled out. That is gone — position is a function of the size now — and the basis had
+            // to be widened to keep the same outcome.) It is re-anchored on
             // the next summon regardless, because RestorePlacement always applies the anchor before Show.
             //
             // null (nothing has fit yet this process) always counts as "different", so the very first fit
@@ -964,9 +970,15 @@ public sealed partial class WindowHost : IWindowHost
             // _restoring, so un-minimizing raised WindowStateProperty-changed with _restoring == false
             // and scheduled a redundant SavePlacement — harmless (it would only re-record the same
             // g.WindowMaximized this line just read to decide what to restore to), but inconsistent with
-            // every other place this class writes to the window's own placement properties. _restoring
-            // does not affect Resized/WindowResizeReason at all (that guard is about PositionChanged/
-            // PropertyChanged only), so this costs nothing and closes the inconsistency.
+            // every other place this class writes to the window's own placement properties. The flag
+            // gates both listeners this class still has — PropertyChanged (Attach) and Resized
+            // (OnWindowResized's own first line) — so bracketing this write also keeps any Resized the
+            // un-minimize raises out of _userResized/_fitBasisStale, exactly as RestorePlacement and
+            // FitToContent already do for their own writes. (An earlier revision of this comment
+            // claimed _restoring "does not affect Resized/WindowResizeReason at all (that guard is
+            // about PositionChanged/PropertyChanged only)". Both halves were wrong: OnWindowResized
+            // begins with an _restoring guard of its own, and Round 4, item 4 deleted the
+            // PositionChanged subscription this class used to have.)
             _restoring = true;
             try
             {

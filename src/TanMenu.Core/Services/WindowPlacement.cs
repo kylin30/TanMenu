@@ -136,9 +136,18 @@ public static class WindowPlacement
     /// motivated it — this window could not render below roughly 605 DIP outer — is gone as of Round 4,
     /// item 4, which removed <c>MainWindow.axaml</c>'s <c>MinHeight</c>; see
     /// <c>WindowHost.MinWindowHeightDip</c>. The rule stands on its own regardless: a request-based
-    /// basis is what "the same placement" has to mean, and Round 4 made the whole RECTANGLE the basis
-    /// rather than just its size, because a live position mixed with a requested size can report "same
-    /// placement" for a rectangle whose position needs to move.) Do not "restore" a live-geometry
+    /// basis is what "the same placement" has to mean.) Round 4, item 4 then widened the basis from a
+    /// size pair to the whole RECTANGLE, because position stopped being incidental the moment it
+    /// became a function of the size. The old basis mixed the window's LIVE position with the previous
+    /// request's size. That could not produce a FALSE skip — the old fit derived its position by
+    /// clamping the live one, so the two positions matched exactly when the window was already where
+    /// the fit wanted it. But kept alongside a rule that re-centres and re-anchors on every fit, it
+    /// would leave a pure MOVE (a title-bar drag, an external <c>SetWindowPos</c>: neither raises
+    /// <c>Resized</c>, so neither is otherwise observed) comparing unequal, and the next
+    /// content-unchanged re-fit would snap the window back to the anchor. Against the whole
+    /// rectangle that re-fit matches its own last request and skips, so a dragged window stays put
+    /// until its content changes or it is re-summoned — see <c>WindowHost.FitToContent</c>, which
+    /// records the same consequence at its skip test. Do not "restore" a live-geometry
     /// comparison here or in the caller on the assumption that the two are interchangeable; they are
     /// not.
     /// </para>
