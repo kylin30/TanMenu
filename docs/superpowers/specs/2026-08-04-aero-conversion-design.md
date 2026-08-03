@@ -573,6 +573,13 @@ to no element anywhere in the upstream repository; only `aeroState2` is (VENDORE
 | `ControlStyles/ProgressBar.axaml` | `:309, :312, :320, :335, :363, :366, :374, :389, :442` on `#GlowClipHelper` / `#IndeterminateProgressBarIndicator` / `#IndeterminateProgressBarIndicator2`, none of which is ever declared; plus `:156`, a `{Binding #GlowClipHelper.Bounds}` to a name that does not exist | the whole indeterminate glow never runs |
 | `ControlStyles/ButtonSpinner.axaml` | `:194` on `#PART_TextPresenter` | one dead rule |
 
+> **CORRECTED after Task 5 shipped, on the `ProgressBar.axaml` row.** Its nine style rules are right
+> and all nine are gone. Its tenth item is wrong: `:156` is not a live `{Binding}` — it sits inside
+> the XML comment spanning `:152-158` — and a different defect on that file goes unlisted,
+> `ShineBorder`'s `CornerRadius="{Binding #PART_Indicator.Margin}"` at `:254`, a `Thickness` bound to
+> a `CornerRadius` with no conversion between the two types in Avalonia 12.1. §7 Task 5 carries the
+> full retraction and the evidence.
+
 **Policy: we delete them, and each vendored file's header lists exactly what was removed.** The
 alternative — keep them for future upstream comparison — buys nothing: there is no upstream to merge
 from (zero tags, zero releases, the author's own position is *"this theme is far from complete, and
@@ -1206,6 +1213,31 @@ already uses four lines away). The two converters that survive are
 `ProgressBarFillBrushConverter` and `ProgressBarFillColorConverter`;
 `ProgressBarAnimationConverter.cs` is deleted from `Themes/Aero/Converters/`.
 
+> **CORRECTED after Task 5 shipped. The last sentence is wrong; the code is the authority.**
+> **ONE** converter survives, `ProgressBarFillBrushConverter`, and **two** `.cs` files were deleted —
+> `ProgressBarAnimationConverter.cs` *and* `ProgressBarFillColorConverter.cs`. The paragraph
+> contradicts itself: "3 of 4 converters" dropped leaves one, not two, and the "3 of 4" half is the
+> correct one. Of the four converter references in the upstream file, the three `x:Key`'d resource
+> instances (`StringFormatConverter`, `EnumToBoolConverter`, `ProgressBarFillColorConverter`) go and
+> the `{x:Static …Instance}` one stays. `ProgressBarFillColorConverter`'s **only** consumer anywhere
+> was `ProgressBarGlowPattern`, which this same paragraph drops, so keeping the file would have
+> shipped a class with zero call sites into a tree whose rule is that dead code is deleted. Note the
+> dependency runs the other way round from what the sentence implies: `ProgressBarFillColorConverter`
+> calls `ProgressBarFillBrushConverter.TryGetColorFrom`, not the reverse, so deleting it leaves the
+> survivor intact. `Themes/Aero/Converters/` now holds two files, `AdjustCornerRadiusConverter.cs`
+> and `ProgressBarFillBrushConverter.cs`, and both have live call sites.
+>
+> **Two more things Task 5 falsified, both in §5.5's row for this file.** (a) §5.5 counts
+> ":156, a `{Binding #GlowClipHelper.Bounds}` to a name that does not exist" as a live defect. It is
+> not live: upstream `:156` is inside the XML comment that opens at `:152` and closes at `:158`, so
+> it never bound anything. The nine style rules §5.5 lists are real and all nine are gone. (b) §5.5
+> does not mention `ShineBorder`'s `CornerRadius="{Binding #PART_Indicator.Margin}"` at `:254`, which
+> is a defect of the same class: it assigns a `Thickness` to a `CornerRadius`, and
+> `TypeUtilities.TryConvert` has no path between those two types in Avalonia 12.1 (neither declares a
+> conversion operator to the other and neither's `TypeConverter` accepts the other — all four
+> decompiled). It compiles and can never resolve. Task 5 dropped it; the vendored file's change list
+> is the record.
+
 **`Views/Settings/UpdatesCard.axaml:57`'s `Height="4"` becomes 15.** **PUBLISHED**, `vis-layout`:
 *"progress bar height 15"* (160 or 355 × 15 relative pixels). At 4 DIP Aero's two nested 1 px frames
 (`ProgressBarRoot` radius 3 inside `InnerBorder` radius 2) consume the entire bar; 15 is the height the
@@ -1234,6 +1266,15 @@ the round's entire NativeAOT liability to zero.
 **Fit terms:** none, but `Ph` on the 应用 page changes when the update banner is open (the bar goes
 4 → 15 DIP), which is re-fit trigger 2. Re-measure.
 
+> **CORRECTED after Task 5 shipped: `Ph` does not change, and the re-measurement is what says so.**
+> Both builds were run at `Downloading` 45 % on this machine at 150 %, everything else identical.
+> Pre-Task-5 `AppPage.axaml`: `page 1708.6666666666667x602`, banner button UIA rect
+> `2631,1290,2515x56`. Post-Task-5: `page 1708.6666666666667x602`, banner rect `2631,1290,2515x56` —
+> **identical in both numbers.** The banner is a `DockPanel`, so its height is its tallest child's,
+> and that child is the text row (56 px = 37.33 DIP outer), not the bar (23 px = 15.33 DIP). A bar of
+> 4 DIP and a bar of 15 DIP both sit inside it. The 54 DIP the banner adds to `Ph` (548 closed → 602
+> open, also measured) is therefore the same before and after.
+
 **Tests:** none change.
 
 #### Verification
@@ -1246,6 +1287,21 @@ the round's entire NativeAOT liability to zero.
 3. Log line: `Window fit to content` fires on the banner opening (re-fit trigger 2) and `Ph` grows by
    the banner's new height.
 4. Both variants.
+
+> **CORRECTED after Task 5 shipped: steps 1 and 2 both name something that does not exist.**
+> Step 1's literal test is not met and cannot be: `grep -rn ReflectionBinding src` returns **two**
+> hits, both PROSE inside XML comments — `AVMAP/StyleTrailMix.axaml`'s header, which names the
+> escape hatch it did not need, and this file's own change list, which has to say what it converted.
+> The live count is what matters and it is **zero `{ReflectionBinding}` markup extensions in the
+> tree**, with `IL2xxx`/`IL3xxx` still at zero in the publish log.
+>
+> Step 2 says "existing programmatic path". **There is none.** `VelopackAppUpdateService` reaches
+> `Downloading` only from a real GitHub download, `FixedAppUpdateService` pins `Progress` at 0 and
+> never raises `StateChanged`, and nothing reads an environment variable or a debug switch. Task 5
+> verified it by TEMPORARILY patching two files — a `FixedAppUpdateService(Downloading)` branch in
+> `App.axaml.cs` and an env-var `Progress` in `AppUpdateService.cs` — capturing 0 / 45 / 100 % in
+> both variants, and then restoring both files, confirmed byte-identical by `git hash-object`. A
+> later task that needs this again should expect to do the same.
 
 ---
 

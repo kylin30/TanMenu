@@ -330,8 +330,13 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
         _ => "",
     };
 
-    /// <summary>Fill width of the 84px progress track (82px inside its 1px border).</summary>
-    public double UpdateProgressWidth => 82.0 * Math.Clamp(_updateState.Progress, 0, 100) / 100.0;
+    /// <summary>The download percentage, 0..100, for the update banner's <c>ProgressBar.Value</c>.
+    /// It used to be <c>UpdateProgressWidth</c>, a DIP width for the inner Border of the hand-drawn
+    /// bar AppPage.axaml carried until Round 7, Task 5 (<c>82.0 * pct / 100</c> — 82 being the 84 DIP
+    /// track less its 1 DIP border on each side). A real ProgressBar does that arithmetic itself
+    /// against its own Minimum/Maximum, so the view model hands over the percentage and stops
+    /// knowing the track's width.</summary>
+    public double UpdateProgressPercent => Math.Clamp(_updateState.Progress, 0, 100);
 
     private void OnUpdateStateChanged(object? sender, EventArgs e)
     {
@@ -355,7 +360,7 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
         RaisePropertyChanged(nameof(ShowUpdateNotice));
         RaisePropertyChanged(nameof(IsUpdateDownloading));
         RaisePropertyChanged(nameof(UpdateNoticeText));
-        RaisePropertyChanged(nameof(UpdateProgressWidth));
+        RaisePropertyChanged(nameof(UpdateProgressPercent));
     }
 
     /// <summary>Click on the update notice. Both actions require a native confirmation; declining

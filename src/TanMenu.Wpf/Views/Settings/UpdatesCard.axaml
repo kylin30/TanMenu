@@ -28,7 +28,13 @@
        The two buttons are two, so the row spec trails them in column 2 rather than putting them on the
        expansion row; that is what fixes the lone disabled 检查更新 floating at the card's bottom-left.
        The ProgressBar shares the expansion row with the help line and stays IsVisible="False" except
-       while downloading.
+       while downloading. Its Height was 4 until Round 7, Task 5 gave ProgressBar an Aero theme whose
+       shape 4 DIP cannot hold: two nested 1 px frames (radius 3 outside, radius 2 inside) eat two
+       rows top and bottom, leaving exactly 0 for the indicator between them. 15 is PUBLISHED rather
+       than chosen — vis-layout gives a progress bar as "160 or 355 x 15 relative pixels"
+       (https://learn.microsoft.com/en-us/windows/win32/uxguide/vis-layout). The local value is still
+       needed even though 15 is above the theme's own MinHeight of 13, because this bar is stretched
+       by a vertical StackPanel that would otherwise leave it at that 13.
 
        Icon: &#xE896; is the exact glyph AppPage's update-notice banner uses, reused here so both update
        entry points read as the same feature. -->
@@ -56,7 +62,7 @@
         </StackPanel>
         <StackPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Classes="tm-card-expander">
           <TextBlock x:Name="UpdateHelpText" Classes="tm-card-sub" />
-          <ProgressBar x:Name="UpdateProgress" Height="4" Minimum="0" Maximum="100" IsVisible="False" />
+          <ProgressBar x:Name="UpdateProgress" Height="15" Minimum="0" Maximum="100" IsVisible="False" />
         </StackPanel>
       </Grid>
     </Border>

@@ -145,23 +145,28 @@
           <DockPanel>
             <TextBlock DockPanel.Dock="Left" Classes="tm-icon small"
                        Text="&#xE896;" Margin="0,0,10,0" />
-            <Border DockPanel.Dock="Right"
-                    IsVisible="{Binding IsUpdateDownloading}"
-                    Width="84" Height="4" Margin="10,0,0,0"
-                    VerticalAlignment="Center"
-                    CornerRadius="2"
-                    Background="{DynamicResource SubtleFillTertiaryBrush}">
-              <Border Background="{DynamicResource AccentDefaultBrush}"
-                      CornerRadius="2"
-                      HorizontalAlignment="Left"
-                      Width="{Binding UpdateProgressWidth}">
-                <Border.Transitions>
-                  <Transitions>
-                    <DoubleTransition Property="Width" Duration="0:0:0.15" />
-                  </Transitions>
-                </Border.Transitions>
-              </Border>
-            </Border>
+            <!-- A REAL ProgressBar since Round 7, Task 5. It was a hand-drawn Border-in-Border at
+                 Height="4", the outer one on SubtleFillTertiaryBrush and the inner one on
+                 AccentDefaultBrush, with the inner width bound to a view-model property that did the
+                 percentage arithmetic itself. Two reasons it could not stay: the round's Task 7
+                 deletes SubtleFillTertiaryBrush outright, and a hand-drawn Fluent 2 bar sitting one
+                 page away from the 设置 page's real Aero one is the incoherence this conversion
+                 exists to remove. The DoubleTransition on the fill's width goes with it — Avalonia's
+                 ProgressBar sets its indicator's Width from OnApplyTemplate/UpdateIndicator rather
+                 than through a styled binding, so a transition here would animate nothing.
+
+                 84 x 15. The 84 is unchanged and is what the banner's MinWidth="360" anti-jitter was
+                 measured around; 15 is the height the Aero shape needs and is PUBLISHED, same
+                 vis-layout citation as UpdatesCard's bar. MinWidth is a LOCAL value on purpose: the
+                 vendored theme's ^:horizontal rule sets MinWidth="100", layout clamps Width up into
+                 [MinWidth, MaxWidth], and a style setter cannot be beaten by a local value on a
+                 DIFFERENT property — only by a local value on the same one. -->
+            <ProgressBar DockPanel.Dock="Right"
+                         IsVisible="{Binding IsUpdateDownloading}"
+                         Width="84" MinWidth="84" Height="15" Margin="10,0,0,0"
+                         VerticalAlignment="Center"
+                         Minimum="0" Maximum="100"
+                         Value="{Binding UpdateProgressPercent}" />
             <TextBlock Text="{Binding UpdateNoticeText}"
                        TextWrapping="NoWrap" VerticalAlignment="Center" />
           </DockPanel>

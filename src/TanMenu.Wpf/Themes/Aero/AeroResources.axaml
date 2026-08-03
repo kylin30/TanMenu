@@ -36,12 +36,14 @@
     Round 7 Task 2 vendored the resource layer above and wired it to NOTHING - no control theme, no
     style, no converter was referenced from here - so that a mistake in it would surface as a build
     error or as a pixel difference against Task 1's captures rather than as a silently wrong-looking
-    app. Task 3 is what spent it, below. One of the four vendored converters under Converters/ is
-    spent so far: AdjustCornerRadiusConverter is instantiated three times (ControlStyles/Button_*,
-    ListBox and ListBoxItem); the three ProgressBar* ones wait for the progress-bar theme.
+    app. Task 3 is what spent it, below. BOTH surviving converters under Converters/ are now spent:
+    AdjustCornerRadiusConverter is instantiated three times (ControlStyles/Button_*, ListBox and
+    ListBoxItem) and ProgressBarFillBrushConverter once, as an x:Static singleton, by the progress
+    bar's indicator fill. Four were vendored; Task 5 deleted ProgressBarAnimationConverter.cs and
+    ProgressBarFillColorConverter.cs with the indeterminate machinery that was their only caller.
 
-    ── The control themes, added by Round 7 Tasks 3 and 4 ────────────────────────────────────────
-    Ten ControlStyles dictionaries are merged below, VARIANT-INDEPENDENTLY: a control theme holds
+    ── The control themes, added by Round 7 Tasks 3, 4 and 5 ─────────────────────────────────────
+    Eleven ControlStyles dictionaries are merged below, VARIANT-INDEPENDENTLY: a control theme holds
     geometry and {DynamicResource} brush references, never a colour, so the same dictionary serves
     both variants and the brushes it names re-resolve when ActualThemeVariant changes. That is
     upstream AVMAP/Controls.axaml's own arrangement.
@@ -70,6 +72,10 @@
       - NumericUpDown, ONE: AppearanceCard.axaml's ColCountUpDown, the 每列个数 spinner. Task 4.
       - ButtonSpinner, ONE and it is not in any markup: NumericUpDown's own template builds it.
         Task 4.
+      - ProgressBar, TWO, both on the update path and neither with a Theme=: UpdatesCard.axaml's
+        UpdateProgress on the 设置 page and AppPage.axaml's banner bar, which Task 5 turned from a
+        hand-drawn Border-in-Border into a real ProgressBar. Both had Height="4" and both are 15
+        now, for the reason each one's own remark states. Task 5.
 
     Everything else is untouched BY CONSTRUCTION rather than by luck: the other 25 <Button> elements
     and both <ListBoxItem>s carry an explicit Theme= from Themes/Fluent2/Launcher.axaml, and the app's
@@ -95,18 +101,20 @@
     Application.Styles (decompiled from Avalonia.Markup.Xaml 12.1.0,
     AvaloniaXamlIlRuntimeHelpers.RootServiceProvider.CreateParentStackProvider).
 
-    The remaining ControlStyles merges are ProgressBar and HeaderedContentControl; the design
-    schedules them for Tasks 5 and 9 respectively. ComboBox and ComboBoxItem are NOT on that list -
-    §1 point 6 has us author those two rather than vendor them.
+    ControlStyles/ProgressBar.axaml is the one merge below that is NOT a copy of an upstream file:
+    it is the determinate branch of one, about 60 of the original's 471 lines, and its own header
+    enumerates the ten differences rather than summarising them. The last remaining merge is
+    HeaderedContentControl, which the design schedules for Task 9. ComboBox and ComboBoxItem are NOT
+    on that list - §1 point 6 has us author those two rather than vendor them.
 
     ── The keys here that are not Aero-prefixed ─────────────────────────────────────────────────
-    54 keys are merged below (comments stripped, Metrics plus the ten control-style dictionaries).
-    All but 29 are Aero-prefixed, and all 29 are wanted:
+    55 keys are merged below (comments stripped, Metrics plus the eleven control-style
+    dictionaries). All but 30 are Aero-prefixed, and all 30 are wanted:
 
-      - the TWELVE {x:Type X} ControlTheme keys - Button, RepeatButton, ToggleButton (the Button
-        file keys three), ButtonSpinner, CheckBox, ListBox, ListBoxItem, NumericUpDown, ScrollBar,
-        ScrollViewer, TextBox, ToggleSwitch. A {x:Type} key is how a ControlTheme auto-applies at
-        all, so these are the reach listed above;
+      - the THIRTEEN {x:Type X} ControlTheme keys - Button, RepeatButton, ToggleButton (the Button
+        file keys three), ButtonSpinner, CheckBox, ListBox, ListBoxItem, NumericUpDown, ProgressBar,
+        ScrollBar, ScrollViewer, TextBox, ToggleSwitch. A {x:Type} key is how a ControlTheme
+        auto-applies at all, so these are the reach listed above;
       - ELEVEN inside ControlStyles/ButtonSpinner.axaml: two spinner arrow geometries, the
         ButtonSpinnerRightThickness margin converter and eight Spinner*Filter_Left/Right corner and
         thickness converters. All eleven are consumed by that one file's own template and by
@@ -164,6 +172,7 @@
         <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/ListBox.axaml" />
         <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/ListBoxItem.axaml" />
         <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/NumericUpDown.axaml" />
+        <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/ProgressBar.axaml" />
         <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/ScrollBar.axaml" />
         <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/ScrollViewer.axaml" />
         <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/TextBox.axaml" />
