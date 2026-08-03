@@ -1,0 +1,74 @@
+<!--
+    Copyright (c) 2026 Splitwirez
+    Licensed under the MIT License. See LICENSE-aero-theme-for-avalonia.txt in the Themes/Aero
+    directory for the full text of the copyright notice and permission notice.
+    Source: https://github.com/Splitwirez/aero-theme-for-avalonia at main = a705b7c0
+            src/AeroAvalonia/AVMAP/StyleTrailMix.axaml
+    Changes from upstream:
+      1. NARROWED the surviving PART_ContentPresenter rule. Upstream writes it as
+         ":is(TemplatedControl):disabled /template/ ContentPresenter#PART_ContentPresenter" -
+         app-wide, not Aero-scoped. Fluent's ComboBoxItem also names its presenter
+         PART_ContentPresenter, and Views/Settings/AppearanceCard.axaml.cs:146-148 makes the font
+         list's group captions non-selectable by setting IsEnabled=false AND a grey Foreground on
+         the ComboBoxItem itself; unnarrowed, this rule would repaint those captions to
+         AeroDisabledForeground behind that code's back, because a TextBlock.Foreground on the
+         presenter beats a Foreground inherited from the item. The subject is therefore the six
+         concrete types this project gives an Aero template, spelled out one by one. An Avalonia
+         type selector is an EXACT type match (only :is() widens to subclasses), so CheckBox,
+         ToggleSwitch, ToggleButton and RepeatButton each have to be named even though all four
+         derive from Button.
+      5. DELETED the :not(:disabled) twin of that rule (upstream lines 43-45). Two independent
+         reasons, either sufficient. First, it does not compile here: its value is
+         "{Binding Foreground, RelativeSource={RelativeSource Mode=TemplatedParent}}", and this
+         project builds with AvaloniaUseCompiledBindingsByDefault, under which a TemplatedParent
+         RelativeSource outside a ControlTemplate is Avalonia error AVLN2100 - observed, not
+         predicted. The escapes are {ReflectionBinding} or x:CompileBindings="False", and this round
+         forbids the first outright and the second would reintroduce it by the back door on a
+         NativeAOT build. Second, the rule is a no-op: TemplatedControl.ForegroundProperty IS
+         TextElement.ForegroundProperty.AddOwner<TemplatedControl>(), and TextElement's is
+         registered with inherits:true (decompiled from Avalonia.Controls 12.1.0), so the presenter
+         already resolves the templated parent's Foreground by inheritance. Setting it explicitly
+         restates what inheritance produces. The :disabled rule below is NOT redundant in the same
+         way - it names a brush the parent does not have - which is why it is kept.
+      2. DELETED every rule keyed on the CSS class "aeroState" (upstream lines 9-13, 15-26, 27-38 and
+         40-42). That class is applied to no element anywhere in the upstream repository - only
+         "aeroState2" is - so the opacity cross-fade machinery those rules drive never runs. The
+         design document's dead-list names lines 9,10,11,15,16,17,18,27,28,29,30, which are the
+         eleven SELECTOR CLAUSES of the first three rules; it omits the fourth rule at 40-42, whose
+         selector "Border.aeroState.disabled" is dead for exactly the same reason. Counted here
+         against the file, not copied from the list.
+      3. DELETED the ":is(Shape).aeroState2" transition rule (upstream 69-76). aeroState2 is applied
+         to Border elements only, in all five upstream files that use it; no Shape carries it.
+      4. DELETED the commented-out AeroFadeOutDuration transition block (upstream 59-68) and, with
+         it, the now-unreferenced AeroFadeOutDuration key (upstream line 6). That block was the key's
+         only consumer anywhere upstream.
+    What is left is the two rules that do something, and the one resource they need. The design
+    document predicts three; change 5 is why it is two, and the third rule it counted is the one
+    that cannot compile under this project's binding settings.
+    Everything else is byte for byte upstream.
+-->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:ClassModifier="Internal">
+    <Styles.Resources>
+        <x:TimeSpan x:Key="AeroFadeDuration">0:0:0.125</x:TimeSpan>
+    </Styles.Resources>
+
+    <Style Selector="Button:disabled /template/ ContentPresenter#PART_ContentPresenter,
+                    RepeatButton:disabled /template/ ContentPresenter#PART_ContentPresenter,
+                    ToggleButton:disabled /template/ ContentPresenter#PART_ContentPresenter,
+                    CheckBox:disabled /template/ ContentPresenter#PART_ContentPresenter,
+                    ToggleSwitch:disabled /template/ ContentPresenter#PART_ContentPresenter,
+                    ListBoxItem:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="TextBlock.Foreground" Value="{DynamicResource AeroDisabledForeground}"/>
+    </Style>
+
+    <Style Selector=":is(TemplatedControl) /template/ Border.aeroState2">
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="Background" Duration="{StaticResource AeroFadeDuration}" />
+                <BrushTransition Property="BorderBrush" Duration="{StaticResource AeroFadeDuration}" />
+            </Transitions>
+        </Setter>
+    </Style>
+</Styles>

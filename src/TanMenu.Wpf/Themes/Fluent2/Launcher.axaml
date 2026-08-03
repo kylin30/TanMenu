@@ -180,9 +180,15 @@
          hardcoded pixel box — with the same fill/border/radius/state-layer shape TmTileButton uses
          above. See that theme's comment for why the hover/pressed wash is a second layer rather than
          a straight Background swap, and why the two themes duplicate the template instead of one
-         deriving from the other via BasedOn (TmAccentButton below DOES use BasedOn — safely, because
-         it only overrides top-level Setters and touches none of TmButton's nested state-layer
-         Styles). -->
+         deriving from the other via BasedOn.
+
+         Round 7, Task 3 made this the ONLY settings-card button theme. TmAccentButton — a BasedOn
+         derivative that swapped the rest-state fill and the text colour to the accent pair — was
+         deleted with the Aero control themes, because Windows 7 had no accent-filled default button
+         to imitate: the Aero command button is the gradient one and there is exactly one of it. Its
+         three call sites (AppPage's PinNowButton, UpdatesCard's UpdateActionBtn, and the run-time
+         swap in BehaviorCard.axaml.cs's ApplyTaskbarPinState) all landed here, and each one's own
+         comment records what it gave up. -->
     <ControlTheme x:Key="TmButton" TargetType="Button">
       <Setter Property="Background" Value="{DynamicResource SurfaceLayerBrush}" />
       <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
@@ -234,26 +240,6 @@
       <Style Selector="^:disabled /template/ Border#Root">
         <Setter Property="Opacity" Value="0.6" />
       </Style>
-    </ControlTheme>
-
-    <!-- ══ Accent button ═══════════════════════════════════════════════════════════════════════════
-         The one affirmative, forward-moving action on a card that has exactly one — 固定到任务栏 (while
-         there is still something to do — Round 3, Task 3 switches it back to plain TmButton once
-         already pinned, see BehaviorCard.axaml.cs's ApplyTaskbarPinState; a completed action is not a
-         call to action) and 下载更新/重启更新 — gets this instead of TmButton. Every other settings-card
-         row either offers no single obvious default (two or three peer actions: 打开/选择…,
-         打开/更改…/重置为默认, 清理缓存/备份…/恢复…) or its one button is a check/reset/clear rather than
-         something that moves the user forward (检查更新, the hotkey 清除 button), so those stay on the
-         plain TmButton. Same
-         template as TmButton via BasedOn — only the rest-state fill/border and the text colour
-         change, to the same accent/on-accent pair AppTheme overwrites with the user's real Windows
-         accent at startup (see Tokens.axaml's header comment); the inherited hover/pressed state
-         layer keeps working unchanged because BasedOn keeps whatever Setters and Styles the derived
-         theme does not redeclare. -->
-    <ControlTheme x:Key="TmAccentButton" TargetType="Button" BasedOn="{StaticResource TmButton}">
-      <Setter Property="Background" Value="{DynamicResource AccentDefaultBrush}" />
-      <Setter Property="Foreground" Value="{DynamicResource TextOnAccentBrush}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource AccentDefaultBrush}" />
     </ControlTheme>
 
     <!-- ══ Nav rail command row ═══════════════════════════════════════════════════════════════════
@@ -1025,7 +1011,11 @@
        deleted one of them): twelve did not change, three
        lost 1-2 px and one gained 1. Two effects cancel on a conforming row — the title gains 0.67 and
        a CJK subtitle loses 0.67 — and a row whose column 2 holds a 32 DIP button or ToggleSwitch
-       absorbs the title's gain outright, because that grid row was already the control's height. The
+       absorbs the title's gain outright, because that grid row was already the control's height.
+       (The ToggleSwitch measured 32 DIP tall when this was written; Round 7, Task 3's Aero pill made
+       it 34, which changes none of the card heights below — re-read on the same instrument, the four
+       toggle rows still sit exactly 100 physical px apart, because 34 is still under the 36 DIP
+       header block that sets the row.) The
        SIGN of every delta follows from those two; the exact pixel counts do not reproduce from the
        line-box arithmetic alone, because each UIA rect is a separately rounded pair of doubles at 1.5x,
        so they are quoted as measured. Three cards lost: PinTaskbarStatusText's card 125 -> 124 and
@@ -1189,21 +1179,34 @@
        Avalonia's default is the untranslated English "On"/"Off", which would sit next to a Chinese row
        label whenever AppLanguage is zh-Hans.
 
-       THE NEGATIVE RIGHT MARGIN IS NOT SLOP — do not remove it without re-reading this. Fluent's stock
-       ToggleSwitch template builds an inner Grid of three columns: Auto, then a hard 12 pixel column with
-       MaxWidth 12, then Auto for the content presenters (decompiled from Avalonia.Themes.Fluent 12.1.0).
-       That fixed spacer is charged whether or not the presenters are empty, so blanking the content
-       collapses column 2 and leaves column 1: the element measures 52 DIP wide while its visible pill is
-       40, and the pill's ink stopped 12 DIP short of every other row's control on the shipped build. A
-       ColumnDefinition is not a Control, so no /template/ selector can reach it, and the only other fix
-       is a full ~150-line ToggleSwitch ControlTheme this project does not have. The margin makes the
-       desired width 40, so the Auto column measures 40 and ArrangeCore deflates the slot by the negative
-       margin — the pill lands on the content edge and the 12 DIP of empty presenter overhangs into the
-       card's own 16 DIP right padding, where it draws nothing. Checked on a live PrintWindow capture
-       with this class applied to one toggle: the pill's last ink pixel landed on the SAME screen column
-       as a ComboBox's right border two cards above it, against the 18 physical px it fell short by
-       before. If a future Avalonia changes that column, the toggle rows shift by whatever the change
-       is. -->
+       THE NEGATIVE RIGHT MARGIN IS NOT SLOP — do not remove it without re-reading this. The template
+       behind this class builds an inner Grid of three columns: Auto for the pill, then a hard 12 pixel
+       column with MaxWidth 12, then Auto for the two content presenters. That fixed spacer is charged
+       whether or not the presenters are empty, so blanking the content collapses column 3 and leaves
+       column 2: the element measures 12 DIP wider than its visible pill, and the pill's ink stopped
+       12 DIP short of every other row's control on the build before this class existed. A
+       ColumnDefinition is not a Control, so no /template/ selector can reach it. The margin makes the
+       desired width the pill's own, so the Auto column measures the pill and ArrangeCore deflates the
+       slot by the negative margin — the pill lands on the content edge and the 12 DIP of empty presenter
+       overhangs into the card's own 16 DIP right padding, where it draws nothing.
+
+       Round 7, Task 3 replaced the template underneath and the margin SURVIVED UNCHANGED, because the
+       vendored Aero ToggleSwitch copies that inner grid verbatim, `ColumnDefinition Width="12"
+       MaxWidth="12"` included (Themes/Aero/ControlStyles/ToggleSwitch.axaml) — identical to Fluent
+       12.1.0's, decompiled. The pill itself did change, and every number below is a fresh UI Automation
+       BoundingRectangle read on the live 设置 page at this machine's 150 % scale, on the same four
+       toggles, on a build with this task's changes and a build without:
+
+         element bounds   78 x 48 physical  ->  102 x 51   (52 x 32 DIP -> 68 x 34)
+         pill             40 x 20 DIP       ->   56 x 22   (VENDORED Width/Height/CornerRadius 10)
+         element LEFT     x = 4739 physical ->  x = 4715   (16 DIP further left, as the pill grew)
+         element RIGHT    x = 4817 physical ->  x = 4817   (UNCHANGED)
+
+       The right edge is the one that matters and it did not move: 4817 minus the 12 DIP (18 physical)
+       of empty presenter is 4799, which is the same screen column as the right edge of every TmButton
+       on the page — PinTaskbarBtn, HotkeyClearBtn, PickRootBtn and RestoreBtn all end at 4799 in the
+       same capture. If a future Avalonia or a future vendored file changes that column, the toggle rows
+       shift by whatever the change is. -->
   <Style Selector="ToggleSwitch.tm-card-toggle">
     <Setter Property="OnContent" Value="" />
     <Setter Property="OffContent" Value="" />

@@ -108,17 +108,20 @@
 
              PinNowButton/PinNeverButton were still default Avalonia Fluent-1 buttons — a scope gap Task
              3 introduced (its own plan scoped "buttons are wrong" to settings-card buttons, but the
-             user's complaint was blanket). Same criterion Task 3 applied everywhere else: PinNowButton
-             is the SAME 固定到任务栏 action BehaviorCard's PinTaskbarBtn already gets TmAccentButton for
-             ("the one button on its row, and it does the useful thing"), so it gets the accent here too,
-             for the same action to look the same regardless of which entry point shows it; PinNeverButton
-             is a decline, not a forward-moving action, so it stays on the plain TmButton — the local
-             Padding="14,5" is removed from both, same as every settings-card button in Task 3: a local
-             value would outrank the theme's own Padding setter and defeat it. -->
+             user's complaint was blanket). The local Padding="14,5" is removed from both, same as every
+             settings-card button in that task: a local value would outrank the theme's own Padding
+             setter and defeat it.
+
+             Both are on TmButton since Round 7, Task 3. PinNowButton used to carry TmAccentButton, on
+             the criterion "the one button on its row, and it does the useful thing", so that 固定到任务栏
+             looked the same here as it did on BehaviorCard's row. That criterion did not survive the
+             Aero conversion: Windows 7 had no accent-filled default button, so TmAccentButton was
+             deleted rather than restyled, and the pair now differ by position and label alone. Nothing
+             else about this InfoBar changed. -->
         <ctl:InfoBar x:Name="PinNotice" DockPanel.Dock="Top" Margin="12,0,12,8"
                      IsOpen="False" Dismissed="OnPinNoticeDismissed">
           <StackPanel Orientation="Horizontal" Spacing="8">
-            <Button x:Name="PinNowButton" Theme="{StaticResource TmAccentButton}" Click="OnPinNowClick" />
+            <Button x:Name="PinNowButton" Theme="{StaticResource TmButton}" Click="OnPinNowClick" />
             <Button x:Name="PinNeverButton" Theme="{StaticResource TmButton}" Click="OnPinNeverClick" />
           </StackPanel>
         </ctl:InfoBar>

@@ -320,53 +320,32 @@ public partial class BehaviorCard : UserControl, ISettingsCard
     }
 
     /// <summary>Round 3, Task 3 (user item 8): once pinned, this row's button must read as a completed,
-    /// disabled action rather than a still-live call to action. <c>IsEnabled</c> already tracked
-    /// <see cref="TaskbarPinStatus.Pinned"/> correctly before this change; what was wrong is that the
-    /// button kept <c>TmAccentButton</c>'s Theme regardless, and TmAccentButton's own
-    /// <c>^:disabled /template/ Border#Root</c> rule (inherited, via BasedOn, from TmButton — see
-    /// Launcher.axaml) only dims the whole Root to 60% opacity; it never repaints Background away from
-    /// AccentDefaultBrush, so a disabled-and-pinned button still rendered as a muted BLUE swatch —
-    /// visually still an affordance, just quieter, exactly the "accent-styled" look the task flagged.
-    /// Switching Theme to the plain, neutral TmButton once pinned is what actually reaches a proper
-    /// Windows 11 disabled-control look (dimmed neutral surface, dimmed text, no accent colour at all).
-    /// This runs from the SAME single call site IsEnabled/Content already did (both branches of
-    /// ApplyTaskbarPinState's two callers — the live OS re-query in
-    /// <see cref="RefreshTaskbarPinStateAsync"/> on every <see cref="OnAttachedToVisualTree"/>, and
-    /// ReloadFromConfig's re-label of the cached <see cref="_taskbarPinState"/>) — so the Theme always
-    /// follows the same live-queried state IsEnabled does, never a value captured once at construction.</summary>
+    /// disabled action rather than a still-live call to action. That is delivered by
+    /// <c>IsEnabled</c> alone, which tracks <see cref="TaskbarPinStatus.Pinned"/> from the live COM
+    /// query, and by the <c>Content</c> re-label below.</summary>
+    /// <remarks>Between Round 3 and Round 7 this method also SWAPPED the button's Theme, because a
+    /// disabled <c>TmAccentButton</c> still painted a dimmed blue swatch: that theme's inherited
+    /// <c>^:disabled /template/ Border#Root</c> rule only drops Root to 60% opacity and never repaints
+    /// Background off AccentDefaultBrush. Round 7, Task 3 deleted TmAccentButton outright — the Aero
+    /// control themes have one command button, not a neutral one and an accent one — at which point
+    /// both branches of the swap read TmButton and the swap was deleted with it. The button's Theme is
+    /// now the static one BehaviorCard.axaml gives it, and a disabled TmButton has no accent fill to
+    /// dim, so item 8's finding stays closed with one moving part fewer.</remarks>
     private void ApplyTaskbarPinState(TaskbarPinState state)
     {
         _taskbarPinState = state;
         var isPinned = state.Status is TaskbarPinStatus.Pinned;
         PinTaskbarBtn.IsEnabled = !isPinned;
 
-        // This runs from ReloadFromConfig too, which SettingsPage's constructor calls BEFORE
-        // MainWindow.ShowPageCore ever assigns the freshly built page to PageHost.Content — i.e. while
-        // this whole card tree is still detached from the logical tree. Decompiled Avalonia 12.1.0:
-        // StyledElement.StylingParent walks InheritanceParent, which a detached control terminates
-        // before ever reaching Application.Styles (where TmButton/TmAccentButton both live), so
-        // FindResource returns AvaloniaProperty.UnsetValue and the `as ControlTheme` used to yield a
-        // hard null — clobbering whatever theme this button already had. On the very first call there
-        // is nothing to clobber yet, but on every LATER one there is: OnAttachedToVisualTree already
-        // applied the correct theme on a previous visit, and AppEvents.SettingsChanged (which this
-        // method's other caller, ReloadFromConfig, is wired to) can fire while 设置 is not even the page
-        // on screen — e.g. a hotkey saved from a different card, on an entirely different visit. A
-        // failed lookup must therefore leave whatever theme is already applied alone rather than null
-        // it out; the next real re-attach (see OnAttachedToVisualTree's own remarks) always re-queries
-        // and re-applies correctly once the tree is live again. Full writeup:
+        // No Theme is assigned here any more; BehaviorCard.axaml's static TmButton is the only one this
+        // button ever has. That also retires a hazard this call site used to carry: ReloadFromConfig
+        // reaches here while SettingsPage's constructor is still running — BEFORE MainWindow.ShowPageCore
+        // assigns the freshly built page to PageHost.Content — with the whole card tree detached from
+        // the logical tree, and a detached control's StylingParent chain terminates before ever reaching
+        // Application.Styles (decompiled Avalonia 12.1.0), so FindResource returned UnsetValue and the
+        // `as ControlTheme` yielded a hard null that would have clobbered a theme applied on a previous
+        // visit. Full writeup of that episode:
         // docs/superpowers/reports/2026-08-02-win11-shell-round3-findings.md.
-        //
-        // Round 3 residual review: that guard alone still left the FIRST call of a process rendering
-        // wrong, because "nothing has been assigned yet" and "a lookup failed, so nothing was
-        // assigned" were the same pixels — stock Fluent — for a Button that carried no Theme and no
-        // Classes in XAML at all. BehaviorCard.axaml now gives this button a static default Theme of
-        // the NEUTRAL TmButton (see that element's own comment for why neutral and not accent), so a
-        // failed lookup here lands on a deliberate, defensible look rather than on Avalonia's default
-        // one, and this assignment is a correction of a known-good starting point rather than the only
-        // thing standing between the button and stock Fluent.
-        if (this.FindResource(isPinned ? "TmButton" : "TmAccentButton") is ControlTheme theme)
-            PinTaskbarBtn.Theme = theme;
-
         PinTaskbarBtn.Content = isPinned
             ? L("PinnedToTaskbar")
             : state.Status is TaskbarPinStatus.Available

@@ -42,14 +42,16 @@
           <TextBlock x:Name="UpdateStatusTitle" Classes="tm-card-title" />
           <TextBlock x:Name="UpdateStatusText" Classes="tm-card-sub" />
         </StackPanel>
-        <!-- CheckUpdateBtn (检查更新) is a neutral, idempotent check, so it stays on the plain TmButton
-             even on its own. UpdateActionBtn (下载更新/重启更新) is the forward-moving action once one
-             is available, and gets TmAccentButton — same criteria as PinTaskbarBtn's comment in
-             BehaviorCard.axaml. -->
+        <!-- CheckUpdateBtn (检查更新) is a neutral, idempotent check; UpdateActionBtn (下载更新/重启更新)
+             is the forward-moving action once an update is available, and used to carry TmAccentButton
+             to say so. Round 7, Task 3 deleted that theme — Aero has one command button, not a neutral
+             one and an accent one — so both are TmButton now. What still separates them is that
+             UpdateActionBtn is IsVisible="False" until there is something to do, which was always the
+             stronger of the two signals. -->
         <StackPanel Grid.Column="2" Classes="tm-card-actions">
           <Button x:Name="CheckUpdateBtn" Theme="{StaticResource TmButton}"
                   Click="OnCheckUpdateClick" />
-          <Button x:Name="UpdateActionBtn" Theme="{StaticResource TmAccentButton}"
+          <Button x:Name="UpdateActionBtn" Theme="{StaticResource TmButton}"
                   Click="OnUpdateActionClick" IsVisible="False" />
         </StackPanel>
         <StackPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Classes="tm-card-expander">

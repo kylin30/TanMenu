@@ -34,8 +34,31 @@
     ── What is deliberately absent ──────────────────────────────────────────────────────────────
     No control theme, no style, no converter is referenced from here yet. Round 7 Task 2 vendors the
     resource layer and wires it to NOTHING, so that a mistake in it surfaces as a build error or as
-    a pixel difference against Task 1's captures, rather than as a silently wrong-looking app. The
-    ControlStyles/ merges arrive in Tasks 3-6.
+    a pixel difference against Task 1's captures, rather than as a silently wrong-looking app.
+
+    ── The control themes, added by Round 7 Task 3 ───────────────────────────────────────────────
+    Seven ControlStyles dictionaries are merged below, VARIANT-INDEPENDENTLY: a control theme holds
+    geometry and {DynamicResource} brush references, never a colour, so the same dictionary serves
+    both variants and the brushes it names re-resolve when ActualThemeVariant changes. That is
+    upstream AVMAP/Controls.axaml's own arrangement.
+
+    Each is keyed {x:Type X} and therefore auto-applies to every X that does not set Theme= itself.
+    In this tree that is: the one Button with no Theme= (AppPage.axaml's tm-update banner), the five
+    ToggleSwitches, the CheckBoxes ToolsCard.axaml.cs constructs per configured tool, the three
+    ScrollViewers, every ScrollBar inside them, and both navigation ListBoxes. Every other Button
+    and both ListBoxItems carry an explicit Theme= from Themes/Fluent2/Launcher.axaml and are
+    untouched by construction, not by luck.
+
+    StyleTrailMix is a <Styles>, not a dictionary, so it is a StyleInclude rather than a merge. It
+    supplies the 125 ms brush cross-fade every Aero template's Border.aeroState2 asks for, and the
+    AeroFadeDuration key that ControlStyles/CheckBox.axaml resolves by {StaticResource} - which
+    works across files because Avalonia's StaticResourceExtension walks the parsing dictionary's
+    parent stack and that stack ends at Application.Current, whose TryGetResource searches
+    Application.Styles (decompiled from Avalonia.Markup.Xaml 12.1.0,
+    AvaloniaXamlIlRuntimeHelpers.RootServiceProvider.CreateParentStackProvider).
+
+    The remaining ControlStyles merges - TextBox, NumericUpDown, ButtonSpinner, ProgressBar,
+    HeaderedContentControl - arrive in Tasks 4, 5 and 7.
   -->
 
   <Styles.Resources>
@@ -60,12 +83,30 @@
       </ResourceDictionary.ThemeDictionaries>
 
       <!-- Metrics is variant-independent: sizes, one corner radius, the scroll-bar thicknesses and
-           the scroll expand easing. Merged outside the ThemeDictionaries for that reason. -->
+           the scroll expand easing. Merged outside the ThemeDictionaries for that reason, and so
+           are the control themes below it, for the same reason.
+
+           Metrics comes FIRST because ScrollBar.axaml and ScrollViewer.axaml resolve four of its
+           keys with {StaticResource} (AeroScrollBarThumbMinimumExtent, AeroScrollBarLineButtonExtent
+           are DynamicResource, but AeroScrollExpandDuration and AeroScrollExpandEase are not - a
+           Transition's Duration and Easing are plain CLR properties, so no DynamicResource can
+           reach them). Button comes before ScrollBar because ScrollBar's line-button themes are
+           BasedOn="{StaticResource {x:Type RepeatButton}}", which Button_RepeatButton_ToggleButton
+           declares. The order is otherwise upstream AVMAP/Controls.axaml's. -->
       <ResourceDictionary.MergedDictionaries>
         <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/AVMAP/Metrics.axaml" />
+        <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/Button_RepeatButton_ToggleButton.axaml" />
+        <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/CheckBox.axaml" />
+        <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/ListBox.axaml" />
+        <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/ListBoxItem.axaml" />
+        <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/ScrollBar.axaml" />
+        <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/ScrollViewer.axaml" />
+        <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/ToggleSwitch.axaml" />
       </ResourceDictionary.MergedDictionaries>
 
     </ResourceDictionary>
   </Styles.Resources>
+
+  <StyleInclude Source="avares://TanMenu.Wpf/Themes/Aero/AVMAP/StyleTrailMix.axaml" />
 
 </Styles>

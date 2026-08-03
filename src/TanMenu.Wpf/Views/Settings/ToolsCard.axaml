@@ -18,9 +18,26 @@
        control's business, not the row spec's: the spec constrains where a row's expansion CONTENT
        starts, which is this Border's left edge.
 
+       Round 7, Task 3 gave the CheckBox an Aero template, and this list is where that lands hardest.
+       Measured with UI Automation on the live page at 150 %, on the eight tools config.json ships with,
+       on a build with the change and a build without:
+
+         each CheckBox   237-339 x 48 physical  ->  1750 x 29   (Auto width -> stretched; 32 -> 19.33 DIP tall)
+         row pitch       56 physical            ->  37          (the 3,3 code-set Margin is unchanged)
+         list content    8 x 56 = 448 physical  ->  8 x 37 = 296  (299 DIP -> 197 DIP)
+         element left    x = 3035 physical      ->  x = 3035    (UNCHANGED)
+
+       The left edge did not move, so the 9.33 DIP above still describes where a row starts; what the
+       Aero template drops is the leading inset INSIDE the control. A PrintWindow row scan across the
+       first checkbox puts the 13 DIP box's first ink column at exactly x = 3035, the element's own left
+       edge, where Fluent's template held it further in.
+
        MaxHeight="240" on the ScrollViewer (ported verbatim from SettingsWindow's 常用工具 tab) is what
        keeps a long DefaultTools list (config.json is user-editable — see the code-behind) from pushing
-       whatever settings groups come after this one off screen. -->
+       whatever settings groups come after this one off screen. It still does, but it no longer BINDS on
+       the shipped list: at 299 DIP of content the eight default tools used to overflow 240 and this
+       ScrollViewer showed a vertical bar (measured 24 x 360 physical); at 197 DIP they fit, the bar is
+       gone, and the clamp now starts biting at roughly twelve tools instead of roughly seven. -->
   <StackPanel>
     <TextBlock x:Name="GroupHead" Classes="tm-group-head" />
 

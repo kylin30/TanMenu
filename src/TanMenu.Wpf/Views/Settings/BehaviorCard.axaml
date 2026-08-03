@@ -79,31 +79,25 @@
                row's subtitle, which is what tm-card-sub's Wrap is for. -->
           <TextBlock x:Name="PinTaskbarStatusText" Classes="tm-card-sub" />
         </StackPanel>
-        <!-- The only button on this row, and — while there is still something useful for it to do
-             (not yet pinned, or pinning needs a manual fallback) — an affirmative, forward-moving one,
-             so it gets the accent treatment (see TmAccentButton's own comment in Launcher.axaml for
-             the criteria applied to every settings-card button). Once already pinned there is no
-             affirmative action left to offer, only a completed state to report, so Theme and Content
-             are SWAPPED at run time by ApplyTaskbarPinState (code-behind) — Round 3, Task 3 (user
-             item 8): a disabled TmAccentButton still painted a dimmed BLUE swatch (its own ^:disabled
-             rule only lowers Opacity, it never repaints Background off AccentDefaultBrush), which
-             still read as a live call to action, just quieter. Switching to the plain, neutral
-             TmButton once pinned is what actually reads as "done", not "click me, but dimmer".
+        <!-- The only button on this row. Its Theme is now STATIC, and Round 7, Task 3 is what made it
+             so: TmAccentButton was deleted with the arrival of the Aero control themes (Windows 7 had
+             no accent-filled default button), and the run-time Theme swap in ApplyTaskbarPinState went
+             with it, because both of its branches had become TmButton.
 
-             Theme is nevertheless given a STATIC DEFAULT here, and that default is the NEUTRAL
-             TmButton rather than the accent one. Round 3 residual review: without it, this Button had
-             no Theme and no Classes at all, so "ApplyTaskbarPinState has not run yet" and "its
-             FindResource lookup failed and it deliberately assigned nothing" rendered identically —
-             as stock Fluent — and BOTH of those are reachable on the FIRST-EVER 设置 open of a
-             process: SettingsPage's own constructor calls ReloadFromConfig (hence
-             ApplyTaskbarPinState) while the whole card tree is still detached from the logical tree,
-             where FindResource cannot reach Application.Styles at all, and the correcting value only
-             arrives when the async COM pin query started from OnAttachedToVisualTree returns. The
-             default makes that pre-query frame a neutral, disabled-looking button (the query disables
-             it synchronously on attach, before anything paints) — which is exactly right for the
-             already-pinned machine user item 8 is about, and merely understated for a not-yet-pinned
-             one, corrected to accent a moment later. Defaulting to TmAccentButton instead would paint
-             precisely the flagged "disabled accent-blue swatch" on that frame for every pinned user. -->
+             What the swap existed for still holds, and is still delivered — by IsEnabled alone. Round
+             3, Task 3 (user item 8): once pinned there is no affirmative action left to offer, only a
+             completed state to report, and a disabled TmAccentButton still painted a dimmed BLUE
+             swatch (its ^:disabled rule only lowers Opacity; it never repainted Background off
+             AccentDefaultBrush), which read as a live call to action, just quieter. A disabled
+             TmButton has no accent fill to dim in the first place, so "done" now falls out of
+             IsEnabled="false" — set by ApplyTaskbarPinState from the live COM pin query — instead of
+             out of a second theme. One fewer moving part for the same rendering.
+
+             The static Theme is also what makes the first frame of a process defensible. SettingsPage's
+             constructor calls ReloadFromConfig (hence ApplyTaskbarPinState) while this card tree is
+             still detached from the logical tree, where FindResource cannot reach Application.Styles at
+             all; a Button with no Theme and no Classes would have rendered as stock Fluent for that
+             frame. It renders as TmButton instead, which is what it renders as afterwards too. -->
         <Button Grid.Column="2" x:Name="PinTaskbarBtn" Theme="{StaticResource TmButton}"
                 Click="OnPinTaskbarClick" VerticalAlignment="Center" />
       </Grid>
