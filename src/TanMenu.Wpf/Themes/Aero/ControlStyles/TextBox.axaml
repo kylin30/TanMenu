@@ -5,13 +5,17 @@
     Source: https://github.com/Splitwirez/aero-theme-for-avalonia at main = a705b7c0
             src/AeroAvalonia/ControlStyles/TextBox.axaml
     Changes from upstream:
-      1. RENAMED eight uses of three properties Avalonia 12.1 marks [Obsolete(..., false)] to their
-         replacements: Watermark -> PlaceholderText (upstream :12, :13, :14 in Design.PreviewWith,
-         and the two Text="{TemplateBinding Watermark}" at :145 and :158) and UseFloatingWatermark
-         -> UseFloatingPlaceholder (:13, :14 and the selector at :226). Decompiled from
-         Avalonia.Controls 12.1.0, TextBox.Watermark's getter is literally "return PlaceholderText;"
-         and UseFloatingWatermarkProperty says "Use UseFloatingPlaceholderProperty instead", so this
-         is a rename with no behaviour in it. The x:Name values PART_Watermark and
+      1. RENAMED eight uses of TWO properties Avalonia 12.1 marks [Obsolete(..., false)] to their
+         replacements: Watermark -> PlaceholderText, five uses (upstream :12, :13, :14 in
+         Design.PreviewWith, and the two Text="{TemplateBinding Watermark}" at :145 and :158) and
+         UseFloatingWatermark -> UseFloatingPlaceholder, three uses (:13, :14 and the selector at
+         :226). WatermarkForeground, the third obsolete property the design's §7 names, is NOT used
+         by this file at all (grep, zero hits) and nothing was renamed for it - two properties,
+         eight uses, and a diff of this file against the upstream copy shows exactly those eight
+         edits and nothing else. Decompiled from Avalonia.Controls 12.1.0, TextBox.Watermark's
+         getter is literally "return PlaceholderText;" and UseFloatingWatermarkProperty says
+         "Use UseFloatingPlaceholderProperty instead", so this is a rename with no behaviour in it.
+         The x:Name values PART_Watermark and
          PART_FloatingWatermark are NAMES, not properties, and are untouched - the selector at :226
          still has to find the part it targets.
     Everything else is byte for byte upstream, line endings included.
@@ -37,9 +41,24 @@
     This is the file that makes Border#PART_BorderElement stop existing. Aero's TextBox names its
     background border BgElement, and the whole template is Aero's, so every rule anywhere in this
     tree that reached for Fluent's part name went dead the moment this file was merged. Round 7
-    Task 4 landed the five affected rules in the same commit: Themes/Fluent2/Launcher.axaml's
-    search-field focus suppression was DELETED (this theme has no accent focus band to suppress)
-    and the hotkey box's four state rules were re-targeted onto BgElement.
+    Task 4 landed the five affected rules in the same commit, and ALL FIVE were re-targeted onto
+    Border#BgElement - none was deleted:
+
+      - the hotkey box's four state rules (TextBox.tm-keycap, :pointerover, :focus, :disabled in
+        Themes/Fluent2/Launcher.axaml) simply changed part name;
+      - the search field's focus suppression (TextBox.tm-search:focus) changed part name AND gained
+        a :pointerover twin, so Launcher.axaml now carries two TextBox.tm-search rules where it
+        carried one.
+
+    The design document called for DELETING the search-field rule, on the grounds that this theme
+    has no accent focus band to suppress. That is true of the BorderBrush half and false of the
+    other half: the ^:pointerover and ^:focus blocks near the bottom of THIS file set Background as
+    well as BorderBrush on BgElement - Background to AeroTextBoxHoverBackground and
+    AeroTextBoxFocusBackground respectively - and SearchBox's local BorderThickness="0" means only
+    the Background half can reach the screen. Deleting the rule was measured and it puts an opaque
+    AeroTextBoxFocusBackground block inside the field in Dark (invisible in Light, where that token
+    is white over a white field). The A/B numbers are at the rules themselves in Launcher.axaml;
+    they are the reason the two rules are there, so do not trim them as dead.
 
     The NAMED /template/ targets below are Border#BgElement, TextPresenter#PART_TextPresenter and
     TextBlock#PART_FloatingWatermark, all three declared in the template above them. The five

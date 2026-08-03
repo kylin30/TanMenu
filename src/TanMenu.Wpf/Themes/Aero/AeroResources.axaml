@@ -81,9 +81,11 @@
     ControlStyles/TextBox.axaml replaces Fluent's TextBox template wholesale, and Aero's names its
     background border BgElement where Fluent's named it PART_BorderElement. Five rules in
     Themes/Fluent2/Launcher.axaml reached for the Fluent name and would have gone silently dead;
-    all five were fixed in the same commit as the merge below - one deleted, four re-targeted -
-    and ShellConstantTests.NoTemplatePartSelector_NamesAPartOutsideTheAllowList is what keeps the
-    next occurrence loud. That file's own header is the authority on the change.
+    all five were fixed in the same commit as the merge below - all five re-targeted onto
+    Border#BgElement, none deleted, and the search field's one gained a :pointerover twin because
+    Aero repaints the background on hover as well - and
+    ShellConstantTests.NoTemplatePartSelector_NamesAPartOutsideTheAllowList is what keeps the next
+    occurrence loud. That file's own header is the authority on the change.
 
     StyleTrailMix is a <Styles>, not a dictionary, so it is a StyleInclude rather than a merge. It
     supplies the 125 ms brush cross-fade every Aero template's Border.aeroState2 asks for, and the

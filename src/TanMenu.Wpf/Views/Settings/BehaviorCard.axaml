@@ -131,11 +131,16 @@
           <!-- Key capture is wired in code with a TUNNELING KeyDown handler (see the ctor): a
                bubbling handler would run after the TextBox has already consumed the key.
 
-               tm-keycap is what makes this box part of the app rather than stock Fluent. It was the one
-               control on the whole 设置 page with no Classes and no Theme, so its disabled fill came
-               from Avalonia's own TextControlBackgroundDisabled and measured (201,201,201) against the
-               (253,253,253) of every disabled button around it. The class carries the box's size and
-               padding too, so nothing here restates them. -->
+               tm-keycap is what gives this box the page's own vocabulary instead of the stock text-box
+               theme's. It was the ONE control on the whole 设置 page with no Classes and no Theme, so in
+               every state it fell through to whatever that theme paints — Aero's since Round 7 Task 4
+               vendored Themes/Aero/ControlStyles/TextBox.axaml, Fluent's before it. The state where that
+               showed is DISABLED: the fall-through fill is the text-box theme's own disabled token
+               (Aero's AeroTextBoxDisabledBackground, #E9E9E9 Light / #797979 Dark), which is a different
+               grey from the one every disabled button beside it uses — two disabled vocabularies on one
+               page. The four TextBox.tm-keycap /template/ rules in Themes/Fluent2/Launcher.axaml are what
+               fix that, and the measured before/after lives at them, not here. The class carries the
+               box's size and padding too, so nothing here restates them. -->
           <TextBox x:Name="HotkeyBox" Classes="tm-keycap" IsReadOnly="True" />
           <!-- Clearing a hotkey is a reset, not a forward-moving action, so this button never
                qualified for the accent treatment even though it is the row's only button. The

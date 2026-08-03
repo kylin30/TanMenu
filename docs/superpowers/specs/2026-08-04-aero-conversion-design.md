@@ -535,6 +535,19 @@ The four re-targets are not cosmetic. Left dead, the hotkey box reverts to Aero'
 in all four states, silently discarding the "one disabled vocabulary per page" decision that
 `Launcher.axaml:1180-1201` was written to establish.
 
+> **CORRECTED after Task 4 shipped (`87dd54f`). The DELETE row above is wrong, and the code is the
+> authority.** All five selectors were re-targeted onto `Border#BgElement`; none was deleted, and the
+> `tm-search` one gained a `:pointerover` twin, so `Launcher.axaml` now carries **six** rules where
+> §5.2 counted five. The premise "Aero's TextBox has no accent focus band" is only half the story:
+> the vendored `ControlStyles/TextBox.axaml`'s `^:pointerover` and `^:focus` blocks set **`Background`
+> as well as `BorderBrush`** on `BgElement`, and `SearchBox`'s local `BorderThickness="0"` means the
+> `BorderBrush` half cannot draw at all — so deleting the rule leaves only the background half:
+> an opaque `AeroTextBoxFocusBackground` block inset inside the field. It was built both ways and
+> measured — Dark interior (93,93,93) deleted vs (49,49,49) present; **Light is identical either way**,
+> because that token's Light value is white over a white field, so a Light-only check passes the broken
+> build. The A/B table lives at the two rules in `Launcher.axaml`. §7 Task 4's "Why" paragraph below
+> carries the same retraction.
+
 ### 5.3 The 5 that are deleted with the caption — Task 1
 
 `MainWindow.axaml:144` (`Panel#PART_TitleTextPanel`), `:147` (`Button#PART_FullScreenButton`),
@@ -1111,6 +1124,13 @@ Vendor `ControlStyles/TextBox.axaml` (17,987 B), `NumericUpDown.axaml` (8,327 B)
   :226`; `NumericUpDown.axaml:27, :37, :120`). They are `[Obsolete(…, false)]` — warnings, not errors,
   and 12.1's `Watermark` getter is literally `return PlaceholderText;` — but this project does not ship
   a warning it can delete in six edits;
+  > **CORRECTED after Task 4 shipped (`87dd54f`):** it is **twelve** uses of **two** properties, not
+  > six of three. `TextBox.axaml` has eight (`Watermark` ×5 at upstream `:12, :13, :14, :145, :158`,
+  > `UseFloatingWatermark` ×3 at `:13, :14, :226`) and `NumericUpDown.axaml` four (`Watermark` at
+  > upstream `:27, :37` and both halves of `:120`). **`WatermarkForeground` appears in neither file**
+  > (grep, zero hits), so nothing was renamed to `PlaceholderForeground`. Each vendored file's own
+  > change list is the record; both were diffed against the upstream copy and contain exactly these
+  > edits and nothing else. `Design.PreviewWith` uses count — they compile like any other markup;
 - `NumericUpDown.axaml:12-13`'s two **unresolvable** `{DynamicResource HighlightBrush}` /
   `HighlightForegroundBrush` re-pointed to `AeroTextBoxSelectionBrush` /
   `AeroTextBoxSelectionForegroundBrush`, which `TextBox.axaml` already defines and which are in the
