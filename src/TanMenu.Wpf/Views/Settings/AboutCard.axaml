@@ -20,7 +20,8 @@
        everywhere and an absent trailing control is not a different shape, just an empty column.
 
        ICON. The 16 DIP product tile rather than a Segoe glyph — this row is the app itself, and the
-       image is already compiled into the assembly for SplashPanel and MainWindow's title strip. It
+       image is already compiled into the assembly for SplashPanel and for the Aero caption's own icon
+       (MainWindow.axaml's WindowDecorationsTheme). It
        carries tm-card-icon like every other row's mark; that class is :is(Control)-scoped precisely so a
        non-TextBlock leading mark needs no second rule. Height="16" is stated locally because the class
        deliberately sets Width only (a glyph's line box supplies its own height; an Image has none).

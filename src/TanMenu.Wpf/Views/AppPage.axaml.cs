@@ -15,12 +15,18 @@ using TanMenu.Wpf.Views.Settings;
 namespace TanMenu.Wpf.Views;
 
 /// <summary>
-/// The 应用 page. All state lives in <see cref="LauncherViewModel"/> (exposed as <see cref="ViewModel"/>
-/// so the shell's title-strip search box and overflow menu — see MainWindow.axaml — can bind and
-/// dispatch to the SAME instance rather than a second view model); this class is the thin view layer
-/// that wires clicks and keys to it and owns the one thing that genuinely needs the visual tree here:
-/// geometric keyboard navigation across the tiles. Deferred search-box focus moved to MainWindow along
-/// with the search box itself.
+/// The 应用 page: the search header, the update notice, the categories and the three non-menu states.
+/// All state lives in <see cref="LauncherViewModel"/> (still exposed as <see cref="ViewModel"/>, which
+/// the shell reads for the launcher's commands and for the <c>PendingFocus</c> hand-off); this class is
+/// the thin view layer that wires clicks and keys to it and owns the two things that genuinely need
+/// this page's own visual tree: geometric keyboard navigation across the tiles, and the search box.
+/// <para>
+/// Round 7, Task 1 brought the search box back here from MainWindow's title strip, where Rounds 2-6 had
+/// it. The Aero conversion deletes that strip, and Microsoft's window-frame guidance rules on the
+/// relocation directly: "Don't add controls to a window frame. Put the controls within the window
+/// instead." What did NOT come back with it is the ⋯ overflow button — its commands have been rail rows
+/// since Round 3, Task 2 and a settings card since Round 5, item 2.
+/// </para>
 /// </summary>
 public partial class AppPage : UserControl, IDisposable
 {
@@ -65,8 +71,9 @@ public partial class AppPage : UserControl, IDisposable
     }
 
     /// <summary>The one <see cref="LauncherViewModel"/> instance for the launcher's whole life. Exposed
-    /// so MainWindow's title strip can bind its search box and overflow menu to it directly — see the
-    /// class remarks for why this is not a second view model.</summary>
+    /// so the shell can reach it directly: MainWindow's three rail command rows
+    /// (打开主目录/刷新/退出) dispatch through it, and its <c>PendingFocus</c> flag is the channel every
+    /// "focus the search box" request travels on. There is deliberately only ever one instance.</summary>
     public LauncherViewModel ViewModel => _viewModel;
 
     /// <summary>Raised whenever the taskbar-pin InfoBar or the update banner might have opened or
@@ -128,8 +135,8 @@ public partial class AppPage : UserControl, IDisposable
     // page and brings the window forward rather than opening a separate window.
     private void OnOpenSettingsClick(object? sender, RoutedEventArgs e) => _viewModel.OpenSettings();
 
-    // Also wired to the overflow menu's 刷新 entry in MainWindow.axaml (via AppPage.ViewModel), so this
-    // stays even though the header it once lived in is gone.
+    // The empty state's 刷新 recovery button. The rail's own 刷新 row is a separate handler in
+    // MainWindow's code-behind that reaches the same view model through AppPage.ViewModel.
     private void OnRefreshClick(object? sender, RoutedEventArgs e) => _ = _viewModel.RefreshAsync();
 
     // ══════════════════════════════════════════════════════════════════════════════════════════
@@ -260,19 +267,64 @@ public partial class AppPage : UserControl, IDisposable
     }
 
     // ══════════════════════════════════════════════════════════════════════════════════════════
-    // Search box (the CONTROL now lives in MainWindow's title strip; this page still owns the
-    // behaviour that needs its own visual tree — the tile grid the search box's Down key focuses,
-    // and "focus the search box" requests routed back through PendingFocus).
+    // Search box
+    //
+    // Round 7, Task 1 brought the control back into this page from MainWindow's title strip, which
+    // the Aero caption deletes (win-window-frames forbids controls in a window frame). The three
+    // members below are the ones that moved with it, unchanged in behaviour: OnSearchFocusChanged,
+    // OnSearchKeyDown and the focus entry point MainWindow's PendingFocus consumer now calls.
     // ══════════════════════════════════════════════════════════════════════════════════════════
 
     /// <summary>Same "please focus the search box" request a fresh summon makes
-    /// (<c>LauncherViewModel.HandleLauncherShownAsync</c> sets <c>PendingFocus</c>) — reused here
-    /// instead of reaching into MainWindow for its TextBox, since MainWindow already consumes this
-    /// exact flag to focus the control it now owns.</summary>
+    /// (<c>LauncherViewModel.HandleLauncherShownAsync</c> sets <c>PendingFocus</c>). It still goes
+    /// through the flag rather than calling <see cref="FocusSearchBox"/> directly: MainWindow is the
+    /// one place that knows whether this page is the one on screen, and routing every request through
+    /// it keeps a request that arrives on 设置 deferred instead of lost.</summary>
     private void OnClearFilterClick(object? sender, RoutedEventArgs e)
     {
         _viewModel.ClearFilter();
         _viewModel.PendingFocus = true;
+    }
+
+    /// <summary>Focus the search box. Called by <c>MainWindow.ConsumePendingFocus</c>, which owns the
+    /// decision of WHEN (see its own remarks — it defers while 设置 is showing). Swallowing is
+    /// deliberate and is carried over verbatim from the pre-move version: focus is a nicety and must
+    /// never take startup down.</summary>
+    public void FocusSearchBox()
+    {
+        try
+        {
+            SearchBox.Focus();
+        }
+        catch
+        {
+            /* focus is a nicety; never let it take startup down */
+        }
+    }
+
+    /// <summary>Focus is drawn on the FIELD (the bordered box), not on the bare TextBox inside it, so
+    /// the outline frames the glyph too. The TextBox has no border of its own to light up.</summary>
+    private void OnSearchFocusChanged(object? sender, RoutedEventArgs e) =>
+        SearchField.Classes.Set("focused", SearchBox.IsFocused);
+
+    /// <summary>Enter launches the first match, Escape clears then hides, Down enters the tile
+    /// grid.</summary>
+    private void OnSearchKeyDown(object? sender, KeyEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case Key.Enter:
+                _viewModel.HandleSearchEnter();
+                e.Handled = true;
+                break;
+            case Key.Escape:
+                _viewModel.HandleSearchEscape();
+                e.Handled = true;
+                break;
+            case Key.Down:
+                e.Handled = FocusFirstTile();
+                break;
+        }
     }
 
     // ══════════════════════════════════════════════════════════════════════════════════════════
@@ -318,9 +370,9 @@ public partial class AppPage : UserControl, IDisposable
         }
         else if (e.Key == Key.Up)
         {
-            // Off the top of the grid: back to where typing goes. The search box itself now lives in
-            // MainWindow, so this asks for focus the same way a fresh summon does (PendingFocus) rather
-            // than reaching into the shell for its TextBox.
+            // Off the top of the grid: back to where typing goes. Routed through PendingFocus rather
+            // than calling FocusSearchBox() directly, for the same reason OnClearFilterClick is — one
+            // path for every "focus the box" request, and MainWindow owns the timing.
             _viewModel.PendingFocus = true;
             e.Handled = true;
         }
@@ -328,9 +380,10 @@ public partial class AppPage : UserControl, IDisposable
 
     private static bool IsTile(Control c) => c.Classes.Contains("tm-tile");
 
-    /// <summary>Focus the first rendered tile. Called from <c>MainWindow</c>'s search-box Down-key
-    /// handler — the search box lives in the shell now, but only this page's code-behind can walk its
-    /// own tile grid, so the shell forwards the key here rather than duplicating the geometry.</summary>
+    /// <summary>Focus the first rendered tile. Called from <see cref="OnSearchKeyDown"/>'s Down case.
+    /// Public because it was MainWindow's entry point into this grid for the four rounds the search box
+    /// spent in the title strip; kept public rather than narrowed, since nothing about walking this
+    /// page's own tiles is private to the keyboard handler.</summary>
     public bool FocusFirstTile()
     {
         var first = Tiles().FirstOrDefault();

@@ -24,11 +24,12 @@
     itself is NOT what decides it: Application.Styles is searched last-first
     (Avalonia.Styling.Styles.TryGetResource counts DOWN from Count-1 — decompiled from
     Avalonia.Base 12.1.0) and App.axaml lists this file after FluentTheme, so a key redefined here
-    wins the lookup. The FOUR keys at the bottom of this file are the ones this app overrides that
-    way: three metric/typography keys, which is what pulls the settings window and the message box
-    into Fluent 2 proportions without touching a single control template, plus
-    TitleBarBackgroundBrush. Their block comment carries the evidence, and the reason this does not
-    contradict the paragraph above.
+    wins the lookup. The THREE keys at the bottom of this file are the ones this app overrides that
+    way, all of them metric/typography keys, which is what pulls the settings window and the message
+    box into Fluent 2 proportions without touching a single control template. Their block comment
+    carries the evidence, and the reason this does not contradict the paragraph above. (There were
+    four until Round 7, Task 1 deleted TitleBarBackgroundBrush along with the Fluent-drawn caption
+    it existed to blank — see that block.)
 
     ── Values ───────────────────────────────────────────────────────────────────────────────────
     The neutrals are alpha over the surface, not opaque greys, which is what lets the acrylic
@@ -50,7 +51,7 @@
                user's reference capture 3.png, and at (1709,100) in an independent PrintWindow capture of
                the live Task Manager taken during the Round 4 survey. Consumed by
                "Border.tm-page-pane" (Launcher.axaml) and by nothing else, and since Round 6, item 2 only
-               by that rule's ".app" half — the rail, the title strip AND every page other than 应用
+               by that rule's ".app" half — the rail, the caption AND every page other than 应用
                deliberately show the window's own surface through them (see that pane style's own remarks
                for the measurements that overruled Round 4's grey 设置 pane). -->
           <SolidColorBrush x:Key="SurfacePageBrush"          Color="#FFFFFF" />
@@ -87,6 +88,114 @@
           <!-- Fluent 2 flyout elevation. Softer in light, deeper in dark where there is less
                contrast between the surface and what is behind it. -->
           <BoxShadows x:Key="ShadowFlyout">0 4 16 0 #33000000</BoxShadows>
+
+          <!-- ══ The Aero caption (Round 7, Task 1) ═══════════════════════════════════════════
+               MainWindow.axaml replaces Avalonia's WindowDrawnDecorations template wholesale and
+               paints the caption itself. Everything the replacement reads is declared here so the
+               band follows the 外观 setting like the rest of the app.
+
+               THE GLASS IS TWO LAYERS, not one, and that is Aero's own structure rather than a
+               shortcut: Aero glass was a live blur PLUS a colour tint bar PLUS a bright inner
+               reflection. Avalonia's AcrylicBlur supplies the blur and nothing else (it is a plain
+               gaussian blur with no tint layer at all), so the tint and the reflection are ours to
+               draw. The tint is the ACCENT — AccentColor to AccentColorShaded, top to bottom, drawn
+               inline in MainWindow.axaml because a GradientStop needs a live {DynamicResource
+               AccentColor} and AppTheme republishes that key whenever Windows' personalization
+               colour changes. The reflection is the veil below.
+
+               THE VEIL'S SHAPE IS MEASURED; ITS ALPHAS ARE AUTHORED. Microsoft's own published
+               Windows 7 screenshot
+               (https://learn.microsoft.com/en-us/windows/win32/uxguide/images/win-window-frames-image2.png,
+               Calculator, 278x351, native resolution) has its caption band at y 14..43 and its
+               brightest row 11-13 px below the band's top edge, darkening toward both ends — hence
+               three stops at 0 / 0.4 / 1. The RGB values in that capture are deliberately NOT used:
+               it is translucent glass over the green Windows 7 wallpaper, so every pixel is
+               wallpaper-tinted, and Aero's caption colour was the user's colorization value over a
+               blur rather than a fixed palette. The alphas 40 / 66 / 33 are AUTHORED. Light veils
+               with white (a reflection); Dark veils with black, because a white veil over a dark
+               acrylic reads as fog rather than glass. Windows 7 had no dark mode at all — see the
+               design document's decision 4 — so the Dark half of every key below is an invention
+               and says so.
+
+               INACTIVE IS THE SAME GRADIENT AT ROUGHLY HALF THE ALPHA. AUTHORED. There is no
+               active/inactive pseudo-class on WindowDrawnDecorations and no public path from the
+               decorations to WindowBase.IsActive, so MainWindow.axaml.cs watches its own IsActive
+               and writes the chosen brush into Window.Resources["CaptionGlassBrush"] — the same
+               DynamicResource-republishing mechanism Services/AppTheme.cs already uses for the
+               accent. CaptionGlassBrush below is what the template resolves before that observer's
+               first callback, and it is the INACTIVE gradient because a window is not active until
+               it is shown. -->
+          <LinearGradientBrush x:Key="CaptionGlassActiveBrush" StartPoint="0%,0%" EndPoint="0%,100%">
+            <GradientStop Offset="0"   Color="#40FFFFFF" />
+            <GradientStop Offset="0.4" Color="#66FFFFFF" />
+            <GradientStop Offset="1"   Color="#33FFFFFF" />
+          </LinearGradientBrush>
+          <LinearGradientBrush x:Key="CaptionGlassInactiveBrush" StartPoint="0%,0%" EndPoint="0%,100%">
+            <GradientStop Offset="0"   Color="#20FFFFFF" />
+            <GradientStop Offset="0.4" Color="#33FFFFFF" />
+            <GradientStop Offset="1"   Color="#1AFFFFFF" />
+          </LinearGradientBrush>
+          <LinearGradientBrush x:Key="CaptionGlassBrush" StartPoint="0%,0%" EndPoint="0%,100%">
+            <GradientStop Offset="0"   Color="#20FFFFFF" />
+            <GradientStop Offset="0.4" Color="#33FFFFFF" />
+            <GradientStop Offset="1"   Color="#1AFFFFFF" />
+          </LinearGradientBrush>
+
+          <!-- The 2 DIP inner bevel along the band's bottom edge, LIGHT OVER DARK. MEASURED in the
+               same capture: y = 42 is a light row and y = 43 a dark one, i.e. the last two rows of
+               the 30 DIP band. Both alphas are AUTHORED — the capture's own #D5E7D4 / #455C42 are
+               wallpaper-tinted like everything else in that band, so only the light-over-dark
+               ORDERING is taken from it.
+
+               THE DESIGN DOCUMENT'S PLAN FOR THE DARK LINE WAS TRIED AND MEASURED TO FAIL. Its §3.2
+               makes CaptionBevelDarkBrush an alias onto the vendored AeroGroupBoxBorderBrush
+               (#D5DFE5 Light / #1B252B Dark) so a group-box hairline and a caption bevel would be
+               one key. Built that way and captured with PrintWindow in Light, the "dark" row read
+               (213,223,229) against the light row's (186,184,190) — i.e. the dark line came out
+               LIGHTER than the light one and the bevel was inverted, because #D5DFE5 is a pale
+               border colour for a light SURFACE and this line sits over a mid-tone glass band. A
+               black alpha is used instead and the alias is not adopted here. If Task 7 wants one key
+               for both jobs it has to move the group box, not this. -->
+          <SolidColorBrush x:Key="CaptionBevelLightBrush" Color="#80FFFFFF" />
+          <SolidColorBrush x:Key="CaptionBevelDarkBrush"  Color="#40000000" />
+
+          <!-- The title's glow. This is the one hard Aero number Microsoft published and it maps
+               exactly: https://learn.microsoft.com/en-us/windows/win32/dwm/customframe Appendix B
+               draws caption text with DTT_COMPOSITED | DTT_GLOWSIZE and iGlowSize = 15, where
+               iGlowSize is "the size of a glow that will be drawn on the background prior to any
+               text being drawn". A symmetric zero-offset DropShadowEffect IS a glow, so BlurRadius
+               is Microsoft's 15 rather than ours. The COLOUR is the anachronism: Windows 7 glowed
+               white behind black title text; Dark keeps the structure and inverts it. Declared as a
+               whole Effect rather than as a Color, because Visual.Effect is an ordinary
+               StyledProperty a {DynamicResource} can carry and DropShadowEffect.Color inside a
+               ResourceDictionary is not. -->
+          <DropShadowEffect x:Key="CaptionTitleGlow" BlurRadius="15" OffsetX="0" OffsetY="0" Color="White" />
+
+          <!-- The three caption buttons' faces. AUTHORED. Aero's own were glossy glass capsules with
+               a red close; the alphas below are chosen to read as glass over an arbitrary blurred
+               desktop in each variant, and no Windows 7 measurement is claimed for any of them. The
+               close button is red AT REST, not only on hover — that is Windows 7's shape, not
+               Windows 11's. -->
+          <LinearGradientBrush x:Key="CaptionButtonFaceBrush" StartPoint="0%,0%" EndPoint="0%,100%">
+            <GradientStop Offset="0" Color="#33FFFFFF" />
+            <GradientStop Offset="1" Color="#14FFFFFF" />
+          </LinearGradientBrush>
+          <LinearGradientBrush x:Key="CaptionButtonHoverBrush" StartPoint="0%,0%" EndPoint="0%,100%">
+            <GradientStop Offset="0" Color="#99FFFFFF" />
+            <GradientStop Offset="1" Color="#4DFFFFFF" />
+          </LinearGradientBrush>
+          <LinearGradientBrush x:Key="CaptionButtonPressedBrush" StartPoint="0%,0%" EndPoint="0%,100%">
+            <GradientStop Offset="0" Color="#4D000000" />
+            <GradientStop Offset="1" Color="#26000000" />
+          </LinearGradientBrush>
+          <LinearGradientBrush x:Key="CaptionCloseFaceBrush" StartPoint="0%,0%" EndPoint="0%,100%">
+            <GradientStop Offset="0" Color="#66E81123" />
+            <GradientStop Offset="1" Color="#33C50F1F" />
+          </LinearGradientBrush>
+          <LinearGradientBrush x:Key="CaptionCloseHoverBrush" StartPoint="0%,0%" EndPoint="0%,100%">
+            <GradientStop Offset="0" Color="#E6E81123" />
+            <GradientStop Offset="1" Color="#B3C50F1F" />
+          </LinearGradientBrush>
         </ResourceDictionary>
 
         <!-- ══ Dark ═══════════════════════════════════════════════════════════════════════════ -->
@@ -124,6 +233,51 @@
           <Color x:Key="AccentColor">#4CC2FF</Color>
           <Color x:Key="AccentColorShaded">#3E9FD1</Color>
           <BoxShadows x:Key="ShadowFlyout">0 4 16 0 #66000000</BoxShadows>
+
+          <!-- The Aero caption, Dark half. See the Light dictionary above for every measurement,
+               citation and AUTHORED note; only the veil's polarity and the glow's colour differ, and
+               both differences exist only because this app keeps a dark variant Windows 7 never had. -->
+          <LinearGradientBrush x:Key="CaptionGlassActiveBrush" StartPoint="0%,0%" EndPoint="0%,100%">
+            <GradientStop Offset="0"   Color="#40000000" />
+            <GradientStop Offset="0.4" Color="#66000000" />
+            <GradientStop Offset="1"   Color="#33000000" />
+          </LinearGradientBrush>
+          <LinearGradientBrush x:Key="CaptionGlassInactiveBrush" StartPoint="0%,0%" EndPoint="0%,100%">
+            <GradientStop Offset="0"   Color="#20000000" />
+            <GradientStop Offset="0.4" Color="#33000000" />
+            <GradientStop Offset="1"   Color="#1A000000" />
+          </LinearGradientBrush>
+          <LinearGradientBrush x:Key="CaptionGlassBrush" StartPoint="0%,0%" EndPoint="0%,100%">
+            <GradientStop Offset="0"   Color="#20000000" />
+            <GradientStop Offset="0.4" Color="#33000000" />
+            <GradientStop Offset="1"   Color="#1A000000" />
+          </LinearGradientBrush>
+
+          <SolidColorBrush x:Key="CaptionBevelLightBrush" Color="#40FFFFFF" />
+          <SolidColorBrush x:Key="CaptionBevelDarkBrush"  Color="#66000000" />
+
+          <DropShadowEffect x:Key="CaptionTitleGlow" BlurRadius="15" OffsetX="0" OffsetY="0" Color="Black" />
+
+          <LinearGradientBrush x:Key="CaptionButtonFaceBrush" StartPoint="0%,0%" EndPoint="0%,100%">
+            <GradientStop Offset="0" Color="#26FFFFFF" />
+            <GradientStop Offset="1" Color="#0FFFFFFF" />
+          </LinearGradientBrush>
+          <LinearGradientBrush x:Key="CaptionButtonHoverBrush" StartPoint="0%,0%" EndPoint="0%,100%">
+            <GradientStop Offset="0" Color="#66FFFFFF" />
+            <GradientStop Offset="1" Color="#33FFFFFF" />
+          </LinearGradientBrush>
+          <LinearGradientBrush x:Key="CaptionButtonPressedBrush" StartPoint="0%,0%" EndPoint="0%,100%">
+            <GradientStop Offset="0" Color="#66000000" />
+            <GradientStop Offset="1" Color="#33000000" />
+          </LinearGradientBrush>
+          <LinearGradientBrush x:Key="CaptionCloseFaceBrush" StartPoint="0%,0%" EndPoint="0%,100%">
+            <GradientStop Offset="0" Color="#66E81123" />
+            <GradientStop Offset="1" Color="#33C50F1F" />
+          </LinearGradientBrush>
+          <LinearGradientBrush x:Key="CaptionCloseHoverBrush" StartPoint="0%,0%" EndPoint="0%,100%">
+            <GradientStop Offset="0" Color="#E6E81123" />
+            <GradientStop Offset="1" Color="#B3C50F1F" />
+          </LinearGradientBrush>
         </ResourceDictionary>
 
       </ResourceDictionary.ThemeDictionaries>
@@ -245,64 +399,36 @@
       <FontFamily x:Key="IconFontFamily">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
 
       <!-- ══ Overrides that reach Avalonia's own control templates ═════════════════════════════
-           These four keys are read with {DynamicResource} by FluentTheme's templates, so setting
+           These three keys are read with {DynamicResource} by FluentTheme's templates, so setting
            them here reaches every standard control — the settings page's dropdowns, checkboxes,
-           text boxes and scrollbars, and the shared message box. The first three re-proportion
-           those controls from Avalonia's defaults (3 px radius, bundled Inter) to Fluent 2's.
+           text boxes and scrollbars, and the shared message box. They re-proportion those controls
+           from Avalonia's defaults (3 px radius, bundled Inter) to Fluent 2's.
 
-           ALL FOUR ARE KEYS FLUENTTHEME ITSELF DEFINES, and that is not an obstacle — being Fluent's
-           own key is not what would block an override. The first three sit in its top-level,
+           ALL THREE ARE KEYS FLUENTTHEME ITSELF DEFINES, and that is not an obstacle — being
+           Fluent's own key is not what would block an override. All three sit in its top-level,
            variant-independent dictionary (ControlCornerRadius 3, OverlayCornerRadius 5,
-           ContentControlThemeFontFamily deferred). TitleBarBackgroundBrush, the one that looks
-           least likely, is defined in BOTH of FluentTheme 12.1.0's theme dictionaries
-           (ilspycmd over Avalonia.Themes.Fluent.dll: AddDeferred("TitleBarBackgroundBrush",
-           Build_666) under ThemeVariant.Default and Build_1345 under ThemeVariant.Dark, each
-           returning {StaticResource SystemControlBackgroundAltHighBrush}, which resolves through
-           SystemAltHighColor to White under Default and Black under Dark — the White is exactly what
-           the live dump recorded below). Overriding it here still lands.
+           ContentControlThemeFontFamily deferred).
 
            WHAT THE HEADER'S "retinting does not work" ACTUALLY RULES OUT is the other thing:
            redefining a BASE palette colour does not reach the DERIVED brushes, because every derived
-           brush baked that colour with {StaticResource} at parse time. TitleBarBackgroundBrush is
-           itself such a derivative, so overriding SystemControlBackgroundAltHighBrush here would NOT
-           have moved the title strip. Override the leaf key the template actually names, never its
-           ancestor, and the seam works for a colour as readily as for a radius. -->
+           brush baked that colour with {StaticResource} at parse time. Override the leaf key the
+           template actually names, never its ancestor, and the seam works for a colour as readily as
+           for a radius.
+
+           A FOURTH KEY, TitleBarBackgroundBrush, lived here until Round 7, Task 1 and is now
+           DELETED. It existed solely to clear the opaque band Fluent's own WindowDrawnDecorations
+           template painted behind our title strip, from a Panel named PART_TitleBar inside the
+           decorations UNDERLAY. Task 1 replaces that template wholesale (MainWindow.axaml's
+           Window.WindowDecorationsTheme now sets Template itself and drops BasedOn), so the part
+           that read the key no longer exists and the key had no consumer left anywhere in the tree.
+           The Round 4 measurement record it carried — the (255,255,255) strip against the
+           (241,241,249) rail, the GetVisualDescendants() dump that proved the band was really on
+           screen rather than a PrintWindow artefact, and the finding that a Style setter cannot
+           outrank a template's own Background BINDING on the part — is preserved in
+           docs/superpowers/archive/2026-08-04-windows11-measurement-record.md. -->
       <CornerRadius x:Key="ControlCornerRadius">4</CornerRadius>
       <CornerRadius x:Key="OverlayCornerRadius">8</CornerRadius>
       <FontFamily x:Key="ContentControlThemeFontFamily">Segoe UI Variable Text, Segoe UI, Microsoft YaHei UI</FontFamily>
-
-      <!-- Round 4, item 5 — the white band across the top of the launcher window.
-           MEASURED before this line existed, on a PrintWindow(flag 2) capture of the live Debug build:
-           the title strip read (255,255,255) and the nav rail one row below read (241,241,249) at the
-           SAME x (35 and 60) — the 14,14,6 difference the user's item 5 is about. Afterwards both read
-           (241,241,249), i.e. the Mica backdrop, at every one of those four sample points.
-
-           WHY THIS KEY. Avalonia's drawn-decorations template (WindowDrawnDecorationsContent, used
-           because MainWindow sets ExtendClientAreaToDecorationsHint) builds an UNDERLAY — the layer
-           TopLevelHost inserts BEHIND the window's own content — containing a Panel named PART_TitleBar,
-           VerticalAlignment=Top, Height bound to TitleBarHeight (48 in this app), Background bound to
-           {DynamicResource TitleBarBackgroundBrush}. Read out of the compiled XAML with
-           ilspycmd -t "CompiledAvaloniaXaml.!AvaloniaResources" on Avalonia.Themes.Fluent 12.1.0, then
-           confirmed on the RUNNING app with a temporary GetVisualDescendants() dump through
-           TopLevelHost: "Panel name=PART_TitleBar bounds=0,0,1000,48 vis=true bg=White", immediately
-           before MainWindow in the same tree. The band was really on screen — the alternative
-           explanation this project carried until now, a PrintWindow artefact of
-           DwmExtendFrameIntoClientArea, is ruled OUT by that dump.
-
-           WHY NOT A STYLE SETTER IN MainWindow's WindowDecorationsTheme, which is where every other
-           override of this template lives. Tried and MEASURED to fail: a
-           "^ /template/ Panel#PART_TitleBar" rule setting Background="Transparent" left the part at
-           bg=White and the band on screen. The selector is not the problem — an Opacity setter added to
-           the SAME rule as a probe reported back as op=0.5 on the same run, so the rule matched. The
-           template applies this Background as a BINDING on the part itself, which a style setter for
-           the same property does not outrank. The resource key is the seam that does work, and this
-           is the same mechanism the three keys above already use.
-
-           SCOPE. Only MainWindow sets ExtendClientAreaToDecorationsHint (grep: it appears in no other
-           .axaml), so this is the only window in the app with drawn decorations to tint at all. It is
-           deliberately variant-INDEPENDENT: the requirement is that the strip show the window backdrop
-           through it, exactly as the rail beside it does, and that is true in Light and Dark alike. -->
-      <SolidColorBrush x:Key="TitleBarBackgroundBrush" Color="Transparent" />
 
     </ResourceDictionary>
   </Styles.Resources>

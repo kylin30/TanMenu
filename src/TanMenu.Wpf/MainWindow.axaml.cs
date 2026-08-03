@@ -17,20 +17,24 @@ using TanMenu.Wpf.Views;
 namespace TanMenu.Wpf;
 
 /// <summary>
-/// The shell: the title strip (app icon/name, search), the icon-only navigation rail and the page
-/// host. All launcher STATE still lives in <see cref="AppPage"/>'s <c>LauncherViewModel</c> — the
-/// search box here binds and dispatches to that SAME instance (exposed as <see cref="AppPage.ViewModel"/>)
-/// rather than a second one, since AppPage still owns the keyboard model (Escape, Down-into-the-grid)
-/// that the search box's key handling has to reach into. This class owns what genuinely belongs to the
-/// window — the Mica fallback, close-to-tray, the caption-button reservation, labelling the rail's five
-/// rows (<see cref="ApplyRailText"/>, ten writes — a name and a tooltip each), swapping the page host's
-/// content between the two PAGE entries (应用/设置;
-/// see <see cref="ShowPage"/>), dispatching the three command rows the title strip's old ⋯ overflow used
-/// to hold (打开主目录/刷新/退出 — Round 3, Task 2 moved four, 关于 among them, and Round 5, item 2 took
-/// 关于 back out of the rail and into the 设置 page as a card), and kicking off the startup build + the
-/// fit-to-content resize that follows it, on EVERY summon (<see cref="InitializeAndFitAsync"/>) — the
-/// actual geometry math, and the rule for when a manual resize should win over a fresh fit, lives in
-/// <c>WindowHost</c>, which owns every other piece of window placement too.
+/// The shell: the hand-drawn Aero caption (MainWindow.axaml's replaced
+/// <c>Window.WindowDecorationsTheme</c>), the icon-only navigation rail and the page host. All launcher
+/// STATE lives in <see cref="AppPage"/>'s <c>LauncherViewModel</c>. This class owns what genuinely
+/// belongs to the window — the backdrop and its opaque fallback, the caption's active/inactive glass
+/// (<see cref="ApplyCaptionGlass"/>), close-to-tray, labelling the rail's five rows
+/// (<see cref="ApplyRailText"/>, ten writes — a name and a tooltip each), swapping the page host's
+/// content between the two PAGE entries (应用/设置; see <see cref="ShowPage"/>), dispatching the three
+/// command rows the old ⋯ overflow used to hold (打开主目录/刷新/退出 — Round 3, Task 2 moved four, 关于
+/// among them, and Round 5, item 2 took 关于 back out of the rail and into the 设置 page as a card), and
+/// kicking off the startup build + the fit-to-content resize that follows it, on EVERY summon
+/// (<see cref="InitializeAndFitAsync"/>) — the actual geometry math, and the rule for when a manual
+/// resize should win over a fresh fit, lives in <c>WindowHost</c>, which owns every other piece of
+/// window placement too.
+/// <para>
+/// Round 7, Task 1 took the search box back OUT of this class: it was a control in the window frame,
+/// which <c>win-window-frames</c> forbids in as many words, so it returned to the 应用 page. What is
+/// left here of it is the <c>PendingFocus</c> hand-off — see <see cref="ConsumePendingFocus"/>.
+/// </para>
 /// </summary>
 public partial class MainWindow : Window
 {
@@ -39,10 +43,15 @@ public partial class MainWindow : Window
     private readonly AppPage _appPage = new();
     private SettingsPage? _settingsPage;
 
-    /// <summary>The live subscription <see cref="ApplyBackdrop"/> creates when Mica was refused, kept so
-    /// the repeated <c>OnOpened</c> of every summon reuses the one it already made instead of stacking a
-    /// second, third and n-th observer on the same resource.</summary>
+    /// <summary>The live subscription <see cref="ApplyBackdrop"/> creates when the backdrop was
+    /// refused, kept so the repeated <c>OnOpened</c> of every summon reuses the one it already made
+    /// instead of stacking a second, third and n-th observer on the same resource.</summary>
     private IDisposable? _backdropFallback;
+
+    /// <summary>The live subscription <see cref="ApplyCaptionGlass"/> holds on whichever of the two
+    /// caption gradients matches the window's current active state. Replaced (not stacked) on every
+    /// activation change.</summary>
+    private IDisposable? _captionGlass;
 
     // Guards OnNavSelectionChanged against the SelectionChanged events XAML's own SelectedIndex="0"
     // (and Attach's own ShowPage call, if a navigation arrived before the window existed) raise
@@ -87,13 +96,17 @@ public partial class MainWindow : Window
         ApplyWindowFont();
         ApplyRailText();
 
-        // Round 3, Task 1 review fix: the search field's width must track the window's own size —
-        // see ApplySearchFieldWidth's own remarks for the measured basis. ClientSize is a DirectProperty
-        // (TopLevel), so GetObservable is the same mechanism Window's own base class uses internally for
-        // its extended-client-area bookkeeping (Avalonia.Controls.Window, decompiled), not a bespoke
-        // one. It fires once immediately on subscription with whatever ClientSize already is — before
-        // the window has ever been measured that is Size.Empty (0,0), which ApplySearchFieldWidth
-        // guards against, and XAML's own Width="280" is what is on screen for that instant.
+        // Round 7, Task 1: the Aero caption's glass has an ACTIVE and an INACTIVE gradient, and
+        // WindowDrawnDecorations has no pseudo-class for either — its published set is :normal,
+        // :maximized, :fullscreen, :has-shadow, :has-border, :has-titlebar, :has-maximize,
+        // :has-fullscreen, :has-minimize (decompiled [PseudoClasses] attribute, Avalonia.Controls
+        // 12.1.0) and there is no public path from the decorations to WindowBase.IsActive. So the
+        // window publishes the chosen brush itself, into its own Resources, and the replaced template
+        // reads it with {DynamicResource CaptionGlassBrush} — the same mechanism Services/AppTheme.cs
+        // already uses for five accent keys. It reaches the decorations because they are a real
+        // LOGICAL descendant of this window: TopLevel's constructor does
+        // ((ISetLogicalParent)topLevelHost).SetParent(this) and LogicalChildren.Add(topLevelHost),
+        // and WindowDrawnDecorations is added to TopLevelHost's own LogicalChildren.
         //
         // Wrapped in Avalonia.Reactive.AnonymousObserver rather than a fluent `.Subscribe(lambda)`:
         // IObservable<T> itself already declares Subscribe(IObserver<T>), and C# member lookup finds
@@ -103,11 +116,8 @@ public partial class MainWindow : Window
         // is never even considered, and turned out to be internal to Avalonia.Base besides). This is
         // Subscribe(IObserver<T>) called directly, with AnonymousObserver adapting a plain Action<T> to
         // that interface — the one PUBLIC building block for exactly this.
-        this.GetObservable(ClientSizeProperty).Subscribe(new AnonymousObserver<Size>(_ => ApplySearchFieldWidth()));
+        this.GetObservable(IsActiveProperty).Subscribe(new AnonymousObserver<bool>(_ => ApplyCaptionGlass()));
 
-        // The search field and overflow menu bind straight to AppPage's own LauncherViewModel — see
-        // the class remarks above for why this is not a second view model.
-        TitleStripContent.DataContext = _appPage.ViewModel;
         _appPage.ViewModel.PropertyChanged += OnLauncherViewModelPropertyChanged;
 
         // A docked notice (the taskbar-pin InfoBar, the update banner) can open seconds after the
@@ -426,6 +436,8 @@ public partial class MainWindow : Window
         _appPage.ViewModel.PropertyChanged -= OnLauncherViewModelPropertyChanged;
         _appPage.ViewModel.ContentMetricsChanged -= OnLauncherContentMetricsChanged;
         _appPage.NoticeVisibilityChanged -= OnNoticeVisibilityChanged;
+        _captionGlass?.Dispose();
+        _backdropFallback?.Dispose();
 
         // AppPage's view model is disposed here, not on the page's own Unloaded: OnClosed only fires
         // at real application exit (OnClosing below cancels every other close), while the app page
@@ -504,19 +516,34 @@ public partial class MainWindow : Window
             Dispatcher.UIThread.Post(RefitToContent, DispatcherPriority.Loaded);
     }
 
-    /// <summary>Mica is a request, not a guarantee: Windows 10, "show transparency" turned off and
-    /// remote desktop all refuse it, and the window would then be a hole rather than a surface. Paint
-    /// the opaque Fluent surface colour when it was not granted. (Same guard SettingsWindow used.)</summary>
+    /// <summary>Acrylic is a request, not a guarantee: Windows 10 before 10.0.15063, "show
+    /// transparency" turned off and remote desktop all refuse it, and the window would then be a hole
+    /// rather than a surface. Paint the opaque surface colour when it was not granted. (Same guard
+    /// SettingsWindow used.)</summary>
     /// <remarks>
+    /// <para>
+    /// Round 7, Task 1 moved the requested level from <c>Mica</c> to <c>AcrylicBlur</c>
+    /// (MainWindow.axaml) — Aero's glass was a live blur of what is behind the window, and Mica is a
+    /// wallpaper tint that never blurs — and THIS GUARD HAD TO MOVE WITH IT. Left testing for
+    /// <c>Mica</c>, a perfectly successful acrylic window would fall through, subscribe the fallback,
+    /// and paint the opaque <c>SurfaceBaseBrush</c> over a working backdrop with no error anywhere:
+    /// the conversion would fail silently and look like the acrylic was refused.
+    /// </para>
+    /// <para>
+    /// The log line is deliberately unconditional and at Information. Whether this machine grants
+    /// acrylic could not be established read-only before the conversion, and every later task that
+    /// touches the window surface depends on the answer; a log fact can be taken from a shipped run
+    /// by anyone, an in-process read cannot.
+    /// </para>
+    /// <para>
     /// Round 4, item 5 replaced a one-shot <c>FindResource</c> + assignment with this subscription. The
     /// old form resolved the brush OBJECT once and assigned it, which made the fallback a snapshot of
     /// whichever <see cref="Avalonia.Styling.ThemeVariant"/> was live at the first
     /// <see cref="OnOpened"/>: <see cref="AppTheme.Apply"/> — which the settings window calls on every
     /// 外观 change — only writes <c>Application.RequestedThemeVariant</c>, and nothing re-ran this, so a
-    /// Mica-refused window kept the previous variant's surface for the rest of the process. Subscribing
-    /// to the resource instead makes it follow the variant. It matters to item 5 specifically: the item
-    /// asks for the title strip and the rail to share ONE background, and on a machine that refuses Mica
-    /// that background is this brush, so it has to be the right one in both variants.
+    /// backdrop-refused window kept the previous variant's surface for the rest of the process.
+    /// Subscribing to the resource instead makes it follow the variant.
+    /// </para>
     /// <para>
     /// The <c>?? Brushes.White</c> is carried over verbatim from the old form: a missing key would
     /// otherwise leave <c>Background</c> null, i.e. a window that paints nothing at all — the exact
@@ -525,11 +552,77 @@ public partial class MainWindow : Window
     /// </remarks>
     private void ApplyBackdrop()
     {
-        if (ActualTransparencyLevel == WindowTransparencyLevel.Mica)
+        Serilog.Log.Information(
+            "Backdrop: requested {Requested}, granted {Granted}",
+            string.Join(", ", TransparencyLevelHint), ActualTransparencyLevel);
+
+        if (ActualTransparencyLevel == WindowTransparencyLevel.AcrylicBlur)
             return;
 
         _backdropFallback ??= this.GetResourceObservable("SurfaceBaseBrush")
             .Subscribe(new AnonymousObserver<object?>(v => Background = v as IBrush ?? Brushes.White));
+    }
+
+    /// <summary>
+    /// Publish the caption's glass gradient for the window's CURRENT active state, into this window's
+    /// own <see cref="Avalonia.Controls.Window.Resources"/> under the key the replaced
+    /// <c>WindowDrawnDecorations</c> template reads with <c>{DynamicResource CaptionGlassBrush}</c>.
+    /// </summary>
+    /// <remarks>
+    /// A resource OBSERVABLE rather than a one-shot <c>FindResource</c>, for exactly the reason
+    /// <see cref="ApplyBackdrop"/>'s own remarks give: the active and inactive gradients are themed, so
+    /// resolving one object once would freeze the caption on whichever variant happened to be live at
+    /// the time and a later 外观 change would not reach it. Re-subscribing on every activation change is
+    /// what switches WHICH key is being followed; the subscription itself then keeps following that key
+    /// across variant changes. The previous subscription is disposed first, so a session's worth of
+    /// focus changes leaves one observer, not n.
+    /// </remarks>
+    private void ApplyCaptionGlass()
+    {
+        var key = IsActive ? "CaptionGlassActiveBrush" : "CaptionGlassInactiveBrush";
+
+        // Information, not Debug, and for the same reason ApplyBackdrop's line is: the two gradients
+        // differ only in alpha, so which one is on screen is not readable from a screenshot with any
+        // confidence, and on a machine with no keyboard or mouse the window can never be activated to
+        // put the active one there at all. The log is the only instrument that can say which key was
+        // published. It fires once per activation change, which is not chatty.
+        Serilog.Log.Information("Caption glass: IsActive {IsActive}, publishing {Key}", IsActive, key);
+
+        _captionGlass?.Dispose();
+        _captionGlass = this.GetResourceObservable(key)
+            .Subscribe(new AnonymousObserver<object?>(PublishCaptionGlass));
+    }
+
+    /// <summary>
+    /// Write one resolved gradient into <c>Resources["CaptionGlassBrush"]</c> — but only when it is not
+    /// already the value sitting there.
+    /// </summary>
+    /// <remarks>
+    /// THE IDENTITY CHECK IS LOAD-BEARING AND IS NOT DEFENSIVE TIDINESS. Assigning into
+    /// <see cref="Avalonia.Controls.Window.Resources"/> raises <c>ResourcesChanged</c>, which
+    /// re-evaluates every live resource observable on this window — including the one this method is
+    /// the observer for. An unconditional write is therefore an unbounded feedback loop, and it really
+    /// was one: the first build of this task died on launch with <c>Stack overflow</c> whose frames read
+    /// <c>ResourceNodeExtensions.TryFindResource → Styles.TryGetResource → ResourceDictionary
+    /// .TryGetResource</c> under <c>AnonymousObserver&lt;bool&gt;.OnNext</c> inside
+    /// <c>MainWindow..ctor</c>, before the window ever reached the screen. With the check, the second
+    /// pass is handed the same brush INSTANCE, finds nothing to do, and the cascade stops after one
+    /// round trip.
+    /// <para>
+    /// A null is ignored rather than written: blanking the key would leave the band unpainted, and
+    /// Tokens.axaml's own <c>CaptionGlassBrush</c> — the inactive gradient — is the right thing to keep
+    /// on screen if a lookup ever fails.
+    /// </para>
+    /// </remarks>
+    private void PublishCaptionGlass(object? value)
+    {
+        if (value is null)
+            return;
+
+        if (Resources.TryGetValue("CaptionGlassBrush", out var current) && ReferenceEquals(current, value))
+            return;
+
+        Resources["CaptionGlassBrush"] = value;
     }
 
     /// <summary>Closing hides to the tray; the app exits only through 退出 (tray menu or overflow
@@ -607,49 +700,26 @@ public partial class MainWindow : Window
         //
         // Round 6, item 2: the class is "app", NOT "settings", and the flip is the point rather than a
         // rename. 应用 keeps the white pane with the hairline and the rounded top-left corner; every
-        // OTHER page now paints nothing and lets the window's own surface (Mica, or ApplyBackdrop's
-        // SurfaceBaseBrush when the platform refuses it) run straight through, the way Windows' own
-        // Settings page does — measured: it has no content pane at all. Encoding it as "app" makes "on
-        // the window material" the DEFAULT, so a third ShellPage member would come up on the material
-        // instead of silently coming up white, which is the opposite of what was asked. This overrules
-        // Round 4 §5.1(d) deliberately: that ruling kept 设置 on SurfaceBaseBrush because our cards
-        // composite to the exact colour of a WHITE page, and Mica is not white — it measures 238..247
-        // Light / 30..34 Dark under this window, straddling SurfaceBaseBrush, so the card separation is
-        // unchanged to within a few levels. The measurements are in the Launcher.axaml block. Do not
+        // OTHER page now paints nothing and lets the window's own surface (the acrylic backdrop, or
+        // ApplyBackdrop's SurfaceBaseBrush when the platform refuses it) run straight through, the way
+        // Windows' own Settings page does — measured: it has no content pane at all. Encoding it as
+        // "app" makes "on the window material" the DEFAULT, so a third ShellPage member would come up on
+        // the material instead of silently coming up white, which is the opposite of what was asked.
+        // This overrules Round 4 §5.1(d) deliberately: that ruling kept 设置 on SurfaceBaseBrush because
+        // our cards composite to the exact colour of a WHITE page, and the backdrop is not white — Mica
+        // measured 238..247 Light / 30..34 Dark under this window, straddling SurfaceBaseBrush, so the
+        // card separation held. THAT STRADDLE WAS MEASURED AGAINST MICA and Round 7, Task 1 requested
+        // AcrylicBlur instead; the conclusion has not been re-measured on acrylic and Round 7's Task 7
+        // owns re-taking it. The Mica measurements are in the Launcher.axaml block. Do not
         // "restore" the grey.
         PagePane.Classes.Set("app", page == ShellPage.App);
 
-        // Round 6, item 1: the title strip's search box is always attached, and on 设置 — a page with
-        // nothing to search — it used to stay on screen greyed out (Round 3 review finding 4 disabled
-        // it because typing there silently filtered an invisible 应用 page and Enter reached
-        // LauncherViewModel.HandleSearchEnter, which LAUNCHES the first match). It is now simply not
-        // shown there, which is what the user asked for and which retires the greyed look entirely.
-        //
-        // ONE write, and it goes on the Border, not on the TextBox. SearchField is the only element
-        // carrying Grid.Column="1" in TitleStripContent (MainWindow.axaml), i.e. it is what occupies
-        // the centre Auto column's slot — hiding only SearchBox would leave the bordered box and its
-        // E721 glyph sitting there. A second write on SearchBox would add nothing: a hidden element is
-        // not measured and cannot take focus at all — FocusManager.CanFocus is
-        // "Focusable && IsEffectivelyEnabled && IsEffectivelyVisible" (decompiled) — so OnSearchKeyDown's
-        // Enter/Escape/Down are exactly as unreachable here as they were while the box was disabled.
-        //
-        // The strip does not shift. Avalonia.Layout.Layoutable.MeasureCore (Avalonia.Base 12.1.0,
-        // decompiled and re-checked against the shipped assembly this round) wraps its WHOLE body,
-        // including the "num += Margin.Left + Margin.Right" term, in "if (IsVisible)" and returns
-        // default(Size) otherwise — so the hidden field contributes 0 AND its Margin="12,0" contributes
-        // 0, the Auto column measures 0, and the two equal-weight star columns either side just split
-        // the freed width evenly. Column 0's content is left-aligned in a column that always starts at
-        // x = 0 and column 2's is right-aligned in a column that always ends at the strip's right edge,
-        // so neither flanking group can move. Measured on the live build at the fitted width and at
-        // MinWidth="760": both groups' screen rects are byte-identical with the field shown and hidden.
-        //
-        // If the field is hidden WHILE focused, InputElement.OnPropertyChanged reacts to IsVisible
-        // going false under IsKeyboardFocusWithin by calling FocusManager.ClearFocusOnElementRemoved,
-        // which ends in Focus(null) — the same end state IsEnabled=false already produced through
-        // IsEffectivelyEnabled's setter, so this introduces no new focus case. The accent underline
-        // self-clears with it: the focus loss raises LostFocus → OnSearchFocusChanged, which drops the
-        // "focused" class Launcher.axaml's focusbar rules key off.
-        SearchField.IsVisible = page == ShellPage.App;
+        // Round 6, item 1 hid the title strip's search box on 设置 — a page with nothing to search —
+        // with a "SearchField.IsVisible = page == ShellPage.App" write here. Round 7, Task 1 DELETED
+        // that write rather than porting it: the field is IN the 应用 page now (Views/AppPage.axaml),
+        // so it is detached along with the rest of that page whenever 设置 is on screen and there is
+        // nothing left to hide. The behaviour item 1 asked for is unchanged; the mechanism is
+        // structural instead of imperative.
 
         if (page != ShellPage.App)
             return;
@@ -772,67 +842,21 @@ public partial class MainWindow : Window
     }
 
     // ══════════════════════════════════════════════════════════════════════════════════════════
-    // Title strip: search box
+    // Deferred search-box focus
+    //
+    // Round 7, Task 1 moved the search CONTROL back into the 应用 page (Views/AppPage.axaml), where it
+    // lived before commit 6d00060, because Microsoft's rule for a window frame is verbatim "Don't add
+    // controls to a window frame. Put the controls within the window instead."
+    // (learn.microsoft.com/en-us/windows/win32/uxguide/win-window-frames) and Task 1's Aero caption IS
+    // that frame. Its width no longer tracks the window either — the Task-Manager-proportional
+    // ApplySearchFieldWidth, its three constants and the ClientSize subscription that drove it are all
+    // deleted with the strip, and AppPage gives the field one authored width instead.
+    //
+    // What stays HERE is only the PendingFocus contract: the view model raises "please focus the search
+    // box" from a fresh summon, from 清除筛选 and from Up off the top of the tile grid, and this class
+    // is the one place that knows which page is on screen. The focus call itself is forwarded to
+    // AppPage.FocusSearchBox().
     // ══════════════════════════════════════════════════════════════════════════════════════════
-
-    /// <summary>Task Manager's own measured behaviour: its search box is NOT a fixed width — it is
-    /// proportional to the window's client width, and clamped at a maximum. Ratio 0.34x/max 600 DIP
-    /// are that measured behaviour (Round 3, Task 1 review), not a guess: <c>SetWindowPos</c>-resized
-    /// Task Manager to 5 client widths from 828 to 3378 physical px at this machine's 150% scale and
-    /// re-measured its search box (<c>AutomationId="TextBox"</c>) with UI Automation each time —
-    /// box-width / client-width held at 33.6%-34.3% up to a client width of roughly 2600 DIP, where the
-    /// box stopped growing at a measured ceiling of 899-900 physical px (600 DIP): 828->284 (34.3%),
-    /// 1078->366 (34.0%), 1478->500 (33.8%), 1920->647 (33.7%), 2378->800 (33.6%), 2878->900 (clamped),
-    /// 3378->899 (clamped). 0.34 is the average of the five UNCLAMPED ratios, not any single one of
-    /// them. MinWidth 200 is NOT an observed Task Manager value — its own window cannot shrink far
-    /// enough on this machine to exercise a floor — it exists only so the field cannot collapse to
-    /// something unusable at this app's own MinWidth (760 DIP, MainWindow.axaml), and was chosen close
-    /// to the OLD fixed 280 DIP this replaces.</summary>
-    private const double SearchFieldWidthRatio = 0.34;
-    private const double SearchFieldMinWidth = 200;
-    private const double SearchFieldMaxWidth = 600;
-
-    /// <summary>Called once immediately (constructor, via the <see cref="TopLevel.ClientSizeProperty"/>
-    /// observable firing on subscription) and again on every resize. Guards on a non-positive width
-    /// because the very first call happens before the window has ever been measured, when ClientSize is
-    /// still <see cref="Size.Empty"/> — XAML's own <c>Width="280"</c> (MainWindow.axaml) is what stays on
-    /// screen for that one instant, which is why it is still there as a literal rather than removed.</summary>
-    private void ApplySearchFieldWidth()
-    {
-        var clientWidth = ClientSize.Width;
-        if (clientWidth <= 0)
-            return;
-
-        SearchField.Width = Math.Clamp(clientWidth * SearchFieldWidthRatio, SearchFieldMinWidth, SearchFieldMaxWidth);
-    }
-
-    /// <summary>Focus is drawn on the FIELD (the bordered box), not on the bare TextBox inside it, so
-    /// the accent outline frames the glyph too. The TextBox has no border of its own to light up.</summary>
-    private void OnSearchFocusChanged(object? sender, RoutedEventArgs e) =>
-        SearchField.Classes.Set("focused", SearchBox.IsFocused);
-
-    /// <summary>Enter launches the first match, Escape clears then hides, Down enters the tile grid —
-    /// exactly AppPage's old header behaviour. Enter/Escape are one-line calls straight into the shared
-    /// LauncherViewModel; Down has to reach AppPage's own tile grid, which only AppPage's code-behind
-    /// can walk, so it is forwarded through <see cref="AppPage.FocusFirstTile"/> rather than duplicated
-    /// here.</summary>
-    private void OnSearchKeyDown(object? sender, KeyEventArgs e)
-    {
-        switch (e.Key)
-        {
-            case Key.Enter:
-                _appPage.ViewModel.HandleSearchEnter();
-                e.Handled = true;
-                break;
-            case Key.Escape:
-                _appPage.ViewModel.HandleSearchEscape();
-                e.Handled = true;
-                break;
-            case Key.Down:
-                e.Handled = _appPage.FocusFirstTile();
-                break;
-        }
-    }
 
     /// <summary>Deferred focus: <see cref="LauncherViewModel.PendingFocus"/> is set on every summon (and
     /// by AppPage's own "清除筛选"/Up-off-the-grid actions) and consumed here, on the next Loaded pass —
@@ -852,14 +876,18 @@ public partial class MainWindow : Window
     /// <c>ISettingsLauncher.OpenCore</c> navigates to 设置 and THEN calls
     /// <c>WindowHost.ShowAndActivate()</c>, which unconditionally raises <c>LauncherShown</c> and sets
     /// <c>PendingFocus</c> regardless of which page is showing (the tray's 选项 entry hits this path).
-    /// Before the search box moved into this always-attached title strip, <c>AppPage</c> guarded the
-    /// equivalent case with <c>IsAttachedToVisualTree()</c> — the whole page, search box included, was
-    /// detached whenever 设置 was on screen, so a pending request there was simply invisible. The
-    /// search box has no such attachment signal to reuse now, so the guard is asking the one thing that
-    /// actually determines whether the user can see it: whether <see cref="_appPage"/> is the page
-    /// <see cref="PageHost"/> is currently showing. Left SET otherwise; <see cref="ShowPage"/> retries
-    /// this the next time the rail switches back to 应用, exactly the "re-check what needs the visual
-    /// tree on re-attach" rule AppPage's own pre-move mechanism followed.
+    /// The guard asks the one thing that actually determines whether the user can see the box: whether
+    /// <see cref="_appPage"/> is the page <see cref="PageHost"/> is currently showing. Left SET
+    /// otherwise; <see cref="ShowPage"/> retries this the next time the rail switches back to 应用,
+    /// exactly the "re-check what needs the visual tree on re-attach" rule AppPage's own pre-move
+    /// mechanism followed.
+    /// <para>
+    /// Round 7, Task 1 put the search box back inside <see cref="AppPage"/>, so the guard is now also
+    /// literally an attachment test — a detached page's TextBox cannot take focus at all
+    /// (<c>FocusManager.CanFocus</c> is <c>Focusable &amp;&amp; IsEffectivelyEnabled &amp;&amp;
+    /// IsEffectivelyVisible</c>, decompiled). It is kept as an explicit page test rather than reduced
+    /// to that, because it is also what keeps the deferred request alive for the next switch back.
+    /// </para>
     /// </summary>
     private void ConsumePendingFocus()
     {
@@ -870,14 +898,7 @@ public partial class MainWindow : Window
             return;
 
         _appPage.ViewModel.PendingFocus = false;
-        try
-        {
-            SearchBox.Focus();
-        }
-        catch
-        {
-            /* focus is a nicety; never let it take startup down */
-        }
+        _appPage.FocusSearchBox();
     }
 
     // ══════════════════════════════════════════════════════════════════════════════════════════

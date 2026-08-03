@@ -409,7 +409,23 @@
 
   </Styles.Resources>
 
-  <!-- ══ Title strip (search + overflow, now in MainWindow.axaml) ═══════════════════════════════ -->
+  <!-- ══ Search header ═══════════════════════════════════════════════════════════════════════════
+       Round 7, Task 1 restored this rule along with the field it frames. It was deleted by commit
+       6d00060, which moved search into the window's title strip; the Aero conversion deletes that strip
+       (win-window-frames: "Don't add controls to a window frame. Put the controls within the window
+       instead.") and the header comes back to Views/AppPage.axaml with it.
+
+       The three values are the ones the rule shipped with before 6d00060 and are unchanged by the
+       revert: a 1 DIP bottom divider and 12,10 of padding. Their Aero re-derivation — the divider
+       becomes a group-box hairline and the padding becomes the published 11 relative-pixel dialog
+       margin — belongs to Task 9, which is where the field's own Aero treatment lands. -->
+
+  <Style Selector="Border.tm-header">
+    <Setter Property="BorderThickness" Value="0,0,0,1" />
+    <Setter Property="BorderBrush" Value="{DynamicResource StrokeDividerBrush}" />
+    <Setter Property="Padding" Value="12,10" />
+  </Style>
+
 
   <!-- Iconography is Segoe Fluent Icons — the Windows 11 icon face — rather than hand-drawn
        geometry, so the launcher's search, overflow and close glyphs are the same shapes the shell
@@ -435,7 +451,7 @@
 
   <!-- The search field is a plain TextBox stripped to text only; the field's own shape, fill and
        outline are drawn by the Border it sits in (Border.tm-searchfield). Background and
-       BorderThickness are set as LOCAL values on the element in MainWindow.axaml — local values
+       BorderThickness are set as LOCAL values on the element in Views/AppPage.axaml — local values
        outrank style setters, which is what keeps Avalonia's own :pointerover / :focus TextBox
        styling from repainting a field we already painted. -->
   <Style Selector="Border.tm-searchfield">
@@ -455,14 +471,14 @@
        BorderBrush to AccentDefaultBrush and drew an accent rectangle around the whole field) and only
        the fill lightens slightly, to SurfaceLayerActiveBrush (Tokens.axaml). The 2 px accent UNDERLINE
        on the bottom edge only is a separate element — Border.tm-searchfield-focusbar, added inside
-       SearchField in MainWindow.axaml — because a Border cannot draw a differently-coloured thickness
+       SearchField in Views/AppPage.axaml — because a Border cannot draw a differently-coloured thickness
        on one side while keeping the other three at the ambient resting colour: BorderBrush is a single
        brush for every side. -->
   <Style Selector="Border.tm-searchfield.focused">
     <Setter Property="Background" Value="{DynamicResource SurfaceLayerActiveBrush}" />
   </Style>
   <!-- The bar itself: transparent at rest, so it takes no visual space and needs no separate
-       Opacity/IsVisible toggle. IsHitTestVisible="False" (set in MainWindow.axaml, not here — a
+       Opacity/IsVisible toggle. IsHitTestVisible="False" (set in Views/AppPage.axaml, not here — a
        ControlTheme/Style cannot express it any earlier than the element's own local markup) keeps it
        from ever intercepting a click meant for the TextBox underneath. CornerRadius "0,0,3,3" is
        RadiusControlInner (RadiusControl minus one) on the bottom corners only, and Margin "1,0,1,1"
@@ -475,10 +491,12 @@
   <Style Selector="Border.tm-searchfield.focused Border.tm-searchfield-focusbar">
     <Setter Property="Background" Value="{DynamicResource AccentDefaultBrush}" />
   </Style>
-  <!-- There is deliberately NO :disabled rule for this field. Round 6, item 1: on pages that cannot
-       be searched the field is now HIDDEN rather than greyed out (MainWindow.ShowPage sets
-       SearchField.IsVisible off ShellPage.App), so nothing in this app ever disables it and a rule
-       for that state would have no producer left. -->
+  <!-- There is deliberately NO :disabled rule for this field. Round 6, item 1 established that on a
+       page that cannot be searched the field is not shown at all rather than greyed out; Round 7,
+       Task 1 made that structural — the field is inside the 应用 page now, so a page that is not 应用
+       simply does not contain it and MainWindow's old "SearchField.IsVisible = …" write is deleted.
+       Either way nothing in this app puts this field into :disabled and a rule for that state would
+       have no producer left. -->
 
   <Style Selector="TextBox.tm-search">
     <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
@@ -491,16 +509,16 @@
   <!-- There is deliberately no ":disabled" companion to the rule above either. It used to repaint
        Foreground and PlaceholderForeground to TextDisabledBrush, because the Foreground set above at
        Style precedence outranks the Fluent TextBox ControlTheme's own built-in :disabled foreground
-       and so left the text at full contrast. Round 6, item 1 hides the whole field on a page that
-       cannot be searched instead of disabling it, so nothing in this app puts this TextBox into
-       :disabled any more. Avalonia's own Fluent :disabled styling for TextBox — which also repaints
+       and so left the text at full contrast. A page that cannot be searched does not contain this
+       field at all any more (Round 6 item 1's decision, made structural by Round 7 Task 1), so nothing
+       in this app puts this TextBox into :disabled. Avalonia's own Fluent :disabled styling for TextBox — which also repaints
        Border#PART_BorderElement with a grey slab, and which this file never overrode — goes with it. -->
   <!-- Round 3, Task 1 (user item 2): the actual source of the old "heavy accent rectangle" was never
        Border.tm-searchfield.focused above — it was Avalonia's OWN default TextBox ControlTheme, whose
        "^:focus /template/ Border#PART_BorderElement" style (Avalonia.Themes.Fluent 12.1.0's
        Controls/TextBox.xaml, the SAME pinned version this app ships) repaints THAT inner template
        part's Background/BorderBrush/BorderThickness to accent on focus. SearchBox's own local
-       Background="Transparent" BorderThickness="0" (MainWindow.axaml) cannot block this: those locals
+       Background="Transparent" BorderThickness="0" (Views/AppPage.axaml) cannot block this: those locals
        win only for the OUTER TextBox's own properties, while the built-in style targets a DIFFERENT
        object — the named part living inside TextBox's control template — which has no competing local
        value of its own. The fix uses the exact precedence this file relies on wherever it reaches into
@@ -720,6 +738,20 @@
   </Style>
 
   <!-- ══ The content pane ═════════════════════════════════════════════════════════════════════════
+       ROUND 7, TASK 1 FALSIFIED TWO PREMISES OF THE MEASUREMENT RECORD BELOW. READ THIS FIRST.
+         1. The window no longer requests Mica. MainWindow.axaml now asks for AcrylicBlur and this
+            machine grants it (log: "Backdrop: requested AcrylicBlur, granted AcrylicBlur"). Every
+            sentence below that says "Mica" describes the surface this pane sat on until that commit.
+            The Δ-based conclusions may well survive — acrylic is also a mid-tone blur that straddles
+            SurfaceBaseBrush rather than reaching SurfacePageBrush's white — but NOBODY HAS
+            RE-MEASURED THEM ON ACRYLIC, and this note exists so nobody quotes them as if somebody had.
+         2. The search field is no longer on the window's backdrop. It moved out of the title strip and
+            back into the 应用 page (Views/AppPage.axaml), where it sits on the WHITE .app pane — so the
+            "a settings card on Mica is already on screen; it is the search field" paragraph names a
+            control that no longer photographs what it was cited for.
+       Round 7's Task 7 owns re-deriving this whole block against Aero and deleting what does not
+       survive; Task 1 marks it rather than pre-empting that.
+
        Round 4, item 5: MainWindow.axaml's PagePane — the Border that hosts whichever page is showing.
        The two rules below are MUTUALLY EXCLUSIVE by construction (.app against :not(.app)), not a base
        rule plus an override, and that is deliberate: see "WHY THESE LIVE HERE" below.
@@ -734,7 +766,7 @@
 
        ── 应用 (the .app rule) ───────────────────────────────────────────────────────────────────────
        A pure white pane with a 1 DIP hairline on its TOP and LEFT edges only and an 8 DIP top-left
-       corner, flush against the rail and against the title strip with zero inset — it is not a floating
+       corner, flush against the rail and against the caption with zero inset — it is not a floating
        card. Every one of those four facts is measured off the user's reference capture of Task Manager
        (3.png, 1:1 at native resolution, so DIP = px / 1.5). NOTE that no colour below is written as a
        hex literal, in comments included: Fluent2TokenTests.LauncherStyles_ContainNoColourLiterals greps
@@ -763,9 +795,9 @@
        not change this thickness without changing those.
 
        ── every other page (the :not(.app) rule) ─────────────────────────────────────────────────────
-       Paints NOTHING: Transparent, no border, no corner, so the window's own surface — Mica when the
-       platform grants it, otherwise whatever ApplyBackdrop put on Window.Background — runs unbroken
-       from the rail and the title strip straight through the content. That is what Windows' own
+       Paints NOTHING: Transparent, no border, no corner, so the window's own surface — the backdrop
+       when the platform grants it, otherwise whatever ApplyBackdrop put on Window.Background — runs
+       unbroken from the rail and the caption straight through the content. That is what Windows' own
        Settings does — measured on it during the Round 6 reconnaissance, not assumed: at image y = 470
        its capture reads exactly (243,242,249) at x = 20, 100, 200, 300, 400, 450, 480, 490 and 499,
        nine samples and one value, straight through where a pane edge would be. It has no content pane
@@ -847,9 +879,11 @@
        ImmersiveColorSet broadcast and a cold restart — and this machine kept granting Mica through all
        three, so ActualTransparencyLevel never left Mica and the branch was never entered. Do not read
        "the fallback works" into this comment. What IS established: the mechanism it relies on is not
-       new, because the rail and the title strip (TitleBarBackgroundBrush = Transparent, Tokens.axaml)
-       are already Transparent over Window.Background, and this pane measured continuous with both to
-       (0,0,0) at every sampled point. What the fallback WOULD produce is arithmetic over the tokens,
+       new, because the rail is already Transparent over Window.Background and this pane measured
+       continuous with it to (0,0,0) at every sampled point. (That sentence used to cite the title strip
+       as the second witness, through TitleBarBackgroundBrush = Transparent in Tokens.axaml. Round 7,
+       Task 1 deleted both the strip and that key — the caption is drawn by the window's own decorations
+       template now — so only the rail's half of the observation survives.) What the fallback WOULD produce is arithmetic over the tokens,
        computed and not measured: flat (243,243,243) Light / (32,32,32) Dark, with (251,251,251) /
        (40,40,40) cards behind (229,229,229) / (48,48,48) outlines — i.e. the same colours 设置 had
        before this change, when the pane painted SurfaceBaseBrush itself.
@@ -860,7 +894,7 @@
        documentation on that member describes as overriding a TEMPLATE value; LocalValue is a strictly
        higher priority than both (Avalonia 12.1.0's BindingPriority: Animation, LocalValue, StyleTrigger,
        Template, Style, Inherited, Unset). The app already relies on the same ranking from the other
-       side — see the SearchBox TextBox's own remarks in MainWindow.axaml, where a LOCAL Background is
+       side — see the SearchBox TextBox's own remarks in Views/AppPage.axaml, where a LOCAL Background is
        what stops Avalonia's :pointerover style repainting the field. So writing the 应用 look as
        Background/BorderThickness/CornerRadius attributes on PagePane and then trying to switch it with a
        class toggle would silently do nothing at all: the pane would stay white everywhere. Both states

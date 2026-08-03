@@ -5,10 +5,20 @@
              x:Class="TanMenu.Wpf.Views.AppPage"
              x:DataType="vm:LauncherViewModel">
 
-  <!-- The launcher proper. The window shell owns the title strip (search box and overflow menu now
-       live there, Task Manager style — see MainWindow.axaml) and the navigation rail; everything here
-       is the 应用 page's own content: the update notice, the categories, and the three non-menu states
-       (loading, nothing configured, nothing matched). -->
+  <!-- The launcher proper. The window shell owns the Aero caption and the navigation rail; everything
+       here is the 应用 page's own content: the search header, the update notice, the categories, and the
+       three non-menu states (loading, nothing configured, nothing matched).
+
+       Round 7, Task 1 brought the search field BACK here, where it lived before commit 6d00060. Rounds
+       2-6 had it in the window's title strip, Task Manager style; the Aero conversion deletes that strip
+       because Microsoft's own window-frame guidance is verbatim "Don't add controls to a window frame.
+       Put the controls within the window instead."
+       (https://learn.microsoft.com/en-us/windows/win32/uxguide/win-window-frames). Only the FIELD
+       reverts: the ⋯ overflow button and the page-close glyph that shared that old header do not come
+       back — Round 3 Task 2 moved 打开主目录/刷新/退出 into the rail's footer and Round 5 item 2 made 关于
+       a settings card, and re-adding the flyout would restage the exact pattern those two rounds
+       removed. -->
+
 
   <!-- Round 3, Task 4 removed the 小/中/大 button-size setting, so the Classes.size-* bindings this
        Panel used to carry (each wired to LauncherViewModel.IsSmallButtons/IsMediumButtons/
@@ -30,11 +40,71 @@
 
       <DockPanel>
 
+        <!-- ══ Search header ═══════════════════════════════════════════════════════════════════════
+             ctrl-search-boxes puts a primary-entry-point search box "centered at the top of the
+             window" (https://learn.microsoft.com/en-us/windows/win32/uxguide/ctrl-search-boxes), which
+             is exactly where this sits — one row above everything else the page docks, centred in it.
+
+             THE 320 DIP WIDTH IS AUTHORED, and nothing published fixes it: ctrl-search-boxes states no
+             width rule at all and its sizing section is an image. 320 holds the longest prompt this app
+             ships in either language plus the "additional 30 percent" localisation allowance
+             ctrl-drop publishes (https://learn.microsoft.com/en-us/windows/win32/uxguide/ctrl-drop).
+             It is a fixed width, not a proportional one: the Task-Manager-measured 0.34 × client ratio
+             that drove this field through Rounds 3-6 was a property of a control living in the window's
+             own chrome, and a field inside the page has no reason to track the window — deleting the
+             tracking is what removes ApplySearchFieldWidth, its three constants and MainWindow's
+             ClientSize subscription without adding a sixth re-fit trigger.
+
+             Round 7, Task 1 restores the MINIMUM: the field's Aero treatment (Border.tm-searchfield is
+             still the Fluent 2 shape here) is Task 9's, not this task's. -->
+        <Border Classes="tm-header" DockPanel.Dock="Top">
+          <Border Classes="tm-searchfield" x:Name="SearchField"
+                  Width="320"
+                  HorizontalAlignment="Center">
+            <Panel>
+              <DockPanel>
+                <TextBlock DockPanel.Dock="Left" Classes="tm-icon subtle small"
+                           Text="&#xE721;" Margin="0,0,8,0" />
+                <!-- Background and BorderThickness are LOCAL values on purpose: a local value outranks
+                     a style setter for the SAME property on the SAME element, which is what stops
+                     Avalonia's own :pointerover TextBox styling from repainting a field the Border
+                     already paints. It does NOT also block the built-in ":focus" styling — that one
+                     targets Border#PART_BorderElement, a DIFFERENT element living inside TextBox's own
+                     control template, which carries no local value of its own regardless of what is set
+                     here. See Launcher.axaml's "TextBox.tm-search:focus /template/
+                     Border#PART_BorderElement" rule for what actually suppresses it, and why. -->
+                <TextBox x:Name="SearchBox"
+                         Classes="tm-search"
+                         AutomationProperties.Name="{Binding SearchPlaceholderText}"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         PlaceholderText="{Binding SearchPlaceholderText}"
+                         Text="{Binding Filter, Mode=TwoWay}"
+                         KeyDown="OnSearchKeyDown"
+                         GotFocus="OnSearchFocusChanged"
+                         LostFocus="OnSearchFocusChanged" />
+              </DockPanel>
+              <!-- The focused-TextBox accent underline (Launcher.axaml's own remarks on
+                   Border.tm-searchfield.focused explain why this is a second element rather than a
+                   BorderBrush change): transparent at rest, painted only while SearchField carries the
+                   "focused" class. IsHitTestVisible="False" keeps it from ever stealing a click from the
+                   TextBox it sits on top of — it draws over the DockPanel only because it is the LATER
+                   child in this Panel, not because it needs input. -->
+              <Border Classes="tm-searchfield-focusbar"
+                      IsHitTestVisible="False"
+                      HorizontalAlignment="Stretch"
+                      VerticalAlignment="Bottom"
+                      Height="2"
+                      Margin="1,0,1,1"
+                      CornerRadius="0,0,3,3" />
+            </Panel>
+          </Border>
+        </Border>
+
         <!-- Taskbar-pin notice. An inline InfoBar rather than the modal dialog the app used to throw
              up on every reveal: RefreshPinNoticeAsync (AppPage.axaml.cs) opens it whenever the app is
              not yet pinned and 不再提示 has not been chosen, and closes it the moment the pin succeeds
-             or the user dismisses it. Docked above the update notice, at the top of the page — the
-             shell's title strip (search + overflow) sits above this in the window, not in this page.
+             or the user dismisses it. Docked below the search header and above the update notice.
 
              PinNowButton/PinNeverButton were still default Avalonia Fluent-1 buttons — a scope gap Task
              3 introduced (its own plan scoped "buttons are wrong" to settings-card buttons, but the

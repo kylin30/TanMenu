@@ -8,16 +8,15 @@
       1. FluentTheme        — the standard control set (settings window, message box): tabs,
                               dropdowns, checkboxes, text boxes, scrollbars, focus, IME. Avalonia's
                               own theme is Fluent 1 vocabulary, which layer 2 re-proportions.
-      2. Fluent2/Tokens     — TanMenu's Fluent 2 design tokens, Light + Dark. Also overrides the
-                              four FluentTheme keys this app redefines for Avalonia's own templates:
-                              ControlCornerRadius, OverlayCornerRadius and
+      2. Fluent2/Tokens     — TanMenu's Fluent 2 design tokens, Light + Dark, plus the Aero caption
+                              brushes MainWindow's replaced WindowDrawnDecorations template reads.
+                              Also overrides the three FluentTheme keys this app redefines for
+                              Avalonia's own templates: ControlCornerRadius, OverlayCornerRadius and
                               ContentControlThemeFontFamily, which pull the standard controls into
-                              Fluent 2 proportions and typography, plus TitleBarBackgroundBrush,
-                              which clears the opaque band Avalonia's drawn window decorations
-                              otherwise paint behind MainWindow's title strip. That seam works
-                              because this file is listed AFTER FluentTheme below and
-                              Application.Styles is searched last-first — Tokens.axaml is the
-                              authority on it and carries the measurements; do not re-derive it here.
+                              Fluent 2 proportions and typography. That seam works because this file
+                              is listed AFTER FluentTheme below and Application.Styles is searched
+                              last-first — Tokens.axaml is the authority on it and carries the
+                              measurements; do not re-derive it here.
       3. Fluent2/Launcher   — the launcher's own dialect. Every rule is an x:Key'd ControlTheme or a
                               .tm-* class selector, so it is opt-in and cannot leak into the
                               settings window or the message box.

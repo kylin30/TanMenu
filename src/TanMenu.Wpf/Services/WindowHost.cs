@@ -32,15 +32,33 @@ namespace TanMenu.Wpf.Services;
 /// </remarks>
 public sealed partial class WindowHost : IWindowHost
 {
-    /// <summary>MainWindow.axaml's own <c>ExtendClientAreaTitleBarHeightHint</c> — the title strip's
-    /// fixed height, which sits ABOVE the page host and is therefore not part of what a page's own
-    /// content measures. Duplicated here as a constant rather than read off the live window because
-    /// nothing on <c>Window</c> exposes it as a public property.</summary>
-    private const double TitleStripHeightDip = 48;
+    /// <summary>
+    /// MainWindow.axaml's own <c>ExtendClientAreaTitleBarHeightHint</c> — the caption band's fixed
+    /// height, which sits ABOVE the page host and is therefore not part of what a page's own content
+    /// measures. Duplicated here as a constant rather than read off the live window because nothing on
+    /// <c>Window</c> exposes it as a public property.
+    /// </summary>
+    /// <remarks>
+    /// Round 7, Task 1 moved this from 48 (the Windows 11 caption height) to 30, which is the Aero
+    /// caption band MEASURED on Microsoft's own published Windows 7 screenshot — see
+    /// <c>MainWindow.axaml</c>'s <c>Window.WindowDecorationsTheme</c> block for the capture, the URL and
+    /// the coordinates. The number lives in three unlinked places (that hint, the root Grid's row 0, and
+    /// here) and nothing tied them together until this task added
+    /// <c>ShellConstantTests.CaptionHeight_IsTheSameNumberInAllThreePlaces</c>, which is now what
+    /// catches a drift between them.
+    /// <para>
+    /// A CHANGE HERE IS NOT VISIBLE IN THE FIT LOG'S HEIGHT, and that is not a bug. <c>Ph +
+    /// ChromeHeightDip</c> is below <see cref="MinWindowHeightDip"/> at every content size this app
+    /// produces, so any <c>ChromeHeightDip</c> up to 74 yields the identical 568 DIP window. The term
+    /// that does move is the log line's own <c>chrome {w}x{h}</c>, which reads 49x31 after this task
+    /// against 49x49 before it.
+    /// </para>
+    /// </remarks>
+    private const double TitleStripHeightDip = 30;
 
     /// <summary>
     /// Everything ABOVE the page that still counts toward the window's own Height, which
-    /// <see cref="FitToContent"/> adds back on top of the measured page size: the title strip, plus the
+    /// <see cref="FitToContent"/> adds back on top of the measured page size: the caption band, plus the
     /// content pane's own 1 DIP TOP border. The +1 is the exact vertical counterpart of the
     /// <c>chromeWidth</c> term the caller composes as <c>MainWindow.RailWidthDip + PaneBorderDip</c> —
     /// a <c>Border</c> draws its <c>BorderThickness</c> inside its own bounds and arranges its child
