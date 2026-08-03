@@ -1,0 +1,71 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!--
+    THIS FILE IS OURS. Everything it merges is vendored; this wrapper is not, and it carries no
+    upstream copyright header because there is nothing of Splitwirez's in it. Every file it names
+    does carry one — see LICENSE-aero-theme-for-avalonia.txt beside this file, and
+    tests/TanMenu.Core.Tests/Themes/AeroAttributionTests.cs, which asserts the header mechanically
+    over every vendored file under Themes/Aero/.
+
+    ── What it is for ───────────────────────────────────────────────────────────────────────────
+    The vendored colour layer is three files: 168 <Color> keys per variant, and 110 brushes whose
+    every colour is a {DynamicResource} onto those names. The brush file is therefore
+    VARIANT-INDEPENDENT and the SAME file is merged into BOTH ThemeDictionaries, which is upstream
+    AeroTheme.axaml's own arrangement, not an adaptation of it.
+
+    ── Why the variant keys are named here and not upstream ─────────────────────────────────────
+    Upstream keys its light dictionary "Default". This app keys its own "Light" (see
+    Themes/Fluent2/Tokens.axaml), and Fluent2TokenTests.EveryThemedTokenIsDefinedInBothVariants
+    reads that literal name out of Tokens.axaml. Merging the vendored files inside a wrapper WE
+    write is what lets the outer key names stay ours while the values stay theirs — zero test change
+    and no parser error standing in for a parity failure. The two vendored variant files declare the
+    identical 168 x:Key names, so the "Light"/"Dark" pair below has no hole in it on day one.
+
+    ── Load order, which is load-bearing ────────────────────────────────────────────────────────
+    App.axaml lists this file AFTER <FluentTheme /> and BEFORE Themes/Fluent2/Tokens.axaml.
+    Avalonia.Styling.Styles.TryGetResource counts DOWN from Count-1, so Application.Styles is
+    searched last-first: Launcher, then Tokens, then this, then FluentTheme. Aero therefore wins
+    over Fluent, and our own overrides still win over Aero. That ordering is the whole reason
+    ContentControlThemeFontFamily stays on Segoe UI rather than reverting to a font with no CJK
+    coverage — and AVMAP/Metrics.axaml has that key deleted as well, so the guarantee does not rest
+    on ordering alone.
+
+    ── What is deliberately absent ──────────────────────────────────────────────────────────────
+    No control theme, no style, no converter is referenced from here yet. Round 7 Task 2 vendors the
+    resource layer and wires it to NOTHING, so that a mistake in it surfaces as a build error or as
+    a pixel difference against Task 1's captures, rather than as a silently wrong-looking app. The
+    ControlStyles/ merges arrive in Tasks 3-6.
+  -->
+
+  <Styles.Resources>
+    <ResourceDictionary>
+
+      <ResourceDictionary.ThemeDictionaries>
+
+        <ResourceDictionary x:Key="Light">
+          <ResourceDictionary.MergedDictionaries>
+            <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/Variant/Light.axaml" />
+            <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/AVMAP/Brushes.axaml" />
+          </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+
+        <ResourceDictionary x:Key="Dark">
+          <ResourceDictionary.MergedDictionaries>
+            <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/Variant/Dark.axaml" />
+            <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/AVMAP/Brushes.axaml" />
+          </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+
+      </ResourceDictionary.ThemeDictionaries>
+
+      <!-- Metrics is variant-independent: sizes, one corner radius, the scroll-bar thicknesses and
+           the scroll expand easing. Merged outside the ThemeDictionaries for that reason. -->
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/AVMAP/Metrics.axaml" />
+      </ResourceDictionary.MergedDictionaries>
+
+    </ResourceDictionary>
+  </Styles.Resources>
+
+</Styles>

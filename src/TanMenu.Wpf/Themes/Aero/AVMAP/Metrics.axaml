@@ -1,0 +1,50 @@
+<!--
+    Copyright (c) 2026 Splitwirez
+    Licensed under the MIT License. See LICENSE-aero-theme-for-avalonia.txt in the Themes/Aero
+    directory for the full text of the copyright notice and permission notice.
+    Source: https://github.com/Splitwirez/aero-theme-for-avalonia at main = a705b7c0
+            src/AeroAvalonia/AVMAP/Metrics.axaml
+    Changes from upstream:
+      1. DELETED the ContentControlThemeFontFamily line (upstream line 13), which pointed the
+         app-wide control font at the family the upstream repository bundles as seven TTFs. None of
+         those fonts is vendored: they carry no font licence anywhere in that repository, and the
+         family has no CJK coverage, so honouring the line would render this Chinese-facing app's
+         item names as tofu. That line was the ONLY reference to those fonts in the whole upstream
+         tree, which is what makes not taking them coherent rather than merely convenient.
+         Themes/Fluent2/Tokens.axaml keeps its own override of the same key regardless - belt and
+         braces, plus AeroAttributionTests.NoVendoredFile_ReferencesTheInterFontFamily.
+      2. DELETED <StaticResource x:Key="ControlContentThemeFontSize" ResourceKey="AeroFontSizeNormal" />
+         (upstream line 11; the design document cites it as line 9, which is the corner radius).
+         Avalonia's own control templates read that key, so it would move every stock control to
+         12 DIP the moment this file is merged - before the conversion has settled its type ramp,
+         and in a task whose whole point is that nothing changes on screen.
+    Everything else is byte for byte upstream, line endings included.
+
+    Those two were the only keys in this file that were NOT Aero-prefixed, and therefore the only
+    two that could collide with a key another layer owns. What is left is 10 keys, all
+    Aero-prefixed and referenced by nothing until the control themes land. (The design document
+    says "the remaining 8 keys"; the file has 12 keys and 12 - 2 = 10. Counted, not assumed.)
+-->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                xmlns:sys="using:System"
+                x:ClassModifier="Internal">
+    <sys:Double x:Key="AeroFontSizeSmall">10</sys:Double>
+    <sys:Double x:Key="AeroFontSizeNormal">12</sys:Double>
+    <sys:Double x:Key="AeroFontSizeLarge">16</sys:Double>
+
+    <CornerRadius x:Key="AeroControlCornerRadius">3</CornerRadius>
+
+    
+
+
+
+
+    <sys:Double x:Key="AeroScrollBarThickness">18</sys:Double>
+    <sys:Double x:Key="AeroSmallScrollBarThickness">9</sys:Double>
+    <sys:Double x:Key="AeroScrollBarLineButtonExtent">16</sys:Double>
+    <StaticResource x:Key="AeroScrollBarThumbMinimumExtent" ResourceKey="AeroScrollBarLineButtonExtent" />
+    
+    <QuinticEaseInOut x:Key="AeroScrollExpandEase"/>
+    <sys:TimeSpan x:Key="AeroScrollExpandDuration">0:0:0.25</sys:TimeSpan>
+</ResourceDictionary>

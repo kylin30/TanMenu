@@ -1,0 +1,10 @@
+# The files under src/TanMenu.Wpf/Themes/Aero/ are COPIES of MIT-licensed files from
+# https://github.com/Splitwirez/aero-theme-for-avalonia at main = a705b7c0, and each one's header
+# states exactly what was changed and that nothing else was. Upstream stores them with LF endings.
+# This repository has core.autocrlf on, which would rewrite them to CRLF on checkout and make that
+# "nothing else was changed" claim false on every developer's disk. Pinning eol=lf here keeps the
+# copies verbatim in the working tree as well as in the object database, so the claim can be
+# checked with cmp against upstream at any time.
+#
+# Nothing outside that directory is affected: there is no wildcard rule below.
+src/TanMenu.Wpf/Themes/Aero/** text eol=lf

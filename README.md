@@ -167,6 +167,35 @@ longer reads or writes and deliberately does not delete: a `themes\` folder from
 theme system, and (portable installs) `Data\WebView2` from the removed WebView. Delete them by hand
 if you want the space back.
 
+## Third-party notices
+
+**[aero-theme-for-avalonia](https://github.com/Splitwirez/aero-theme-for-avalonia)** by Splitwirez,
+**MIT**, at `main` = `a705b7c0`.
+
+TanMenu does not reference that project as a package. Individual files are **copied** into
+`src/TanMenu.Wpf/Themes/Aero/`, some of them edited, and each copy carries the upstream copyright
+notice, a pointer to the permission notice, the revision it came from and a numbered record of what
+was changed. The full MIT text is at
+[`src/TanMenu.Wpf/Themes/Aero/LICENSE-aero-theme-for-avalonia.txt`](src/TanMenu.Wpf/Themes/Aero/LICENSE-aero-theme-for-avalonia.txt),
+and it ships beside the executable as `THIRD-PARTY-NOTICES.txt` in both the portable ZIP and the
+Store MSIX — a notice that exists only in a source tree does not travel with the binary, and the
+binary is what users get.
+
+What was taken so far: the colour resources — the two per-variant `<Color>` dictionaries (168 keys
+each) and the 110-brush dictionary built from them — the metrics, and the five value converters the
+control themes use. The control themes themselves land in later commits of the same conversion;
+`src/TanMenu.Wpf/Themes/Aero/` is the authoritative list at any moment, and every file in it carries
+its own header.
+
+What was **not** taken, and why:
+
+- **The bundled fonts.** Seven Inter TTFs, 2,536,600 bytes, which carry no font licence anywhere in
+  the upstream tree. TanMenu deliberately embeds no fonts, and Inter has no CJK coverage — this app
+  is Chinese-facing. The one upstream line that referenced them is deleted on vendoring.
+- **`ControlStyles/Window.axaml`.** It is Avalonia 11's stock `Window` template with Aero brushes
+  substituted, and it uses `VisualLayerManager.ChromeOverlayLayer` and `Avalonia.Controls.Chrome
+  .TitleBar`, neither of which exists in Avalonia 12.1. TanMenu draws its own window caption anyway.
+
 ## Single-instance note
 
 Uses the mutex name `TanMenuWpf` and a matching broadcast window message

@@ -3,31 +3,47 @@
              x:Class="TanMenu.Wpf.App">
 
   <!--
-    Three style layers, in this order:
+    Four style layers, in this order:
 
       1. FluentTheme        — the standard control set (settings window, message box): tabs,
                               dropdowns, checkboxes, text boxes, scrollbars, focus, IME. Avalonia's
-                              own theme is Fluent 1 vocabulary, which layer 2 re-proportions.
-      2. Fluent2/Tokens     — TanMenu's Fluent 2 design tokens, Light + Dark, plus the Aero caption
-                              brushes MainWindow's replaced WindowDrawnDecorations template reads.
-                              Also overrides the three FluentTheme keys this app redefines for
-                              Avalonia's own templates: ControlCornerRadius, OverlayCornerRadius and
+                              own theme is Fluent 1 vocabulary, which layers 2 and 3 re-proportion.
+      2. Aero/AeroResources — the vendored Windows 7 Aero colour layer: 168 <Color> keys per variant
+                              and the 110 brushes built from them, plus the metrics. Every key in it
+                              is Aero-prefixed, and as of Round 7 Task 2 NOTHING references any of
+                              them — it is here so that the next task's first reference is a build
+                              error if the layer is wrong, rather than a silently odd-looking app.
+                              That file is the authority on its own contents and on why it sits at
+                              this position in the list.
+      3. Fluent2/Tokens     — TanMenu's design tokens, Light + Dark, plus the Aero caption brushes
+                              MainWindow's replaced WindowDrawnDecorations template reads. Also
+                              overrides the three FluentTheme keys this app redefines for Avalonia's
+                              own templates: ControlCornerRadius, OverlayCornerRadius and
                               ContentControlThemeFontFamily, which pull the standard controls into
-                              Fluent 2 proportions and typography. That seam works because this file
-                              is listed AFTER FluentTheme below and Application.Styles is searched
-                              last-first — Tokens.axaml is the authority on it and carries the
-                              measurements; do not re-derive it here.
-      3. Fluent2/Launcher   — the launcher's own dialect. Every rule is an x:Key'd ControlTheme or a
+                              this app's proportions and typography. That seam works because this
+                              file is listed AFTER FluentTheme below and Application.Styles is
+                              searched last-first — Tokens.axaml is the authority on it and carries
+                              the measurements; do not re-derive it here.
+      4. Fluent2/Launcher   — the launcher's own dialect. Every rule is an x:Key'd ControlTheme or a
                               .tm-* class selector, so it is opt-in and cannot leak into the
                               settings window or the message box.
 
+    THE ORDER OF 2 AND 3 IS THE POINT, not incidental. Application.Styles is searched last-first
+    (Avalonia.Styling.Styles.TryGetResource counts DOWN from Count-1), so a key defined in a LATER
+    entry wins. Aero after Fluent means Aero beats Fluent; Tokens after Aero means this app's own
+    overrides still beat Aero. ContentControlThemeFontFamily is the one that would bite: the
+    upstream Aero metrics file set it to a bundled font with no CJK coverage, which would render
+    this app's Chinese item names as tofu. That line is deleted on vendoring AND this ordering keeps
+    Tokens' value on top of it.
+
     RequestedThemeVariant is deliberately NOT pinned here any more. The retro theme was a fixed
     light palette, so the old build had to force Light or the OS could put dark Fluent chrome around
-    a light launcher. Fluent 2 has both variants, so the variant is a user setting
-    (general.appearance) applied at startup by Services/AppTheme.
+    a light launcher. Both the token layer and the vendored Aero layer have both variants, so the
+    variant is a user setting (general.appearance) applied at startup by Services/AppTheme.
   -->
   <Application.Styles>
     <FluentTheme />
+    <StyleInclude Source="avares://TanMenu.Wpf/Themes/Aero/AeroResources.axaml" />
     <StyleInclude Source="avares://TanMenu.Wpf/Themes/Fluent2/Tokens.axaml" />
     <StyleInclude Source="avares://TanMenu.Wpf/Themes/Fluent2/Launcher.axaml" />
   </Application.Styles>

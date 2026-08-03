@@ -8,8 +8,10 @@ using Xunit;
 namespace TanMenu.Core.Tests.Themes;
 
 /// <summary>
-/// Guards the one invariant that keeps light/dark a property of a single file: every colour in the
-/// launcher comes from <c>Themes/Fluent2/Tokens.axaml</c>.
+/// Guards the invariant that keeps light/dark a property of the theme layer rather than of whichever
+/// file happened to need a colour: <c>Launcher.axaml</c> hardcodes no colour at all, and every key it
+/// or <c>MainWindow.axaml</c> names is defined either in <c>Themes/Fluent2/Tokens.axaml</c> or in the
+/// vendored Aero resource layer that <c>Tokens.axaml</c> aliases onto.
 /// </summary>
 /// <remarks>
 /// These are source tests, not runtime tests, and that is deliberate. Both failures they catch are
@@ -27,6 +29,45 @@ public class Fluent2TokenTests
 
     private static string MainWindowXaml =>
         File.ReadAllText(Path.Combine(RepoRoot(), "src", "TanMenu.Wpf", "MainWindow.axaml"));
+
+    /// <summary>
+    /// The vendored Aero resource layer (Round 7, Task 2). From that task on, a key the launcher or
+    /// the window names may legitimately be defined THERE rather than in <c>Tokens.axaml</c> — the
+    /// token layer aliases onto Aero's brushes with <c>&lt;StaticResource&gt;</c> rather than
+    /// re-deriving their values, because Aero's fills are gradients and a token layer of flat
+    /// brushes has no gradient to give.
+    /// </summary>
+    /// <remarks>
+    /// THE DEFINED SET IS WIDENED; THE REFERENCE FILTER IS NOT. It would have been shorter to teach
+    /// <see cref="ReferencedKeys"/> to skip anything starting with "Aero", and it would have been
+    /// wrong: a prefix filter passes a typo'd <c>AeroFroeground</c> as readily as a real key, which
+    /// is the exact class of bug these tests exist to catch. Unioning the real files still catches
+    /// it, at the cost of four more reads.
+    /// </remarks>
+    private static readonly string[] AeroDefinitionFiles =
+    {
+        Path.Combine("Variant", "Light.axaml"),
+        Path.Combine("Variant", "Dark.axaml"),
+        Path.Combine("AVMAP", "Brushes.axaml"),
+        Path.Combine("AVMAP", "Metrics.axaml"),
+    };
+
+    /// <summary>Every key <c>Tokens.axaml</c> defines, unioned with every key the vendored Aero
+    /// layer defines.</summary>
+    private static HashSet<string> AllDefinedKeys()
+    {
+        var aeroDir = Path.Combine(RepoRoot(), "src", "TanMenu.Wpf", "Themes", "Aero");
+        var defined = DefinedKeys(TokensXaml);
+        foreach (var rel in AeroDefinitionFiles)
+        {
+            var path = Path.Combine(aeroDir, rel);
+            Assert.True(File.Exists(path),
+                $"The vendored Aero layer is missing {rel}. This test's defined set was widened to " +
+                "include it; if the file moved, move this list with it rather than dropping the entry.");
+            defined.UnionWith(DefinedKeys(File.ReadAllText(path)));
+        }
+        return defined;
+    }
 
     /// <summary>Walk up from the test assembly until the solution file appears.</summary>
     private static string RepoRoot()
@@ -57,15 +98,15 @@ public class Fluent2TokenTests
     [Fact]
     public void EveryTokenTheLauncherReferences_IsDefinedInTokens()
     {
-        var defined = DefinedKeys(TokensXaml);
+        var defined = AllDefinedKeys();
         var missing = ReferencedKeys(LauncherXaml)
             .Where(k => !defined.Contains(k))
             .OrderBy(k => k, StringComparer.Ordinal)
             .ToList();
 
         Assert.True(missing.Count == 0,
-            "Launcher.axaml references tokens that Tokens.axaml does not define: " +
-            string.Join(", ", missing));
+            "Launcher.axaml references tokens that neither Tokens.axaml nor the vendored Aero layer " +
+            "defines: " + string.Join(", ", missing));
     }
 
     [Fact]
@@ -73,15 +114,15 @@ public class Fluent2TokenTests
     {
         // MainWindow.axaml is the other consumer, and the one where a typo would leave the acrylic
         // backdrop or the window surface unpainted.
-        var defined = DefinedKeys(TokensXaml);
+        var defined = AllDefinedKeys();
         var missing = ReferencedKeys(MainWindowXaml)
             .Where(k => !defined.Contains(k))
             .OrderBy(k => k, StringComparer.Ordinal)
             .ToList();
 
         Assert.True(missing.Count == 0,
-            "MainWindow.axaml references tokens that Tokens.axaml does not define: " +
-            string.Join(", ", missing));
+            "MainWindow.axaml references tokens that neither Tokens.axaml nor the vendored Aero " +
+            "layer defines: " + string.Join(", ", missing));
     }
 
     [Fact]

@@ -126,6 +126,17 @@ $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
 Copy-Item -LiteralPath (Resolve-RepoPath "packaging\portable\README-PORTABLE.txt") `
     -Destination (Join-Path $stageDir "README-PORTABLE.txt") -Force
 
+# MIT obligation for the vendored aero-theme-for-avalonia files under Themes\Aero: the copyright
+# notice and the permission notice must travel with the copies, and a notice that exists only in the
+# source tree does not travel with the binary. The binary is what users get, so the licence ships
+# beside the executable. Fails the release rather than shipping a package without it.
+$aeroLicense = Resolve-RepoPath "src\TanMenu.Wpf\Themes\Aero\LICENSE-aero-theme-for-avalonia.txt"
+if (!(Test-Path -LiteralPath $aeroLicense)) {
+    throw "Missing third-party licence '$aeroLicense'. Themes\Aero vendors MIT-licensed files and the package must carry their notice."
+}
+Copy-Item -LiteralPath $aeroLicense `
+    -Destination (Join-Path $stageDir "THIRD-PARTY-NOTICES.txt") -Force
+
 # --mainExe must stay TanMenu.Wpf.exe and --packId must stay TanMenu: packId names the stable root
 # launcher (<root>\TanMenu.exe) that the taskbar pin and README-PORTABLE.txt point at, and mainExe is
 # what the already-released 0.9.6 Velopack shim will shim to when it applies this update.
