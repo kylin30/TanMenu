@@ -78,7 +78,9 @@ their basis rather than left to drift:
   not paint, and it is the most survivable thing in `Launcher.axaml`. What changes is the container:
   the per-row card fill and hairline die, and the five groups (外观 / 行为 / 文件夹 / 常用工具 / 更新)
   become Aero group boxes, which is what a Windows 7 property page drew around a labelled group. This
-  adds `ControlStyles/HeaderedContentControl.axaml` to the port set (§7.4).
+  adds `ControlStyles/HeaderedContentControl.axaml` to the port set (**§7.9** — Task 4's decision
+  vendors only `TextBox`, `NumericUpDown` and `ButtonSpinner`; the group-box file lands with the
+  category panel in Task 9, which is where the rest of this paragraph's decision is executed).
 - **The accent keeps being published, and gains exactly one new job: the caption glass tint.** Aero's
   user colour was `DwmGetColorizationColor` — a single *frame* colour. That is precisely the role the
   caption tint needs, and it is the only role Aero ever had for a user colour. So
