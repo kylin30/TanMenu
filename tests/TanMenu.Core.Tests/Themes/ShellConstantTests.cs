@@ -131,9 +131,15 @@ public class ShellConstantTests
     public void NoTemplatePartSelector_NamesAPartOutsideTheAllowList()
     {
         // Parts belonging to Avalonia's OWN control templates that this app targets on purpose.
-        // PART_BorderElement is Fluent 12.1's TextBox border (Controls/TextBox.xaml), reached by the
-        // search field's focus suppression and by the hotkey box's four state rules.
-        var allowed = new HashSet<string>(StringComparer.Ordinal) { "PART_BorderElement" };
+        //
+        // THE LIST IS EMPTY, and that is the strongest state it can be in: every /template/ selector
+        // in the tree now names a part declared by a template the tree itself contains. It held one
+        // entry until Round 7 Task 4 — PART_BorderElement, Fluent 12.1's TextBox border
+        // (Controls/TextBox.xaml), which the search field's focus suppression and the hotkey box's
+        // four state rules reached into. Task 4 vendored Aero's TextBox template, whose border is
+        // named BgElement, and re-aimed those rules; nothing targets a foreign name any more. Adding
+        // one back means adding it here, deliberately, which is the point of the guard.
+        var allowed = new HashSet<string>(StringComparer.Ordinal);
 
         var files = Directory.GetFiles(SrcDir, "*.axaml", SearchOption.AllDirectories);
 

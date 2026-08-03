@@ -1,0 +1,167 @@
+<!--
+    Copyright (c) 2026 Splitwirez
+    Licensed under the MIT License. See LICENSE-aero-theme-for-avalonia.txt in the Themes/Aero
+    directory for the full text of the copyright notice and permission notice.
+    Source: https://github.com/Splitwirez/aero-theme-for-avalonia at main = a705b7c0
+            src/AeroAvalonia/ControlStyles/NumericUpDown.axaml
+    Changes from upstream:
+      1. RE-POINTED two {DynamicResource} references that resolve to NOTHING, upstream :12 and :13:
+         HighlightBrush -> AeroTextBoxSelectionBrush and HighlightForegroundBrush ->
+         AeroTextBoxSelectionForegroundBrush. Neither original key is defined anywhere in this
+         theme, in Avalonia.Themes.Fluent 12.1.0 or in 11.0.10 - a pre-existing upstream bug whose
+         effect is silent, because an unresolved DynamicResource simply leaves the property unset.
+         The two replacements are what ControlStyles/TextBox.axaml sets on the very same two
+         properties, so the selection colours of a typed-in number now match the selection colours
+         of every other text box.
+      2. RENAMED four uses of Watermark, which Avalonia 12.1 marks [Obsolete(..., false)] on
+         NumericUpDown as well as on TextBox, to PlaceholderText: upstream :27 (inside a block
+         upstream had already commented out), :37, and both halves of :120.
+    Everything else is byte for byte upstream, line endings included.
+
+    ── Two cross-file references, and why they resolve ───────────────────────────────────────────
+    The template hands its inner TextBox a Theme of AeroNumericUpDownTextBox, declared above it in
+    this file, and that theme takes its ContextFlyout from {StaticResource
+    DefaultTextBoxContextFlyout}, which ControlStyles/TextBox.axaml declares. A StaticResource is
+    resolved against the PARSING dictionary's parent stack, and that stack ends at
+    Application.Current, whose TryGetResource searches Application.Styles - so it reaches across
+    the two merged dictionaries regardless of which of them loads first. This is the same mechanism
+    ControlStyles/CheckBox.axaml already relies on for AeroFadeDuration, written up in
+    Themes/Aero/AeroResources.axaml.
+
+    ── Where it lands ───────────────────────────────────────────────────────────────────────────
+    One instance: Views/Settings/AppearanceCard.axaml's ColCountUpDown, the 每列个数 row's 1-30
+    spinner. It carries no Theme=, so this ControlTheme's {x:Type NumericUpDown} key reaches it.
+    The control it draws itself out of is ButtonSpinner, whose theme is the sibling file.
+
+    This file declares no /template/ selector at all.
+-->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    x:ClassModifier="internal">
+    <ControlTheme x:Key="AeroNumericUpDownTextBox"
+                TargetType="{x:Type TextBox}">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Foreground" Value="{DynamicResource AeroForeground}" />
+        <Setter Property="CaretBrush" Value="{DynamicResource AeroForeground}" />
+        <Setter Property="FontSize" Value="{DynamicResource AeroFontSizeNormal}" />
+        <Setter Property="SelectionBrush" Value="{DynamicResource AeroTextBoxSelectionBrush}" />
+        <Setter Property="SelectionForegroundBrush" Value="{DynamicResource AeroTextBoxSelectionForegroundBrush}" />
+        <Setter Property="CornerRadius" Value="0" />
+        <Setter Property="FocusAdorner" Value="{x:Null}" />
+        <Setter Property="ScrollViewer.IsScrollChainingEnabled" Value="True" />
+        <Setter Property="ContextFlyout" Value="{StaticResource DefaultTextBoxContextFlyout}" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Panel>
+                    <!--
+                    <TextBlock x:Name="PART_FloatingWatermark"
+                            Opacity="0.5"
+                            Foreground="{DynamicResource AeroForeground}"
+                            FontSize="{TemplateBinding FontSize}"
+                            IsVisible="False"
+                            Text="{TemplateBinding PlaceholderText}"
+                            Cursor="{TemplateBinding Cursor}"
+                            DockPanel.Dock="Top" />
+                    -->
+                    <TextBlock x:Name="PART_Watermark"
+                            Background="Transparent"
+                            Margin="0"
+                            Padding="{TemplateBinding Padding}"
+                            Opacity="0.5"
+                            Foreground="{Binding (TextBlock.Foreground), ElementName=PART_TextPresenter, Mode=OneWay}"
+                            Text="{TemplateBinding PlaceholderText}"
+                            TextAlignment="{TemplateBinding TextAlignment}"
+                            TextWrapping="{TemplateBinding TextWrapping}"
+                            IsVisible="{TemplateBinding Text, Converter={x:Static StringConverters.IsNullOrEmpty}}"
+                            HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                            VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                    <TextPresenter x:Name="PART_TextPresenter"
+                                Background="Transparent"
+                                Margin="{TemplateBinding Padding}"
+                                TextBlock.Foreground="{TemplateBinding Foreground}"
+                                Text="{TemplateBinding Text, Mode=TwoWay}"
+                                CaretIndex="{TemplateBinding CaretIndex}"
+                                SelectionStart="{TemplateBinding SelectionStart}"
+                                SelectionEnd="{TemplateBinding SelectionEnd}"
+                                TextAlignment="{TemplateBinding TextAlignment}"
+                                TextWrapping="{TemplateBinding TextWrapping}"
+                                LineHeight="{TemplateBinding LineHeight}"
+                                LetterSpacing="{TemplateBinding LetterSpacing}"
+                                PasswordChar="{TemplateBinding PasswordChar}"
+                                RevealPassword="{TemplateBinding RevealPassword}"
+                                SelectionBrush="{TemplateBinding SelectionBrush}"
+                                SelectionForegroundBrush="{TemplateBinding SelectionForegroundBrush}"
+                                CaretBrush="{TemplateBinding CaretBrush}"
+                                HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                </Panel>
+            </ControlTemplate>
+        </Setter>
+    </ControlTheme>
+    
+    <ControlTheme x:Key="{x:Type NumericUpDown}" TargetType="NumericUpDown">
+        <!--
+        <Setter Property="Foreground" Value="{DynamicResource TextControlForeground}" />
+        <Setter Property="Background" Value="{DynamicResource TextControlBackground}" />
+        <Setter Property="BorderThickness" Value="{DynamicResource TextControlBorderThemeThickness}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource TextControlBorderBrush}" />
+        <Setter Property="MinHeight" Value="{DynamicResource TextControlThemeMinHeight}" />
+        <Setter Property="MinWidth" Value="{DynamicResource TextControlThemeMinWidth}" />
+        <Setter Property="FontSize" Value="{DynamicResource ControlContentThemeFontSize}" />
+        <Setter Property="Padding" Value="{DynamicResource TextControlThemePadding}" />
+        <Setter Property="CornerRadius" Value="{DynamicResource ControlCornerRadius}" />
+        -->
+        <Setter Property="Background" Value="{DynamicResource AeroTextBoxIdleBackground}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AeroTextBoxIdleBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Foreground" Value="{DynamicResource AeroForeground}" />
+        <Setter Property="Padding" Value="6,3" />
+        <Setter Property="FontSize" Value="{DynamicResource AeroFontSizeNormal}" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="CornerRadius" Value="{DynamicResource AeroControlCornerRadius}" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <ButtonSpinner x:Name="PART_Spinner"
+                            Background="{TemplateBinding Background}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            CornerRadius="{TemplateBinding CornerRadius}"
+                            IsTabStop="False"
+                            Padding="0"
+                            
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch"
+                            
+                            HorizontalContentAlignment="Stretch"
+                            VerticalContentAlignment="Stretch"
+                            
+                            AllowSpin="{TemplateBinding AllowSpin}"
+                            ShowButtonSpinner="{TemplateBinding ShowButtonSpinner}"
+                            DataValidationErrors.Errors="{TemplateBinding (DataValidationErrors.Errors)}"
+                            ButtonSpinnerLocation="{TemplateBinding ButtonSpinnerLocation}">
+                    <TextBox x:Name="PART_TextBox"
+                            Theme="{DynamicResource AeroNumericUpDownTextBox}"
+                            Padding="{TemplateBinding Padding}"
+                            
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch"
+                            
+                            HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                            VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                            
+                            Foreground="{TemplateBinding Foreground}"
+                            FontSize="{TemplateBinding FontSize}"
+                            PlaceholderText="{TemplateBinding PlaceholderText}"
+                            IsReadOnly="{TemplateBinding IsReadOnly}"
+                            Text="{TemplateBinding Text}"
+                            TextAlignment="{TemplateBinding TextAlignment}"
+                            AcceptsReturn="False"
+                            TextWrapping="NoWrap" />
+                </ButtonSpinner>
+            </ControlTemplate>
+        </Setter>
+    </ControlTheme>
+</ResourceDictionary>

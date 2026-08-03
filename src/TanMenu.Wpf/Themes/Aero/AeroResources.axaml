@@ -40,8 +40,8 @@
     spent so far: AdjustCornerRadiusConverter is instantiated three times (ControlStyles/Button_*,
     ListBox and ListBoxItem); the three ProgressBar* ones wait for the progress-bar theme.
 
-    ── The control themes, added by Round 7 Task 3 ───────────────────────────────────────────────
-    Seven ControlStyles dictionaries are merged below, VARIANT-INDEPENDENTLY: a control theme holds
+    ── The control themes, added by Round 7 Tasks 3 and 4 ────────────────────────────────────────
+    Ten ControlStyles dictionaries are merged below, VARIANT-INDEPENDENTLY: a control theme holds
     geometry and {DynamicResource} brush references, never a colour, so the same dictionary serves
     both variants and the brushes it names re-resolve when ActualThemeVariant changes. That is
     upstream AVMAP/Controls.axaml's own arrangement.
@@ -64,11 +64,26 @@
       - ScrollViewer, three (AppPage, SettingsPage, ToolsCard) plus the one inside this layer's own
         ListBox template, and every ScrollBar those instantiate.
       - ListBox, both navigation rails in MainWindow.axaml.
+      - TextBox, TWO: AppPage.axaml's SearchBox and BehaviorCard.axaml's HotkeyBox. Both carry a
+        tm- CLASS rather than a Theme=, and a class does not stop a {x:Type} ControlTheme reaching
+        them - it only adds rules on top. Added by Task 4.
+      - NumericUpDown, ONE: AppearanceCard.axaml's ColCountUpDown, the 每列个数 spinner. Task 4.
+      - ButtonSpinner, ONE and it is not in any markup: NumericUpDown's own template builds it.
+        Task 4.
 
     Everything else is untouched BY CONSTRUCTION rather than by luck: the other 25 <Button> elements
     and both <ListBoxItem>s carry an explicit Theme= from Themes/Fluent2/Launcher.axaml, and the app's
     own markup contains no <RepeatButton> and no <ToggleButton> at all - the eight RepeatButtons in
-    the tree are inside this layer's ScrollBar template, which themes them itself.
+    the tree are inside this layer's ScrollBar template, which themes them itself, and two more are
+    inside the ButtonSpinner template, which gives them a theme of its own.
+
+    ── The one thing Task 4 broke on purpose ─────────────────────────────────────────────────────
+    ControlStyles/TextBox.axaml replaces Fluent's TextBox template wholesale, and Aero's names its
+    background border BgElement where Fluent's named it PART_BorderElement. Five rules in
+    Themes/Fluent2/Launcher.axaml reached for the Fluent name and would have gone silently dead;
+    all five were fixed in the same commit as the merge below - one deleted, four re-targeted -
+    and ShellConstantTests.NoTemplatePartSelector_NamesAPartOutsideTheAllowList is what keeps the
+    next occurrence loud. That file's own header is the authority on the change.
 
     StyleTrailMix is a <Styles>, not a dictionary, so it is a StyleInclude rather than a merge. It
     supplies the 125 ms brush cross-fade every Aero template's Border.aeroState2 asks for, and the
@@ -78,19 +93,33 @@
     Application.Styles (decompiled from Avalonia.Markup.Xaml 12.1.0,
     AvaloniaXamlIlRuntimeHelpers.RootServiceProvider.CreateParentStackProvider).
 
-    The remaining ControlStyles merges are TextBox, NumericUpDown and ButtonSpinner, ProgressBar, and
-    HeaderedContentControl; the design schedules them for Tasks 4, 5 and 9 respectively. ComboBox and
-    ComboBoxItem are NOT on that list - §1 point 6 has us author those two rather than vendor them.
+    The remaining ControlStyles merges are ProgressBar and HeaderedContentControl; the design
+    schedules them for Tasks 5 and 9 respectively. ComboBox and ComboBoxItem are NOT on that list -
+    §1 point 6 has us author those two rather than vendor them.
 
-    ── The ten keys here that are not Aero-prefixed ─────────────────────────────────────────────
-    Every key this file merges is Aero-prefixed with exactly ten exceptions, and all ten are wanted:
-    the nine {x:Type X} ControlTheme keys, which is how a ControlTheme auto-applies at all, and
-    ToggleSwitchTopHeaderMargin (ControlStyles/ToggleSwitch.axaml), a FLUENT key name redefined to
-    Fluent 12.1's own value - Thickness 0,0,0,6, identical in both Controls/ToggleSwitch.xaml:19 and
-    the decompiled resource dictionary - so it reaches beyond what we template but cannot change
-    anything. The other three Fluent-named global overrides upstream ships alongside it
-    (ToggleSwitchThemeMinWidth, ToggleSwitchPreContentMargin, ToggleSwitchPostContentMargin) were
-    dropped on vendoring; that file's header records why.
+    ── The keys here that are not Aero-prefixed ─────────────────────────────────────────────────
+    54 keys are merged below (comments stripped, Metrics plus the ten control-style dictionaries).
+    All but 29 are Aero-prefixed, and all 29 are wanted:
+
+      - the TWELVE {x:Type X} ControlTheme keys - Button, RepeatButton, ToggleButton (the Button
+        file keys three), ButtonSpinner, CheckBox, ListBox, ListBoxItem, NumericUpDown, ScrollBar,
+        ScrollViewer, TextBox, ToggleSwitch. A {x:Type} key is how a ControlTheme auto-applies at
+        all, so these are the reach listed above;
+      - ELEVEN inside ControlStyles/ButtonSpinner.axaml: two spinner arrow geometries, the
+        ButtonSpinnerRightThickness margin converter and eight Spinner*Filter_Left/Right corner and
+        thickness converters. All eleven are consumed by that one file's own template and by
+        nothing else in this app - Fluent's ButtonSpinner template, the only other consumer of the
+        first three names, is the template we just replaced;
+      - ToggleSwitchTopHeaderMargin (ControlStyles/ToggleSwitch.axaml), a FLUENT key name redefined
+        to Fluent 12.1's own value - Thickness 0,0,0,6, identical in both Controls/ToggleSwitch.xaml:19
+        and the decompiled resource dictionary - so it reaches beyond what we template but cannot
+        change anything. The other three Fluent-named global overrides upstream ships alongside it
+        (ToggleSwitchThemeMinWidth, ToggleSwitchPreContentMargin, ToggleSwitchPostContentMargin) were
+        dropped on vendoring; that file's header records why;
+      - FIVE Fluent key names ControlStyles/TextBox.axaml redefines - TextBoxTopHeaderMargin,
+        TextBoxClearButtonData, PasswordBoxRevealButtonData, PasswordBoxHideButtonData and
+        DefaultTextBoxContextFlyout. All five are deliberately kept and only the last has any
+        consequence; that file's header states it in full.
   -->
 
   <Styles.Resources>
@@ -128,11 +157,14 @@
       <ResourceDictionary.MergedDictionaries>
         <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/AVMAP/Metrics.axaml" />
         <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/Button_RepeatButton_ToggleButton.axaml" />
+        <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/ButtonSpinner.axaml" />
         <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/CheckBox.axaml" />
         <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/ListBox.axaml" />
         <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/ListBoxItem.axaml" />
+        <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/NumericUpDown.axaml" />
         <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/ScrollBar.axaml" />
         <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/ScrollViewer.axaml" />
+        <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/TextBox.axaml" />
         <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/ToggleSwitch.axaml" />
       </ResourceDictionary.MergedDictionaries>
 

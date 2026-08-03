@@ -437,9 +437,18 @@
 
   <!-- The search field is a plain TextBox stripped to text only; the field's own shape, fill and
        outline are drawn by the Border it sits in (Border.tm-searchfield). Background and
-       BorderThickness are set as LOCAL values on the element in Views/AppPage.axaml — local values
-       outrank style setters, which is what keeps Avalonia's own :pointerover / :focus TextBox
-       styling from repainting a field we already painted. -->
+       BorderThickness are set as LOCAL values on the element in Views/AppPage.axaml, and a local
+       value outranks a style setter for the same property on the same element.
+
+       WHAT THAT DOES AND DOES NOT BUY, corrected in Round 7 Task 4: it settles the OUTER TextBox's
+       own Background and BorderThickness and nothing else. A theme's state rules reach a NAMED PART
+       inside the control template, which carries no local value of its own, so they are not blocked
+       by anything set out here. Under Fluent that part was Border#PART_BorderElement; under the
+       vendored Aero theme (Themes/Aero/ControlStyles/TextBox.axaml) it is Border#BgElement, whose
+       Background is a TemplateBinding onto the outer Background and therefore DOES start out as the
+       local Transparent — at rest. The two rules that undo it are near the tm-search style below,
+       beside the write-up of what Aero actually repaints and what that measured. -->
+
   <Style Selector="Border.tm-searchfield">
     <Setter Property="CornerRadius" Value="{DynamicResource RadiusControl}" />
     <Setter Property="BorderThickness" Value="1" />
@@ -494,32 +503,62 @@
   </Style>
   <!-- There is deliberately no ":disabled" companion to the rule above either. It used to repaint
        Foreground and PlaceholderForeground to TextDisabledBrush, because the Foreground set above at
-       Style precedence outranks the Fluent TextBox ControlTheme's own built-in :disabled foreground
-       and so left the text at full contrast. A page that cannot be searched does not contain this
-       field at all any more (Round 6 item 1's decision, made structural by Round 7 Task 1), so nothing
-       in this app puts this TextBox into :disabled. Avalonia's own Fluent :disabled styling for TextBox — which also repaints
-       Border#PART_BorderElement with a grey slab, and which this file never overrode — goes with it. -->
-  <!-- Round 3, Task 1 (user item 2): the actual source of the old "heavy accent rectangle" was never
-       Border.tm-searchfield.focused above — it was Avalonia's OWN default TextBox ControlTheme, whose
-       "^:focus /template/ Border#PART_BorderElement" style (Avalonia.Themes.Fluent 12.1.0's
-       Controls/TextBox.xaml, the SAME pinned version this app ships) repaints THAT inner template
-       part's Background/BorderBrush/BorderThickness to accent on focus. SearchBox's own local
-       Background="Transparent" BorderThickness="0" (Views/AppPage.axaml) cannot block this: those locals
-       win only for the OUTER TextBox's own properties, while the built-in style targets a DIFFERENT
-       object — the named part living inside TextBox's control template — which has no competing local
-       value of its own. The fix uses the exact precedence this file relies on wherever it reaches into
-       a stock template (TextBox.tm-keycap's own PART_BorderElement rules below are the other case): a
-       Style declared here outranks a ControlTheme's own template setter, so re-targeting the SAME part
-       name, at the SAME pseudo-class, forces it back to invisible,
-       leaving Border.tm-searchfield.focused (this field's own fill/underline) as the ONLY focus signal
-       that reaches the screen. Confirmed by pixel-sampling a screenshot before this rule existed: a
-       solid accent-coloured band sat exactly over PART_BorderElement's own measured bounds (inset from
-       SearchField's outer edges by the icon glyph and Border.tm-searchfield's own Padding), not over
-       the whole field. -->
-  <Style Selector="TextBox.tm-search:focus /template/ Border#PART_BorderElement">
+       Style precedence outranks a TextBox ControlTheme's own built-in :disabled foreground and so
+       left the text at full contrast. A page that cannot be searched does not contain this field at
+       all any more (Round 6 item 1's decision, made structural by Round 7 Task 1), so nothing in
+       this app puts this TextBox into :disabled and the theme's own :disabled rules — Aero's, since
+       Round 7 Task 4 — have no producer to fire on. -->
+
+  <!-- ══ Suppressing the theme's own fill, at the two states that repaint it ══════════════════
+       This field's fill is Border.tm-searchfield's, above. The TextBox inside it is meant to
+       contribute nothing but glyphs, which is why Views/AppPage.axaml gives it a LOCAL
+       Background="Transparent" and BorderThickness="0".
+
+       That local pair is enough at rest and only at rest. Aero's TextBox template
+       (Themes/Aero/ControlStyles/TextBox.axaml) binds Border#BgElement's Background to the outer
+       Background — so at rest the part inherits the local Transparent — and then declares
+       :pointerover and :focus rules that assign that same part an OPAQUE fill directly. A local
+       value on the outer control cannot reach a named part inside the template, and a style setter
+       outranks the TemplateBinding that carried the local value there, so both states repaint.
+
+       Round 3 Task 1 wrote the :focus one of these two against Fluent's part name,
+       Border#PART_BorderElement, to kill an accent band. Round 7 Task 4 replaced Fluent's TextBox
+       template wholesale, that part name stopped existing, and it had to be re-aimed at what Aero
+       actually does — and gained a :pointerover twin, because Aero repaints on hover too. The design
+       document expected to DELETE them outright on the grounds that Aero signals focus with a
+       BorderBrush change rather than a band. Two things it did not account for, both checked here:
+       Aero's :focus and :pointerover rules change the BACKGROUND as well as the border brush, and
+       the border-brush half of the signal cannot draw at all on this field, because neither Aero
+       rule sets BorderThickness and the local 0 therefore still holds. Deleting them would leave
+       only the background half — an opaque rectangle covering the TextBox's own rect but not the
+       icon or Border.tm-searchfield's 10 DIP padding, i.e. a lighter block inset inside the field.
+
+       Only Background is put back, and only at the two states that take it: BorderBrush is left to
+       Aero, since at BorderThickness 0 it paints nothing, and adding a setter for it would be a rule
+       with no pixels behind it. Border.tm-searchfield.focused stays the ONLY focus signal that
+       reaches the screen, which is the conclusion Round 3 Task 1 reached and this keeps.
+
+       MEASURED, this build against one with these two rules deleted. PrintWindow flag 2, 150 %
+       scale, the field focused (the app focuses it on summon, so this is its everyday state). Three
+       samples on one row through the middle of the field: one in its own 10 DIP left padding, two
+       inside the TextBox's rect.
+
+         DARK, rules deleted : padding (49,49,49)   interior (93,93,93) (93,93,93)
+         DARK, rules present : padding (49,49,49)   interior (49,49,49) (49,49,49)
+         LIGHT, either way   : padding (255,255,255) interior (255,255,255) (255,255,255)
+
+       (93,93,93) is AeroTextBoxFocusBackground's Dark value exactly — an opaque block covering the
+       TextBox's rect and stopping at the padding, which is what "a lighter rectangle inset inside
+       the field" looks like when you sample it. LIGHT HIDES IT COMPLETELY: that token's Light value
+       is white and the field already renders white, so a Light-only check would have passed a build
+       that is visibly wrong in Dark. The accent underline reads (0,103,192) Light / (76,194,255)
+       Dark across 3 physical rows = 2 DIP, unchanged by any of this. -->
+
+  <Style Selector="TextBox.tm-search:pointerover /template/ Border#BgElement">
     <Setter Property="Background" Value="Transparent" />
-    <Setter Property="BorderBrush" Value="Transparent" />
-    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+  <Style Selector="TextBox.tm-search:focus /template/ Border#BgElement">
+    <Setter Property="Background" Value="Transparent" />
   </Style>
 
   <!-- ══ Tile icon size ═══════════════════════════════════════════════════════════════════════
@@ -1215,27 +1254,57 @@
   </Style>
 
   <!-- The hotkey capture box (BehaviorCard's HotkeyBox), and the reason this class exists at all: it was
-       the ONE control on the 设置 page carrying no Classes and no Theme, so it fell through to stock
-       Fluent in every state. The visible consequence was its DISABLED fill. Fluent's TextBox
-       ControlTheme repaints Border#PART_BorderElement's Background to TextControlBackgroundDisabled ->
-       SystemControlBackgroundBaseLowBrush -> SystemBaseLowColor, which is 20% black; over the card that
-       measures (201,201,201), against the (253,253,253) every disabled TmButton on the same page
-       measures. Two disabled vocabularies 50 RGB levels apart on one page — the heavy grey box the user
-       screenshotted.
+       the ONE control on the 设置 page carrying no Classes and no Theme, so it fell through to the stock
+       text-box theme in every state. The visible consequence was its DISABLED fill, which came out a
+       heavy grey box next to buttons that grey out gently — two disabled vocabularies on one page. The
+       four rules below exist to give it the page's own vocabulary instead, in all four states.
 
        The box IS legitimately disabled whenever 启用全局热键 is off (BehaviorCard's
        UpdateHotkeyEnabledState), and that logic is correct and untouched. Only its paint changes.
 
        Targeting the named template part is what reaches the screen: an app-level Style outranks a
        ControlTheme's own rule for the same part at the same pseudo-class — the precedence written up in
-       full at TextBox.tm-search:focus above, which beats Fluent's built-in focus repaint the same way.
-       The :disabled recipe is deliberately TmButton's own (TextDisabledBrush plus Opacity 0.6 over the
-       resting surface), so the page has one disabled vocabulary rather than two.
+       full at TextBox.tm-search above, which the search field relies on the same way. The :disabled
+       recipe is deliberately TmButton's own (TextDisabledBrush plus Opacity 0.6 over the resting
+       surface), so the page has one disabled vocabulary rather than two.
 
        The focus state is not decoration here. "Click the box, then press the combination" IS the
        interaction (the tunneling KeyDown handler in BehaviorCard's ctor), so the box has to say when it
-       is listening. One accent hairline, not Fluent's filled accent band — the same conclusion Round 3,
-       Task 1 reached for the search field. -->
+       is listening. One accent hairline, not a filled accent band — the same conclusion Round 3, Task 1
+       reached for the search field.
+
+       ── ROUND 7 TASK 4 RE-TARGETED ALL FOUR, AND RE-MEASURED THE MATCH ────────────────────────────
+       The part name was Fluent's Border#PART_BorderElement until Task 4 vendored Aero's TextBox
+       template (Themes/Aero/ControlStyles/TextBox.axaml), whose border is named BgElement. Left on the
+       old name all four rules would have matched nothing, silently, and the box would have reverted to
+       Aero's stock paint in every state — which is exactly what the 每列个数 NumericUpDown in the 外观
+       group DOES show, on the same captures, and that is what makes this measurable rather than
+       assumed.
+
+       MEASURED on the live 设置 page, PrintWindow flag 2 at 150 % scale, both variants. The states are
+       driven with no input at all: enabled/disabled through 启用全局热键's own toggle, focus through
+       UI Automation SetFocus. Sampled at the box's left border column, one column in, and the centre
+       of its fill; the comparison row is the four TmButtons that are genuinely disabled on the same
+       page in a portable sandbox (ChangeDataBtn, ResetDataBtn, PinTaskbarBtn, CheckUpdateBtn).
+
+                            LIGHT  border / border+1 / fill      DARK  border / border+1 / fill
+         box enabled           (168,168,168) (218,218,218) (232,232,232)   (35,35,35) (47,47,47) (31,31,31)
+         TmButton enabled      (168,168,168) (218,218,218) (232,232,232)   (35,35,35) (47,47,47) (31,31,31)
+         box focused           (0,103,192)   (0,103,192)   (240,240,240)   (76,194,255) (76,194,255) (34,34,34)
+         box DISABLED          (173,173,173) (204,204,204) (211,211,211)   (27,27,27) (34,34,34) (25,25,25)
+         all four TmButtons    (173,173,173) (204,204,204) (211,211,211)   (27,27,27) (34,34,34) (25,25,25)
+
+       The disabled rows are IDENTICAL, in both variants — the one-vocabulary decision survives the
+       theme change exactly. The enabled rows are identical too, which is the proof the unconditional
+       rule is live: Aero's own idle fill is (249,249,249) Light / (87,87,87) Dark, and that is what the
+       NumericUpDown measures on the same captures. The focus rows are our accent, flat; Aero's focus
+       border is a two-stop gradient that reads nothing like it.
+
+       ONE THING THESE RULES DO NOT COVER, stated rather than left to be found: :pointerover sets only
+       Background, so the BorderBrush on hover is still the theme's — Aero's blue hover gradient now,
+       Fluent's grey before. This machine has no mouse, so that state could not be captured, and the
+       gap is the same one that existed before Task 4 rather than something it introduced. -->
+
   <Style Selector="TextBox.tm-keycap">
     <Setter Property="Width" Value="160" />
     <Setter Property="MinHeight" Value="32" />
@@ -1256,16 +1325,16 @@
     <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
   </Style>
-  <Style Selector="TextBox.tm-keycap /template/ Border#PART_BorderElement">
+  <Style Selector="TextBox.tm-keycap /template/ Border#BgElement">
     <Setter Property="Background" Value="{DynamicResource SurfaceLayerBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource StrokeControlBrush}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="{DynamicResource RadiusControl}" />
   </Style>
-  <Style Selector="TextBox.tm-keycap:pointerover /template/ Border#PART_BorderElement">
+  <Style Selector="TextBox.tm-keycap:pointerover /template/ Border#BgElement">
     <Setter Property="Background" Value="{DynamicResource SurfaceLayerActiveBrush}" />
   </Style>
-  <Style Selector="TextBox.tm-keycap:focus /template/ Border#PART_BorderElement">
+  <Style Selector="TextBox.tm-keycap:focus /template/ Border#BgElement">
     <Setter Property="Background" Value="{DynamicResource SurfaceLayerActiveBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource AccentDefaultBrush}" />
   </Style>
@@ -1273,7 +1342,7 @@
     <Setter Property="Foreground" Value="{DynamicResource TextDisabledBrush}" />
     <Setter Property="Opacity" Value="0.6" />
   </Style>
-  <Style Selector="TextBox.tm-keycap:disabled /template/ Border#PART_BorderElement">
+  <Style Selector="TextBox.tm-keycap:disabled /template/ Border#BgElement">
     <Setter Property="Background" Value="{DynamicResource SurfaceLayerBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource StrokeControlBrush}" />
   </Style>

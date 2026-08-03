@@ -5,28 +5,28 @@
   <!--
     Four style layers, in this order:
 
-      1. FluentTheme        — whatever layer 2 has NOT templated, which since Round 7 Task 3 means:
-                              the three ComboBoxes and the NumericUpDown on 外观, the search box and
-                              the hotkey box, the update ProgressBar, MessageBoxWindow's own Window
-                              chrome (MainWindow's caption is hand-drawn since Round 7 Task 1 and is
-                              therefore NOT Fluent's any more), tooltips, IME, and the app-wide
-                              AdornerLayer focus adorner Control.OnGotFocus falls back to when a
-                              template declares no FocusAdorner of its own. Checkboxes, scroll bars,
-                              toggle switches, lists and buttons are NO LONGER on this list — layer 2
-                              took them. Avalonia's own theme is Fluent 1 vocabulary, which layers 2
-                              and 3 re-proportion.
+      1. FluentTheme        — whatever layer 2 has NOT templated, which since Round 7 Task 4 means:
+                              the three ComboBoxes on 外观, the update ProgressBar, the MenuFlyout
+                              presenter every text box's context menu is drawn in, MessageBoxWindow's
+                              own Window chrome (MainWindow's caption is hand-drawn since Round 7
+                              Task 1 and is therefore NOT Fluent's any more), tooltips, IME, and the
+                              app-wide AdornerLayer focus adorner Control.OnGotFocus falls back to
+                              when a template declares no FocusAdorner of its own. Checkboxes, scroll
+                              bars, toggle switches, lists and buttons left this list in Task 3; the
+                              two text boxes, the 每列个数 NumericUpDown and the ButtonSpinner inside
+                              it left it in Task 4. Avalonia's own theme is Fluent 1 vocabulary, which
+                              layers 2 and 3 re-proportion.
       2. Aero/AeroResources — the vendored Windows 7 Aero layer. Task 2 put in the colours: 168
                               <Color> keys per variant and the 110-key brush dictionary built from
                               them, plus the metrics, referenced by nothing, so that a mistake in it
                               would surface as a build error rather than as a silently odd-looking
-                              app. Task 3 spent them: seven control-theme dictionaries are merged in
-                              as well now, plus one StyleInclude for the AVMAP style sheet. Its keys
-                              are Aero-prefixed with exactly ten exceptions — the nine {x:Type X}
-                              ControlTheme keys (Button, RepeatButton, ToggleButton, CheckBox,
-                              ToggleSwitch, ScrollViewer, ScrollBar, ListBox, ListBoxItem), which is
-                              how a ControlTheme auto-applies at all, and one Fluent key redefined to
-                              Fluent's own value. That file is the authority on its own contents, on
-                              exactly which controls those nine keys reach, and on why it sits at
+                              app. Task 3 spent them and Task 4 added three more files: ten
+                              control-theme dictionaries are merged in now, plus one StyleInclude for
+                              the AVMAP style sheet. 54 keys, of which 29 are not Aero-prefixed —
+                              twelve {x:Type X} ControlTheme keys, which is how a ControlTheme
+                              auto-applies at all, eleven spinner-geometry converters, and six Fluent
+                              key names redefined. That file is the authority on its own contents, on
+                              exactly which controls those twelve keys reach, and on why it sits at
                               this position in the list.
       3. Fluent2/Tokens     — TanMenu's design tokens, Light + Dark, plus the Aero caption brushes
                               MainWindow's replaced WindowDrawnDecorations template reads. Also

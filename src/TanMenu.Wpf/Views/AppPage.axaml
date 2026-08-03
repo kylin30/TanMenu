@@ -66,13 +66,16 @@
                 <TextBlock DockPanel.Dock="Left" Classes="tm-icon subtle small"
                            Text="&#xE721;" Margin="0,0,8,0" />
                 <!-- Background and BorderThickness are LOCAL values on purpose: a local value outranks
-                     a style setter for the SAME property on the SAME element, which is what stops
-                     Avalonia's own :pointerover TextBox styling from repainting a field the Border
-                     already paints. It does NOT also block the built-in ":focus" styling — that one
-                     targets Border#PART_BorderElement, a DIFFERENT element living inside TextBox's own
-                     control template, which carries no local value of its own regardless of what is set
-                     here. See Launcher.axaml's "TextBox.tm-search:focus /template/
-                     Border#PART_BorderElement" rule for what actually suppresses it, and why. -->
+                     a style setter for the SAME property on the SAME element, so the TextBox itself
+                     paints nothing over the fill Border.tm-searchfield already draws.
+
+                     What that does NOT block is a theme rule aimed at a NAMED PART inside the TextBox
+                     control template — a different element, with no local value of its own, whatever
+                     is set here. Under the vendored Aero theme that part is Border#BgElement and the
+                     rules that reach it are :pointerover and :focus. See Launcher.axaml's two
+                     "TextBox.tm-search…/template/ Border#BgElement" rules for what suppresses them and
+                     why the BorderBrush half needs no rule. (Before Round 7 Task 4 the part was
+                     Fluent's Border#PART_BorderElement and the rule was a single :focus one.) -->
                 <TextBox x:Name="SearchBox"
                          Classes="tm-search"
                          AutomationProperties.Name="{Binding SearchPlaceholderText}"
