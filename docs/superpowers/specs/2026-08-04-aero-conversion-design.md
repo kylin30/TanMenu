@@ -200,6 +200,15 @@ and the verification that reads them.
 
 Ground truth today: **141 `[Fact]`/`[Theory]` attributes** across `tests/`.
 
+> **This ledger counts ATTRIBUTES; `dotnet test` reports CASES, and the two numbers are not the same.**
+> A `[Theory]` expands to one case per `[InlineData]`, so the runner's total is always the larger.
+> Measured with `git grep -E '^\s*\[(Fact|Theory)' <rev> -- tests/`: `e6d031b` = 141 (this census),
+> `33a758f` = 145 (Task 1's four), `eb46249` = 147 (Task 2's two), `6e60d03` = 147 — the projected
+> final count, met exactly. At `6e60d03` those 147 attributes are the **194** cases the runner
+> reports. Reconcile a task's result against this table, not against the runner's headline number;
+> Round 7 Task 3's report mistook the 147/194 gap for a stale census and dismissed the ledger, which
+> is the one place a silently dropped test would show up.
+
 **Survive untouched (137).** `ConfigServiceTests` 23, `MenuModelsTests` 16, `MenuLayoutTests` 10,
 `JsonContractTests` 8, `AppLanguageTests` 6, `ShellLinkTests` 6, `SoundServiceTests` 5,
 `Win32IconExtractorTests` 5, `AppConfigTests` 4, `LaunchServiceTests` 4, `PortableRuntimeTests` 4,

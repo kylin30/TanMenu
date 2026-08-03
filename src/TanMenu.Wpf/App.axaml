@@ -5,15 +5,28 @@
   <!--
     Four style layers, in this order:
 
-      1. FluentTheme        — the standard control set (settings window, message box): tabs,
-                              dropdowns, checkboxes, text boxes, scrollbars, focus, IME. Avalonia's
-                              own theme is Fluent 1 vocabulary, which layers 2 and 3 re-proportion.
-      2. Aero/AeroResources — the vendored Windows 7 Aero colour layer: 168 <Color> keys per variant
-                              and the 110 brushes built from them, plus the metrics. Every key in it
-                              is Aero-prefixed, and as of Round 7 Task 2 NOTHING references any of
-                              them — it is here so that the next task's first reference is a build
-                              error if the layer is wrong, rather than a silently odd-looking app.
-                              That file is the authority on its own contents and on why it sits at
+      1. FluentTheme        — whatever layer 2 has NOT templated, which since Round 7 Task 3 means:
+                              the three ComboBoxes and the NumericUpDown on 外观, the search box and
+                              the hotkey box, the update ProgressBar, MessageBoxWindow's own Window
+                              chrome (MainWindow's caption is hand-drawn since Round 7 Task 1 and is
+                              therefore NOT Fluent's any more), tooltips, IME, and the app-wide
+                              AdornerLayer focus adorner Control.OnGotFocus falls back to when a
+                              template declares no FocusAdorner of its own. Checkboxes, scroll bars,
+                              toggle switches, lists and buttons are NO LONGER on this list — layer 2
+                              took them. Avalonia's own theme is Fluent 1 vocabulary, which layers 2
+                              and 3 re-proportion.
+      2. Aero/AeroResources — the vendored Windows 7 Aero layer. Task 2 put in the colours: 168
+                              <Color> keys per variant and the 110-key brush dictionary built from
+                              them, plus the metrics, referenced by nothing, so that a mistake in it
+                              would surface as a build error rather than as a silently odd-looking
+                              app. Task 3 spent them: seven control-theme dictionaries are merged in
+                              as well now, plus one StyleInclude for the AVMAP style sheet. Its keys
+                              are Aero-prefixed with exactly ten exceptions — the nine {x:Type X}
+                              ControlTheme keys (Button, RepeatButton, ToggleButton, CheckBox,
+                              ToggleSwitch, ScrollViewer, ScrollBar, ListBox, ListBoxItem), which is
+                              how a ControlTheme auto-applies at all, and one Fluent key redefined to
+                              Fluent's own value. That file is the authority on its own contents, on
+                              exactly which controls those nine keys reach, and on why it sits at
                               this position in the list.
       3. Fluent2/Tokens     — TanMenu's design tokens, Light + Dark, plus the Aero caption brushes
                               MainWindow's replaced WindowDrawnDecorations template reads. Also
@@ -25,8 +38,10 @@
                               searched last-first — Tokens.axaml is the authority on it and carries
                               the measurements; do not re-derive it here.
       4. Fluent2/Launcher   — the launcher's own dialect. Every rule is an x:Key'd ControlTheme or a
-                              .tm-* class selector, so it is opt-in and cannot leak into the
-                              settings window or the message box.
+                              .tm-* class selector, so it is opt-in: the shell's own pages ask for it
+                              by class, and the message box, which asks for nothing, cannot be
+                              reached by it. (There is no separate settings WINDOW to keep it out of
+                              — 设置 is a page inside MainWindow and does carry tm- classes.)
 
     THE ORDER OF 2 AND 3 IS THE POINT, not incidental. Application.Styles is searched last-first
     (Avalonia.Styling.Styles.TryGetResource counts DOWN from Count-1), so a key defined in a LATER

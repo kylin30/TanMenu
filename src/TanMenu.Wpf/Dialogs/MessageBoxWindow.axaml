@@ -9,11 +9,27 @@
         Background="{DynamicResource SurfaceBaseBrush}">
 
   <!--
-    Deliberately styled by the DEFAULT Fluent theme, not by Themes/Fluent2/Launcher.axaml, which is
-    the launcher's identity. An alert is a platform surface and should look like one; the launcher's
-    acrylic flyout chrome around a two-line question would read as decoration. Nothing here carries a
-    tm- class, so Launcher.axaml cannot reach it — and it still picks up Fluent 2's radius and UI font
+    Deliberately styled by the app-wide DEFAULT control set, not by Themes/Fluent2/Launcher.axaml,
+    which is the launcher's identity. An alert is a platform surface and should look like one; the
+    launcher's acrylic flyout chrome around a two-line question would read as decoration. Nothing
+    here carries a tm- class, so Launcher.axaml cannot reach it, and it still picks up the UI font
     from Tokens.axaml like every other standard control.
+
+    WHICH theme "the default set" means changed under this file in Round 7, Task 3; the rule above
+    did not. Themes/Aero/AeroResources.axaml now publishes a ControlTheme keyed {x:Type Button}, and
+    the buttons the code-behind builds set no Theme, so they resolve to it instead of to FluentTheme's
+    — Application.Styles is searched last-first and Aero is listed after FluentTheme. Measured on the
+    恢复 confirm box at 150 % scale, before = a build of eb46249 driven to the same dialog:
+
+        each button   84 x 33.3 DIP Fluent pill  →  84 x 22 DIP Aero double border + gradient
+                      (the code-behind's MinWidth=84 governs the width in both; only height moved)
+        this window   170.7 DIP tall             →  159.3 DIP tall
+        corner radius Tokens' ControlCornerRadius 4 → Aero's own 3 (outer) / 2 (inner)
+
+    That is the wanted answer rather than a leak: a Windows 7 message box drew exactly this button,
+    so no Theme= is pinned here to hold the Fluent one back. What this file does NOT get is the
+    launcher's hand-drawn Aero caption (Round 7 Task 1 replaced MainWindow's alone) — a system caption
+    is right for a platform surface.
 
     Buttons are created in code-behind: their count, order, labels (localized) and default/cancel
     roles all depend on the MessageBoxButtons value.

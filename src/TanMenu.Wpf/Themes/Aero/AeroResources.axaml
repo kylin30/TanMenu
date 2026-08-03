@@ -9,8 +9,9 @@
     over every vendored file under Themes/Aero/.
 
     ── What it is for ───────────────────────────────────────────────────────────────────────────
-    The vendored colour layer is three files: 168 <Color> keys per variant, and 110 brushes whose
-    every colour is a {DynamicResource} onto those names. The brush file is therefore
+    The vendored colour layer is three files: 168 <Color> keys per variant, and 110 keys built from
+    those names - 107 brushes plus three shared GradientStops collections - every colour in which is
+    a {DynamicResource} onto a variant key rather than a literal. The brush file is therefore
     VARIANT-INDEPENDENT and the SAME file is merged into BOTH ThemeDictionaries, which is upstream
     AeroTheme.axaml's own arrangement, not an adaptation of it.
 
@@ -31,10 +32,13 @@
     coverage — and AVMAP/Metrics.axaml has that key deleted as well, so the guarantee does not rest
     on ordering alone.
 
-    ── What is deliberately absent ──────────────────────────────────────────────────────────────
-    No control theme, no style, no converter is referenced from here yet. Round 7 Task 2 vendors the
-    resource layer and wires it to NOTHING, so that a mistake in it surfaces as a build error or as
-    a pixel difference against Task 1's captures, rather than as a silently wrong-looking app.
+    ── How this file arrived, in two steps ──────────────────────────────────────────────────────
+    Round 7 Task 2 vendored the resource layer above and wired it to NOTHING - no control theme, no
+    style, no converter was referenced from here - so that a mistake in it would surface as a build
+    error or as a pixel difference against Task 1's captures rather than as a silently wrong-looking
+    app. Task 3 is what spent it, below. One of the four vendored converters under Converters/ is
+    spent so far: AdjustCornerRadiusConverter is instantiated three times (ControlStyles/Button_*,
+    ListBox and ListBoxItem); the three ProgressBar* ones wait for the progress-bar theme.
 
     ── The control themes, added by Round 7 Task 3 ───────────────────────────────────────────────
     Seven ControlStyles dictionaries are merged below, VARIANT-INDEPENDENTLY: a control theme holds
@@ -43,11 +47,28 @@
     upstream AVMAP/Controls.axaml's own arrangement.
 
     Each is keyed {x:Type X} and therefore auto-applies to every X that does not set Theme= itself.
-    In this tree that is: the one Button with no Theme= (AppPage.axaml's tm-update banner), the five
-    ToggleSwitches, the CheckBoxes ToolsCard.axaml.cs constructs per configured tool, the three
-    ScrollViewers, every ScrollBar inside them, and both navigation ListBoxes. Every other Button
-    and both ListBoxItems carry an explicit Theme= from Themes/Fluent2/Launcher.axaml and are
-    untouched by construction, not by luck.
+    Counted against the tree - MARKUP AND CODE-BEHIND BOTH, because a control built in code has no
+    Theme= to grep for - that reach is:
+
+      - Button, TWO sites. AppPage.axaml's tm-update banner is the only one of the 26 <Button>
+        elements in .axaml outside this folder with no Theme=; the other is
+        Dialogs/MessageBoxWindow.axaml.cs, which builds the message box's one-to-three buttons in
+        code and sets no Theme either. The first count of this file named only the banner and was
+        wrong - the same class of miss the design had already flagged for CheckBox - so the message
+        box was then driven to a real dialog and measured rather than assumed. Its buttons went from
+        Fluent's 84 x 33.3 DIP pill to Aero's 84 x 22 DIP double border, and the alert window from
+        170.7 to 159.3 DIP tall. MessageBoxWindow.axaml's own remark carries that measurement and
+        the reason the change is wanted rather than tolerated.
+      - ToggleSwitch, five: four in BehaviorCard.axaml and one in ToolsCard.axaml, none with Theme=.
+      - CheckBox, none in markup: the ones ToolsCard.axaml.cs constructs per configured tool.
+      - ScrollViewer, three (AppPage, SettingsPage, ToolsCard) plus the one inside this layer's own
+        ListBox template, and every ScrollBar those instantiate.
+      - ListBox, both navigation rails in MainWindow.axaml.
+
+    Everything else is untouched BY CONSTRUCTION rather than by luck: the other 25 <Button> elements
+    and both <ListBoxItem>s carry an explicit Theme= from Themes/Fluent2/Launcher.axaml, and the app's
+    own markup contains no <RepeatButton> and no <ToggleButton> at all - the eight RepeatButtons in
+    the tree are inside this layer's ScrollBar template, which themes them itself.
 
     StyleTrailMix is a <Styles>, not a dictionary, so it is a StyleInclude rather than a merge. It
     supplies the 125 ms brush cross-fade every Aero template's Border.aeroState2 asks for, and the
@@ -57,8 +78,19 @@
     Application.Styles (decompiled from Avalonia.Markup.Xaml 12.1.0,
     AvaloniaXamlIlRuntimeHelpers.RootServiceProvider.CreateParentStackProvider).
 
-    The remaining ControlStyles merges - TextBox, NumericUpDown, ButtonSpinner, ProgressBar,
-    HeaderedContentControl - arrive in Tasks 4, 5 and 7.
+    The remaining ControlStyles merges are TextBox, NumericUpDown and ButtonSpinner, ProgressBar, and
+    HeaderedContentControl; the design schedules them for Tasks 4, 5 and 9 respectively. ComboBox and
+    ComboBoxItem are NOT on that list - §1 point 6 has us author those two rather than vendor them.
+
+    ── The ten keys here that are not Aero-prefixed ─────────────────────────────────────────────
+    Every key this file merges is Aero-prefixed with exactly ten exceptions, and all ten are wanted:
+    the nine {x:Type X} ControlTheme keys, which is how a ControlTheme auto-applies at all, and
+    ToggleSwitchTopHeaderMargin (ControlStyles/ToggleSwitch.axaml), a FLUENT key name redefined to
+    Fluent 12.1's own value - Thickness 0,0,0,6, identical in both Controls/ToggleSwitch.xaml:19 and
+    the decompiled resource dictionary - so it reaches beyond what we template but cannot change
+    anything. The other three Fluent-named global overrides upstream ships alongside it
+    (ToggleSwitchThemeMinWidth, ToggleSwitchPreContentMargin, ToggleSwitchPostContentMargin) were
+    dropped on vendoring; that file's header records why.
   -->
 
   <Styles.Resources>

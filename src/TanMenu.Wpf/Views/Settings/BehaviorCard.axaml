@@ -137,8 +137,12 @@
                (253,253,253) of every disabled button around it. The class carries the box's size and
                padding too, so nothing here restates them. -->
           <TextBox x:Name="HotkeyBox" Classes="tm-keycap" IsReadOnly="True" />
-          <!-- Clearing a hotkey is a reset, not a forward-moving action, so it stays on the plain
-               TmButton rather than TmAccentButton even though it is the row's only button. -->
+          <!-- Clearing a hotkey is a reset, not a forward-moving action, so this button never
+               qualified for the accent treatment even though it is the row's only button. The
+               criterion is moot now: Round 7, Task 3 deleted TmAccentButton along with the rest of
+               the accent-filled default button (Windows 7 had none), leaving TmButton the only
+               settings-card button theme there is. Kept because it records WHY this row never
+               changed when the two buttons that did carry the accent were moved. -->
           <Button x:Name="HotkeyClearBtn" Theme="{StaticResource TmButton}"
                   Click="OnHotkeyClearClick" />
         </StackPanel>

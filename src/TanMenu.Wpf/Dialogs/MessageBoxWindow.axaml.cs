@@ -77,6 +77,9 @@ public partial class MessageBoxWindow : Window
 
         foreach (var result in results)
         {
+            // No Theme is set, deliberately: that is what puts these on whatever ControlTheme the
+            // application publishes for {x:Type Button}, which since Round 7 Task 3 is the vendored
+            // Aero one. MessageBoxWindow.axaml's remark carries the measurement and the reason.
             var button = new Button
             {
                 Content = Label(result, language),
