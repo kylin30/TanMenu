@@ -1,13 +1,22 @@
 <!--
-    THIS FILE IS OURS. It carries no upstream copyright header because there is nothing of
-    Splitwirez's in it: aero-theme-for-avalonia HAS NO ComboBox. All nine of its branches were
-    queried through the GitHub trees API for any ComboBox*.axaml and every one returned zero hits;
-    its AVMAP/Controls.axaml mentions the two types only inside a commented-out block whose
-    avares:// URIs point at an assembly that does not exist here. So ComboBox and ComboBoxItem are
-    authored, and tests/TanMenu.Core.Tests/Themes/AeroAttributionTests.cs lists both by name in the
-    set of files under Themes/Aero/ that are NOT copies and therefore carry no notice.
+    THIS FILE IS OURS. It carries no upstream copyright header because THERE IS NO UPSTREAM FILE
+    FOR IT TO COPY: aero-theme-for-avalonia HAS NO ComboBox. All nine of its branches were queried
+    through the GitHub trees API for any ComboBox*.axaml and every one returned zero hits; its
+    AVMAP/Controls.axaml mentions the two types only inside a commented-out block whose avares://
+    URIs point at an assembly that does not exist here. The composition below is authored, and
+    tests/TanMenu.Core.Tests/Themes/AeroAttributionTests.cs lists this file by name in the set under
+    Themes/Aero/ that are NOT copies and therefore carry no notice.
 
-    Sibling file: ControlStyles/ComboBoxItem.axaml, which paints the popup's rows.
+    WHAT IT DOES REUSE IS NAMED ITEM BY ITEM in the Numbers section below - the chevron geometry is
+    ButtonSpinner's, restated under our own key, and the drop-down button is the two-Border
+    AeroButton* arrangement Button_RepeatButton_ToggleButton.axaml uses. Both are vocabulary rather
+    than markup: a three-point path and a Border-inside-a-Border with the corner-radius seam, named
+    where they are used. Nothing here is a copy of an upstream file, which is what the header form
+    of §6 attaches to and why this file has no "Source:" line to give.
+
+    Sibling file: ControlStyles/ComboBoxItem.axaml, which paints the popup's rows. That one is NOT
+    in the same position and does not claim to be: it is a re-keyed copy of the vendored
+    ControlStyles/ListBoxItem.axaml, so it carries the §6 header and is not in NotVendored.
 
     ── The contract, decompiled rather than assumed ──────────────────────────────────────────────
     Avalonia 12.1's ComboBox declares exactly two template parts,
@@ -39,7 +48,7 @@
     same part name), and the button uses the AeroButton* family, exactly as
     Button_RepeatButton_ToggleButton.axaml's Border#Outer / Border#Inner pair does. The popup's
     surface reuses the AeroListBox* family so that a drop-down list and a real ListBox are the same
-    object; its rows are ComboBoxItem.axaml, which is ListBoxItem's paint.
+    object; its rows are ComboBoxItem.axaml, which is a re-keyed copy of the vendored ListBoxItem.
 
     ── Numbers ──────────────────────────────────────────────────────────────────────────────────
       - Height 23. PUBLISHED, https://learn.microsoft.com/en-us/windows/win32/uxguide/vis-layout:
@@ -117,6 +126,23 @@
         <Setter Property="HorizontalContentAlignment" Value="Left" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
         <Setter Property="Focusable" Value="True" />
+        <!-- SUPPRESSES THE DEFAULT FOCUS ADORNER, and it has to be here rather than left out.
+             Avalonia 12.1's Control.OnGotFocus builds adornerLayer.DefaultFocusAdorner whenever
+             IsSet(FocusAdornerProperty) is false and the navigation method is Tab or Directional
+             (decompiled) - so a template that simply omits this Setter gets Fluent's adorner, which
+             is the two-Border SystemControlFocusVisualPrimary/Secondary rectangle in
+             Avalonia.Themes.Fluent 12.1's AdornerLayer theme: the Windows 11 two-ring form that
+             §3.2 key #15 of the design deletes. MEASURED, not reasoned: before this Setter existed,
+             posting a synthetic WM_KEYDOWN/WM_KEYUP VK_TAB drew a solid black 2+1 px rectangle over
+             this control's Aero frame and its rounded corners in Light, white-on-#252525 in Dark.
+             UIA SetFocus() CANNOT SEE THAT - it arrives as NavigationMethod.Unspecified, which the
+             line above returns on - so a focus check driven only by SetFocus() proves nothing here.
+             Fluent's own ComboBox sets the same {x:Null} (decompiled), and so do the two sibling
+             Aero controls that likewise repaint their field on :focus, ControlStyles/TextBox.axaml
+             and ControlStyles/NumericUpDown.axaml. The vendored Aero Button keeps the default
+             adorner instead, and correctly: it declares no :focus rule at all, so the adorner is
+             its only focus signal. -->
+        <Setter Property="FocusAdorner" Value="{x:Null}" />
         <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
         <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto" />
         <Setter Property="Template">
@@ -225,10 +251,13 @@
         </Style>
 
 
-        <!-- Focused State. Aero's focus signal is a border-brush change on the field, and it is the
-             only one this control has: §3.4 of the design gives keyboard focus the classic dotted
-             rectangle, and Task 3 established that a control which repaints on :focus does not also
-             need one. -->
+        <!-- Focused State, and the ONLY focus signal this control has, because the FocusAdorner
+             Setter above deliberately removes the other one. The field takes Aero's focus
+             border-brush and background, which is what the vendored TextBox does for the same
+             state and with the same two keys. §3.4 of the design wants keyboard focus drawn as the
+             classic dotted rectangle rather than Windows 11's two rings; nothing in this file
+             draws that rectangle, and no claim is made here that a repaint substitutes for it. It
+             is the same position the vendored TextBox and NumericUpDown already ship in. -->
         <Style Selector="^:focus">
             <Style Selector="^ /template/ Border#BgElement">
                 <Setter Property="Background" Value="{DynamicResource AeroTextBoxFocusBackground}" />

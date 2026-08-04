@@ -69,7 +69,10 @@ These six are the user's, are not re-opened, and the design executes them litera
    blur of what is behind the window, not a flat fill. The missing tint is ours to draw, and §7.1
    draws it.
 6. **Control visuals come from copying individual MIT files, never a package dependency.**
-   `Window.axaml` is dropped. `ComboBox`/`ComboBoxItem` are authored by us.
+   `Window.axaml` is dropped. `ComboBox` is authored by us. **`ComboBoxItem` is not, and this line
+   said it was until Task 6's fix round corrected it**: what shipped is the vendored `ListBoxItem`
+   re-keyed to `ComboBoxItem`, which is a copy and carries the §6 header. Only `ComboBox` has no
+   upstream file behind it.
 
 **Two things the six decisions did not settle and this design settles anyway**, both recorded with
 their basis rather than left to drift:
@@ -410,6 +413,20 @@ each `FocusAdorner`. This matters more than it sounds — the vendored
 setters**, so keyboard focus on a stock Aero button has no indication of its own. Task 3 verifies
 Avalonia's default adorner is visible on it and, if it is not, sets the same dotted-rectangle adorner
 on the vendored `Button` theme in the same commit.
+
+**Where this actually stands after Task 6, because the paragraph above reads as a promise the tree
+does not yet keep.** `grep StrokeDashArray src/` finds **no** `.axaml` hit: no dotted-rectangle
+`FocusAdorner` exists anywhere yet. Three controls instead suppress the default adorner outright with
+`FocusAdorner="{x:Null}"` — the vendored `TextBox` and `NumericUpDown`, which ship upstream's setter,
+and `ComboBox`, which was given the same one in Task 6's fix round after a synthetic `VK_TAB` capture
+showed Fluent's two-ring rectangle drawing over the Aero frame and its rounded corners. All three
+repaint their own field on `:focus`, and that repaint is their whole focus signal. The Aero `Button`
+keeps Avalonia's default adorner: Task 3 ran the check above and found it **visible** under a
+synthetic `VK_TAB` (`SetFocus()` alone shows nothing — `Control.OnGotFocus` builds an adorner only
+for `NavigationMethod.Tab` or `Directional`), so §3.4's conditional fallback never fired. Fluent's
+two-ring ring is therefore still what an Aero button shows on Tab. Task 3 assigned the dotted
+rectangle to **Task 7**, which is where `FocusStrokeOuterBrush` becomes `AeroForeground`; until then
+this section describes an intention, not the tree.
 
 ---
 
@@ -1305,7 +1322,7 @@ the round's entire NativeAOT liability to zero.
 
 ---
 
-### Task 6 — ComboBox and ComboBoxItem, authored
+### Task 6 — ComboBox authored, ComboBoxItem re-keyed from `ListBoxItem`
 
 #### Decision
 
@@ -1313,7 +1330,16 @@ the round's entire NativeAOT liability to zero.
 for any `ComboBox*.axaml`: **zero hits on every branch**. `AVMAP/Controls.axaml` mentions them only
 inside a comment block pointing at an assembly that does not exist. The author has no other Aero repo.
 
-Author `Themes/Aero/ControlStyles/ComboBox.axaml` and `ComboBoxItem.axaml`. **The contract is
+> **CORRECTED BY TASK 6'S FIX ROUND.** This section said "author both files", and for `ComboBoxItem`
+> that is not what "no upstream file of that name" implies. What shipped, and what is right, is the
+> vendored `ControlStyles/ListBoxItem.axaml` **re-keyed** to `ComboBoxItem` — an Aero drop-down list
+> and an Aero list box were the same object in Windows 7, so the rows should be the same markup, and
+> since that markup is Splitwirez's the file carries the §6 header and a six-item change list. It is
+> **not** on `AeroAttributionTests.NotVendored`; `ComboBox.axaml` alone is. Everything below about
+> the row's presenter name and its `:disabled` ink still holds — those are two of the six changes.
+
+Author `Themes/Aero/ControlStyles/ComboBox.axaml`, and re-key `ComboBoxItem.axaml` from the vendored
+`ListBoxItem`. **The contract is
 minimal**: `ComboBox` declares `[TemplatePart("PART_Popup", typeof(Popup), IsRequired = true)]` and
 `[TemplatePart("PART_EditableTextBox", typeof(TextBox), IsRequired = false)]`, its `ItemsControl` base
 finds `PART_ItemsPresenter`, and `ComboBoxItem` declares **no** `[TemplatePart]` at all.

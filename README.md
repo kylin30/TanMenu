@@ -182,14 +182,18 @@ Store MSIX — a notice that exists only in a source tree does not travel with t
 binary is what users get.
 
 What was taken so far: the colour resources — the two per-variant `<Color>` dictionaries (168 keys
-each) and the 110-key brush dictionary built from them — the metrics, four value converters, the
-`StyleTrailMix` style sheet, and ten control themes:
+each) and the 110-key brush dictionary built from them — the metrics, two value converters, the
+`StyleTrailMix` style sheet, and eleven control themes under their own upstream names:
 `Button_RepeatButton_ToggleButton`, `CheckBox`, `ToggleSwitch`, `ScrollViewer`, `ScrollBar`,
-`ListBox`, `ListBoxItem`, `TextBox`, `NumericUpDown`, `ButtonSpinner`. Two more control themes land
-in later commits of the same conversion (`ProgressBar`, `HeaderedContentControl`);
-`ComboBox`/`ComboBoxItem` are written from scratch rather than copied.
-`src/TanMenu.Wpf/Themes/Aero/` is the authoritative list at any moment, and every file in it carries
-its own header.
+`ListBox`, `ListBoxItem`, `TextBox`, `NumericUpDown`, `ButtonSpinner`, `ProgressBar`. A twelfth copy
+ships under a different name: `ControlStyles/ComboBoxItem.axaml` is upstream's `ListBoxItem` re-keyed
+to `ComboBoxItem`, because Avalonia keys a control theme by the control's own type and the library
+has no drop-down row of its own — it carries the same header and change list as any other copy.
+`HeaderedContentControl` lands in a later commit of the same conversion. Only
+`ControlStyles/ComboBox.axaml` is written from scratch rather than copied: the library has no
+`ComboBox` at all, so there is no upstream file for it to be a copy of, and its header names item by
+item the vocabulary it does reuse. `src/TanMenu.Wpf/Themes/Aero/` is the authoritative list at any
+moment, and every file in it carries its own header.
 
 What was **not** taken, and why:
 

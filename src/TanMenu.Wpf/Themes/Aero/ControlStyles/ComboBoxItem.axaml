@@ -1,27 +1,40 @@
 <!--
-    THIS FILE IS OURS, for the reason its sibling ControlStyles/ComboBox.axaml states in full:
-    aero-theme-for-avalonia has no ComboBox and no ComboBoxItem on any of its nine branches, so
-    there is nothing to copy and no upstream notice to carry. Both files are listed by name in
-    tests/TanMenu.Core.Tests/Themes/AeroAttributionTests.cs's NotVendored set.
-
-    ── Why this file has to exist at all ────────────────────────────────────────────────────────
-    Avalonia's ComboBoxItem derives from ListBoxItem (decompiled from Avalonia.Controls 12.1.0: it
-    adds one IsFocused subscription and one automation override, nothing else), but a ControlTheme
-    is keyed by the control's OWN style key, so the vendored ControlStyles/ListBoxItem.axaml -
-    keyed {x:Type ListBoxItem} - does not reach a ComboBoxItem. Without this file the drop-down
-    rows would keep Fluent's ComboBoxItem template inside an Aero-painted popup.
-
-    The paint below IS ListBoxItem's, deliberately: an Aero drop-down list and an Aero list box
-    were the same object in Windows 7, and reusing the vocabulary means the four state gradients
-    are the vendored ones rather than a second invention. Two things differ from that file and both
-    are stated here rather than left to be discovered:
-
-      1. THE PRESENTER IS NOT NAMED PART_ContentPresenter. AVMAP/StyleTrailMix.axaml carries a
-         :disabled rule targeting ContentPresenter#PART_ContentPresenter; Task 3 had to narrow its
-         subject away from upstream's app-wide ":is(TemplatedControl)" precisely because Fluent's
-         ComboBoxItem used that name and Views/Settings/AppearanceCard.axaml.cs paints the font
-         list's group captions itself. Naming the presenter ItemContentPresenter removes the
-         collision structurally, which is what §7 Task 6 asks for.
+    Copyright (c) 2026 Splitwirez
+    Licensed under the MIT License. See LICENSE-aero-theme-for-avalonia.txt in the Themes/Aero
+    directory for the full text of the copyright notice and permission notice.
+    Source: https://github.com/Splitwirez/aero-theme-for-avalonia at main = a705b7c0
+            src/AeroAvalonia/ControlStyles/ListBoxItem.axaml
+    Changes from upstream: THIS FILE IS A RE-KEYED COPY OF THAT ONE. There is no upstream
+    ComboBoxItem - all nine branches were queried for ComboBox*.axaml and every one returned zero
+    hits, and AVMAP/Controls.axaml:86-87 names the type only inside a commented-out block pointing
+    at AeroAvalonia.Placeholders.Themes.Fluent, an assembly that does not exist here. The notice
+    above is therefore not about a drop-down row upstream wrote; it is here because the ~50 lines
+    below ARE upstream's ListBoxItem. Normalise tabs to four spaces, strip the comments, and every
+    remaining line is that file's byte for byte except the six changes recorded here.
+      1. RE-POINTED the converter xmlns from "using:AeroAvalonia.Converters" to
+         "using:TanMenu.Wpf.Themes.Aero.Converters", and DELETED upstream's
+         xmlns:ae="using:AeroAvalonia" (:3) - nothing in the file uses that prefix and the
+         namespace does not exist in this assembly. Both edits are inherited from the vendored
+         ControlStyles/ListBoxItem.axaml, whose own change list is where they were first recorded.
+      2. RE-KEYED to ComboBoxItem: x:Key="{x:Type ComboBoxItem}", TargetType="ComboBoxItem".
+         THIS IS WHY THE FILE EXISTS AT ALL. Avalonia's ComboBoxItem derives from ListBoxItem and
+         adds exactly one IsFocused subscription and one automation-control-type override
+         (decompiled from Avalonia.Controls 12.1.0, whole class), but it does NOT override
+         StyleKeyOverride, so its style key is typeof(ComboBoxItem) and the vendored file's
+         {x:Type ListBoxItem} theme cannot reach it. Without this copy the drop-down rows would
+         keep Fluent's ComboBoxItem template inside an Aero-painted popup.
+      3. RENAMED the converter resource key AeroListBoxItemInnerCornerRadiiConverter ->
+         AeroComboBoxItemInnerCornerRadiiConverter (declaration and its one {StaticResource}), and
+         its xmlns prefix aecnv -> aeconv. Naming only: the instance and its Amount="-1" are
+         upstream's, and the rename keeps two dictionaries that AeroResources.axaml merges side by
+         side from publishing the same x:Key.
+      4. RENAMED the presenter PART_ContentPresenter -> ItemContentPresenter, at both of its sites
+         (the ContentPresenter's x:Name and the :disabled selector). AVMAP/StyleTrailMix.axaml
+         carries a :disabled rule targeting ContentPresenter#PART_ContentPresenter; Task 3 had to
+         narrow its subject away from upstream's app-wide ":is(TemplatedControl)" precisely because
+         Fluent's ComboBoxItem used that name and Views/Settings/AppearanceCard.axaml.cs paints the
+         font list's group captions itself. This rename removes the collision structurally, which
+         is what §7 Task 6 asks for.
          THE COST, MEASURED NOT ASSUMED: ContentControl.RegisterContentPresenter compares
          presenter.Name against the literal "PART_ContentPresenter" and returns false otherwise, so
          ContentControl.Presenter stays null on our rows and the presenter hosts its own content in
@@ -29,10 +42,19 @@
          ContentPresenter.UpdateHost / GetEffectiveLogicalChildren). Nothing in the ComboBox path
          reads either: ComboBox.UpdateSelectionBoxItem takes the item's CONTENT, and text search
          does the same. Every row in this app carries a string.
-      2. The :disabled foreground is AeroDisabledForeground, not the Fluent
-         SystemControlDisabledBaseMediumLowBrush the vendored ListBoxItem left in place. This file
-         is authored, so there is no upstream line to preserve, and the group captions the font
-         combo builds in code are pointed at the same key.
+      5. RE-POINTED the :disabled Foreground from SystemControlDisabledBaseMediumLowBrush - a
+         FLUENT key, which the vendored ListBoxItem deliberately left in place because it resolves
+         - to AeroDisabledForeground. The font combo's group captions are the only disabled rows in
+         this app and AppearanceCard.axaml.cs now names the same key, so the row and the caption
+         cannot drift apart.
+      6. ADDED four Setters upstream's ListBoxItem does not have, all of which change the paint:
+         Foreground="{AeroForeground}" and FontSize="{AeroFontSizeNormal}" pin what upstream leaves
+         to inheritance, and HorizontalContentAlignment="Left" / VerticalContentAlignment="Center"
+         replace ContentControl's registered defaults, which are Stretch on both axes (decompiled).
+         The template forwards all four to the presenter with TemplateBindings that are upstream's.
+    Whitespace and casing, the only other differences: upstream's tabs are four spaces here, and
+    x:ClassModifier is "internal" rather than upstream's "Internal". Both forms are accepted by the
+    XAML compiler; neither reaches the rendered control.
 -->
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"

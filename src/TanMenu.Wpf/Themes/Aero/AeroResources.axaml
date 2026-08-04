@@ -109,15 +109,19 @@
     Application.Styles (decompiled from Avalonia.Markup.Xaml 12.1.0,
     AvaloniaXamlIlRuntimeHelpers.RootServiceProvider.CreateParentStackProvider).
 
-    Three of the merges below are NOT copies of an upstream file. ControlStyles/ProgressBar.axaml
-    is the determinate branch of one, about 60 of the original's 471 lines, and its own header
-    enumerates the ten differences rather than summarising them. ControlStyles/ComboBox.axaml and
-    ControlStyles/ComboBoxItem.axaml have no upstream counterpart AT ALL - the library has no
-    ComboBox on any of its nine branches - so §1 point 6 has us author those two, and each carries
-    its own statement of what it is and what it decided instead of a copyright header it would have
-    no right to. AeroAttributionTests names all three situations correctly: ProgressBar is derived
-    and keeps the notice, the two combo files are listed as not-vendored. The last remaining merge
-    is HeaderedContentControl, which the design schedules for Task 9.
+    Three of the merges below stand in a different relation to upstream from the rest, and the three
+    are not the same relation. ControlStyles/ProgressBar.axaml is the DETERMINATE BRANCH of a real
+    upstream file, about 60 of the original's 471 lines, and its own header enumerates the ten
+    differences rather than summarising them. ControlStyles/ComboBoxItem.axaml is a COPY OF A FILE
+    WITH ANOTHER NAME: upstream has no drop-down row, but a control theme is keyed by the control's
+    own type, so that file is the vendored ControlStyles/ListBoxItem.axaml re-keyed to ComboBoxItem
+    - it carries the upstream notice and a six-item change list like any other copy.
+    ControlStyles/ComboBox.axaml is the only one AUTHORED: the library has no ComboBox on any of its
+    nine branches, so there is no upstream file it could be a copy of and no path a Source: line
+    could name; its header names item by item the vocabulary it does reuse. AeroAttributionTests
+    encodes exactly that split - ProgressBar and ComboBoxItem keep the notice, ComboBox alone is
+    listed as not-vendored. The last remaining merge is HeaderedContentControl, which the design
+    schedules for Task 9.
 
     ── The keys here that are not Aero-prefixed ─────────────────────────────────────────────────
     63 keys are merged below (comments stripped, Metrics plus the thirteen control-style

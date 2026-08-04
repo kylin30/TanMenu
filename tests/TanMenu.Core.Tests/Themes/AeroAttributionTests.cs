@@ -62,14 +62,20 @@ public class AeroAttributionTests
         // The wrapper this project wrote to merge the vendored dictionaries and to name the two
         // theme variants "Light" / "Dark" instead of upstream's "Default" / "Dark".
         "AeroResources.axaml",
-        // Round 7 Task 6. aero-theme-for-avalonia has NO ComboBox and no ComboBoxItem: all nine of
-        // its branches were queried through the GitHub trees API for ComboBox*.axaml and every one
-        // returned zero hits, and its AVMAP/Controls.axaml names the two types only inside a
-        // commented-out block pointing at an assembly that does not exist. These two are therefore
-        // authored from Avalonia 12.1's own template contract, against the vendored brush
-        // vocabulary; each file opens by saying so.
+        // Round 7 Task 6. aero-theme-for-avalonia has NO ComboBox: all nine of its branches were
+        // queried through the GitHub trees API for ComboBox*.axaml and every one returned zero
+        // hits, and its AVMAP/Controls.axaml names the type only inside a commented-out block
+        // pointing at an assembly that does not exist. The composition is therefore authored from
+        // Avalonia 12.1's own template contract against the vendored brush vocabulary, and there is
+        // no upstream path a "Source:" line could name. The file opens by saying exactly that, and
+        // by naming the vocabulary it does reuse.
+        //
+        // ComboBoxItem.axaml IS NOT HERE, and the distinction is the point of this list. It has no
+        // upstream counterpart under its own name either — but what it ships is the vendored
+        // ControlStyles/ListBoxItem.axaml re-keyed, ~50 lines of markup that are Splitwirez's, so
+        // it carries the notice and the numbered change list like any other copy. A file is on this
+        // list when nothing in it was copied, not when nothing UNDER THAT NAME was copied.
         "ComboBox.axaml",
-        "ComboBoxItem.axaml",
     };
 
     /// <summary>Walk up from the test assembly until the solution file appears.</summary>
