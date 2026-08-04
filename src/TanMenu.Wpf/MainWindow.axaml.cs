@@ -18,15 +18,15 @@ namespace TanMenu.Wpf;
 
 /// <summary>
 /// The shell: the hand-drawn Aero caption (MainWindow.axaml's replaced
-/// <c>Window.WindowDecorationsTheme</c>), the icon-only navigation rail and the page host. All launcher
-/// STATE lives in <see cref="AppPage"/>'s <c>LauncherViewModel</c>. This class owns what genuinely
-/// belongs to the window — the backdrop and its opaque fallback, the caption's active/inactive glass
-/// (<see cref="ApplyCaptionGlass"/>), close-to-tray, labelling the rail's five rows
-/// (<see cref="ApplyRailText"/>, ten writes — a name and a tooltip each), swapping the page host's
-/// content between the two PAGE entries (应用/设置; see <see cref="ShowPage"/>), dispatching the three
-/// command rows the old ⋯ overflow used to hold (打开主目录/刷新/退出 — Round 3, Task 2 moved four, 关于
-/// among them, and Round 5, item 2 took 关于 back out of the rail and into the 设置 page as a card), and
-/// kicking off the startup build + the fit-to-content resize that follows it, on EVERY summon
+/// <c>Window.WindowDecorationsTheme</c>), the wide labelled navigation pane and the page host. All
+/// launcher STATE lives in <see cref="AppPage"/>'s <c>LauncherViewModel</c>. This class owns what
+/// genuinely belongs to the window — the backdrop and its opaque fallback, the caption's active/inactive
+/// glass (<see cref="ApplyCaptionGlass"/>), close-to-tray, labelling the pane's five rows
+/// (<see cref="ApplyRailText"/>, ten writes — an automation name and a visible label each), swapping the
+/// page host's content between the two PAGE entries (应用/设置; see <see cref="ShowPage"/>), dispatching
+/// the three command rows the old ⋯ overflow used to hold (打开主目录/刷新/退出 — Round 3, Task 2 moved
+/// four, 关于 among them, and Round 5, item 2 took 关于 back out of the pane and into the 设置 page as a
+/// card), and kicking off the startup build + the fit-to-content resize that follows it, on EVERY summon
 /// (<see cref="InitializeAndFitAsync"/>) — the actual geometry math, and the rule for when a manual
 /// resize should win over a fresh fit, lives in <c>WindowHost</c>, which owns every other piece of
 /// window placement too.
@@ -85,11 +85,12 @@ public partial class MainWindow : Window
         _host = App.Services.GetRequiredService<IWindowHost>();
         App.Services.GetRequiredService<ShellNavigator>().Attach(this);
 
-        // AppLanguage/AppFonts have no change notification of their own, so both the rail's row labels
-        // (its tooltips and accessible names — see ApplyRailText; since Round 4, item 1 the rail has no
-        // VISIBLE label to update) and the window font are re-applied on every SettingsChanged — the
-        // same imperative approach every settings card group uses for its own labels (AppLanguage has
-        // no change notification there either).
+        // AppLanguage/AppFonts have no change notification of their own, so both the navigation pane's
+        // row labels (their visible text and their accessible names — see ApplyRailText; since Round 7,
+        // Task 8 there IS a visible label again, and this subscription is what keeps it and the
+        // automation name in step through a 语言 change) and the window font are re-applied on every
+        // SettingsChanged — the same imperative approach every settings card group uses for its own
+        // labels (AppLanguage has no change notification there either).
         _events = App.Services.GetRequiredService<AppEvents>();
         _events.SettingsChanged += ApplyWindowFont;
         _events.SettingsChanged += ApplyRailText;
@@ -360,13 +361,21 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// The navigation rail's width, mirroring <c>MainWindow.axaml</c>'s literal <c>Width="48"</c> on
+    /// The navigation pane's width, mirroring <c>MainWindow.axaml</c>'s literal <c>Width="160"</c> on
     /// <c>NavRailPane</c> — the single source of truth; this constant has to be kept in step with it.
     /// A literal here (rather than a read of the pane's live <c>Width</c>/<c>Bounds</c>) is what the
     /// design asked for, and the reason it gives is that the fit term then depends on nothing but the
     /// XAML it mirrors — no layout state, no visual-tree lookup. Round 4, item 1 is what made this a
     /// constant at all — until then the rail had two widths and this term was read out of the config on
     /// every call.
+    /// <para>
+    /// Round 7, Task 8 moved it from 48 to 160: the icon-only rail became a wide labelled Windows 7
+    /// pane. It is still ONE width — Task 8 restored the row labels and none of the other three things
+    /// Round 4 deleted with them (the 200 DIP second width, the <c>DoubleTransition</c>, the
+    /// <c>ClipToBounds</c>) — so this stays a constant and the fit keeps its five triggers.
+    /// <c>ShellConstantTests.RailWidth_MatchesTheRailPaneWidth</c> is what catches a drift between the
+    /// two copies; nothing else in the tree can see one.
+    /// </para>
     /// <para>
     /// An earlier draft of this remark justified the literal by claiming a fit can run before the pane
     /// has ever been arranged. That is withdrawn: it was never verified, and the call sites say
@@ -375,14 +384,14 @@ public partial class MainWindow : Window
     /// priority, and the one direct caller (<see cref="OnNoticeVisibilityChanged"/>) is a runtime
     /// event long after the first layout pass. It would also not have argued against reading
     /// <c>NavRailPane.Width</c>, which is a local styled-property value set by the XAML and reads back
-    /// 48 whether or not a layout pass has run — only <c>Bounds</c> needs an arrange.
+    /// its declared value whether or not a layout pass has run — only <c>Bounds</c> needs an arrange.
     /// </para>
     /// </summary>
-    private const double RailWidthDip = 48;
+    private const double RailWidthDip = 160;
 
     /// <summary>
     /// The content pane's own left border, in DIP. The invariant this pair encodes: the chrome width
-    /// handed to <see cref="WindowHost.FitToContent"/> must equal the rail's width PLUS whatever left
+    /// handed to <see cref="WindowHost.FitToContent"/> must equal the pane's width PLUS whatever left
     /// border the 应用 pane carries — a <c>Border</c> draws its <c>BorderThickness</c> inside its own
     /// bounds and arranges its child inside that, so a left border takes exactly that much away from
     /// the page and the fit has to hand it back or <c>AppPage</c>'s horizontal scrollbar returns.
@@ -807,15 +816,23 @@ public partial class MainWindow : Window
             .Navigate(ReferenceEquals(rail, NavFooterRail) ? ShellPage.Settings : ShellPage.App);
     }
 
-    /// <summary>AppLanguage has no change notification, so the rail is labelled imperatively — the same
-    /// approach the settings UI uses. Round 3, Task 2: also labels the command rows that used to be the
-    /// title strip's ⋯ overflow MenuItems — MenuOpenRoot/MenuRefresh/MenuExit are the SAME language keys
-    /// those MenuItems already used (AppLanguage.cs), unchanged by the move.
+    /// <summary>AppLanguage has no change notification, so the navigation pane is labelled imperatively
+    /// — the same approach the settings UI uses. Round 3, Task 2: also labels the command rows that used
+    /// to be the title strip's ⋯ overflow MenuItems — MenuOpenRoot/MenuRefresh/MenuExit are the SAME
+    /// language keys those MenuItems already used (AppLanguage.cs), unchanged by the move. Round 5,
+    /// item 2 took the 关于 row out of the pane altogether, so there are five rows and ten writes;
+    /// MenuAbout went with it and the key it left behind was renamed to "About" for the settings card
+    /// that replaced the row.
     /// <para>
-    /// Round 4, item 1 removed the rail's expanded state and with it every visible row label, so what
-    /// this method writes is now the ONLY name each row has, in any state. Round 5, item 2 took the 关于
-    /// row out of the rail altogether, so there are five rows and ten writes; MenuAbout went with it and
-    /// the key it left behind was renamed to "About" for the settings card that replaced the row.
+    /// ROUND 7, TASK 8 KEPT THE COUNT AND CHANGED THE SHAPE: ten writes still, but five
+    /// <c>TextBlock.Text</c> where five <c>ToolTip.SetTip</c> used to be. The pane's rows carry visible
+    /// labels now, and Microsoft's own glossary
+    /// (https://learn.microsoft.com/en-us/windows/win32/uxguide/glossary) defines a tooltip as "a small
+    /// pop-up window that labels the UNLABELED control being pointed to" — a tooltip that repeats a
+    /// visible label is by that definition the wrong control. The five
+    /// <c>AutomationProperties.Name</c> writes STAY, and every row still has one: it is the
+    /// accessibility contract, and stating it costs less than reasoning about what Avalonia's automation
+    /// peer derives from a DockPanel of two TextBlocks.
     /// </para></summary>
     private void ApplyRailText()
     {
@@ -826,20 +843,19 @@ public partial class MainWindow : Window
         var refreshText = AppLanguage.Text("MenuRefresh", lang);
         var exitText = AppLanguage.Text("MenuExit", lang);
 
-        // AutomationProperties.Name/ToolTip.Tip live on the ROW (the ListBoxItem or, for the three
-        // command rows, the Button), not on anything inside it: a row's whole content is a 16 DIP icon
-        // glyph (MainWindow.axaml), which names nothing to a screen reader and nothing to a user who
-        // does not already know the glyph. These ten writes are the rail's entire labelling.
+        // AutomationProperties.Name lives on the ROW (the ListBoxItem or, for the three command rows,
+        // the Button); the visible label lives on the TextBlock inside it. Both are written from the
+        // same string, so the two can never disagree — which is what Task 8's verification asserts.
         NavAppsItem.SetValue(AutomationProperties.NameProperty, appsText);
         NavSettingsItem.SetValue(AutomationProperties.NameProperty, settingsText);
         NavOpenRootItem.SetValue(AutomationProperties.NameProperty, openRootText);
         NavRefreshItem.SetValue(AutomationProperties.NameProperty, refreshText);
         NavExitItem.SetValue(AutomationProperties.NameProperty, exitText);
-        ToolTip.SetTip(NavAppsItem, appsText);
-        ToolTip.SetTip(NavSettingsItem, settingsText);
-        ToolTip.SetTip(NavOpenRootItem, openRootText);
-        ToolTip.SetTip(NavRefreshItem, refreshText);
-        ToolTip.SetTip(NavExitItem, exitText);
+        NavAppsLabel.Text = appsText;
+        NavSettingsLabel.Text = settingsText;
+        NavOpenRootLabel.Text = openRootText;
+        NavRefreshLabel.Text = refreshText;
+        NavExitLabel.Text = exitText;
     }
 
     /// <summary>The 字体 setting used to reach the window through a DataContext binding. The shell has

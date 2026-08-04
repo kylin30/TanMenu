@@ -50,8 +50,9 @@ public sealed partial class WindowHost : IWindowHost
     /// A CHANGE HERE IS NOT VISIBLE IN THE FIT LOG'S HEIGHT, and that is not a bug. <c>Ph +
     /// ChromeHeightDip</c> is below <see cref="MinWindowHeightDip"/> at every content size this app
     /// produces, so any <c>ChromeHeightDip</c> up to 74 yields the identical 568 DIP window. The term
-    /// that does move is the log line's own <c>chrome {w}x{h}</c>, which reads 49x31 after this task
-    /// against 49x49 before it.
+    /// that does move is the log line's own <c>chrome {w}x{h}</c>: it read 49x49 before Task 1, 49x31
+    /// after it, and 161x31 after Round 7, Task 8 widened the navigation pane — the height half of that
+    /// pair is this constant's only observable.
     /// </para>
     /// </remarks>
     private const double TitleStripHeightDip = 30;
@@ -70,13 +71,34 @@ public sealed partial class WindowHost : IWindowHost
     private const double ChromeHeightDip = TitleStripHeightDip + 1;
 
     /// <summary>The app's own minimum window WIDTH, in DIP. Mirrors <c>MainWindow.axaml</c>'s
-    /// <c>MinWidth="760"</c>, which stays declared there and is still enforced by the platform against
+    /// <c>MinWidth="872"</c>, which stays declared there and is still enforced by the platform against
     /// an interactive resize; this constant is what the placement arithmetic clamps with, and the two
-    /// have to be kept in step. Unlike the height (below), <c>MinWidth</c> is safe to declare: Avalonia's
+    /// have to be kept in step —
+    /// <c>ShellConstantTests.MinWindowWidth_IsTheSameNumberInBothPlaces</c> is what catches a drift.
+    /// Unlike the height (below), <c>MinWidth</c> is safe to declare: Avalonia's
     /// <c>WM_GETMINMAXINFO</c> handler adds <c>BorderThickness.Left + Right</c> to it, which for this
     /// window's style is exactly the horizontal non-client inset <c>AdjustWindowRectEx</c> reports, so the
-    /// resulting client floor equals <c>MinWidth</c> and a requested width is never silently raised.</summary>
-    private const double MinWindowWidthDip = 760;
+    /// resulting client floor equals <c>MinWidth</c> and a requested width is never silently raised. That
+    /// declarability argument is unchanged by Round 7 — <c>ExtendClientAreaToDecorationsHint</c> is still
+    /// on, and it is the vertical inset it distorts, not the horizontal one.</summary>
+    /// <remarks>
+    /// ROUND 7, TASK 8 MOVED THIS FROM 760 TO 872, AND THE NUMBER IT PROTECTS IS NOT THIS ONE. At the
+    /// floor the content pane gets <c>MinWindowWidthDip − chromeWidth</c>. That was <c>760 − 49 = 711</c>
+    /// DIP. Task 8 took the navigation pane from 48 to 160, so <c>chromeWidth</c> is 161; leaving the
+    /// minimum at 760 would have handed the content pane 599 DIP, a 112 DIP loss, and falsified four
+    /// measurement records elsewhere in the tree that are all stated AT THE FLOOR —
+    /// <c>Launcher.axaml</c>'s <c>tm-card-value</c> and <c>tm-card-actions</c> blocks,
+    /// <c>Views/Settings/FoldersCard.axaml</c>'s wrap measurement, and this class's own callers.
+    /// <c>760 + (160 − 48) = 872</c> holds the content pane at exactly 711 DIP, so all four stay true in
+    /// substance and each needed only its premise line rewritten from "760 DIP window" to "872 DIP
+    /// window, 711 DIP content pane".
+    /// <para>
+    /// A persisted window width below 872 now comes back CLAMPED UP to 872 by
+    /// <see cref="RestorePlacement"/>'s existing clamp. That is the clamp doing its job, not a
+    /// regression, and it is what happened the last time a minimum moved.
+    /// </para>
+    /// </remarks>
+    private const double MinWindowWidthDip = 872;
 
     /// <summary>
     /// The app's own minimum window HEIGHT, in DIP — the floor <see cref="RestorePlacement"/> and
@@ -128,8 +150,15 @@ public sealed partial class WindowHost : IWindowHost
     /// size the previous fit requested) or, once the user has
     /// manually resized this process, by <see cref="_lastNormalWidthDip"/>/<see cref="_lastNormalHeightDip"/>
     /// — see those fields' own remarks. Only the SIZE is superseded: the placeholder never carries a
-    /// position, because since Round 4, item 4 nothing does.</summary>
-    private const double PlaceholderWidthDip = 1000;
+    /// position, because since Round 4, item 4 nothing does.
+    /// <para>
+    /// The width moved 1000 → 1112 in Round 7, Task 8, by the navigation pane's own 112 DIP growth, and
+    /// <c>MainWindow.axaml</c>'s declared <c>Width</c> moved with it. Keeping the two equal is the whole
+    /// point of the constant: the cold-start first frame is drawn at the XAML's width and this is what
+    /// the first placement re-applies, so a mismatch shows up as a visible jump before the real,
+    /// content-driven size lands. The height is unchanged — Task 8 moved nothing vertical.
+    /// </para></summary>
+    private const double PlaceholderWidthDip = 1112;
     private const double PlaceholderHeightDip = 688;
 
     private readonly ConfigService _config;
@@ -200,7 +229,7 @@ public sealed partial class WindowHost : IWindowHost
     /// null until one has run. <see cref="RestorePlacement"/> applies its SIZE as the PRE-SHOW size on
     /// every later summon, which is the whole point: the correction a fit makes only reaches the platform
     /// on the next layout pass, i.e. after <see cref="Window.Show"/> has already put the window on screen,
-    /// so without this every summon painted the 1000x688 placeholder for a frame and then snapped to the
+    /// so without this every summon painted the 1112x688 placeholder for a frame and then snapped to the
     /// real size — reintroducing, for SIZE, exactly the paint-then-jump this class already goes out of its
     /// way to avoid for POSITION (see <see cref="RestorePlacement"/>'s own remarks).</summary>
     /// <remarks>
@@ -257,7 +286,7 @@ public sealed partial class WindowHost : IWindowHost
     /// not, so the foreign resize has to be OBSERVED instead of inferred. This flag is that
     /// observation, kept deliberately separate from nulling the rectangle itself:
     /// <see cref="RestorePlacement"/> reads its size as the PRE-SHOW size on the next summon, and
-    /// clearing it would bring back the 1000x688 placeholder flash it exists to prevent.
+    /// clearing it would bring back the 1112x688 placeholder flash it exists to prevent.
     /// </para>
     /// <para>
     /// Set ONLY for <see cref="WindowResizeReason.Unspecified"/> (see <see cref="OnWindowResized"/> for
@@ -552,7 +581,7 @@ public sealed partial class WindowHost : IWindowHost
     /// — so the window appears in one predictable place on every cold start and every summon, and the
     /// fit that lands ~330 ms later corrects the SIZE without moving the anchored bottom edge. The rule
     /// could not have lived in this method alone: a fit fed the window's own Left/Top back in and only
-    /// re-clamped, so a centred 1000-DIP-wide placeholder left the fitted 1724-DIP-wide window 362 DIP
+    /// re-clamped, so a centred placeholder left the fitted 1724-DIP-wide window 362 DIP
     /// off centre with no clamp firing. <c>GeneralConfig.WindowLeft</c>/<c>WindowTop</c> are retired in
     /// place — still deserialized, read by nothing.
     /// </para>
@@ -567,7 +596,7 @@ public sealed partial class WindowHost : IWindowHost
     /// not known yet (its startup build is an async disk scan that only begins once the window is shown).
     /// The middle rung is the review fix for finding 6: <see cref="FitToContent"/>'s correction reaches
     /// the platform on the NEXT layout pass, i.e. after Show() has already painted, so restoring the
-    /// placeholder here made every summon flash 1000x688 before snapping to the real size.
+    /// placeholder here made every summon flash the placeholder size before snapping to the real one.
     /// </para>
     /// </remarks>
     public void RestorePlacement()
@@ -666,8 +695,9 @@ public sealed partial class WindowHost : IWindowHost
     /// EVERY summon, not only a cold start (see the class remarks), and again on every other event that
     /// changes what the active page measures: a docked notice opening or closing, a 每列个数 / 字体 /
     /// 语言 change, a switch back to 应用 from 设置, and the
-    /// Maximized→Normal transition. (The navigation rail expanding or collapsing was a sixth trigger
-    /// until Round 4, item 1 made the rail a single fixed width.)
+    /// Maximized→Normal transition. (The navigation pane expanding or collapsing was a sixth trigger
+    /// until Round 4, item 1 made it a single fixed width. Round 7, Task 8 widened that width from 48 to
+    /// 160 and did NOT bring the second one back, so the list is still five.)
     /// It is a cheap, idempotent re-measure, not a one-time setup step, and
     /// a re-fit that computes the geometry the PREVIOUS fit already requested
     /// (<see cref="_lastFitPlacement"/>, compared with
@@ -718,12 +748,14 @@ public sealed partial class WindowHost : IWindowHost
     /// work area regardless of how tall the probe reported — no special-case wrapping logic needed here
     /// either way.</param>
     /// <param name="chromeWidth">Everything to the LEFT of the page that still counts toward the
-    /// window's own Width: the navigation rail's width plus whatever left border the content pane
+    /// window's own Width: the navigation pane's width plus whatever left border the content pane
     /// carries. The caller composes it from literal constants that mirror the XAML
     /// (<c>MainWindow.RailWidthDip</c>/<c>PaneBorderDip</c>) rather than measuring live elements — see
-    /// those constants' own remarks. Round 4, item 1: this used to be a rail width that varied with the
-    /// rail's persisted expand state (48 or 200) and had to be read from config rather than from the
-    /// pane, whose Width could be mid-animation; the rail has one width now and no animation.</param>
+    /// those constants' own remarks. Round 4, item 1: this used to be a pane width that varied with the
+    /// pane's persisted expand state (48 or 200) and had to be read from config rather than from the
+    /// pane, whose Width could be mid-animation; the pane has one width now and no animation. Round 7,
+    /// Task 8 changed what that one width IS — 48 → 160, so this term is 161 rather than 49 — without
+    /// changing anything about how it is composed.</param>
     /// <remarks>
     /// <para>
     /// Callable only after the window has been placed AND shown: unlike <see cref="RestorePlacement"/>,
@@ -757,7 +789,7 @@ public sealed partial class WindowHost : IWindowHost
     /// area's. It does not read the window's current top-left at all. Round 2's review finding 7 asked
     /// for a deliberate decision about moving on growth and got "move by exactly the overflow, never
     /// otherwise"; Round 4, item 4 supersedes that with a rule that has to move: an anchor that only
-    /// applied at restore would be undone by the very first fit (the cold-start placeholder is 1000x688
+    /// applied at restore would be undone by the very first fit (the cold-start placeholder is 1112x688
     /// and the fitted window is neither), so all five surviving re-fit triggers move the window as well
     /// as resizing it. A shrink now moves the window DOWN by exactly the height delta, keeping the
     /// bottom edge where it was; growth is symmetric about the centre and cannot overflow, because the

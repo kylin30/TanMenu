@@ -73,8 +73,8 @@ public static class WindowPlacement
     }
 
     /// <summary>
-    /// Combine a measured page-content size with the shell chrome around it (the navigation rail and
-    /// the content pane's left border beside it, the title strip and the pane's top border above it)
+    /// Combine a measured page-content size with the shell chrome around it (the navigation pane and
+    /// the content pane's left border beside it, the caption band and the pane's top border above it)
     /// into a full window size, then place it exactly like <see cref="ResolveBottomCentred"/>. This is
     /// the arithmetic Round 2's fit-to-content feature needs on top of the placement rule — pulled out
     /// here, rather than left inline in <c>WindowHost</c>, so it is unit-testable without measuring a
@@ -82,14 +82,19 @@ public static class WindowPlacement
     /// </summary>
     /// <param name="contentWidth">The active page's natural content width, as measured by Avalonia (e.g.
     /// <c>AppPage.DesiredSize.Width</c>) — excludes the navigation rail.</param>
-    /// <param name="contentHeight">The active page's natural content height — excludes the title strip.</param>
+    /// <param name="contentHeight">The active page's natural content height — excludes the caption band.</param>
     /// <param name="chromeWidth">Everything beside the content that still counts toward the window's own
-    /// Width: the navigation rail, which is a fixed 48 DIP, plus whatever left border the content pane
-    /// carries. This function only adds it — what it is composed of is the caller's business
-    /// (<c>MainWindow.RefitToContent</c>).</param>
+    /// Width: the navigation pane, which is one fixed width, plus whatever left border the content pane
+    /// carries. This function only adds it — what it is composed of, and what that width currently is,
+    /// are the caller's business (<c>MainWindow.RefitToContent</c>, which composes
+    /// <c>RailWidthDip + PaneBorderDip</c>). No number from the shell is restated here: this file is the
+    /// unit-testable arithmetic, and all 23 <c>WindowPlacementTests</c> pass both terms in as
+    /// parameters.</param>
     /// <param name="chromeHeight">Everything above the content that still counts toward the window's own
-    /// Height: the title strip, plus whatever top border the content pane carries
-    /// (<c>WindowHost.ChromeHeightDip</c>).</param>
+    /// Height: the caption band, plus whatever top border the content pane carries
+    /// (<c>WindowHost.ChromeHeightDip</c>). "Title strip" is what this said until Round 7 — that was a
+    /// client-side element Task 1 deleted outright, and the term above is the one
+    /// <c>Services/WindowHost.cs</c> already uses.</param>
     /// <remarks>
     /// A fit no longer takes a position at all. Before Round 4, item 4 it took the window's own current
     /// Left/Top and re-clamped them, so a re-fit preserved wherever the window happened to be; now

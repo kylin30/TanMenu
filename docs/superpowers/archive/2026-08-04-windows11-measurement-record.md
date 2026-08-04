@@ -264,3 +264,104 @@ title, no subtitle to cancel it, and an empty column 2.
 depended on the block measuring 36. It depends on every header being the same TWO LINES, which is
 `SettingsRowTests.EveryCardHeader_IsOneTitleLineAndOneSubtitleLine`'s job and which no card violates.
 That is why deleting the tokens changed no layout invariant.
+
+---
+
+## Round 3 Task 2 / Round 4 item 1 / Round 6 item 3 — the icon rail, matched to Task Manager's own
+
+**Deleted from** `src/TanMenu.Wpf/Themes/Fluent2/Launcher.axaml`, where 55 lines of preamble justified
+`TmNavRowItem`'s selected-state accent pill and 9 more explained why no rule in the file made the rows
+icon-only, and from `src/TanMenu.Wpf/MainWindow.axaml`, where 27 lines derived the 40 DIP item column
+and each glyph's local `Width="16"`.
+**Stopped being true of the code at** Round 7, Task 8, which replaced the 48 DIP icon rail with a
+160 DIP wide labelled Windows 7 navigation pane: the pane width, the row box, the row pitch, the item
+column and the accent indicator all stopped existing in the same commit, and `TmNavRowItem` became the
+vendored Aero `ListBoxItem` theme with four setters on top.
+**Instrument:** live UI Automation `BoundingRectangle` on BOTH applications at once — this app and
+Windows 11's own Task Manager, with the two windows arranged so their rails occupied the same image
+columns — plus `PrintWindow` (flag 2) pixel reads on the same pair of captures.
+**Machine:** this repository's development machine, Windows 11 Pro 10.0.28000, primary monitor at 150 %.
+
+### The pane and the item column
+
+Task Manager's `PaneRoot` measured **72 physical px = 48 DIP**, which is the width this app had always
+opened at, so the rail's own 48 was carried over unchanged rather than chosen. Inside it, TM's item
+column measured **40 DIP** where this app's measured **32** — the difference was this app's own
+`ListBox` horizontal `Padding`, which stacked a second 4 DIP inset on top of the `ListBoxItem`'s
+`Margin="4,2"` and ate 16 DIP of the 48 (48 − 16 = 32) instead of the 8 the item margin alone accounts
+for (48 − 8 = 40). Both rails were then set to a zero horizontal `Padding` locally, which fixed the item
+column at 40 DIP with no other change.
+
+### The icon box, and the finding that produced the local `Width="16"`
+
+TM's rail glyphs measured a FIXED, IDENTICAL 16 DIP box at the same x on every row — seven different
+glyphs (folder, chart, clock, wrench, people, list, puzzle) all reported **x = 5322** — which only
+happens if the glyph sits in a fixed-size container rather than being centred on its own advance. This
+app's did not: before the fix, 应用's grid glyph and 设置's gear glyph centred **4 physical px apart**
+from each other purely from Segoe Fluent Icons' per-glyph advance differences, even though both rows'
+content was correctly centred. A local `Width="16"` on each glyph fixed it. That local width SURVIVES
+into the labelled pane and is the one thing in this section that does; its citation changed from TM's
+measured icon box to `vis-layout`'s published "A control size of 16x16 relative pixels is a good minimum
+size for any input device", because a labelled row's icon column is not TM's icon box.
+
+### The selected row, and the pill
+
+The pre-Round-6 selected look was `BorderThickness="3,0,0,0"` on the stock template's
+`ContentPresenter`, and a border always runs the full length of its edge AND always consumes layout. It
+therefore painted the accent down the whole 36 DIP row box and pushed the row's own glyph sideways.
+Measured against TM:
+
+- TM's accent is **24 px tall = 16 DIP**, centred on the row box rather than spanning the full row.
+- TM's accent is a **pill**: 5 px wide through the middle, narrowing to 3 px on its first and last
+  scanlines — a cap radius near half its width, about 1.67 DIP.
+- **TM's glyph does not move when the row is selected.** Driving `SelectionItemPattern.Select()` on its
+  性能 row and re-capturing, the 进程 glyph's ink sat at the same x in both states. This app's moved its
+  icon `TextBlock` 2 px (1.33 DIP) right on selection — the border's layout cost, reported by UI
+  Automation on the glyph itself.
+
+Round 6 item 3 replaced the border with an ELEMENT: a 3x16 DIP `Border` at `CornerRadius="1.5"`, laid
+over the content in a `Panel`, hit-test invisible, transparent until `:selected` painted it. The move
+from a `BorderThickness` to an element shifted the render by a pixel — 4 px wide before, 5 px after, the
+same 5 px TM draws — from an authored number that never moved, because 3 DIP at 150 % is 4.5 and layout
+rounding covers 4 and 5 alike. The width was deliberately NOT "corrected" to 3.33 to chase TM's 5 px:
+that would have been wrong at every other scale.
+
+Everything the survey found IDENTICAL was left alone and is recorded here for the same reason: the
+48 DIP pane, the 40x36 DIP row box, the 40 DIP row pitch, the 4 DIP corner arc, the empty unselected
+row, and the accent hue — the two apps' indicators sampled the same triple in each variant, so
+`AccentDefaultBrush`, which `Services/AppTheme.cs` republishes from Windows personalization, was already
+right.
+
+### The state fills, and the alpha solve
+
+TM's selected row solved to **alpha 9.4/255 black in Light** and **14.5/255 white in Dark**, against
+which this app's `SubtleFillSecondaryBrush` was exactly 10/255 and `SubtleFillTertiaryBrush` exactly
+15/255 — so the state fills were a LOOKUP, not a colour choice. Round 7, Task 7 deleted both tokens
+(Aero paints a list row's states as opaque two-stop gradients, not alpha washes) and the figures ceased
+to describe anything.
+
+### The rail's glyph contrast
+
+Measured on both apps, both variants, and identical in the selected and unselected state in each: TM's
+rail glyphs solve to **alpha 0.893 black over their row in Light** and reach **pure white in Dark** —
+which is this app's `TextPrimaryBrush` to the level in both. This app's were `TextSecondaryBrush`, alpha
+**0.605** in Light and **(208,209,210)** in Dark. `Grid.tm-nav-rail TextBlock.tm-icon` was written to
+close that gap and is the one rule of this whole survey that SURVIVES into the labelled pane — re-derived
+rather than re-measured, because under a labelled row the reason a glyph is at full ink is that the
+label beside it is, not that Task Manager's was.
+
+### The footer's geometry
+
+TM's rail footer holds exactly ONE entry, its Settings gear, pinned to the very bottom of the pane, and
+its `FooterMenuItemsHost` fills a `"*"`-sized **1390 physical px** even though its 7 items occupy only
+414 of them — the same "leftover space pushes the footer down" mechanism this app's own `RowDefinitions`
+uses, and the reason that Grid needs no explicit height. The **~4 DIP** gap measured between TM's
+`FooterMenuItemsHost` and the window edge is where this app's footer `StackPanel` `Margin="0,0,0,4"`
+comes from; that margin survives Task 8 unchanged, and it is the only geometric number in this section
+that does.
+
+**The finding that outlives its subject:** every number above was chosen by matching a Windows 11
+application, and the reference itself is what Round 7 retired. The two things that survived — the local
+16 DIP glyph width and the full-ink rail glyph — survived because each had a second, non-comparative
+justification available; the pill, the pane width, the row box, the pitch and the alpha solve had only
+the comparison, and went with it.

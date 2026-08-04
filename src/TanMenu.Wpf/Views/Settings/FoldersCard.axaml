@@ -24,17 +24,22 @@
        WHY ALL THREE BUTTONS TRAIL, INCLUDING ON 数据文件夹 AND 维护. Until Round 5 they sat on their own
        full-width row below, because three buttons sharing column 2 with a column 1 that ALSO held a
        260 DIP NoWrap path line were measured to clip past the visible edge at the app's documented
-       minimum window width (MainWindow.axaml's MinWidth="760"). With the path lines off the header that
+       minimum window width. With the path lines off the header that
        premise is gone, and the measurement was retaken rather than inherited: the live window was shrunk
-       with SetWindowPos until the platform clamped it at its enforced minimum (GetWindowRect 1162 px =
-       760 DIP client + the 22 px horizontal inset), and every button on the page was read from its UIA
-       rect. Nothing clips. On both rows the three-button strip ends exactly on the card's content right
+       with SetWindowPos until the platform clamped it at its enforced minimum (then MainWindow.axaml's
+       MinWidth="760"; GetWindowRect 1162 px = 760 DIP client + the 22 px horizontal inset), and every
+       button on the page was read from its UIA rect. Nothing clips. Round 7, Task 8 widened the
+       navigation pane from 48 to 160 DIP and moved that MinWidth to 872 BY THE SAME 112 DIP, precisely so
+       this measurement would keep holding: what the buttons actually sit in is the CONTENT PANE, and
+       872 − 161 of chrome is the same 711 DIP as 760 − 49 was. The premise below is therefore an 872 DIP
+       window with a 711 DIP content pane, and every figure taken at the old floor is unchanged.
+       On both rows the three-button strip ends exactly on the card's content right
        edge, with the standard 12 DIP gutter to the text column, and it does so in English too — the
        worse case, where 重置为默认 (104.67 DIP) becomes Reset to Default (133.33). So the row spec needs
        no "three or more go below" exception: controls trail, full-width content goes below, and 主文件夹
        and 数据文件夹 are finally the same shape.
 
-       What 760 DIP does cost is wrapping: at that width 数据文件夹's subtitle takes two lines in Chinese
+       What the floor does cost is wrapping: at that width 数据文件夹's subtitle takes two lines in Chinese
        and three in English. That is not the buttons' doing and moving them would not fix the page — at
        the same width 每列个数's English subtitle wraps with nothing but a 220 DIP ComboBox beside it, and
        主文件夹's wraps with only two buttons. tm-card-sub wraps on purpose; a header of exactly two

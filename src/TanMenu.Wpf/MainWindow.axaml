@@ -3,7 +3,7 @@
         xmlns:chrome="using:Avalonia.Controls.Chrome"
         x:Class="TanMenu.Wpf.MainWindow"
         Title="TanMenu"
-        Width="1000" Height="688" MinWidth="760"
+        Width="1112" Height="688" MinWidth="872"
         WindowStartupLocation="Manual"
         TransparencyLevelHint="AcrylicBlur"
         Background="Transparent"
@@ -14,31 +14,33 @@
         ExtendClientAreaTitleBarHeightHint="30">
 
   <!--
-    The shell: an acrylic window split into a hand-drawn Windows 7 Aero caption, a permanently
-    icon-only navigation rail (48 DIP wide, see NavRailPane below) and a page host.
+    The shell: an acrylic window split into a hand-drawn Windows 7 Aero caption, a wide labelled
+    navigation pane (160 DIP, see NavRailPane below) and a page host.
 
-    Round 3, Task 2 (user items 4, 5) reshaped the rail to match Task Manager's OWN measured shape
-    (live UI Automation + pixel geometry, not eyeballed):
-    Task Manager's rail is not one flat list — its page rows (进程/性能/…/服务) sit in a top "*"-sized
-    group and its Settings gear sits alone in a SEPARATE, bottom-pinned footer group, separated from the
-    page list by whatever space is left over. This shell's own 应用/设置 map onto that same shape: 应用
-    is the only real "page list" entry (NavRail, a ListBox in the Grid's "*" row), and 设置 — a real page
-    here too, exactly like Task Manager's own Settings — moves into a second, bottom-pinned ListBox
-    (NavFooterRail) alongside the commands the title strip's old ⋯ overflow used to hold. Round 3 moved
-    four of them (打开主目录/刷新/关于/退出); three are still rail rows, because Round 5, item 2 took 关于
-    back out of the rail and made it a settings card. A command row is NOT a page — invoking one leaves
-    whatever page is currently shown alone — so they are plain Buttons (Theme="{StaticResource
-    TmNavRowButton}"), not ListBoxItems: a Button has no :selected pseudoclass at all, which is what makes
-    "a command row must never look selected" true by construction rather than by a style rule a future
-    edit could defeat.
+    Round 3, Task 2 (user items 4, 5) gave the pane its two-group shape, and that shape survives every
+    later change to what the rows look like: the page rows sit in a top "*"-sized group (NavRail, a
+    ListBox in the Grid's "*" row) and the commands plus 设置 sit in a SEPARATE, bottom-pinned footer
+    group, pushed to the pane's bottom edge by whatever space the "*" row does not use. Round 3 moved
+    four commands out of the title strip's old ⋯ overflow (打开主目录/刷新/关于/退出); three are still
+    rows here, because Round 5, item 2 took 关于 back out and made it a settings card. A command row is
+    NOT a page — invoking one leaves whatever page is currently shown alone — so they are plain Buttons
+    (Theme="{StaticResource TmNavRowButton}"), not ListBoxItems: a Button has no :selected pseudoclass
+    at all, which is what makes "a command row must never look selected" true by construction rather
+    than by a style rule a future edit could defeat. That split got MORE load-bearing in Round 7,
+    Task 8, not less — see TmNavRowButton's own remark in Themes/Fluent2/Launcher.axaml.
 
-    Round 4, item 1 deleted the rail's expand capability outright — the hamburger toggle, the 200 DIP
-    expanded width, the width animation, the six label TextBlocks and the state class that switched
-    between the two widths are all gone. The rail is 48 DIP, icon-only, always; that is both
-    Task Manager's own measured pane width and the only state this app ever shipped as its default.
-    Each row's ToolTip.Tip and AutomationProperties.Name (ApplyRailText, code-behind) are therefore now
-    the ONLY label any row carries, not a duplicate of a visible one. (Round 7, Task 8 is what turns the
-    rail into a Windows 7 wide labelled pane; this task does not touch it.)
+    ROUND 7, TASK 8 TURNED THE 48 DIP ICON RAIL INTO A 160 DIP LABELLED PANE, and it is ONE width, not
+    two. Round 4, item 1 had deleted the rail's expand capability in five pieces — the label
+    TextBlocks, the StackPanels that paired them with icons, the 200 DIP second width, the
+    DoubleTransition that animated between the two, and the ClipToBounds that clipped that animation.
+    Task 8 reverts the first two and NOT the other three. Keeping one width is what keeps RailWidthDip
+    a constant rather than a config read, and it is what keeps the sixth re-fit trigger deleted.
+    Because the rows carry visible labels again, ApplyRailText's five ToolTip.SetTip calls are GONE and
+    five TextBlock.Text writes stand in their place; the five AutomationProperties.Name writes stay, and
+    every row still has one. Microsoft's own glossary settles the tooltips:
+    https://learn.microsoft.com/en-us/windows/win32/uxguide/glossary — "tooltip — A small pop-up window
+    that labels the UNLABELED control being pointed to". A tooltip that repeats a visible label is by
+    that definition the wrong control.
 
     ExtendClientAreaToDecorationsHint pulls the whole client area — including the strip where the OS
     used to paint its own title bar — under our control. ExtendClientAreaTitleBarHeightHint is pinned to
@@ -56,9 +58,13 @@
     ExtendClientAreaToDecorationsHint has already pulled the 45 px caption INTO the client area, so a
     declared MinHeight="568" forced a 598 DIP client, 30 DIP more than any fit ever asked for, and made
     a bottom anchor computed from the requested height overlap the taskbar. The horizontal case has no
-    such error (the 22 px AdjustWindowRectEx reports IS the real horizontal inset), so MinWidth="760"
-    stays declared. The app's own 568 DIP height floor now lives in WindowHost.MinWindowHeightDip, where
-    it is applied to the request instead of to the window.
+    such error (the 22 px AdjustWindowRectEx reports IS the real horizontal inset), so MinWidth stays
+    declared. The app's own 568 DIP height floor now lives in WindowHost.MinWindowHeightDip, where
+    it is applied to the request instead of to the window. Round 7, Task 8 moved that MinWidth from 760
+    to 872 and the declared Width from 1000 to 1112, both by the pane's own 112 DIP growth: the number
+    the four measurement records elsewhere in the tree actually rest on is the CONTENT PANE's floor, and
+    872 − 161 of chrome holds it at exactly the 711 DIP it has always been. WindowHost.MinWindowWidthDip
+    mirrors the 872 and ShellConstantTests.MinWindowWidth_IsTheSameNumberInBothPlaces ties them.
 
     Round 3, Task 2: the ⋯ overflow button that used to sit in the title strip
     (打开主目录/刷新/关于/退出 behind a MenuFlyout) is gone — those commands became rows in the navigation
@@ -349,10 +355,12 @@
        draggable. The 30 is one of the three copies ShellConstantTests ties together. -->
   <Grid RowDefinitions="30,*">
 
-    <!-- Grid.Column="0" is "Auto", not a literal 48: NavRailPane below carries its OWN explicit Width
-         and the Auto column just follows whatever that Border measures at, so the rail's width is
+    <!-- Grid.Column="0" is "Auto", not a literal width: NavRailPane below carries its OWN explicit
+         Width and the Auto column just follows whatever that Border measures at, so the pane's width is
          stated exactly once in this file (Round 4, item 1 removed the second state that Width used to
-         animate between; a fixed column here would restore a second copy of the number instead).
+         animate between; a fixed column here would restore a second copy of the number instead — and
+         Round 7, Task 8 moved that number from 48 to 160 with no edit here, which is the arrangement
+         working).
 
          ══ THE CLIENT SURFACE, ROUND 7 TASK 7 ═══════════════════════════════════════════════════
          This Background is what makes the app legible, and it is Aero's own structure rather than a
@@ -382,77 +390,139 @@
     <Grid Grid.Row="1" ColumnDefinitions="Auto,*"
           Background="{DynamicResource SurfaceBaseBrush}">
 
-      <!-- ══ Navigation rail pane: 48 DIP, icon-only, permanently ═══════════════════════════════════
-           Round 4, item 1: the hamburger toggle, the 200 DIP expanded width and the DoubleTransition
-           that animated between the two are deleted — a rail with one width needs neither a transition
-           on that width nor the ClipToBounds that only existed to clip the animation. 48 DIP is Task
-           Manager's own pane width, measured live (its PaneRoot is 72 physical px = 48 DIP at this
-           machine's 150% scale) and the width this app has always opened at.
+      <!-- ══ Navigation pane: 160 DIP, wide and labelled ════════════════════════════════════════════
+           EVERY NUMBER IN THIS DERIVATION IS AUTHORED. Microsoft never published the Windows 7
+           navigation pane's geometry: the Windows 7 UX Guide's table of contents
+           (https://learn.microsoft.com/en-us/windows/win32/uxguide/toc.json, 73 slugs) has no Explorer
+           article and no navigation-pane article, and its glossary has no "navigation pane" entry.
+           There is no Windows 7 machine and no Aero reference capture anywhere in this tree. What
+           follows is therefore DERIVED from the published statements that do bear on it, not measured,
+           and the one place this conversion has to say so out loud.
 
-           This literal Width is the SINGLE source of truth for the rail's width. MainWindow.axaml.cs's
+           WHY 160.
+             · PUBLISHED, https://learn.microsoft.com/en-us/windows/win32/uxguide/vis-layout — the only
+               sizing statement the guide makes about trees at all: "Tree views | width of longest item
+               + 30% x an integral number of items (5 items minimum)". A formula; its relative-pixels
+               cell is blank.
+             · Longest label in either language, MEASURED on the shipped build at 150 % with the app's
+               DEFAULT font (UI Automation on each label TextBlock): 打开主目录 is 105 px = 70 DIP, and
+               its English twin — "Open Main Folder", not the design's "Open root folder" — is
+               168 px = 112 DIP. The design estimated 60 and 88 and was wrong about both, and about the
+               English string itself.
+               THE +30% IS THEREFORE MET IN CHINESE AND NOT IN ENGLISH, and that is recorded rather than
+               papered over: 70 × 1.3 = 91 fits the 118 DIP label column with room; 112 × 1.3 = 145.6
+               does not. The English label still RENDERS WHOLE — 112 against 118, 6 DIP of clearance,
+               confirmed on a PrintWindow capture with no ellipsis — so the pane is legible in both
+               languages; what it does not have is the formula's headroom. 160 is kept anyway because it
+               is the number the whole fit table is derived from (MinWidth 872 holds the content pane at
+               its historical 711 DIP, §2.1 of the design), and widening the pane to satisfy a formula
+               whose own relative-pixels cell is blank would move four measurement records elsewhere in
+               the tree for no legibility gain.
+             · A USER-CHOSEN FONT CAN STILL OVERFLOW THE COLUMN, and tm-nav-label's
+               NoWrap + CharacterEllipsis is what handles it. MEASURED with 字体 = Verdana, the 应用
+               page's own font setting: "Open Main Folder" trims to "Open Main Fol…". The row's
+               AutomationProperties.Name still carries the untrimmed string, so nothing is lost to a
+               screen reader; a sighted user of a wide font at that one row loses the last word. The
+               alternative — sizing the pane for the widest installed face — is not sizeable at all.
+             · This row's own structure: Margin 2 + Padding 8 + icon 16 + gap 6 = 32 DIP ahead of the
+               label, and Padding 8 + Margin 2 = 10 DIP after it. Label column = 160 − 32 − 10 = 118 DIP,
+               which clears the 114. The margin, the padding and the gap are TmNavRowItem's and
+               tm-nav-label's (Themes/Fluent2/Launcher.axaml); the 16 is each glyph's own local Width
+               below. MEASURED on the shipped build at 150 %, all five rows identical: row box x = 2488,
+               glyph x = 2500 (12 px = 8 DIP of padding), glyph 24 px wide, label x = 2533 (9 px = 6 DIP
+               of gap), row right edge 2722 less 12 px of padding = 2710 — a 177 px = 118 DIP label
+               column, exactly the arithmetic above.
+             · NO INDENT, and that is published too:
+               https://learn.microsoft.com/en-us/windows/win32/controls/tree-view-control-window-extended-styles
+               — "TVS_EX_NOINDENTSTATE — [Windows Vista]. Do not indent the tree view for the expando
+               buttons." The indent exists to make room for an expando; no row here has children, so
+               this is exactly that case. vis-layout's one published indent figure ("dependent controls
+               are indented 12 DLUs or 18 relative pixels") is quoted only to say why it is not used.
+             · Row box MEASURED 23.33 DIP (35 px at this machine's 150 %), pitch MEASURED 25.33 DIP
+               (38 px) with Margin="2,1". The design predicted 22 and 24 from "16 DIP glyph + 2×3 DIP
+               Padding", and THAT ARITHMETIC IS WRONG ABOUT WHICH CHILD IS TALLEST. UI Automation on
+               every one of the five rows: the glyph is 16x16 DIP, and the LABEL beside it is 17.33 DIP
+               tall — a 12 DIP Segoe UI / Microsoft YaHei UI line box, not a 12 DIP glyph — so the
+               DockPanel measures 17.33 and 17.33 + 2×3 = 23.33. The 22 is not recoverable without
+               pinning the label's LineHeight, and Round 7, Task 7 deleted every LineHeight token in the
+               file on the ground that GDI text takes its natural line height; re-introducing one here
+               for two DIP would contradict that decision and risk clipping CJK descenders. The measured
+               value ships.
+               This does cost the evenness citation, so it is recorded as forgone rather than claimed:
+               https://learn.microsoft.com/en-us/windows/win32/controls/tvm-setitemheight — "If this
+               argument is not even and the tree-view control does not have the TVS_NONEVENHEIGHT style,
+               this value will be rounded down to the nearest even value" — argues for an even item
+               height, and 23.33 DIP is 35 physical px here, which is odd at this scale and would be odd
+               at 100 % too. Win32 rounds; Avalonia does not, and nothing in this app is a tree view.
+
+           ONE WIDTH, NOT TWO, and re-reading this as "expandable" is the mistake to avoid. Round 4,
+           item 1 deleted the second 200 DIP width, the DoubleTransition and the ClipToBounds along with
+           the labels; Task 8 brings back only the labels. A second width would restore all three plus a
+           config read for the fit term and a sixth re-fit trigger — four deliberate deletions.
+
+           This literal Width is the SINGLE source of truth for the pane's width. MainWindow.axaml.cs's
            RailWidthDip mirrors it as the window content fit's chrome term and has to be kept in step
            with it — see that constant's own remarks, and
-           ShellConstantTests.RailWidth_MatchesTheRailPaneWidth, which is what now catches a drift
-           between the two. -->
+           ShellConstantTests.RailWidth_MatchesTheRailPaneWidth, which is what catches a drift between
+           the two. -->
       <Border Grid.Column="0"
               x:Name="NavRailPane"
-              Width="48"
+              Width="160"
               Background="Transparent">
 
-        <!-- Two rows: Task Manager's own rail (measured, not eyeballed — its NavigationMenu is a Grid
-             of exactly this shape) keeps its page list in a "*" row and pins Settings alone in a
-             separate Auto row below it, the "*" row's own leftover space pushing the footer down to the
-             pane's bottom edge. Round 4, item 1 removed the third (Auto) row this Grid used to open
-             with, which held nothing but the hamburger toggle; nothing replaces it, so 应用 rises by
-             that row's whole height. Classes="tm-nav-rail" is this element's own name for anything
-             that needs to scope a rule to the rail root, and since Round 6, item 3 something does:
-             Launcher.axaml's "Grid.tm-nav-rail TextBlock.tm-icon" is what lifts every rail glyph to
-             Task Manager's own measured contrast without touching tm-icon anywhere else in the app.
-             (Between Round 4, item 1 — which deleted the three rail-state selectors that were its
-             previous readers — and that rule, it had none.) -->
+        <!-- Two rows: the page list in a "*" row and the footer pinned alone in an Auto row below it,
+             the "*" row's own leftover space pushing the footer down to the pane's bottom edge. Round 4,
+             item 1 removed the third (Auto) row this Grid used to open with, which held nothing but the
+             hamburger toggle; nothing replaces it, so 应用 rises by that row's whole height.
+             Classes="tm-nav-rail" is this element's own name for anything that needs to scope a rule to
+             the pane root, and two rules do: Launcher.axaml's "Grid.tm-nav-rail TextBlock.tm-icon",
+             which lifts every pane glyph to full ink so it matches the label beside it, and nothing
+             else — tm-nav-label needs no scoping because no other part of the app uses that class. -->
         <Grid x:Name="NavRailContent" Classes="tm-nav-rail" RowDefinitions="*,Auto">
 
           <!-- Page list: 应用 only. 设置 is a real page too (PageHost.Content still swaps between the
-               two exactly as before — see ShowPage), but it now lives in NavFooterRail below, pinned to
-               the pane's bottom footer the same way Task Manager pins its own Settings gear, separated
-               from this list. Padding is "0,12" — ZERO horizontal, unlike a plain ListBox default —
-               because ListBoxItem's own Margin="4,2" (Launcher.axaml) already supplies the row's outer
-               gutter; adding a second, ListBox-level horizontal padding on top of that (the pre-Task-2
-               shape) narrowed the item to 32 DIP against Task Manager's OWN measured 40 DIP —
-               confirmed by live UI Automation on both apps. Removing it is what makes
-               the item column exactly 48 (pane) − 2×4 (item margin) = 40 DIP, matching
-               Task Manager's row width with no other change. Grid.Row="0" since Round 4, item 1 deleted
-               the hamburger row above it. -->
+               two exactly as before — see ShowPage), but it lives in NavFooterRail below, pinned to the
+               pane's bottom footer and separated from this list.
+
+               Padding is "0,11". The horizontal component is ZERO, unlike a plain ListBox default,
+               because the rows' own Margin="2,1" (TmNavRowItem / TmNavRowButton, Launcher.axaml) is what
+               supplies the item column's gutter: a second ListBox-level inset on top of it would narrow
+               the item column below the 156 DIP the pane's derivation above and
+               Border.tm-nav-separator's span both depend on, and it would do so on ONE of the two
+               ListBoxes. The vertical 11 is PUBLISHED, vis-layout: "Dialog box margins — 7 DLU / 11
+               relative pixels on all sides". It was 12, a rung of the Fluent ramp Round 7, Task 7
+               retired. Grid.Row="0" since Round 4, item 1 deleted the hamburger row above it. -->
           <ListBox x:Name="NavRail"
                    Grid.Row="0"
                    SelectedIndex="0"
                    SelectionChanged="OnNavSelectionChanged"
                    Background="Transparent"
                    BorderThickness="0"
-                   Padding="0,12">
-            <!-- Every rail icon TextBlock in this file carries a local Width="16": Task Manager's own
-                 icon glyphs measure a FIXED, IDENTICAL 16 DIP box at the same X on every single row
-                 (live UI Automation on 7 different glyphs — folder, chart, clock, wrench, people, list,
-                 puzzle — all report x=5322), which only happens if the icon sits in a
-                 fixed-size container rather than being centred by its own raw glyph metrics. Segoe
-                 Fluent Icons glyphs do NOT all share the same advance width at a given FontSize — before
-                 this fix, "应用"'s grid glyph and "设置"'s gear glyph centred 4 physical px apart from
-                 each other (measured) purely from font-metric differences between the two characters,
-                 even though both rows' content was correctly centred. A local value beats the tm-icon
-                 style's own Setters (the same precedence this file already relies on elsewhere), and 16
-                 DIP is not a round guess: it is exactly Task Manager's OWN measured icon box, and it also
-                 exactly fills this row's own content width (40 DIP item − 2×12 DIP
-                 ListBoxItem Padding, Launcher.axaml, = 16 DIP) with no slack on either side.
+                   Padding="0,11">
+            <!-- EVERY ROW IN THIS FILE IS A DockPanel: the glyph docked left in a fixed 16 DIP column,
+                 the label filling what is left. Round 7, Task 8 restored the label; the row is not a
+                 revert of the pre-Round-4 StackPanel, because a DockPanel is what lets the label take
+                 the remaining 118 DIP and ellipsize inside it instead of pushing the row wider.
 
-                 Round 4, item 1: the icon is now every row's WHOLE content — the label TextBlock and the
-                 horizontal StackPanel that used to pair with it are gone, since the rail can no longer
-                 widen to show a label. Centring is stated LOCALLY on the icon (tm-icon's own Setters say
-                 the same thing, and a local value simply outranks them): it used to come from a pair of
-                 rail-state rules in Launcher.axaml that centred the row's StackPanel, and item 1 deleted
-                 both along with the StackPanels they targeted. -->
+                 The local Width="16" on each glyph STAYS, and its job is unchanged — it is what stops
+                 Segoe Fluent Icons' per-glyph advance from de-aligning the icon column, which was
+                 measured on this app: 应用's grid glyph and 设置's gear glyph centred 4 physical px
+                 apart from each other purely from font-metric differences. What changes is the citation
+                 behind the 16. It used to be Task Manager's own measured icon box, doubled up with an
+                 arithmetic coincidence about the icon-only row's content width; neither survives a
+                 labelled pane. It is now PUBLISHED, vis-layout: "A control size of 16x16 relative
+                 pixels is a good minimum size for any input device."
+
+                 The local HorizontalAlignment/VerticalAlignment attributes Round 4 put on each glyph
+                 are gone with the icon-only row that needed them: tm-icon's own Setters already centre
+                 the glyph, and inside a 16 DIP dock column there is nothing left to centre it against.
+                 The labels carry no Text here — ApplyRailText (code-behind) writes all five, from the
+                 same AppLanguage keys that used to feed the tooltips. -->
             <ListBoxItem x:Name="NavAppsItem" Theme="{StaticResource TmNavRowItem}">
-              <TextBlock Classes="tm-icon" Width="16" Text="&#xE71D;"
-                         HorizontalAlignment="Center" VerticalAlignment="Center" />
+              <DockPanel>
+                <TextBlock Classes="tm-icon" DockPanel.Dock="Left" Width="16" Text="&#xE71D;" />
+                <TextBlock x:Name="NavAppsLabel" Classes="tm-nav-label" />
+              </DockPanel>
             </ListBoxItem>
           </ListBox>
 
@@ -484,9 +554,12 @@
                flyout of further choices. Such a row would also just relocate the exact ⋯-button pattern
                Round 3, Task 2 explicitly removed, rather than actually removing it.
 
-               Round 4, item 1: each row's content is now its icon alone — see NavAppsItem above for why
-               the label TextBlocks and their StackPanels are gone and where the centring moved to. The
-               row's ToolTip.Tip and AutomationProperties.Name (ApplyRailText) are its only label.
+               Round 7, Task 8: every row below is a DockPanel of a docked 16 DIP glyph and a label —
+               see NavAppsItem above for the whole shape and for the published citation behind the 16.
+               AutomationProperties.Name (ApplyRailText) is no longer the row's ONLY label, but it is
+               still written for every row: it is the accessibility contract, and it is cheaper to state
+               than to reason about what Avalonia derives from a DockPanel of two TextBlocks. The
+               ToolTip.Tip that used to duplicate it is gone with the icon-only rail.
                Classes="tm-nav-row" below is kept as these rows' own name for anything that needs to
                scope a rule to them, but NO Launcher.axaml selector keys off it: its only reader was
                one of the three rail-state rules Round 4, item 1 deleted. (NavRailContent's own
@@ -511,8 +584,9 @@
                App.axaml.cs to TrayService; and the 应用 empty state's 打开设置… button, AppPage.axaml).
                That argument's MITIGATION survives the reversal, and is why the separator below moved
                WITH 退出 instead of staying where it was or being dropped: the terminal action is still
-               fenced into a group of its own rather than sitting one ordinary 4 DIP row gap from the row
-               the pointer returns to at a fixed screen coordinate. A menu convention (退出 last, as this
+               fenced into a group of its own rather than sitting one ordinary row gap (2 DIP since
+               Round 7, Task 8; it was 4) from the row the pointer returns to at a fixed screen
+               coordinate. A menu convention (退出 last, as this
                app's own tray menu does) now agrees with this footer instead of being overruled by it.
 
                关于 IS NO LONGER IN THIS FOOTER (Round 5, item 2 — "关于集成到设置页中"). It is a card at
@@ -542,28 +616,31 @@
                     Theme="{StaticResource TmNavRowButton}"
                     Classes="tm-nav-row"
                     Click="OnOpenRootClick">
-              <TextBlock Classes="tm-icon" Width="16" Text="&#xE8B7;"
-                         HorizontalAlignment="Center" VerticalAlignment="Center" />
+              <DockPanel>
+                <TextBlock Classes="tm-icon" DockPanel.Dock="Left" Width="16" Text="&#xE8B7;" />
+                <TextBlock x:Name="NavOpenRootLabel" Classes="tm-nav-label" />
+              </DockPanel>
             </Button>
             <Button x:Name="NavRefreshItem"
                     Theme="{StaticResource TmNavRowButton}"
                     Classes="tm-nav-row"
                     Click="OnRefreshClick">
-              <TextBlock Classes="tm-icon" Width="16" Text="&#xE72C;"
-                         HorizontalAlignment="Center" VerticalAlignment="Center" />
+              <DockPanel>
+                <TextBlock Classes="tm-icon" DockPanel.Dock="Left" Width="16" Text="&#xE72C;" />
+                <TextBlock x:Name="NavRefreshLabel" Classes="tm-nav-label" />
+              </DockPanel>
             </Button>
 
             <!-- 设置: a real page (see ShowPage), styled and measured exactly like NavRail's own
                  NavAppsItem — both carry Theme="{StaticResource TmNavRowItem}", so its selected
                  treatment reads identically to 应用's own. That theme (Launcher.axaml) is where the
-                 shape lives and where Round 6, item 3's measurements against Task Manager's own
-                 selected row are written down: a 16 DIP pill-shaped accent indicator centred on the
-                 row's leading edge, over a subtle rounded fill spanning the row box, and neither of
-                 them displacing the glyph.
+                 shape lives; since Round 7, Task 8 it is the VENDORED Aero ListBoxItem with four
+                 setters on top, so a selected row is Aero's two nested borders over a gradient and the
+                 accent pill Round 6 matched to Task Manager is gone with the icon rail that framed it.
 
-                 Padding is "0" — not the "0,12" NavRail uses, and no longer the "0,0,0,4" it carried
+                 Padding is "0" — not the "0,11" NavRail uses, and no longer the "0,0,0,4" it carried
                  through Round 4. No top inset, because the command row directly above (NavRefreshItem)
-                 carries Margin="4,2" and its bottom half already supplies that gap. No BOTTOM inset any
+                 carries Margin="2,1" and its bottom half already supplies that gap. No BOTTOM inset any
                  more either: that 4 DIP was the encoding of "I am the last child of the footer
                  StackPanel", and Round 5, item 1 put 退出 below this ListBox, so it is not. The inset
                  moved onto the footer StackPanel's own Margin, where the fact it states — the footer's
@@ -574,25 +651,29 @@
                      BorderThickness="0"
                      Padding="0">
               <ListBoxItem x:Name="NavSettingsItem" Theme="{StaticResource TmNavRowItem}">
-                <TextBlock Classes="tm-icon" Width="16" Text="&#xE713;"
-                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                <DockPanel>
+                  <TextBlock Classes="tm-icon" DockPanel.Dock="Left" Width="16" Text="&#xE713;" />
+                  <TextBlock x:Name="NavSettingsLabel" Classes="tm-nav-label" />
+                </DockPanel>
               </ListBoxItem>
             </ListBox>
 
             <!-- The one group boundary, between the reversible rows above and the terminal action
                  below. Geometry is in Launcher.axaml's "Border.tm-nav-separator" rule; its Margin is
-                 what makes the gap on either side of the hairline (6 DIP row-box to line) read as a
-                 boundary against the 4 DIP that separates two ordinary rows. Round 5, item 1 moved it
-                 down here with 退出 — see the ordering block above for why the fence has to travel with
-                 the row it fences. -->
+                 what makes the gap on either side of the hairline (5 DIP row-box to line since Round 7,
+                 Task 8, when the rows' vertical margin went from 2 to 1) read as a boundary against the
+                 2 DIP that separates two ordinary rows. Round 5, item 1 moved it down here with 退出 —
+                 see the ordering block above for why the fence has to travel with the row it fences. -->
             <Border Classes="tm-nav-separator" />
 
             <Button x:Name="NavExitItem"
                     Theme="{StaticResource TmNavRowButton}"
                     Classes="tm-nav-row"
                     Click="OnExitClick">
-              <TextBlock Classes="tm-icon" Width="16" Text="&#xE7E8;"
-                         HorizontalAlignment="Center" VerticalAlignment="Center" />
+              <DockPanel>
+                <TextBlock Classes="tm-icon" DockPanel.Dock="Left" Width="16" Text="&#xE7E8;" />
+                <TextBlock x:Name="NavExitLabel" Classes="tm-nav-label" />
+              </DockPanel>
             </Button>
           </StackPanel>
         </Grid>

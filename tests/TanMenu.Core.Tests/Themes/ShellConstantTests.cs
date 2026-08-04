@@ -121,10 +121,26 @@ public class ShellConstantTests
     /// <c>WindowDrawnDecorations</c> parts, and the template they belonged to was replaced wholesale);
     /// this test is what makes the next occurrence loud.
     /// <para>
-    /// A part name passes if it is declared as <c>x:Name=</c> or <c>Name=</c> anywhere under
-    /// <c>src/</c>, or if it is on the allow-list below — names owned by an Avalonia control template
-    /// that this app deliberately reaches into. Adding a foreign target therefore requires editing this
-    /// test, which is the point.
+    /// A part name passes if it is declared as <c>x:Name=</c> or <c>Name=</c> INSIDE A TEMPLATE BODY
+    /// somewhere under <c>src/</c>, or if it is on the allow-list below — names owned by an Avalonia
+    /// control template that this app deliberately reaches into. Adding a foreign target therefore
+    /// requires editing this test, which is the point.
+    /// </para>
+    /// <para>
+    /// ROUND 7, TASK 8 TIGHTENED "DECLARED" TO MEAN "DECLARED IN A TEMPLATE". Until then any
+    /// <c>x:Name=</c> anywhere under <c>src/</c> counted, which let a selector name a PAGE-LEVEL element
+    /// and pass — <c>/template/ Border#PagePane</c> would have been accepted on the strength of
+    /// <c>MainWindow.axaml</c>'s own <c>x:Name="PagePane"</c>, and it matches nothing, because
+    /// <c>/template/</c> only ever descends into a templated control's own name scope. The boundary is
+    /// NOT removed, only narrowed to the two elements that actually open a template body in this tree:
+    /// <c>&lt;ControlTemplate&gt;</c> and <c>&lt;WindowDrawnDecorationsTemplate&gt;</c> (the latter is
+    /// what Task 1's replaced window caption is written in). Both are matched with a depth count, so a
+    /// template nested inside a template is inside exactly once.
+    /// </para>
+    /// <para>
+    /// This tightening bites immediately: Task 8 gave every navigation-pane row an
+    /// <c>x:Name</c>d label <c>TextBlock</c>, five page-level names that the old rule would have
+    /// silently licensed as legal <c>/template/</c> targets.
     /// </para>
     /// </remarks>
     [Fact]
@@ -151,9 +167,13 @@ public class ShellConstantTests
             var body = Regex.Replace(File.ReadAllText(file), "<!--.*?-->", " ", RegexOptions.Singleline);
             bodies.Add((file, body));
 
-            foreach (Match m in Regex.Matches(body, @"(?:x:)?Name=""(?<n>[^""]+)"""))
-                declared.Add(m.Groups["n"].Value);
+            foreach (var name in TemplatePartNames(body))
+                declared.Add(name);
         }
+
+        Assert.True(declared.Count > 0,
+            "No template part name was found anywhere under src/, which means the template-body scan " +
+            "below stopped working rather than that the tree stopped declaring parts. Fix the scan.");
 
         var dead = new List<string>();
         foreach (var (file, body) in bodies)
@@ -167,9 +187,54 @@ public class ShellConstantTests
         }
 
         Assert.True(dead.Count == 0,
-            "These /template/ selectors name a part that is declared nowhere under src/ and is not on " +
-            "the Avalonia-owned allow-list, so they match nothing and silently do nothing: " +
+            "These /template/ selectors name a part that no ControlTemplate or " +
+            "WindowDrawnDecorationsTemplate under src/ declares, and that is not on the Avalonia-owned " +
+            "allow-list, so they match nothing and silently do nothing: " +
             string.Join("; ", dead.Distinct().OrderBy(s => s, StringComparer.Ordinal)));
+    }
+
+    /// <summary>
+    /// Every <c>x:Name=</c>/<c>Name=</c> declared inside a template body in one comment-stripped markup
+    /// file — and nothing declared outside one.
+    /// </summary>
+    /// <remarks>
+    /// A <c>/template/</c> selector descends into a templated control's own name scope and nowhere else,
+    /// so a name declared on a page, in a window's content, or as a plain resource is not reachable by
+    /// one and must not count as a legal target. The two openers are <c>&lt;ControlTemplate&gt;</c> and
+    /// <c>&lt;WindowDrawnDecorationsTemplate&gt;</c>; depth is counted so a nested template contributes
+    /// its names once, and a self-closing tag opens nothing.
+    /// </remarks>
+    private static IEnumerable<string> TemplatePartNames(string body)
+    {
+        var openers = new Regex(
+            @"<(?<close>/)?(?:ControlTemplate|WindowDrawnDecorationsTemplate)\b(?<attrs>[^>]*)>",
+            RegexOptions.Singleline);
+
+        var depth = 0;
+        var start = -1;
+
+        foreach (Match m in openers.Matches(body))
+        {
+            if (m.Groups["close"].Success)
+            {
+                depth--;
+                if (depth == 0 && start >= 0)
+                {
+                    foreach (Match n in Regex.Matches(body[start..m.Index], @"(?:x:)?Name=""(?<n>[^""]+)"""))
+                        yield return n.Groups["n"].Value;
+                    start = -1;
+                }
+                continue;
+            }
+
+            // "<ControlTemplate ... />" declares an empty template and opens no body.
+            if (m.Groups["attrs"].Value.TrimEnd().EndsWith('/'))
+                continue;
+
+            if (depth == 0)
+                start = m.Index;
+            depth++;
+        }
     }
 
     /// <summary>Match exactly one occurrence of <paramref name="pattern"/>'s "v" group, and fail with a
