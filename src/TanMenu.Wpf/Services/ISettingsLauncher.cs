@@ -17,8 +17,13 @@ public interface ISettingsLauncher
     Task OpenAsync();
 
     /// <summary>Fire-and-forget form for the call sites that only want the dialog on screen and have no
-    /// result to wait for: the tray menu (<c>App.OnLauncherOpened</c>), the 应用 page's empty-state
-    /// 打开设置… button, and — from Round 8, Task 2 — the navigation pane's 设置 row.</summary>
+    /// result to wait for. FOUR of them, grepped rather than remembered: the tray menu
+    /// (<c>App.OnLauncherOpened</c>), the 应用 page's empty-state 打开设置… button
+    /// (<c>LauncherViewModel.OpenSettings</c>), and the menu band's 设置 and 关于 items
+    /// (<c>MainWindow.OnOptionsClick</c> and <c>OnAboutClick</c>). The band replaced the navigation pane
+    /// this list used to name, in Round 8, Task 3, which is also what added the fourth caller: 关于 opens
+    /// the same dialog and then selects its 关于 tab, so it goes through the single-instance guard below
+    /// exactly like the other three rather than around it.</summary>
     void Open();
 }
 

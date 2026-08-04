@@ -470,12 +470,29 @@ public partial class MainWindow : Window
     /// The window's two keys: Ctrl+E (Round 7, Task 9 — see the comment on the branch itself) and
     /// Escape.
     /// <para>
-    /// Escape reaches here only when focus was NOT inside the search box or <see cref="AppPage"/>'s own
-    /// tile grid — e.g. a navigation-pane row. Both of those already handle Escape (and mark it handled)
-    /// themselves, matching the clear-then-hide behaviour the launcher always had. Before the rail
+    /// Escape reaches here only as a FALL-THROUGH, from focus that is neither in the search box nor
+    /// anywhere inside <see cref="AppPage"/>: <see cref="OnSearchKeyDown"/> and
+    /// <c>AppPage.OnKeyDown</c> — the latter for the whole page, not only its tile grid — both call
+    /// <c>HandleSearchEscape</c> and mark the key handled first, matching the clear-then-hide behaviour
+    /// the launcher always had. Before the rail
     /// existed, this window's own OnKeyDown handled Escape identically regardless of where focus was —
     /// calling the SAME view-model method here (rather than an unconditional Hide) keeps that behaviour
     /// rather than merely approximating it.
+    /// </para>
+    /// <para>
+    /// <b>A menu-band <c>MenuItem</c> is NOT one of the cases that fall through, and this sentence
+    /// replaces one that said it was.</b> The example named here until the Round 8, Task 3 review was
+    /// "a navigation-pane row", a control Task 3 deleted; the band is not a drop-in replacement for it,
+    /// because Avalonia closes the menu on Escape itself. Decompiled, Avalonia.Controls 12.1.0,
+    /// <c>DefaultMenuInteractionHandler.KeyDown</c>: the <c>Key.Escape</c> case closes the parent and
+    /// sets <c>e.Handled = true</c> unconditionally, and the handler is subscribed to the
+    /// <c>Menu</c>'s own KeyDown, which the event reaches while bubbling out of the item and before it
+    /// reaches this window. Ctrl+E is the opposite case and the branch below says why.
+    /// <b>MEASURED on the live app in the Task 3 review, not only decompiled</b>: synthetic Alt put
+    /// focus on <c>MenuOptions</c>, a synthetic Escape then left focus on the band AND LEFT THE
+    /// LAUNCHER VISIBLE. That is the decisive half — the filter was empty, so had this branch run,
+    /// <c>HandleSearchEscape</c> would have taken the <c>_host.Hide()</c> arm and the window would
+    /// have gone away.
     /// </para>
     /// </summary>
     /// <remarks>
@@ -500,8 +517,26 @@ public partial class MainWindow : Window
         // keyboard shortcut for the Search box to be Ctrl+E." (Round 7, Task 9.)
         //
         // It lives HERE rather than in AppPage.OnKeyDown because an accelerator that only works when
-        // focus is already inside the page it belongs to is not an accelerator: a key pressed on a
-        // navigation-pane row bubbles to this window, never to AppPage. The request goes through
+        // focus is already inside the page it belongs to is not an accelerator. The live case for that
+        // is the menu band, which is a SIBLING of the page rather than a descendant — UIA shows
+        // MainMenu, SearchBox and the page's own element as three children of this window — so Ctrl+E
+        // pressed on a band MenuItem bubbles to this window and never to AppPage. (It was "a
+        // navigation-pane row" until the Round 8, Task 3 review: same argument, deleted subject.)
+        //
+        // The band lets this key through where it swallows Escape, and that asymmetry is REAL but is
+        // asserted from the DECOMPILE ALONE — say so rather than imply it was driven. In
+        // DefaultMenuInteractionHandler.KeyDown, Key.E reaches the default arm, where
+        // NavigationDirectionExtensions.ToNavigationDirection maps only Tab/arrows/Home/End/PageUp/
+        // PageDown and returns null for a letter, so e.Handled is left alone; Key.Escape has its own
+        // arm and sets e.Handled unconditionally. The Escape half of that WAS confirmed on the live
+        // app (see the summary above). THE CTRL+E HALF COULD NOT BE, and not for want of trying: this
+        // machine has no real keyboard, and the PostMessage instrument every round uses cannot express
+        // a MODIFIER at all, because Avalonia's Win32 backend derives KeyModifiers from the live key
+        // state that PostMessage never updates. Driven from a band item AND, as a control, from inside
+        // the page where this branch is not in dispute, synthetic Ctrl+E moved focus in neither case —
+        // which measures the instrument, not this code.
+        //
+        // The request goes through
         // PendingFocus like every other one, so ConsumePendingFocus keeps owning the timing.
         if (e.Key == Key.E && e.KeyModifiers == KeyModifiers.Control)
         {
@@ -925,10 +960,11 @@ public partial class MainWindow : Window
 
     private void OnRefreshClick(object? sender, RoutedEventArgs e) => _ = _appPage.ViewModel.RefreshAsync();
 
-    /// <summary>设置. Goes through <see cref="ISettingsLauncher"/> like the tray menu's own entry and
-    /// the 应用 page's empty-state 打开设置… button, rather than constructing the dialog here: that
+    /// <summary>设置. Goes through <see cref="ISettingsLauncher"/> like the tray menu's own entry, the
+    /// 应用 page's empty-state 打开设置… button and <see cref="OnAboutClick"/> below, rather than
+    /// constructing the dialog here: that
     /// service owns the single-instance guard, the SuppressHide bracket and the hidden-owner
-    /// fallback, and having three call sites reproduce them would be three chances to get one
+    /// fallback, and having four call sites reproduce them would be four chances to get one
     /// wrong.</summary>
     private void OnOptionsClick(object? sender, RoutedEventArgs e) =>
         App.Services.GetRequiredService<ISettingsLauncher>().Open();

@@ -379,14 +379,18 @@
            and ListBox both compute their inner border's radius from the outer one with
            AdjustCornerRadiusConverter, which subtracts exactly 1.
 
-           IT HAS NO {DynamicResource} CONSUMER SINCE ROUND 7, TASK 7, and that is worth saying rather
-           than leaving to be discovered. Its two readers were TmTileButton's and TmButton's StateLayer
-           Borders, and Task 7 deleted both: Aero repaints a button's whole face per state instead of
-           washing a translucent layer over it, so there is no inner layer left to round. What still
-           cites the number is the search field's focus underline (Views/AppPage.axaml), which writes
-           "0,0,2,2" as a literal because it rounds the BOTTOM corners only and a uniform CornerRadius
-           resource cannot express that. The key is kept as the declaration that literal points at,
-           for the same reason Space1..Space3 above are kept. -->
+           IT HAD NO {DynamicResource} CONSUMER AT ALL AFTER ROUND 7, TASK 7, AND IT HAS EXACTLY ONE
+           NOW — Border.tm-search-affordance in Themes/Shell/Launcher.axaml, the search field's
+           magnifier/clear face. Task 7 is what emptied it: its two readers were TmTileButton's and
+           TmButton's StateLayer Borders, and Aero repaints a button's whole face per state instead of
+           washing a translucent layer over it, so there was no inner layer left to round. Task 9 is
+           what refilled it, and this remark did not follow either move — it went on naming a
+           "0,0,2,2" literal on the search field's focus underline, in Views/AppPage.axaml, for two
+           rounds after Task 9 deleted that literal, and then for a third after Round 8, Task 3 moved
+           the field itself into MainWindow.axaml. Grepped in the Round 8, Task 3 review: the string
+           "0,0,2,2" appears nowhere under src/, and this key's one reader is the Setter named above.
+           Corrected rather than deleted, because the reason to KEEP the key is now the ordinary one
+           (something reads it) instead of the Space1..Space3 one. -->
       <CornerRadius x:Key="RadiusControlInner">2</CornerRadius>
 
       <!-- ══ Spacing ═══════════════════════════════════════════════════════════════════════════

@@ -71,9 +71,12 @@
     Counted against the tree - MARKUP AND CODE-BEHIND BOTH, because a control built in code has no
     Theme= to grep for - that reach is:
 
-      - Button, TWO sites. AppPage.axaml's tm-update banner is the only one of the 26 <Button>
-        elements in .axaml outside this folder with no Theme=; the other is
-        Dialogs/MessageBoxWindow.axaml.cs, which builds the message box's one-to-three buttons in
+      - Button, THREE sites - it was TWO until Round 8, Task 2, and this bullet is re-counted here
+        rather than carried. FOUR of the 26 <Button> elements in .axaml outside this folder set no
+        Theme=: AppPage.axaml's tm-update banner, and Dialogs/OptionsWindow.axaml's OkBtn / CancelBtn
+        / ApplyBtn, which Task 2 added and which ride this layer deliberately (that file's own tab-
+        strip remark says so in as many words). The third site is Dialogs/MessageBoxWindow.axaml.cs,
+        which builds the message box's one-to-three buttons in
         code and sets no Theme either. The first count of this file named only the banner and was
         wrong - the same class of miss the design had already flagged for CheckBox - so the message
         box was then driven to a real dialog and measured rather than assumed. Its buttons went from
@@ -116,25 +119,34 @@
         Theme=: the Menu takes {x:Type Menu} and its five items take AeroTopLevelMenuItem through
         that theme's ItemContainerTheme setter. There is no MenuFlyout anywhere in this app, so
         AeroTopLevelMenuItem has exactly those five subjects.
-      - TextBox, TWO: AppPage.axaml's SearchBox and BehaviorCard.axaml's HotkeyBox. Both carry a
+      - TextBox, TWO: MainWindow.axaml's SearchBox - it lived in Views/AppPage.axaml, which this
+        bullet named, until Round 8 Task 3 moved it into the menu band - and BehaviorCard.axaml's
+        HotkeyBox. Both carry a
         tm- CLASS rather than a Theme=, and a class does not stop a {x:Type} ControlTheme reaching
         them - it only adds rules on top. Added by Task 4.
       - NumericUpDown, ONE: AppearanceCard.axaml's ColCountUpDown, the 每列个数 spinner. Task 4.
       - ButtonSpinner, ONE and it is not in any markup: NumericUpDown's own template builds it.
         Task 4.
       - ProgressBar, TWO, both on the update path and neither with a Theme=: UpdatesCard.axaml's
-        UpdateProgress on the 设置 page and AppPage.axaml's banner bar, which Task 5 turned from a
+        UpdateProgress on the 更新 tab of the Options dialog - it said "the 设置 page" until this fix
+        round, a surface Round 8, Task 2 deleted - and AppPage.axaml's banner bar, which Task 5 turned from a
         hand-drawn Border-in-Border into a real ProgressBar. Both had Height="4" and both are 15
         now, for the reason each one's own remark states. Task 5.
       - HeaderedContentControl, SIX, and every one of them names the theme explicitly because this
-        one is opt-in: the six group boxes on the 设置 page, one per file in Views/Settings. Task 9.
+        one is opt-in: the six group boxes, one per file in Views/Settings and so one per TAB of the
+        Options dialog - which is what the {x:Type TabItem} paragraph above already says, while this
+        bullet went on saying "on the 设置 page" for a round after Task 2 deleted that page. Task 9.
 
-    Everything else is untouched BY CONSTRUCTION rather than by luck: the other 25 <Button> elements
-    and both <ListBoxItem>s carry an explicit Theme=. Twenty-two of those Theme= values resolve to
-    Themes/Shell/Launcher.axaml; the remaining three are MainWindow.axaml's own caption buttons on
+    Everything else is untouched BY CONSTRUCTION rather than by luck: the other 22 <Button> elements
+    carry an explicit Theme=. Nineteen of those Theme= values resolve to Themes/Shell/Launcher.axaml
+    (seventeen TmButton, one TmTileButton, one TmIconButton); the remaining three are
+    MainWindow.axaml's own caption buttons on
     TmCaptionButton, which that file declares in its own Window.Resources because it is window
     chrome rather than launcher dialect. (This paragraph named Launcher.axaml as the source of all
-    25 until Round 7, Task 10.) The app's
+    25 until Round 7, Task 10; it said 25-and-both-<ListBoxItem>s until this fix round, which is two
+    counts wrong at once - Round 8 Task 2's three dialog buttons were never subtracted, and the
+    <ListBoxItem>s went with the navigation pane in Task 3, which is what the ListBox bullet above
+    already says.) The app's
     own markup contains no <RepeatButton> and no <ToggleButton> at all - the eight RepeatButtons in
     the tree are inside this layer's ScrollBar template, which themes them itself, and two more are
     inside the ButtonSpinner template, which gives them a theme of its own.

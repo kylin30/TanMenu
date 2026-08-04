@@ -835,7 +835,8 @@ public sealed partial class WindowHost : IWindowHost
     /// for a deliberate decision about moving on growth and got "move by exactly the overflow, never
     /// otherwise"; Round 4, item 4 supersedes that with a rule that has to move: an anchor that only
     /// applied at restore would be undone by the very first fit (the cold-start placeholder is 1000x688
-    /// and the fitted window is neither), so all five surviving re-fit triggers move the window as well
+    /// and the fitted window is neither), so all FOUR surviving re-fit triggers — the same four this
+    /// method's own summary lists — move the window as well
     /// as resizing it. A shrink now moves the window DOWN by exactly the height delta, keeping the
     /// bottom edge where it was; growth is symmetric about the centre and cannot overflow, because the
     /// size is clamped to the work area before the position is derived from it.

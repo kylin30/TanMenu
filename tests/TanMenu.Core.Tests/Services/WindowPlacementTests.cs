@@ -146,14 +146,22 @@ public class WindowPlacementTests
     // ResolveContentFit — Round 2's "size is recomputed from content on every start" feature, now
     // placed by the rule above rather than pinned to wherever the window happened to be.
     // The chrome terms below are 48/48 so each case reads as a concrete scenario rather than an
-    // abstract one. They are NOT the app's live terms: Round 4 item 1 added the content pane's left
-    // border to the width term and item 5 added the pane's top border to the height term, so WindowHost
-    // passes 49 on both axes (MainWindow.RailWidthDip + PaneBorderDip, and WindowHost.ChromeHeightDip).
-    // Nothing any case here asserts depends on which value is passed — ResolveContentFit only ADDS the
-    // term to the content, which the two chrome cases below pin directly — so they stay at 48 rather
-    // than being churned. 760x568 IS still the app's own minimum (WindowHost.MinWindowWidthDip /
-    // MinWindowHeightDip; MinWidth="760" is additionally declared in MainWindow.axaml, MinHeight
+    // abstract one. They are NOT the app's live terms, and neither is the 760 minimum. As of Round 8,
+    // Task 3 the live terms are chromeWidth = 0 (MainWindow.ChromeWidthDip — the navigation pane and
+    // the content pane's left hairline are deleted, and the band that replaced them sits ABOVE the
+    // page) and chromeHeight = 55 (WindowHost.ChromeHeightDip = TitleStripHeightDip 30 +
+    // MenuBandHeightDip 25), against an app minimum of 711x568 (WindowHost.MinWindowWidthDip /
+    // MinWindowHeightDip; MinWidth="711" is additionally declared in MainWindow.axaml, MinHeight
     // deliberately is not — see MinWindowHeightDip's own remarks).
+    // Nothing any case here asserts depends on which values are passed — ResolveContentFit only ADDS
+    // the chrome term to the content, which the two chrome cases below pin directly, and only RAISES
+    // to the minimum, which the first case below pins directly — so the arguments stay put rather than
+    // being churned every time the shell moves.
+    // THIS BLOCK IS A REPEAT OFFENDER AND THE DATES SAY SO. It said "49 on both axes" and "760x568"
+    // right up to Task 3, by which time the live terms had been 161x31 (RailWidthDip 160 +
+    // PaneBorderDip 1, ChromeHeightDip 30 + 1) against an 872 minimum since Round 7, Task 8 — so it
+    // was already two rounds stale BEFORE Task 3 deleted the two constants it cited by name. Every
+    // number above is re-derived off the live constants here rather than adjusted off the old text.
     // ══════════════════════════════════════════════════════════════════════════════════════════
 
     [Fact]
@@ -273,8 +281,11 @@ public class WindowPlacementTests
     // The chrome terms. Round 2 review, finding 2 pinned this as "expanding the rail (48 -> 200) must
     // widen the WINDOW by exactly 152 rather than take the space out of the content pane and put the
     // horizontal scrollbar back". Round 4, item 1 removed the rail's second width, so the scenario is
-    // gone; the invariant it protected is not, and it now has a vertical twin (item 5 gave the 应用 pane
-    // a 1 DIP top border, which WindowHost.ChromeHeightDip adds back).
+    // gone; the invariant it protected is not, and the vertical twin it acquired outlived its own first
+    // cause too — that twin was the 应用 pane's 1 DIP top border (Round 4, item 5), and since Round 8,
+    // Task 3 deleted that border the height term WindowHost.ChromeHeightDip adds back is the caption
+    // strip plus the menu band. The two cases below are deliberately written in bare numbers, not in
+    // the shell's constants, so that neither move invalidates them.
     // ══════════════════════════════════════════════════════════════════════════════════════════
 
     [Fact]
