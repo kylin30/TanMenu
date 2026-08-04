@@ -148,7 +148,9 @@ public partial class OptionsWindow : Window
     /// against <c>GetWindowRect</c>/<c>GetClientRect</c> on the same HWND — was read after each. At
     /// 150 % scale, in Chinese, with the app's default font, with the 关于 tab Task 4 has since removed
     /// still in the strip (it is listed because it is what shows that removing it moved neither number
-    /// — it was the smallest tab on both axes):
+    /// — it held NEITHER maximum: 283 DIP is the narrowest of the six widths, and its 230 of height is
+    /// only the second-shortest, above 更新's 213. Task 4 wrote "the smallest tab on both axes" here,
+    /// which the 更新 row of the very table below disproves; the conclusion stands, the reason did not):
     /// </para>
     /// <list type="table">
     ///   <item><description>free width: 外观 646x345, 行为 584x452, 文件夹 784x357, 常用工具 305x320,
@@ -156,6 +158,14 @@ public partial class OptionsWindow : Window
     ///   <item><description>width pinned to 711: 外观 x345, 行为 x452, 文件夹 x373, 常用工具 x320,
     ///   更新 x213, 关于 x230 DIP</description></item>
     /// </list>
+    /// <para>
+    /// The second row was RE-MEASURED in the Task 4 fix round — the window switched back to
+    /// <c>SizeToContent="Height"</c> at <c>Width="711"</c>, each tab selected through
+    /// <c>SelectionItemPattern</c>, the client rectangle read after each, then the markup restored —
+    /// because the fix round's subject was a false claim ABOUT that row and re-deriving it was cheaper
+    /// than trusting it. It came back identical for the five surviving tabs: 345.33, 452, 373.33, 320,
+    /// 212.67 DIP at 1066 physical px of width. 452 is 行为's and nothing else's.
+    /// </para>
     /// <para>
     /// <b>711 is chosen over the widest tab's 784, and that is a deviation from the design's literal
     /// instruction ("take the maximum over the six"), taken for a stated reason.</b> 784 is 文件夹's

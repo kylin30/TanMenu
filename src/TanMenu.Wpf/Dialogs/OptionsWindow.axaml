@@ -57,8 +57,17 @@
     Explicit Width/Height rather than SizeToContent, because a tabbed dialog that resized per tab
     would break PUBLISHED, win-property-win: "Don't assign effects to changing tabs." The measurement
     proves that is not hypothetical here — free, the tabs wanted 646, 584, 784, 305 and 582 DIP of
-    width and 345, 452, 357, 320 and 213 of height. NEITHER NUMBER MOVES IN TASK 4: the tab that left
-    was the smallest on both axes (关于, 283 x 230 free), so it was never the maximum on either.
+    width and 345, 452, 357, 320 and 213 of height. NEITHER NUMBER MOVES IN TASK 4, and the reason is
+    that the tab that left held NEITHER MAXIMUM — not that it was small. 关于 measured 283 x 230 free:
+    the narrowest of the six, but only the SECOND-shortest, because 更新's 213 is shorter. (Task 4's
+    own commit message and an earlier draft of this comment said "smallest on both axes", which the
+    height list two lines up disproves; the conclusion was right for the wrong stated reason.) The
+    maxima are 行为's 452 of height — which is where the Height above comes from — and 文件夹's 784 of
+    width, which 711 deliberately does not adopt (see the code-behind); both tabs are still in the
+    strip. RE-MEASURED in the fix round by the same method, so this is not Task 2's number carried
+    forward: pinned to 711 the five remaining tabs are 外观 345.33, 行为 452, 文件夹 373.33, 常用工具 320
+    and 更新 212.67 DIP of client height. Reason from the maxima, not from size — of the five left,
+    only 行为 leaving moves 452, and it would move it to 文件夹's 373.
 
     TABS: horizontal, top, FIVE of them, in the page's own order — Round 8, Task 4 took 关于 out into
     Dialogs/AboutWindow.axaml and this strip has held five since. PUBLISHED, win-property-win: "Use
