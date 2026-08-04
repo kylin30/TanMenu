@@ -1,0 +1,117 @@
+<!--
+    THIS FILE IS OURS, for the reason its sibling ControlStyles/ComboBox.axaml states in full:
+    aero-theme-for-avalonia has no ComboBox and no ComboBoxItem on any of its nine branches, so
+    there is nothing to copy and no upstream notice to carry. Both files are listed by name in
+    tests/TanMenu.Core.Tests/Themes/AeroAttributionTests.cs's NotVendored set.
+
+    ── Why this file has to exist at all ────────────────────────────────────────────────────────
+    Avalonia's ComboBoxItem derives from ListBoxItem (decompiled from Avalonia.Controls 12.1.0: it
+    adds one IsFocused subscription and one automation override, nothing else), but a ControlTheme
+    is keyed by the control's OWN style key, so the vendored ControlStyles/ListBoxItem.axaml -
+    keyed {x:Type ListBoxItem} - does not reach a ComboBoxItem. Without this file the drop-down
+    rows would keep Fluent's ComboBoxItem template inside an Aero-painted popup.
+
+    The paint below IS ListBoxItem's, deliberately: an Aero drop-down list and an Aero list box
+    were the same object in Windows 7, and reusing the vocabulary means the four state gradients
+    are the vendored ones rather than a second invention. Two things differ from that file and both
+    are stated here rather than left to be discovered:
+
+      1. THE PRESENTER IS NOT NAMED PART_ContentPresenter. AVMAP/StyleTrailMix.axaml carries a
+         :disabled rule targeting ContentPresenter#PART_ContentPresenter; Task 3 had to narrow its
+         subject away from upstream's app-wide ":is(TemplatedControl)" precisely because Fluent's
+         ComboBoxItem used that name and Views/Settings/AppearanceCard.axaml.cs paints the font
+         list's group captions itself. Naming the presenter ItemContentPresenter removes the
+         collision structurally, which is what §7 Task 6 asks for.
+         THE COST, MEASURED NOT ASSUMED: ContentControl.RegisterContentPresenter compares
+         presenter.Name against the literal "PART_ContentPresenter" and returns false otherwise, so
+         ContentControl.Presenter stays null on our rows and the presenter hosts its own content in
+         its own logical children instead of the item's (Avalonia.Controls 12.1.0,
+         ContentPresenter.UpdateHost / GetEffectiveLogicalChildren). Nothing in the ComboBox path
+         reads either: ComboBox.UpdateSelectionBoxItem takes the item's CONTENT, and text search
+         does the same. Every row in this app carries a string.
+      2. The :disabled foreground is AeroDisabledForeground, not the Fluent
+         SystemControlDisabledBaseMediumLowBrush the vendored ListBoxItem left in place. This file
+         is authored, so there is no upstream line to preserve, and the group captions the font
+         combo builds in code are pointed at the same key.
+-->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:aeconv="using:TanMenu.Wpf.Themes.Aero.Converters"
+    x:ClassModifier="internal">
+
+    <aeconv:AdjustCornerRadiusConverter x:Key="AeroComboBoxItemInnerCornerRadiiConverter" Amount="-1" />
+
+    <ControlTheme x:Key="{x:Type ComboBoxItem}" TargetType="ComboBoxItem">
+        <Setter Property="Background" Value="{DynamicResource AeroListBoxItemHoverBackground}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AeroListBoxItemHoverOuterBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="2" />
+        <Setter Property="Padding" Value="4,2" />
+        <Setter Property="Foreground" Value="{DynamicResource AeroForeground}" />
+        <Setter Property="FontSize" Value="{DynamicResource AeroFontSizeNormal}" />
+        <Setter Property="HorizontalContentAlignment" Value="Left" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <!-- The near-invisible Panel fill is the row's hit-test surface, so the gap
+                     between the text and the row's edge selects too. It is ListBoxItem's own. -->
+                <Panel Background="#01000000">
+                    <Border x:Name="OuterBorder"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{TemplateBinding CornerRadius}">
+                        <Border x:Name="InnerBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{DynamicResource AeroListBoxItemHoverInnerBorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="{Binding #OuterBorder.CornerRadius, Converter={StaticResource AeroComboBoxItemInnerCornerRadiiConverter}, Mode=OneWay}" />
+                    </Border>
+                    <ContentPresenter x:Name="ItemContentPresenter"
+                                      Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      Padding="{TemplateBinding Padding}"
+                                      VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                      HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}" />
+                </Panel>
+            </ControlTemplate>
+        </Setter>
+
+        <!--  Resting State: no frame at all, which is what makes a plain list read as plain text  -->
+        <Style Selector="^:not(:pointerover,:pressed,:selected,:focus)">
+            <Style Selector="^ /template/ Border#OuterBorder">
+                <Setter Property="IsVisible" Value="False" />
+            </Style>
+        </Style>
+
+
+        <!--  Selected State  -->
+        <Style Selector="^:selected:not(:pointerover),^:pressed">
+            <Style Selector="^ /template/ Border#OuterBorder">
+                <Setter Property="BorderBrush" Value="{DynamicResource AeroListBoxItemSelectedOuterBorderBrush}" />
+            </Style>
+            <Style Selector="^ /template/ Border#InnerBorder">
+                <Setter Property="Background" Value="{DynamicResource AeroListBoxItemSelectedBackground}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource AeroListBoxItemSelectedInnerBorderBrush}" />
+            </Style>
+        </Style>
+
+
+        <!--  Selected PointerOver State  -->
+        <Style Selector="^:selected:pointerover">
+            <Style Selector="^ /template/ Border#OuterBorder">
+                <Setter Property="BorderBrush" Value="{DynamicResource AeroListBoxItemSelectedHoverOuterBorderBrush}" />
+            </Style>
+            <Style Selector="^ /template/ Border#InnerBorder">
+                <Setter Property="Background" Value="{DynamicResource AeroListBoxItemSelectedHoverBackground}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource AeroListBoxItemSelectedHoverInnerBorderBrush}" />
+            </Style>
+        </Style>
+
+
+        <!--  Disabled State. The font combo's group captions are the only disabled rows in this
+              app, and they are disabled precisely so they cannot be chosen.  -->
+        <Style Selector="^:disabled /template/ ContentPresenter#ItemContentPresenter">
+            <Setter Property="Foreground" Value="{DynamicResource AeroDisabledForeground}" />
+        </Style>
+    </ControlTheme>
+</ResourceDictionary>

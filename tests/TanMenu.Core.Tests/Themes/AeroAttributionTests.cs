@@ -44,9 +44,17 @@ public class AeroAttributionTests
 
     /// <summary>
     /// Files under <c>Themes/Aero/</c> that are NOT copies of upstream and therefore carry no
-    /// upstream notice. Both are listed by name rather than by pattern, so adding a third file
+    /// upstream notice. Each is listed by name rather than by pattern, so adding another file
     /// without a header means editing this test — which is the point of the guard.
     /// </summary>
+    /// <remarks>
+    /// The list is short on purpose and every entry has to earn its place: attaching Splitwirez's
+    /// copyright line and an upstream path to a file he did not write would be a false statement in
+    /// exactly the place this project's documentation rule cares most about. Note the contrast with
+    /// <c>ControlStyles/ProgressBar.axaml</c>, which is NOT here: that file is the determinate
+    /// branch of a real upstream file, so it is a modified copy, keeps the notice, and records what
+    /// it dropped in its own "Changes from upstream" list.
+    /// </remarks>
     private static readonly HashSet<string> NotVendored = new(StringComparer.OrdinalIgnoreCase)
     {
         // The upstream licence text itself, byte for byte. A notice does not annotate itself.
@@ -54,6 +62,14 @@ public class AeroAttributionTests
         // The wrapper this project wrote to merge the vendored dictionaries and to name the two
         // theme variants "Light" / "Dark" instead of upstream's "Default" / "Dark".
         "AeroResources.axaml",
+        // Round 7 Task 6. aero-theme-for-avalonia has NO ComboBox and no ComboBoxItem: all nine of
+        // its branches were queried through the GitHub trees API for ComboBox*.axaml and every one
+        // returned zero hits, and its AVMAP/Controls.axaml names the two types only inside a
+        // commented-out block pointing at an assembly that does not exist. These two are therefore
+        // authored from Avalonia 12.1's own template contract, against the vendored brush
+        // vocabulary; each file opens by saying so.
+        "ComboBox.axaml",
+        "ComboBoxItem.axaml",
     };
 
     /// <summary>Walk up from the test assembly until the solution file appears.</summary>

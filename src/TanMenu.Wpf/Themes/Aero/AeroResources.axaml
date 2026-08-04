@@ -42,8 +42,8 @@
     bar's indicator fill. Four were vendored; Task 5 deleted ProgressBarAnimationConverter.cs and
     ProgressBarFillColorConverter.cs with the indeterminate machinery that was their only caller.
 
-    ── The control themes, added by Round 7 Tasks 3, 4 and 5 ─────────────────────────────────────
-    Eleven ControlStyles dictionaries are merged below, VARIANT-INDEPENDENTLY: a control theme holds
+    ── The control themes, added by Round 7 Tasks 3, 4, 5 and 6 ──────────────────────────────────
+    Thirteen ControlStyles dictionaries are merged below, VARIANT-INDEPENDENTLY: a control theme holds
     geometry and {DynamicResource} brush references, never a colour, so the same dictionary serves
     both variants and the brushes it names re-resolve when ActualThemeVariant changes. That is
     upstream AVMAP/Controls.axaml's own arrangement.
@@ -63,6 +63,14 @@
         the reason the change is wanted rather than tolerated.
       - ToggleSwitch, five: four in BehaviorCard.axaml and one in ToolsCard.axaml, none with Theme=.
       - CheckBox, none in markup: the ones ToolsCard.axaml.cs constructs per configured tool.
+      - ComboBox, THREE, all in Views/Settings/AppearanceCard.axaml: LanguageCombo, AppearanceCombo
+        and FontCombo, all non-editable and all Width="220". Task 6.
+      - ComboBoxItem, none in markup either. LanguageCombo and AppearanceCombo bind an ItemsSource
+        of strings, so their rows are containers Avalonia generates; FontCombo's rows are
+        ComboBoxItems AppearanceCard.axaml.cs builds one per installed font family. A generated
+        container and a hand-built one pick up a {x:Type} ControlTheme the same way - neither can
+        carry a Theme= - which is what makes the code-built rows and the markup-built combos one
+        look rather than two. Task 6.
       - ScrollViewer, three (AppPage, SettingsPage, ToolsCard) plus the one inside this layer's own
         ListBox template, and every ScrollBar those instantiate.
       - ListBox, both navigation rails in MainWindow.axaml.
@@ -101,20 +109,24 @@
     Application.Styles (decompiled from Avalonia.Markup.Xaml 12.1.0,
     AvaloniaXamlIlRuntimeHelpers.RootServiceProvider.CreateParentStackProvider).
 
-    ControlStyles/ProgressBar.axaml is the one merge below that is NOT a copy of an upstream file:
-    it is the determinate branch of one, about 60 of the original's 471 lines, and its own header
-    enumerates the ten differences rather than summarising them. The last remaining merge is
-    HeaderedContentControl, which the design schedules for Task 9. ComboBox and ComboBoxItem are NOT
-    on that list - §1 point 6 has us author those two rather than vendor them.
+    Three of the merges below are NOT copies of an upstream file. ControlStyles/ProgressBar.axaml
+    is the determinate branch of one, about 60 of the original's 471 lines, and its own header
+    enumerates the ten differences rather than summarising them. ControlStyles/ComboBox.axaml and
+    ControlStyles/ComboBoxItem.axaml have no upstream counterpart AT ALL - the library has no
+    ComboBox on any of its nine branches - so §1 point 6 has us author those two, and each carries
+    its own statement of what it is and what it decided instead of a copyright header it would have
+    no right to. AeroAttributionTests names all three situations correctly: ProgressBar is derived
+    and keeps the notice, the two combo files are listed as not-vendored. The last remaining merge
+    is HeaderedContentControl, which the design schedules for Task 9.
 
     ── The keys here that are not Aero-prefixed ─────────────────────────────────────────────────
-    55 keys are merged below (comments stripped, Metrics plus the eleven control-style
-    dictionaries). All but 30 are Aero-prefixed, and all 30 are wanted:
+    63 keys are merged below (comments stripped, Metrics plus the thirteen control-style
+    dictionaries). All but 32 are Aero-prefixed, and all 32 are wanted:
 
-      - the THIRTEEN {x:Type X} ControlTheme keys - Button, RepeatButton, ToggleButton (the Button
-        file keys three), ButtonSpinner, CheckBox, ListBox, ListBoxItem, NumericUpDown, ProgressBar,
-        ScrollBar, ScrollViewer, TextBox, ToggleSwitch. A {x:Type} key is how a ControlTheme
-        auto-applies at all, so these are the reach listed above;
+      - the FIFTEEN {x:Type X} ControlTheme keys - Button, RepeatButton, ToggleButton (the Button
+        file keys three), ButtonSpinner, CheckBox, ComboBox, ComboBoxItem, ListBox, ListBoxItem,
+        NumericUpDown, ProgressBar, ScrollBar, ScrollViewer, TextBox, ToggleSwitch. A {x:Type} key
+        is how a ControlTheme auto-applies at all, so these are the reach listed above;
       - ELEVEN inside ControlStyles/ButtonSpinner.axaml: two spinner arrow geometries, the
         ButtonSpinnerRightThickness margin converter and eight Spinner*Filter_Left/Right corner and
         thickness converters. All eleven are consumed by that one file's own template and by
@@ -169,6 +181,8 @@
         <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/Button_RepeatButton_ToggleButton.axaml" />
         <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/ButtonSpinner.axaml" />
         <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/CheckBox.axaml" />
+        <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/ComboBox.axaml" />
+        <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/ComboBoxItem.axaml" />
         <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/ListBox.axaml" />
         <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/ListBoxItem.axaml" />
         <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/NumericUpDown.axaml" />

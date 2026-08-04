@@ -1,0 +1,261 @@
+<!--
+    THIS FILE IS OURS. It carries no upstream copyright header because there is nothing of
+    Splitwirez's in it: aero-theme-for-avalonia HAS NO ComboBox. All nine of its branches were
+    queried through the GitHub trees API for any ComboBox*.axaml and every one returned zero hits;
+    its AVMAP/Controls.axaml mentions the two types only inside a commented-out block whose
+    avares:// URIs point at an assembly that does not exist here. So ComboBox and ComboBoxItem are
+    authored, and tests/TanMenu.Core.Tests/Themes/AeroAttributionTests.cs lists both by name in the
+    set of files under Themes/Aero/ that are NOT copies and therefore carry no notice.
+
+    Sibling file: ControlStyles/ComboBoxItem.axaml, which paints the popup's rows.
+
+    ── The contract, decompiled rather than assumed ──────────────────────────────────────────────
+    Avalonia 12.1's ComboBox declares exactly two template parts,
+    [TemplatePart("PART_Popup", typeof(Popup), IsRequired = true)] and
+    [TemplatePart("PART_EditableTextBox", typeof(TextBox), IsRequired = false)], and its
+    OnApplyTemplate resolves the first with NameScope.Get<Popup> - which THROWS if it is absent -
+    and the second with NameScope.Find<TextBox>, which does not. Its ItemsControl base finds
+    PART_ItemsPresenter with NameScope.Find<ItemsPresenter>. ComboBoxItem declares no template part
+    at all. (ilspycmd over Avalonia.Controls 12.1.0.)
+
+    PART_EditableTextBox is NOT authored: "IsEditable" appears nowhere in this app's source, so an
+    editable path would be markup with no call site. PlaceholderText/PlaceholderForeground are not
+    honoured either, for the same reason - no combo in this app sets them, and the font combo's
+    "no match" case (an uninstalled configured font) is deliberately blank.
+
+    ── The shape, and the one judgement call in it ───────────────────────────────────────────────
+    A white field with a gradient button attached to its right edge. Whether Windows 7 painted a
+    NON-EDITABLE drop-down list as a white field plus a gradient button, or as one gradient slab,
+    is not stated by any Microsoft page: ctrl-drop's sizing figure lives inside
+    images/ctrl-drop-image22.png and cannot be read as text, there is no msstyles here and no Aero
+    reference capture. AUTHORED: white field plus gradient button, because that is the composition
+    the vendored ControlStyles/ButtonSpinner.axaml and NumericUpDown.axaml already use for the same
+    job, and internal consistency with the vocabulary already in the tree is a better argument than
+    a memory. The 每列个数 spinner sits four rows below these three combos on the same page, so the
+    two shapes are seen together.
+
+    Every brush below is one the vendored layer already defines: the body uses the AeroTextBox*
+    family, exactly as ButtonSpinner's Border#BgElement does (which is why this body carries the
+    same part name), and the button uses the AeroButton* family, exactly as
+    Button_RepeatButton_ToggleButton.axaml's Border#Outer / Border#Inner pair does. The popup's
+    surface reuses the AeroListBox* family so that a drop-down list and a real ListBox are the same
+    object; its rows are ComboBoxItem.axaml, which is ListBoxItem's paint.
+
+    ── Numbers ──────────────────────────────────────────────────────────────────────────────────
+      - Height 23. PUBLISHED, https://learn.microsoft.com/en-us/windows/win32/uxguide/vis-layout:
+        "combo box / drop-down list / text box height 23".
+      - FontSize AeroFontSizeNormal (12) and CornerRadius AeroControlCornerRadius (3), both
+        VENDORED from AVMAP/Metrics.axaml.
+      - Padding "3,0". The horizontal 3 is ButtonSpinner's Padding; the vertical is 0 rather than
+        ButtonSpinner's 3 because this control's height is FIXED at 23. 23 minus the two 1 DIP
+        border rows leaves a 21 DIP content box, and a 12 DIP Segoe UI line measures ~16 DIP, so
+        3 + 16 + 3 = 22 would be clipped by one row. VerticalContentAlignment=Center centres the
+        line in the 21 instead.
+      - The drop-down button is 19 DIP wide: a 7 x 4 chevron plus Margin="6,3", which is the
+        7 x 4 PathIcon and Padding="6,3" the vendored AeroButtonSpinnerRepeatButton uses, so the
+        combo's button and the spinner's buttons below it are the same width. VENDORED shape,
+        AUTHORED reuse.
+      - The chevron geometry "M 0 0 L 3.5 4 L 7 0" is ButtonSpinnerDecreaseButtonIcon's, restated
+        here under our own key rather than reached for across files, so this dictionary's merge
+        order carries no dependency.
+      - MaxDropDownHeight is NOT set. Avalonia registers it with a default of 200 (decompiled), the
+        two three-row combos never reach it, and AppearanceCard.axaml's FontCombo sets 320 itself.
+
+    ── Why the button is two Borders and not a nested ToggleButton ───────────────────────────────
+    THE DESIGN DOCUMENT SAYS ToggleButton (§7 Task 6, "the drop-down button is a ToggleButton whose
+    Theme is BasedOn={StaticResource {x:Type ToggleButton}}"). It is drawn inline instead, and the
+    reason is an input contract, not taste.
+
+    Avalonia 12.1's ComboBox toggles its own drop-down from OnPointerReleased, and that method
+    opens with "if (!e.Handled && ...)" - it will not toggle a handled release. Button (and so
+    ToggleButton) marks both the press and the release handled. A nested, hit-testable ToggleButton
+    therefore either has to drive IsDropDownOpen itself through a TwoWay IsChecked binding, or it
+    silently eats every click on the right-hand fifth of the control. THIS MACHINE HAS NO MOUSE -
+    GetForegroundWindow() returns 0 and no pointer event can be synthesised - so neither branch
+    could have been verified here, and shipping the one that cannot be tested is what this round
+    exists to stop. Avalonia's own Fluent ComboBox reaches the same conclusion from the other end:
+    its PathIcon#DropDownGlyph sets IsHitTestVisible="False" and the whole control is the click
+    target (decompiled from Avalonia.Themes.Fluent 12.1.0). A Border raises no pointer event of its
+    own, so every press below reaches the ComboBox, which is the only thing that opens the popup.
+
+    Drawing it inline also buys the states back. A nested ToggleButton would light up only when the
+    pointer is over the button itself; these two Borders are driven by the COMBO's :pointerover,
+    :pressed, :dropdownopen and :disabled, so hovering anywhere on the control lights the button -
+    which is what Windows 7 did.
+-->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:conv="using:Avalonia.Controls.Converters"
+    xmlns:aeconv="using:TanMenu.Wpf.Themes.Aero.Converters"
+    x:ClassModifier="internal">
+
+    <StreamGeometry x:Key="AeroComboBoxDropDownGlyph">M 0 0 L 3.5 4 L 7 0</StreamGeometry>
+
+    <!-- The joinery, all four instances of two converters Avalonia itself ships. The body keeps its
+         left corners and drops its RIGHT border edge entirely; the button keeps its right corners
+         and its full 1 DIP frame, so the seam between them is one line and not two. That is the
+         arrangement ControlStyles/ButtonSpinner.axaml uses for the same seam, with the same two
+         converter types. -->
+    <conv:CornerRadiusFilterConverter x:Key="AeroComboBoxBodyCornerRadiusFilter" Filter="TopLeft,BottomLeft" />
+    <conv:MarginMultiplierConverter x:Key="AeroComboBoxBodyBorderThicknessFilter" Indent="1"
+                                    Left="True"
+                                    Top="True"
+                                    Right="False"
+                                    Bottom="True" />
+    <conv:CornerRadiusFilterConverter x:Key="AeroComboBoxButtonCornerRadiusFilter" Filter="TopRight,BottomRight" />
+    <aeconv:AdjustCornerRadiusConverter x:Key="AeroComboBoxButtonInnerCornerRadiiConverter" Amount="-1" />
+
+    <ControlTheme x:Key="{x:Type ComboBox}" TargetType="ComboBox">
+        <Setter Property="Background" Value="{DynamicResource AeroTextBoxIdleBackground}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AeroTextBoxIdleBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Foreground" Value="{DynamicResource AeroForeground}" />
+        <Setter Property="CornerRadius" Value="{DynamicResource AeroControlCornerRadius}" />
+        <Setter Property="FontSize" Value="{DynamicResource AeroFontSizeNormal}" />
+        <Setter Property="Height" Value="23" />
+        <Setter Property="Padding" Value="3,0" />
+        <Setter Property="HorizontalContentAlignment" Value="Left" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Focusable" Value="True" />
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+        <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Panel>
+                    <DockPanel>
+                        <Panel x:Name="DropDownButton" DockPanel.Dock="Right">
+                            <Border x:Name="DropDownButtonOuter"
+                                    Classes="aeroState2"
+                                    BorderBrush="{DynamicResource AeroButtonIdleOuterBorderBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="{TemplateBinding CornerRadius, Converter={StaticResource AeroComboBoxButtonCornerRadiusFilter}}">
+                                <Border x:Name="DropDownButtonInner"
+                                        Classes="aeroState2"
+                                        Background="{DynamicResource AeroButtonIdleBackground}"
+                                        BorderBrush="{DynamicResource AeroButtonIdleInnerBorderBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="{Binding #DropDownButtonOuter.CornerRadius, Converter={StaticResource AeroComboBoxButtonInnerCornerRadiiConverter}, Mode=OneWay}" />
+                            </Border>
+                            <PathIcon x:Name="DropDownGlyph"
+                                      Data="{StaticResource AeroComboBoxDropDownGlyph}"
+                                      Width="7"
+                                      Height="4"
+                                      Margin="6,3"
+                                      Foreground="{TemplateBinding Foreground}" />
+                        </Panel>
+
+                        <Border x:Name="BgElement"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness, Converter={StaticResource AeroComboBoxBodyBorderThicknessFilter}}"
+                                CornerRadius="{TemplateBinding CornerRadius, Converter={StaticResource AeroComboBoxBodyCornerRadiusFilter}}">
+                            <ContentPresenter x:Name="SelectionBoxPresenter"
+                                              Content="{TemplateBinding SelectionBoxItem}"
+                                              ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                              Margin="{TemplateBinding Padding}"
+                                              HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                        </Border>
+                    </DockPanel>
+
+                    <!-- IsOpen must be TwoWay: ComboBox.PopupClosed does NOT write IsDropDownOpen
+                         back (decompiled), so a light dismiss would leave the property stuck true
+                         and the next click would do nothing. MinWidth off the templated parent's
+                         Bounds.Width is what makes a 220 DIP combo drop a 220 DIP list. -->
+                    <Popup x:Name="PART_Popup"
+                           WindowManagerAddShadowHint="False"
+                           IsOpen="{TemplateBinding IsDropDownOpen, Mode=TwoWay}"
+                           MinWidth="{Binding Bounds.Width, RelativeSource={RelativeSource Mode=TemplatedParent}, Mode=OneWay}"
+                           MaxHeight="{TemplateBinding MaxDropDownHeight}"
+                           PlacementTarget="{TemplateBinding}"
+                           IsLightDismissEnabled="True"
+                           InheritsTransform="True">
+                        <Border x:Name="PopupOuterBorder"
+                                BorderBrush="{DynamicResource AeroListBoxOuterBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="0">
+                            <Border x:Name="PopupInnerBorder"
+                                    Background="{DynamicResource AeroListBoxBackground}"
+                                    BorderBrush="{DynamicResource AeroListBoxInnerBorderBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="0">
+                                <ScrollViewer x:Name="PopupScrollViewer"
+                                              HorizontalScrollBarVisibility="{TemplateBinding (ScrollViewer.HorizontalScrollBarVisibility)}"
+                                              VerticalScrollBarVisibility="{TemplateBinding (ScrollViewer.VerticalScrollBarVisibility)}"
+                                              IsDeferredScrollingEnabled="{TemplateBinding (ScrollViewer.IsDeferredScrollingEnabled)}">
+                                    <ItemsPresenter x:Name="PART_ItemsPresenter"
+                                                    ItemsPanel="{TemplateBinding ItemsPanel}" />
+                                </ScrollViewer>
+                            </Border>
+                        </Border>
+                    </Popup>
+                </Panel>
+            </ControlTemplate>
+        </Setter>
+
+
+        <!-- PointerOver State. The body follows Aero's text box, the button follows Aero's button;
+             both change together because the whole control is one click target. -->
+        <Style Selector="^:pointerover">
+            <Style Selector="^ /template/ Border#BgElement">
+                <Setter Property="Background" Value="{DynamicResource AeroTextBoxHoverBackground}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource AeroTextBoxHoverBorderBrush}" />
+            </Style>
+            <Style Selector="^ /template/ Border#DropDownButtonOuter">
+                <Setter Property="BorderBrush" Value="{DynamicResource AeroButtonHoverOuterBorderBrush}" />
+            </Style>
+            <Style Selector="^ /template/ Border#DropDownButtonInner">
+                <Setter Property="Background" Value="{DynamicResource AeroButtonHoverBackground}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource AeroButtonHoverInnerBorderBrush}" />
+            </Style>
+        </Style>
+
+
+        <!-- Pressed and DropDownOpen States. Both are the Aero button's pressed gradient, and both
+             have to come after :pointerover, because a pressed control is also hovered and equal
+             specificity is resolved by document order. -->
+        <Style Selector="^:pressed, ^:dropdownopen">
+            <Style Selector="^ /template/ Border#DropDownButtonOuter">
+                <Setter Property="BorderBrush" Value="{DynamicResource AeroButtonPressedOuterBorderBrush}" />
+            </Style>
+            <Style Selector="^ /template/ Border#DropDownButtonInner">
+                <Setter Property="Background" Value="{DynamicResource AeroButtonPressedBackground}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource AeroButtonPressedInnerBorderBrush}" />
+            </Style>
+        </Style>
+
+
+        <!-- Focused State. Aero's focus signal is a border-brush change on the field, and it is the
+             only one this control has: §3.4 of the design gives keyboard focus the classic dotted
+             rectangle, and Task 3 established that a control which repaints on :focus does not also
+             need one. -->
+        <Style Selector="^:focus">
+            <Style Selector="^ /template/ Border#BgElement">
+                <Setter Property="Background" Value="{DynamicResource AeroTextBoxFocusBackground}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource AeroTextBoxFocusBorderBrush}" />
+            </Style>
+        </Style>
+
+
+        <!-- Disabled State, LAST, so it wins over every state above it. -->
+        <Style Selector="^:disabled">
+            <Style Selector="^ /template/ Border#BgElement">
+                <Setter Property="Background" Value="{DynamicResource AeroTextBoxDisabledBackground}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource AeroTextBoxDisabledBorderBrush}" />
+            </Style>
+            <Style Selector="^ /template/ Border#DropDownButtonOuter">
+                <Setter Property="BorderBrush" Value="{DynamicResource AeroButtonDisabledOuterBorderBrush}" />
+            </Style>
+            <Style Selector="^ /template/ Border#DropDownButtonInner">
+                <Setter Property="Background" Value="{DynamicResource AeroButtonDisabledBackground}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource AeroButtonDisabledInnerBorderBrush}" />
+            </Style>
+            <Style Selector="^ /template/ PathIcon#DropDownGlyph">
+                <Setter Property="Foreground" Value="{DynamicResource AeroButtonDisabledForeground}" />
+            </Style>
+            <Style Selector="^ /template/ ContentPresenter#SelectionBoxPresenter">
+                <Setter Property="Foreground" Value="{DynamicResource AeroDisabledForeground}" />
+            </Style>
+        </Style>
+    </ControlTheme>
+</ResourceDictionary>

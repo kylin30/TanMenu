@@ -1,6 +1,7 @@
 using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Media;
 using Microsoft.Extensions.DependencyInjection;
 using TanMenu.Core.Services;
@@ -30,8 +31,27 @@ public partial class AppearanceCard : UserControl, ISettingsCard
     /// rendered as a row because Avalonia's ComboBox has no GroupStyle.</summary>
     private sealed record FontItem(string Name, string Family, bool IsHeader);
 
-    /// <summary>#777777 — the group-header grey the WPF GroupStyle header template used.</summary>
-    private static readonly IBrush GroupHeaderBrush = new SolidColorBrush(Color.FromRgb(0x77, 0x77, 0x77));
+    /// <summary>
+    /// The vendored Aero key the font list's group captions take their ink from.
+    /// </summary>
+    /// <remarks>
+    /// It was the literal <c>#777777</c> until Round 7, Task 6 — the grey the pre-Avalonia WPF
+    /// build's <c>GroupStyle</c> header template used. Two reasons it is a key now. The colour is
+    /// the disabled colour, and these rows ARE disabled (that is how they are made unpickable), so
+    /// naming the disabled token says what the row is instead of restating what it looked like; and
+    /// a literal in code is a colour the theme layer cannot follow, which is the whole point of
+    /// <c>Fluent2TokenTests.LauncherStyles_ContainNoColourLiterals</c> being a test at all.
+    /// <c>AeroDisabledForeground</c> is <c>#FF7F7F7F</c> in BOTH variants (VENDORED,
+    /// <c>Themes/Aero/Variant/Light.axaml</c> and <c>Dark.axaml</c>), so light and dark agree here
+    /// by construction rather than by coincidence.
+    /// <para>
+    /// Bound as a resource OBSERVABLE rather than resolved once: a row is built before it is in any
+    /// visual tree, and the observable re-evaluates when the element gains a resource host and
+    /// whenever <c>ActualThemeVariant</c> changes, so nothing depends on when
+    /// <see cref="PopulateFontCombo"/> happens to run.
+    /// </para>
+    /// </remarks>
+    private const string GroupHeaderForegroundKey = "AeroDisabledForeground";
 
     /// <summary>The default sentinel, then every installed system font family, sorted. The 内置字体
     /// group is gone with the bundled TTFs — every selectable family is now an installed one.</summary>
@@ -145,7 +165,8 @@ public partial class AppearanceCard : UserControl, ISettingsCard
                 // navigation ever lands on one anyway.
                 row.IsEnabled = false;
                 row.FontWeight = FontWeight.Bold;
-                row.Foreground = GroupHeaderBrush;
+                row.Bind(TemplatedControl.ForegroundProperty,
+                    row.GetResourceObservable(GroupHeaderForegroundKey));
                 row.Margin = new Thickness(0, 3, 0, 0);
             }
             else if (match is null && string.Equals(item.Family, selectedFamily, StringComparison.OrdinalIgnoreCase))

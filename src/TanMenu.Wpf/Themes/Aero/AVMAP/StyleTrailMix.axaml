@@ -7,16 +7,29 @@
     Changes from upstream:
       1. NARROWED the surviving PART_ContentPresenter rule. Upstream writes it as
          ":is(TemplatedControl):disabled /template/ ContentPresenter#PART_ContentPresenter" -
-         app-wide, not Aero-scoped. Fluent's ComboBoxItem also names its presenter
-         PART_ContentPresenter, and Views/Settings/AppearanceCard.axaml.cs:146-148 makes the font
-         list's group captions non-selectable by setting IsEnabled=false AND a grey Foreground on
-         the ComboBoxItem itself; unnarrowed, this rule would repaint those captions to
-         AeroDisabledForeground behind that code's back, because a TextBlock.Foreground on the
-         presenter beats a Foreground inherited from the item. The subject is therefore the six
-         concrete types this project gives an Aero template, spelled out one by one. An Avalonia
+         app-wide, not Aero-scoped. The subject is instead the six concrete types this project gives
+         an Aero template and whose presenter carries that name, spelled out one by one. An Avalonia
          type selector is an EXACT type match (only :is() widens to subclasses), so CheckBox,
          ToggleSwitch, ToggleButton and RepeatButton each have to be named even though all four
          derive from Button.
+         WHY IT STAYS NARROWED, RE-EXAMINED IN ROUND 7 TASK 6. The narrowing landed in Task 3 for
+         two independent reasons, and the design document's §7 Task 6 - which instructs that this
+         change "can now be reverted to upstream's form" - answers only the first of them.
+         (a) THE CASE THAT IS GONE. Fluent's ComboBoxItem named its presenter PART_ContentPresenter
+         too, and Views/Settings/AppearanceCard.axaml.cs paints the font list's group captions
+         itself, so unnarrowed the rule would have repainted them behind that code's back. Task 6
+         retired that: this project has its own ComboBoxItem theme now, its presenter is named
+         ItemContentPresenter, and the captions' own ink is the same AeroDisabledForeground key.
+         (b) THE CASE THAT IS NOT. "App-wide, not Aero-scoped" was the other half, and it is still
+         true. Avalonia.Themes.Fluent 12.1.0 registers the name PART_ContentPresenter in FORTY
+         template name-scopes (counted, not estimated: grep for
+         AvaloniaNameScope.Register("PART_ContentPresenter" over the decompiled assembly). Restoring
+         :is(TemplatedControl) would point an Aero brush at every one of them that this app ever
+         disables, and this machine has no mouse and no way to open a context menu, so most of that
+         set cannot be inspected here at all. Widening a selector into controls you cannot look at
+         is the same bet as leaving one dead, run the other way round. The rule keeps the reach the
+         app actually has; adding a type to it is one line, and is a decision someone makes on
+         purpose.
       5. DELETED the :not(:disabled) twin of that rule (upstream lines 43-45). Two independent
          reasons, either sufficient. First, it does not compile here: its value is
          "{Binding Foreground, RelativeSource={RelativeSource Mode=TemplatedParent}}", and this
