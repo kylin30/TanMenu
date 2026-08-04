@@ -13,10 +13,16 @@
     lists as new. Together with the 7 caption keys Task 1 added ahead of it that left Task 7 at
     36 keys, 22 themed and 14 variant-independent.
 
-    TASK 9 THEN CUT ONE MORE and the census has to move with it: AccentDefaultBrush lost its last
-    reader when the search field's accent underline went (the accent block below carries the full
-    account), so this file declares 35 keys today — 21 themed and 14 variant-independent. Counted
-    with comments stripped, the two ThemeDictionaries' own "Light"/"Dark" keys excluded.
+    TASK 9 THEN CUT ONE MORE: AccentDefaultBrush lost its last reader when the search field's accent
+    underline went (the accent block below carries the full account), leaving 35 keys — 21 themed
+    and 14 variant-independent.
+
+    ROUND 8, TASK 7 CUT THREE MORE and the census moves again: Space1 / Space2 / Space3, deleted for
+    having no consumer and no way to gain one (the spacing block below carries that account). This
+    file declares 32 KEYS TODAY — 21 themed and 11 variant-independent. Counted with comments
+    stripped, the two ThemeDictionaries' own "Light"/"Dark" keys excluded. Task 7 also stopped
+    FontSizeBody and FontSizeSubtitle restating vendored numbers; that changed their FORM, not the
+    count.
 
     The values are Aero's; the NAMES are still ours, and that is the whole point of the seam. Aero's
     fills are two- and four-stop vertical gradients (Themes/Aero/AVMAP/Brushes.axaml); a token layer
@@ -28,8 +34,10 @@
     ── HOW AN ALIAS IS WRITTEN, AND WHY IT IS NOT <StaticResource> ──────────────────────────────
     The design's §3.1 writes an alias as <StaticResource x:Key="X" ResourceKey="AeroY" />, citing
     AVMAP/Metrics.axaml's own ControlContentThemeFontSize line as precedent. That form is used below
-    for the two VARIANT-INDEPENDENT aliases and is NOT used for the seven themed ones, because the
-    seven would resolve wrongly: every Aero brush lives inside a ThemeDictionaries block keyed
+    for the FOUR VARIANT-INDEPENDENT aliases — RadiusControl and ControlCornerRadius since Round 7,
+    Task 7, plus FontSizeBody and FontSizeSubtitle since Round 8, Task 7 — and is NOT used for the
+    seven themed ones, because the seven would resolve wrongly: every Aero brush lives inside a
+    ThemeDictionaries block keyed
     "Light"/"Dark" (Themes/Aero/AeroResources.axaml), a StaticResource is resolved once against
     whichever variant happens to be live at parse time, and the resulting object would then be
     frozen into BOTH of this file's variant blocks.
@@ -71,9 +79,12 @@
                                                                         a Windows 7 dialog)
                  FocusStrokeOuterBrush AeroForegroundColor             (the classic dotted focus
                                                                         rectangle, drawn in the ink
-                                                                        colour — see the five
+                                                                        colour — see the three
                                                                         FocusAdorners in
-                                                                        Launcher.axaml)
+                                                                        Launcher.axaml; there were
+                                                                        five until Round 8, Task 3
+                                                                        deleted the two navigation
+                                                                        rows that carried them)
 
                SurfaceBaseBrush has TWO consumers, not the one §3.2 predicted. Besides
                MainWindow.ApplyBackdrop's opaque fallback it now paints the window's CLIENT AREA —
@@ -389,35 +400,44 @@
            rounds after Task 9 deleted that literal, and then for a third after Round 8, Task 3 moved
            the field itself into MainWindow.axaml. Grepped in the Round 8, Task 3 review: the string
            "0,0,2,2" appears nowhere under src/, and this key's one reader is the Setter named above.
-           Corrected rather than deleted, because the reason to KEEP the key is now the ordinary one
-           (something reads it) instead of the Space1..Space3 one. -->
+           Corrected rather than deleted, because the reason to KEEP the key is the ordinary one:
+           something reads it. It used to point at Space1..Space3 for a second kind of reason — a key
+           kept as documentation — and Round 8, Task 7 deleted those three precisely because that is
+           not a reason. This key does not need it. -->
       <CornerRadius x:Key="RadiusControlInner">2</CornerRadius>
 
       <!-- ══ Spacing ═══════════════════════════════════════════════════════════════════════════
-           Aero's ladder is PUBLISHED and it is not Fluent's 4/8/12/16/20.
-           https://learn.microsoft.com/en-us/windows/win32/uxguide/vis-layout gives, verbatim:
-             · "target regions … should either be touching or have at least 3 DLUs (5 relative
-                pixels) of space between them", and "label to control 5"          -> Space1 = 5
-             · "Between related controls — 4 / 7. Between buttons — 4 / 7"        -> Space2 = 7
-             · "Dialog box margins — 7 DLU / 11 relative pixels on all sides",
-               "Between unrelated controls — 7 / 11", "Between paragraphs — 11"   -> Space3 = 11
-           Space4 (16) and Space5 (20) are DELETED rather than re-valued: the guide publishes nothing
-           at either rung, and an unpublished rung is one somebody cites later as if it were measured.
-           Where 20 was wanted the replacement is a stated 2 x Space3 = 22 (the 设置 group headings'
-           top margin, Launcher.axaml).
+           THE Space1 / Space2 / Space3 RAMP IS DELETED, ROUND 8, TASK 7, AND NOTHING REPLACES IT.
+           Round 7, Task 7 re-valued the three from Fluent's 4/8/12 onto Aero's published 5/7/11 and
+           kept them as documentation; Round 8, Task 6 then put the settings surface on that ladder
+           in markup, and this task applied item 1's own test to what was left. It does not survive
+           it. All three had ZERO {DynamicResource} consumers anywhere under src/ or tests/ — and
+           they could never gain one, because a Margin or a Padding is a Thickness and XAML cannot
+           compose one out of a Double resource, which is why every spacing in the tree is written as
+           a literal. A key nothing can read is documentation living in a resource dictionary, not a
+           token, and this file's own header calls itself the place a value is NAMED.
 
-           THESE THREE KEYS HAVE NO {DynamicResource} CONSUMER AND ARE NOT MEANT TO. A Margin or a
-           Padding is a Thickness and XAML cannot compose one out of a Double resource, so every
-           spacing in the tree is written as a literal 5 / 7 / 11 / 22 and these declarations are what
-           those literals cite. That was already true of Space1/Space2/Space4/Space5 before this task
-           — grep found zero consumers for all four — and it is why the ladder is ALSO enforced by a
-           test: SettingsRowTests.NoCardFile_RestatesAConstantTheThemeOwns rejects any Margin, Padding
-           or Spacing rung a settings-card file states that is not on this list. SurfacePadding below
-           IS a Thickness and does have a consumer. -->
-      <x:Double x:Key="Space1">5</x:Double>
-      <x:Double x:Key="Space2">7</x:Double>
-      <x:Double x:Key="Space3">11</x:Double>
-      <!-- The dialog margin, same citation as Space3. Consumed by AppPage's body StackPanel. -->
+           NOTHING IS LOST, AND THAT IS CHECKED RATHER THAN ASSUMED. The ladder is PUBLISHED, it is
+           still enforced by a test, and it is still quoted verbatim in two places that do not depend
+           on these declarations: SettingsRowTests.NoSettingsFile_RestatesAConstantTheThemeOwns
+           rejects any Margin, Padding or Spacing rung a settings file states that is not on the
+           published list, and that test's AeroLadder is a HARD-CODED string[] which has never read
+           this file — its own doc comment carries the sentences and the URL. The rungs, verbatim
+           from https://learn.microsoft.com/en-us/windows/win32/uxguide/vis-layout: "the smallest
+           space between a non-interactive control and any other control" 3; "target regions … should
+           either be touching or have at least 3 DLUs (5 relative pixels) of space between them" and
+           "label to control" 5; "Between related controls — 4 / 7. Between buttons — 4 / 7" 7; "From
+           the left edge of a group box" 9; "Dialog box margins — 7 DLU / 11 relative pixels on all
+           sides", "Between unrelated controls — 7 / 11" and "Between paragraphs — 11" 11; "First
+           control in a group box" 16. 16 and 20 were once Space4 and Space5; Round 7, Task 7 deleted
+           both as unpublished, and Task 6 restored 16 to the ladder on the group-box sentence above,
+           which publishes it. 20 stays off it. Where 20 was wanted the replacement is a stated
+           2 x 11 = 22.
+
+           SurfacePadding below survives the same test on the ordinary ground: it IS a Thickness and
+           it does have a consumer. -->
+      <!-- The dialog margin: "Dialog box margins — 7 DLU / 11 relative pixels on all sides",
+           PUBLISHED at the URL above. Consumed by AppPage's body StackPanel. -->
       <Thickness x:Key="SurfacePadding">11</Thickness>
 
       <!-- ══ Type ══════════════════════════════════════════════════════════════════════════════
@@ -433,11 +453,32 @@
              FontSizeGroupHead group headers 11 pt = 14.667 DIP, rounded up to 15    (PUBLISHED)
            FontSizeCaption (12) is deleted: a Windows 7 property sheet uses ONE body size and gets its
            hierarchy from colour and weight. The three LineHeight keys go with it — Windows 11's ramp
-           encodes line heights, GDI text does not, and every consumer now takes its natural one. -->
+           encodes line heights, GDI text does not, and every consumer now takes its natural one.
+
+           ROUND 8, TASK 7 STOPPED TWO OF THE THREE RESTATING A VENDORED NUMBER. FontSizeBody was
+           <x:Double>12</x:Double> and FontSizeSubtitle <x:Double>16</x:Double> — literals equal to
+           AeroFontSizeNormal and AeroFontSizeLarge, which the table above already admitted. A
+           literal that restates a value the vendored layer sets is precisely what item 1 strips, so
+           the two are re-declared in the alias form this file uses for RadiusControl and
+           ControlCornerRadius, and the VALUE now has exactly one home: AVMAP/Metrics.axaml. The
+           <StaticResource> form is safe for these two for the same reason it is safe for those —
+           Metrics.axaml is merged OUTSIDE AeroResources.axaml's ThemeDictionaries, so there is no
+           variant to freeze — and is still forbidden for the seven themed brushes above.
+
+           WHAT EARNS THE TWO KEYS THEIR RETENTION IS THE NAME, NOT THE NUMBER. Counted this task:
+           FOURTEEN {DynamicResource} sites read them — eight Setters in Launcher.axaml (seven
+           FontSizeBody, one FontSizeSubtitle) and the six settings cards' root FontSize. Three of the
+           eight target a TextBlock (tm-empty's two lines and the toast's), and NO vendored file
+           themes a TextBlock: nothing merged by AeroResources.axaml has a TargetType that is not a
+           control. So under those three there is no theme value to fall back to, and deleting the
+           name would land on Avalonia's own inherited default rather than on Aero.
+
+           FontSizeGroupHead stays a literal, and that is the distinction: 15 is PUBLISHED (11 pt =
+           14.667, rounded up) and has NO vendored twin to alias onto. -->
       <FontFamily x:Key="AppFontFamily">Segoe UI, Microsoft YaHei UI</FontFamily>
-      <x:Double x:Key="FontSizeBody">12</x:Double>
+      <StaticResource x:Key="FontSizeBody"     ResourceKey="AeroFontSizeNormal" />
       <x:Double x:Key="FontSizeGroupHead">15</x:Double>
-      <x:Double x:Key="FontSizeSubtitle">16</x:Double>
+      <StaticResource x:Key="FontSizeSubtitle" ResourceKey="AeroFontSizeLarge" />
 
       <!-- The icon face is the ONE deliberate Windows 11 anachronism this conversion keeps: Windows 7
            had no icon font at all, its shell glyphs were bitmaps, and hand-drawing fifteen of them is

@@ -126,6 +126,82 @@ public class ShellConstantTests
             "would reserve another, and the fit would hand back a third — none of which throws.");
     }
 
+    /// <summary>
+    /// The PUBLISHED command-button box is stated in two files and they have to agree.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <c>https://learn.microsoft.com/en-us/windows/win32/uxguide/vis-layout</c>, verbatim: "Command
+    /// buttons — 50x14 DLU — <b>75x23 relative pixels</b>". Round 8, Task 7 put
+    /// <c>Launcher.axaml</c>'s <c>TmButton</c> on that pair (it was <c>MinHeight="32"</c> with no
+    /// <c>MinWidth</c> at all, a Windows 11 leftover); <c>Dialogs/OptionsWindow.axaml</c>'s
+    /// 确定 / 取消 / 应用 have carried it since Task 2.
+    /// </para>
+    /// <para>
+    /// <b>THE TWO CANNOT BE COLLAPSED INTO ONE DECLARATION, WHICH IS WHY THIS TEST EXISTS.</b> The
+    /// commit row's three buttons ride the vendored <c>{x:Type Button}</c> theme deliberately — no
+    /// <c>Theme=</c>, the model item 1 wants — so a <c>Setter</c> in <c>TmButton</c> cannot reach
+    /// them, and they state <c>Width</c>/<c>Height</c> as local values. <c>TmButton</c> states
+    /// <c>MinWidth</c>/<c>MinHeight</c>, because its labels vary with the app language and a fixed
+    /// box would clip them. Same published number, two mechanisms, two files: exactly the drift this
+    /// class is for. Nothing renders an error when they disagree — the settings tabs' buttons simply
+    /// stop matching the dialog's own commit row on the same screen.
+    /// </para>
+    /// <para>
+    /// The height is read from both files and asserted equal; the width is read from both and
+    /// asserted equal separately, because they are two published cells and either could move alone.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void CommandButtonHeight_IsTheSameNumberInBothPlaces()
+    {
+        var launcher = Regex.Replace(
+            File.ReadAllText(Path.Combine(SrcDir, "Themes", "Shell", "Launcher.axaml")),
+            "<!--.*?-->", " ", RegexOptions.Singleline);
+
+        // Anchored on TmButton's ControlTheme body first: MinHeight is also stated by the search
+        // field and by the hotkey box elsewhere in the same file, so an unanchored read would find
+        // three. [\s\S] rather than . because Single() does not pass RegexOptions.Singleline.
+        var tmButton = Single(launcher,
+            @"<ControlTheme x:Key=""TmButton"" TargetType=""Button"">(?<v>[\s\S]*?)</ControlTheme>",
+            "Launcher.axaml's TmButton ControlTheme");
+
+        var themeHeight = Single(tmButton, @"Property=""MinHeight"" Value=""(?<v>[0-9.]+)""",
+            "TmButton's MinHeight");
+        var themeWidth = Single(tmButton, @"Property=""MinWidth"" Value=""(?<v>[0-9.]+)""",
+            "TmButton's MinWidth");
+
+        var dialog = Regex.Replace(
+            File.ReadAllText(Path.Combine(SrcDir, "Dialogs", "OptionsWindow.axaml")),
+            "<!--.*?-->", " ", RegexOptions.Singleline);
+
+        // Anchored on the commit row's own span: the Window element states Width and Height too
+        // (its 711 x 479 provisional size), and reading those instead would compare the dialog's
+        // frame with a button.
+        var commitRow = Single(dialog,
+            @"<StackPanel x:Name=""CommitRow""(?<v>[\s\S]*?)</StackPanel>",
+            "OptionsWindow.axaml's CommitRow");
+
+        var rowHeights = Regex.Matches(commitRow, @"\bHeight=""(?<v>[0-9.]+)""")
+            .Select(m => m.Groups["v"].Value).Distinct().ToList();
+        var rowWidths = Regex.Matches(commitRow, @"\bWidth=""(?<v>[0-9.]+)""")
+            .Select(m => m.Groups["v"].Value).Distinct().ToList();
+
+        Assert.True(rowHeights.Count == 1 && rowWidths.Count == 1,
+            "The commit row is expected to state exactly one Height and one Width across its three " +
+            $"command buttons. Found heights [{string.Join(", ", rowHeights)}] and widths " +
+            $"[{string.Join(", ", rowWidths)}]. Either a button drifted or the anchor has moved.");
+
+        Assert.True(themeHeight == rowHeights[0],
+            $"TmButton's MinHeight={themeHeight} but OptionsWindow's commit buttons are " +
+            $"Height={rowHeights[0]}. Both cite vis-layout's \"Command buttons — 75x23\" and a " +
+            "settings tab's buttons would no longer match the dialog's own row beneath them.");
+
+        Assert.True(themeWidth == rowWidths[0],
+            $"TmButton's MinWidth={themeWidth} but OptionsWindow's commit buttons are " +
+            $"Width={rowWidths[0]}. Same published cell, two files.");
+    }
+
     [Fact]
     public void MinWindowWidth_IsTheSameNumberInBothPlaces()
     {

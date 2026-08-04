@@ -47,8 +47,16 @@
       - the hotkey box's four state rules (TextBox.tm-keycap, :pointerover, :focus, :disabled in
         Themes/Shell/Launcher.axaml) simply changed part name;
       - the search field's focus suppression (TextBox.tm-search:focus) changed part name AND gained
-        a :pointerover twin, so Launcher.axaml now carries two TextBox.tm-search rules where it
-        carried one.
+        a :pointerover twin, so Launcher.axaml then carried two TextBox.tm-search rules where it
+        had carried one.
+
+    ONE OF THOSE FIVE SURVIVES TODAY, AND THAT IS NOT A CONTRADICTION OF THE PARAGRAPH ABOVE: it is
+    an account of Round 7 Task 4, which re-targeted rather than deleted, and two later tasks then
+    deleted four of the five on their own evidence. Round 7 Task 7 dropped all four tm-keycap rules
+    (every control on that surface is a vendored Aero theme now, so the "two disabled vocabularies"
+    they existed to fix cannot arise, and re-pointing them would have repainted a part with the
+    value it already had). Round 8 Task 7 dropped TextBox.tm-search:focus, for the reason the next
+    paragraph gives. What is left is TextBox.tm-search:pointerover.
 
     The design document called for DELETING the search-field rule, on the grounds that this theme
     has no accent focus band to suppress. That is true of the BorderBrush half and false of the
@@ -57,8 +65,13 @@
     AeroTextBoxFocusBackground respectively - and SearchBox's local BorderThickness="0" means only
     the Background half can reach the screen. Deleting the rule was measured and it puts an opaque
     AeroTextBoxFocusBackground block inside the field in Dark (invisible in Light, where that token
-    is white over a white field). The A/B numbers are at the rules themselves in Launcher.axaml;
-    they are the reason the two rules are there, so do not trim them as dead.
+    is white over a white field). THAT MEASUREMENT WAS OVERTAKEN FOR THE :focus HALF ONLY. Round 7
+    Task 9 gave Border.tm-searchfield.focused Aero's whole focus PAIR, so a focused field including
+    its padding is already AeroTextBoxFocusBackground and the block the :focus rule hid became the
+    same colour as its surroundings in both variants - which is why Round 8 Task 7 deleted it. The
+    hover token is not the focus token, so nothing overtook the :pointerover half. The A/B numbers
+    for both are at the surviving rule in Launcher.axaml; they are the reason it is there, so do not
+    trim it as dead.
 
     The NAMED /template/ targets below are Border#BgElement, TextPresenter#PART_TextPresenter and
     TextBlock#PART_FloatingWatermark, all three declared in the template above them. The five

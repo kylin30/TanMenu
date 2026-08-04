@@ -562,9 +562,11 @@
                    What that does NOT block is a theme rule aimed at a NAMED PART inside the TextBox
                    control template — a different element, with no local value of its own, whatever
                    is set here. Under the vendored Aero theme that part is Border#BgElement and the
-                   rules that reach it are :pointerover and :focus. See Launcher.axaml's two
-                   "TextBox.tm-search…/template/ Border#BgElement" rules for what suppresses them and
-                   why the BorderBrush half needs no rule. -->
+                   rules that reach it are :pointerover and :focus. Only the :pointerover one is
+                   suppressed: see Launcher.axaml's
+                   "TextBox.tm-search:pointerover /template/ Border#BgElement" rule for why, why the
+                   BorderBrush half needs no rule, and why Round 8, Task 7 measured the :focus twin
+                   inert and deleted it. -->
               <TextBox x:Name="SearchBox"
                        Classes="tm-search"
                        AutomationProperties.Name="{Binding SearchPlaceholderText}"

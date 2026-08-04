@@ -105,11 +105,12 @@
          a target. The type term is FontSizeBody, 12 since Task 7.
 
          VIS-LAYOUT'S 75 x 23 COMMAND-BUTTON MINIMUM IS DELIBERATELY NOT APPLIED HERE, and the number
-         is recorded so nobody re-derives it later and thinks it was missed. That rule is for a command
-         button — the OK/Cancel/Apply kind, whose width is a legibility floor for a one-or-two-word
-         verb. A tile is an icon-plus-label launcher, nearer a large-icon list-view item than a command
-         button, and a 75 DIP floor would widen exactly the narrowest categories, for no published
-         reason at all. It binds on nothing today and the headroom is SMALL: the narrowest column
+         is recorded so nobody re-derives it later and thinks it was missed. THAT IS A DIVISION, NOT AN
+         OVERSIGHT, AND ROUND 8 TASK 7 MADE IT VISIBLE: TmButton below now states exactly this pair,
+         because it IS the command button — the OK/Cancel/Apply kind, whose width is a legibility floor
+         for a one-or-two-word verb. A tile is an icon-plus-label launcher, nearer a large-icon
+         list-view item than a command button, and a 75 DIP floor would widen exactly the narrowest
+         categories, for no published reason at all. It binds on nothing today and the headroom is SMALL: the narrowest column
          measures 102.67 DIP — the first entry in the survey below, and re-measured unchanged when
          this paragraph was corrected — so a short label somebody adds later starts the floor binding
          27.67 DIP from here, which is why the number is worth carrying rather than the rejection
@@ -270,19 +271,39 @@
 
     <!-- ══ Standard button (settings-card actions) ════════════════════════════════════════════════
          The command-button surface, used everywhere a settings card needs an actual button
-         (打开/更改…/重置为默认/清理缓存/备份…/恢复…/固定到任务栏/清除/检查更新/下载更新, …). 32 px tall at
-         100% scaling — MinHeight rather than a fixed Height, so the actual on-screen height still
-         tracks the OS text-scale setting the way every other control here does, instead of being a
-         hardcoded pixel box — with the same fill/border/radius shape TmTileButton uses above. See
-         that theme's comment for what Round 7 Task 7 changed about the state model, and why the two
-         themes duplicate the template instead of one deriving from the other via BasedOn.
+         (打开/更改…/重置为默认/清理缓存/备份…/恢复…/固定到任务栏/清除/检查更新/下载更新, …), with the same
+         fill/border/radius shape TmTileButton uses above. See that theme's comment for what Round 7
+         Task 7 changed about the state model, and why the two themes duplicate the template instead
+         of one deriving from the other via BasedOn.
+
+         ── ROUND 8, TASK 7: THE BOX IS 75 x 23, NOT 32 TALL ──────────────────────────────────────
+         PUBLISHED, https://learn.microsoft.com/en-us/windows/win32/uxguide/vis-layout, one row of
+         the sizing table, verbatim: "Command buttons — 50 x 14 DLU — 75 x 23 relative pixels". This IS a
+         command button — the OK/Cancel/Apply kind — so both halves apply, and both are stated here
+         for the first time: MinHeight was 32 and MinWidth did not exist. 32 was Windows 11's
+         touch-friendly button and nothing published ever asked for it; Round 7, Task 9 caught the
+         identical leftover in the search field (Border.tm-searchfield, MinHeight 32 -> 23 further
+         down this file) and missed it here, on the control the guide names explicitly.
+
+         MinHeight and MinWidth rather than Height and Width, for the reason this theme has always
+         used one: the on-screen box still tracks the OS text-scale setting and a longer label in
+         another language still grows the button, instead of clipping inside a hardcoded pixel box.
+         75 is therefore a FLOOR that binds on the short labels (清除, 打开, 备份…) and is invisible on
+         the long ones.
+
+         THE DIALOG'S COMMIT ROW STATES THE SAME PAIR AND NOW AGREES BY CONSTRUCTION.
+         Dialogs/OptionsWindow.axaml's 确定 / 取消 / 应用 carry Width="75" Height="23" as LOCAL values
+         (they ride the vendored {x:Type Button} theme, not this one, so a setter here cannot reach
+         them) citing the same published row. Two files stating one published number is exactly the
+         drift ShellConstantTests exists for, and
+         ShellConstantTests.CommandButtonHeight_IsTheSameNumberInBothPlaces reads both back.
 
          WHY THIS THEME STILL EXISTS at all, now that Themes/Aero/AeroResources.axaml publishes a
          real {x:Type Button} ControlTheme: the two are not interchangeable. The vendored theme is
          Aero's command button complete with its double border and its own metrics, and the message
          box already renders on it (Dialogs/MessageBoxWindow.axaml carries that measurement). This
-         one is the LAUNCHER's button — one MinHeight, one Padding and a Hand cursor, all of which a
-         settings row's action strip depends on — and it names Aero's own four background gradients
+         one is the LAUNCHER's button — the published 75 x 23 floor, one Padding and a Hand cursor, all
+         of which a settings row's action strip depends on — and it names Aero's own four gradients
          for its four states, so the vocabulary is shared even though the template is not.
 
          Round 7, Task 3 made this the ONLY settings-card button theme. TmAccentButton — a BasedOn
@@ -300,7 +321,8 @@
       <Setter Property="CornerRadius" Value="{DynamicResource RadiusControl}" />
       <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
       <Setter Property="Padding" Value="11,0" />
-      <Setter Property="MinHeight" Value="32" />
+      <Setter Property="MinHeight" Value="23" />
+      <Setter Property="MinWidth" Value="75" />
       <Setter Property="HorizontalContentAlignment" Value="Center" />
       <Setter Property="VerticalContentAlignment" Value="Center" />
       <Setter Property="Cursor" Value="Hand" />
@@ -391,8 +413,9 @@
        by anything set out here. Under Fluent that part was Border#PART_BorderElement; under the
        vendored Aero theme (Themes/Aero/ControlStyles/TextBox.axaml) it is Border#BgElement, whose
        Background is a TemplateBinding onto the outer Background and therefore DOES start out as the
-       local Transparent — at rest. The two rules that undo it are near the tm-search style below,
-       beside the write-up of what Aero actually repaints and what that measured. -->
+       local Transparent — at rest. The rule that undoes it is near the tm-search style below, beside
+       the write-up of what Aero actually repaints and what that measured. There were two until Round
+       8, Task 7 measured the :focus one inert and deleted it; the surviving one is :pointerover. -->
 
   <!-- ROUND 7, TASK 9: MinHeight 32 -> 23, and it is the single most Aero-legible metric on the page.
        PUBLISHED, https://learn.microsoft.com/en-us/windows/win32/uxguide/vis-layout, which gives one
@@ -415,8 +438,8 @@
        border is a two-stop gradient and its hover border is the blue one — that IS Aero's hover
        signal, and it is the same brush the vendored TextBox template would have drawn if this field
        were painting itself (it is not: MainWindow.axaml gives the inner TextBox a local
-       Background="Transparent" and BorderThickness="0", and the two /template/ rules further down
-       are what stop Aero repainting the part underneath). -->
+       Background="Transparent" and BorderThickness="0", and the /template/ rule further down is what
+       stops Aero repainting the part underneath on hover). -->
   <Style Selector="Border.tm-searchfield:pointerover">
     <Setter Property="BorderBrush" Value="{DynamicResource AeroTextBoxHoverBorderBrush}" />
   </Style>
@@ -433,8 +456,11 @@
        (Themes/Aero/ControlStyles/TextBox.axaml — AeroTextBoxFocusBackground and
        AeroTextBoxFocusBorderBrush, verbatim). The BorderBrush half is the part that could not be
        delegated to the TextBox: MainWindow.axaml gives the inner box a local BorderThickness="0"
-       so that its border cannot draw at all, and Task 4 measured the consequence — the two
-       /template/ rules further down exist to suppress the half that CAN draw. Hoisting the pair to
+       so that its border cannot draw at all, and Task 4 measured the consequence — the /template/
+       rule further down exists to suppress the half that CAN draw. That is also what made the
+       :focus twin of that rule redundant, which is why Round 8, Task 7 deleted it and this rule
+       still stands: this pair paints the whole field, its padding included, in exactly the colour
+       the suppressed part would have shown. Hoisting the pair to
        this Border is what puts the whole signal back on the shape the user sees as the field. -->
   <Style Selector="Border.tm-searchfield.focused">
     <Setter Property="Background" Value="{DynamicResource AeroTextBoxFocusBackground}" />
@@ -468,10 +494,13 @@
        "x" and back. MainWindow.axaml's own comment at that markup says the same thing at more length.
 
        IT IS A Border + TextBlock, NOT A Button, and that is a sizing decision rather than a shortcut:
-       every Button theme in this app carries a MinHeight (32 on TmButton) or a fixed 32x32 box
-       (TmIconButton), and either would hold the 23 DIP field open to 32 and undo the metric this task
-       exists to change. Border.tm-section-head is the same pattern on the same page, for the same
-       reason, and this rule deliberately names the same hover brush.
+       every Button theme in this app carries a MinHeight or a fixed 32x32 box (TmIconButton), and
+       either would have held the 23 DIP field open and undone the metric that task exists to change.
+       The number that made the point has since moved: TmButton's MinHeight was 32 when this was
+       written and Round 8, Task 7 put it on the published 23, so today it is TmIconButton's 32x32 and
+       TmButton's own MinWidth="75" that would deform this affordance rather than the height.
+       Border.tm-section-head is the same pattern on the same page, for the same reason, and this rule
+       deliberately names the same hover brush.
 
        THE MAGNIFIER FACE TAKES NO HOVER FILL, because it is not a button — it is the label of an
        empty search box, which is what tm-icon.subtle is for. The hover rule below is scoped to the
@@ -530,7 +559,7 @@
        this app puts this TextBox into :disabled and the theme's own :disabled rules — Aero's, since
        Round 7 Task 4 — have no producer to fire on. -->
 
-  <!-- ══ Suppressing the theme's own fill, at the two states that repaint it ══════════════════
+  <!-- ══ Suppressing the theme's own fill, at the one state that still repaints it ═════════════
        This field's fill is Border.tm-searchfield's, above. The TextBox inside it is meant to
        contribute nothing but glyphs, which is why MainWindow.axaml gives it a LOCAL
        Background="Transparent" and BorderThickness="0".
@@ -545,55 +574,44 @@
        Round 3 Task 1 wrote the :focus one of these two against Fluent's part name,
        Border#PART_BorderElement, to kill an accent band. Round 7 Task 4 replaced Fluent's TextBox
        template wholesale, that part name stopped existing, and it had to be re-aimed at what Aero
-       actually does — and gained a :pointerover twin, because Aero repaints on hover too. The design
-       document expected to DELETE them outright on the grounds that Aero signals focus with a
-       BorderBrush change rather than a band. Two things it did not account for, both checked here:
-       Aero's :focus and :pointerover rules change the BACKGROUND as well as the border brush, and
-       the border-brush half of the signal cannot draw at all on this field, because neither Aero
-       rule sets BorderThickness and the local 0 therefore still holds. Deleting them would leave
-       only the background half — an opaque rectangle covering the TextBox's own rect but not the
-       icon or Border.tm-searchfield's left padding, i.e. a lighter block inset inside the field.
+       actually does — and gained a :pointerover twin, because Aero repaints on hover too.
 
-       Only Background is put back, and only at the two states that take it: BorderBrush is left to
-       Aero, since at BorderThickness 0 it paints nothing, and adding a setter for it would be a rule
-       with no pixels behind it. Border.tm-searchfield's own rules stay the ONLY focus signal that
-       reaches the screen, which is the conclusion Round 3 Task 1 reached and this keeps.
+       Only Background is put back: BorderBrush is left to Aero, since at BorderThickness 0 it paints
+       nothing, and adding a setter for it would be a rule with no pixels behind it.
+       Border.tm-searchfield's own rules stay the ONLY focus signal that reaches the screen, which is
+       the conclusion Round 3 Task 1 reached and this keeps.
 
-       MEASURED AT ROUND 7 TASK 4 (87dd54f), this build against one with these two rules deleted.
-       PrintWindow flag 2, 150 % scale, the field focused (the app focuses it on summon, so this is
-       its everyday state). Three samples on one row through the middle of the field: one in the
-       field's own left padding, two inside the TextBox's rect.
+       ── THE :focus HALF IS DELETED, ROUND 8, TASK 7, ON THIS FILE'S OWN MEASUREMENT ────────────
+       MEASURED AT ROUND 7 TASK 4 (87dd54f), the build of the day against one with both rules
+       deleted. PrintWindow flag 2, 150 % scale, the field focused (the app focuses it on summon, so
+       this is its everyday state). Three samples on one row through the middle of the field: one in
+       the field's own left padding, two inside the TextBox's rect.
 
          DARK, rules deleted : padding (49,49,49)   interior (93,93,93) (93,93,93)
          DARK, rules present : padding (49,49,49)   interior (49,49,49) (49,49,49)
          LIGHT, either way   : padding (255,255,255) interior (255,255,255) (255,255,255)
 
        (93,93,93) is AeroTextBoxFocusBackground's Dark value exactly — an opaque block covering the
-       TextBox's rect and stopping at the padding, which is what "a lighter rectangle inset inside
-       the field" looks like when you sample it. LIGHT HID IT COMPLETELY: that token's Light value is
-       white and the field already rendered white, so a Light-only check would have passed a build
-       that was visibly wrong in Dark.
+       TextBox's rect and stopping at the padding. LIGHT HID IT COMPLETELY: that token's Light value
+       is white and the field already rendered white, so a Light-only check would have passed a build
+       that was visibly wrong in Dark. THAT WAS THE CASE FOR THE :focus RULE AND ROUND 7, TASK 9
+       DISSOLVED IT. Task 9 gave Border.tm-searchfield.focused a BorderBrush as well as a Background
+       — Aero's own focus PAIR, hoisted onto the element that can draw both — so the whole field, its
+       padding included, is AeroTextBoxFocusBackground while it has focus. Re-measured then, same
+       instrument, one row through the field's middle at the 7 DIP left padding and inside the
+       TextBox's rect: DARK reads (93,93,93) at BOTH, LIGHT (255,255,255) at both, WITH AND WITHOUT
+       the rule. A rule whose two sample points read identically in both variants whether it is
+       present or absent has no pixels of its own, and Round 8, Task 7 deletes it as cosmetic.
 
-       ROUND 7 TASK 9 CHANGED WHAT THAT A/B WOULD NOW MEASURE, AND SAYING SO IS THE POINT OF THIS
-       PARAGRAPH. Task 9 gave Border.tm-searchfield.focused a BorderBrush as well as a Background —
-       Aero's own focus PAIR, hoisted onto the element that can draw both — so the whole field, its
-       padding included, is AeroTextBoxFocusBackground while it has focus. Re-measured on this build,
-       same instrument, one row through the field's middle at the 7 DIP left padding and inside the
-       TextBox's rect: DARK reads (93,93,93) at BOTH, LIGHT (255,255,255) at both. The :focus half of
-       the suppression below therefore has no pixels of its OWN left: whatever it hides is now the
-       same colour as what surrounds it, in both variants.
-
-       IT IS KEPT ANYWAY, and not as decoration. The :pointerover half is still live and still
-       different — Aero repaints BgElement to AeroTextBoxHoverBackground, which is NOT the focus
-       token, so a hovered field would still show the inset block — and the two states are one
-       mechanism written as two selectors because Avalonia matches them independently. The
-       :pointerover half could not be exercised on this machine: there is no mouse here, and no
-       synthetic path sets :pointerover. That is stated rather than glossed. -->
+       THE :pointerover HALF IS RETAINED AND IT IS NOT THE SAME RULE. Aero repaints BgElement to
+       AeroTextBoxHoverBackground, which is NOT the focus token the field's own Border paints itself
+       with, so a hovered field would still show the inset block — the A/B above does not cover it
+       and is not offered as if it did. It could not be exercised on this machine: there is no mouse
+       here, and no synthetic path sets :pointerover. That is stated rather than glossed, and it is
+       the reason the two were one mechanism written as two selectors — Avalonia matches them
+       independently — but only one of the two ever became inert. -->
 
   <Style Selector="TextBox.tm-search:pointerover /template/ Border#BgElement">
-    <Setter Property="Background" Value="Transparent" />
-  </Style>
-  <Style Selector="TextBox.tm-search:focus /template/ Border#BgElement">
     <Setter Property="Background" Value="Transparent" />
   </Style>
 
@@ -678,11 +696,14 @@
     <Setter Property="TextAlignment" Value="Center" />
     <Setter Property="TextWrapping" Value="Wrap" />
   </Style>
-  <!-- Avalonia's ContentControl defaults HorizontalContentAlignment to Left, not Center as WPF
-       does, so an ordinary Button renders its label against the left edge. -->
-  <Style Selector="StackPanel.tm-empty Button">
-    <Setter Property="HorizontalContentAlignment" Value="Center" />
-  </Style>
+  <!-- A "StackPanel.tm-empty Button" rule setting HorizontalContentAlignment="Center" stood here
+       until Round 8, Task 7, with a comment describing a build where these buttons were unthemed:
+       Avalonia's ContentControl defaults that property to Left rather than to WPF's Center, so a
+       BARE Button renders its label against the left edge. Every button under this class carries
+       Theme="{StaticResource TmButton}" (Views/AppPage.axaml), TmButton sets Center itself, and so
+       does the vendored {x:Type Button} theme a bare one would fall through to — the rule restated a
+       value both layers already state, which is the definition item 1 strips. -->
+
   <!-- The page's one big heading, at the same FontSizeSubtitle the 设置 page's title uses. That token
        is 16 now, not 20: vis-fonts gives a main instruction as 12 pt = 16 DIP, and the vendored
        AeroFontSizeLarge agrees exactly. Full ink and full opacity, against the 60 % body lines above.
@@ -951,20 +972,32 @@
 
   <Style Selector="TextBox.tm-keycap">
     <Setter Property="Width" Value="160" />
-    <Setter Property="MinHeight" Value="32" />
-    <!-- Vertical padding 0, exactly as TmButton states it, and for the same reason: the height then
-         comes from MinHeight rather than from font metrics plus padding, so the box matches the button
-         standing beside it in the same action strip. The horizontal 8 became 7 with the rest of the
-         page's spacing (vis-layout's published "between related controls"); the vertical 0 is not a
-         spacing value at all and is unchanged. Measured on the live page at 150 % when this was
-         written, reading the box's UIA rect at each of the eight scroll stops: with a vertical 5 it
-         was 50/50/49/48/49/49 physical px against a TmButton's flat 48 at every stop, and because a
-         horizontal StackPanel stretches its children to its own height, 清除 was stretched to the same
-         50. With 0 it is 49/48/48/47/48/48 — the same value as the button at every stop but one, and
-         the ±1 that remains is rect quantisation, not layout. Setting an explicit Height instead of
-         MinHeight was tried and measured byte-for-byte identical, so MinHeight stays — it is what
-         TmButton uses and it cannot clip a taller font fallback. VerticalContentAlignment centres the
-         text in whatever height MinHeight settles on. -->
+    <!-- 23, AND IT MOVES WHENEVER TmButton'S MinHeight DOES. Round 8, Task 7 took TmButton from 32
+         to vis-layout's published 75x23 command button, and this box follows it in the same commit
+         rather than being re-derived: the whole point of the number is that the box matches the 清除
+         button standing beside it in the same action strip, so a box left at 32 beside a 23 DIP
+         button is the defect, not a second opinion. 23 is separately correct on its own terms —
+         vis-layout gives one height for the family of text-line controls, "text boxes … 23" — which
+         is why the two can share it without either being a coincidence.
+
+         THE ROUND 7 MEASUREMENT BELOW IS KEPT AS A RECORD AND ITS ABSOLUTE FIGURES ARE STALE. It was
+         taken at MinHeight 32 on both controls; what it establishes and what is still true is the
+         RELATIONSHIP — the box and the button agree at every scroll stop to within rect
+         quantisation, and vertical padding 0 is what makes them agree. Measured on the live page at
+         150 % when this was written, reading the box's UIA rect at each of the eight scroll stops:
+         with a vertical 5 it was 50/50/49/48/49/49 physical px against a TmButton's flat 48 at every
+         stop, and because a horizontal StackPanel stretches its children to its own height, 清除 was
+         stretched to the same 50. With 0 it is 49/48/48/47/48/48 — the same value as the button at
+         every stop but one, and the ±1 that remains is rect quantisation, not layout. Setting an
+         explicit Height instead of MinHeight was tried and measured byte-for-byte identical, so
+         MinHeight stays — it is what TmButton uses and it cannot clip a taller font fallback.
+         VerticalContentAlignment centres the text in whatever height MinHeight settles on.
+
+         Vertical padding 0, exactly as TmButton states it, and for the same reason: the height then
+         comes from MinHeight rather than from font metrics plus padding. The horizontal 8 became 7
+         with the rest of the page's spacing (vis-layout's published "between related controls"); the
+         vertical 0 is not a spacing value at all and is unchanged. -->
+    <Setter Property="MinHeight" Value="23" />
     <Setter Property="Padding" Value="7,0" />
     <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
     <Setter Property="VerticalContentAlignment" Value="Center" />

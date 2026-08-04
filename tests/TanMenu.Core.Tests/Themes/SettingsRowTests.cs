@@ -106,10 +106,16 @@ public class SettingsRowTests
     /// <para>
     /// <b>ROUND 8, TASK 6 EXTENDED THE LIST FROM {0,5,7,11,22} TO THIS</b>, and every rung it added —
     /// 3, 9, 16 — is a cell of that same published table, quoted above. It also dropped the reason the
-    /// old list gave for <b>22</b>: it used to read "the 2 x Space3 the theme states", and
-    /// <c>Space1</c>/<c>Space2</c>/<c>Space3</c> are three <c>Tokens.axaml</c> keys with no
-    /// <c>{DynamicResource}</c> consumer anywhere. 22 is kept as "Between paragraphs — 11" doubled,
-    /// stated here rather than pointed at, and one consumer keeps it alive.
+    /// old list gave for <b>22</b>, which used to read "the 2 x Space3 the theme states". 22 is kept
+    /// as "Between paragraphs — 11" doubled, stated here rather than pointed at, and one consumer
+    /// keeps it alive.
+    /// </para>
+    /// <para>
+    /// <b>THERE IS NO LONGER A <c>Space3</c> TO POINT AT.</b> Round 8, Task 7 deleted
+    /// <c>Space1</c>/<c>Space2</c>/<c>Space3</c> from <c>Tokens.axaml</c> outright: three keys with no
+    /// <c>{DynamicResource}</c> consumer anywhere, and none possible, because a Margin is a
+    /// <c>Thickness</c> and XAML cannot compose one out of a <c>Double</c> resource. That deletion
+    /// cost this test nothing, which is the point of the paragraph below.
     /// </para>
     /// <para>
     /// 0 is on the list because "touching" is the guide's own other option, and a file writing
