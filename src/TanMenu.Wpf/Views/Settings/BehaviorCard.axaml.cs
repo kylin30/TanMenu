@@ -34,8 +34,8 @@ public partial class BehaviorCard : UserControl, ISettingsCard
     private readonly bool _isPortable;
 
     /// <summary>Guards every change handler against the values ReloadFromConfig assigns while it
-    /// repopulates the controls — without it, populating a ToggleSwitch would write the freshly-loaded
-    /// value straight back to config as if the user had just flipped it.</summary>
+    /// repopulates the controls — without it, populating a CheckBox would write the freshly-loaded
+    /// value straight back to the draft as if the user had just ticked it.</summary>
     private bool _loading;
 
     /// <summary>The last taskbar-pin state this card knows about, re-queried on every
@@ -242,7 +242,7 @@ public partial class BehaviorCard : UserControl, ISettingsCard
 
     // No _loading check here (unlike every other handler in this file) — that is deliberate, not an
     // oversight: a Click cannot be re-entered by ReloadFromConfig repopulating a control the way
-    // setting a ToggleSwitch/TextBox's value re-enters a Changed handler, so there is nothing to guard
+    // setting a CheckBox/TextBox's value re-enters a Changed handler, so there is nothing to guard
     // against. Do not "fix" this by copying the _loading pattern from elsewhere in this file.
     private void OnPinTaskbarClick(object? sender, RoutedEventArgs e) => RunSafely(async () =>
     {

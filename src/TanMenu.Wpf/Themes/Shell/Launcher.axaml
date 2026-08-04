@@ -1164,50 +1164,6 @@
     <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
 
-  <!-- The settings toggle. Blanking OnContent/OffContent moves out of the cards that each repeat it:
-       Avalonia's default is the untranslated English "On"/"Off", which would sit next to a Chinese row
-       label whenever AppLanguage is zh-Hans.
-
-       THE NEGATIVE RIGHT MARGIN IS NOT SLOP — do not remove it without re-reading this. The template
-       behind this class builds an inner Grid of three columns: Auto for the pill, then a hard 12 pixel
-       column with MaxWidth 12, then Auto for the two content presenters. That fixed spacer is charged
-       whether or not the presenters are empty, so blanking the content collapses column 3 and leaves
-       column 2: the element measures 12 DIP wider than its visible pill, and the pill's ink stopped
-       12 DIP short of every other row's control on the build before this class existed. A
-       ColumnDefinition is not a Control, so no /template/ selector can reach it. The margin makes the
-       desired width the pill's own, so the Auto column measures the pill and ArrangeCore deflates the
-       slot by the negative margin — the pill lands on the content edge and the 12 DIP of empty presenter
-       overhangs into the row's own right padding, where it draws nothing. Round 7, Task 7 cut that
-       padding from 16 to 11 (Border.tm-card above), so the empty presenter now overhangs the padding
-       by 1 DIP instead of sitting 4 DIP inside it. That changes nothing measurable: the presenters
-       are blank, the element's DESIRED width is already the pill's own, and the row's width is set by
-       the ScrollViewer's viewport rather than by this column — so what the overhang covers is one DIP
-       of a surface nobody draws on.
-
-       Round 7, Task 3 replaced the template underneath and the margin SURVIVED UNCHANGED, because the
-       vendored Aero ToggleSwitch copies that inner grid verbatim, `ColumnDefinition Width="12"
-       MaxWidth="12"` included (Themes/Aero/ControlStyles/ToggleSwitch.axaml) — identical to Fluent
-       12.1.0's, decompiled. The pill itself did change, and every number below is a fresh UI Automation
-       BoundingRectangle read on the live 设置 page at this machine's 150 % scale, on the same four
-       toggles, on a build with this task's changes and a build without:
-
-         element bounds   78 x 48 physical  ->  102 x 51   (52 x 32 DIP -> 68 x 34)
-         pill             40 x 20 DIP       ->   56 x 22   (VENDORED Width/Height/CornerRadius 10)
-         element LEFT     x = 4739 physical ->  x = 4715   (16 DIP further left, as the pill grew)
-         element RIGHT    x = 4817 physical ->  x = 4817   (UNCHANGED)
-
-       The right edge is the one that matters and it did not move: 4817 minus the 12 DIP (18 physical)
-       of empty presenter is 4799, which is the same screen column as the right edge of every TmButton
-       on the page — PinTaskbarBtn, HotkeyClearBtn, PickRootBtn and RestoreBtn all end at 4799 in the
-       same capture. If a future Avalonia or a future vendored file changes that column, the toggle rows
-       shift by whatever the change is. -->
-  <Style Selector="ToggleSwitch.tm-card-toggle">
-    <Setter Property="OnContent" Value="" />
-    <Setter Property="OffContent" Value="" />
-    <Setter Property="VerticalAlignment" Value="Center" />
-    <Setter Property="Margin" Value="0,0,-12,0" />
-  </Style>
-
   <!-- The hotkey capture box (BehaviorCard's HotkeyBox). It IS legitimately disabled whenever
        启用全局热键 is off (BehaviorCard's UpdateHotkeyEnabledState), and that logic is correct and
        untouched. What this class states now is only its SIZE and its type; its paint is the theme's.

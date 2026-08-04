@@ -89,8 +89,21 @@
         Fluent's 84 x 33.3 DIP pill to Aero's 84 x 22 DIP double border, and the alert window from
         170.7 to 159.3 DIP tall. MessageBoxWindow.axaml's own remark carries that measurement and
         the reason the change is wanted rather than tolerated.
-      - ToggleSwitch, five: four in BehaviorCard.axaml and one in ToolsCard.axaml, none with Theme=.
-      - CheckBox, none in markup: the ones ToolsCard.axaml.cs constructs per configured tool.
+      - ToggleSwitch, NONE. It had exactly five - four in BehaviorCard.axaml and one in
+        ToolsCard.axaml, none with a Theme= - until ROUND 8, TASK 5 made every one of them a
+        CheckBox: Windows 7 has no toggle-switch control, so the pill was an anachronism with a real
+        counterpart (PUBLISHED, ctrl-check-boxes, "check boxes should be used only to toggle an
+        option on or off"). Grepped rather than assumed: there is no <ToggleSwitch> anywhere under
+        src/ outside this folder after that task, in markup or in code. THE DICTIONARY STAYS MERGED
+        AND STAYS ON DISK, on the same terms as ListBox/ListBoxItem above - it is a vendored theme
+        file, and this round's item 1 does not touch Themes/Aero/. Recorded as consumerless, not
+        deleted.
+      - CheckBox, FIVE in markup plus the code-built list. The five are Round 8, Task 5's swap -
+        BehaviorCard.axaml's AutoCloseToggle / TopMostToggle / AutoStartToggle / HotkeyEnabledToggle
+        and ToolsCard.axaml's ShowToolsToggle, none with a Theme= - and the list is the one
+        ToolsCard.axaml.cs constructs per configured tool, which was this dictionary's ONLY consumer
+        before that task and the reason it was vendored at all. The five keep their …Toggle x:Names
+        so the draft and commit call sites keep naming the same elements.
       - ComboBox, THREE, all in Views/Settings/AppearanceCard.axaml: LanguageCombo, AppearanceCombo
         and FontCombo, all non-editable and all Width="220". Task 6.
       - ComboBoxItem, none in markup either. LanguageCombo and AppearanceCombo bind an ItemsSource

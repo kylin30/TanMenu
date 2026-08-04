@@ -24,8 +24,8 @@ public partial class ToolsCard : UserControl, ISettingsCard
     private readonly SettingsDraft _draft;
 
     /// <summary>Guards <see cref="OnShowToolsChanged"/> against the value <see cref="ReloadFromConfig"/>
-    /// assigns while it repopulates the toggle. Per-tool CheckBoxes need no such guard against
-    /// IsCheckedChanged the way every other card's ToggleSwitch/ComboBox does: they are rebuilt from
+    /// assigns while it repopulates the master box. Per-tool CheckBoxes need no such guard against
+    /// IsCheckedChanged the way every other card's CheckBox/ComboBox does: they are rebuilt from
     /// scratch on every reload (see <see cref="BuildToolCheckboxes"/>) rather than having a stable
     /// existing instance repopulated, and they wire OnToolChanged to Click, not IsCheckedChanged —
     /// Click never fires from a control's IsChecked being set programmatically, only from an actual

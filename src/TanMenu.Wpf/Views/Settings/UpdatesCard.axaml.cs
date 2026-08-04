@@ -84,7 +84,7 @@ public partial class UpdatesCard : UserControl, ISettingsCard
 
     /// <summary>Populate every control from the live config/update state. No <c>_loading</c> guard,
     /// unlike most other card groups: every control here is either read-only display text, a
-    /// ProgressBar, or a Button — nothing a Click could re-enter the way a ToggleSwitch/ComboBox's
+    /// ProgressBar, or a Button — nothing a Click could re-enter the way a CheckBox/ComboBox's
     /// Changed event is re-entered by a value being assigned programmatically. Same reasoning as
     /// <c>FoldersCard</c>; see its class remarks.</summary>
     public void ReloadFromConfig()

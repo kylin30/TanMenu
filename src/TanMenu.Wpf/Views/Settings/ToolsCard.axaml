@@ -1,7 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="TanMenu.Wpf.Views.Settings.ToolsCard">
-  <!-- One settings row — icon, title + secondary line, master ToggleSwitch — with a bordered, scrolling
+  <!-- One settings row — icon, title + secondary line, master CheckBox — with a bordered, scrolling
        list of per-tool CheckBoxes on its expansion row, inside the same tm-card Border. See the "row
        spec's shared classes" block in Themes/Shell/Launcher.axaml for the anatomy, and
        AppearanceCard's code-behind for the full ReloadFromConfig contract every settings card group
@@ -40,7 +40,17 @@
        whatever settings groups come after this one off screen. It still does, but it no longer BINDS on
        the shipped list: at 299 DIP of content the eight default tools used to overflow 240 and this
        ScrollViewer showed a vertical bar (measured 24 x 360 physical); at 197 DIP they fit, the bar is
-       gone, and the clamp now starts biting at roughly twelve tools instead of roughly seven. -->
+       gone, and the clamp now starts biting at roughly twelve tools instead of roughly seven.
+
+       ROUND 8, TASK 5 made the MASTER a CheckBox too — it was a ToggleSwitch, a control Windows 7 does
+       not have — so this card now holds one vocabulary instead of two: a master box and the per-tool
+       boxes it enables, all on the same vendored Aero template. The master keeps its x:Name, its
+       handler and its event (IsCheckedChanged is ToggleButton's, which both types inherit), and it
+       takes its accessible name from ShowToolsTitle through AutomationProperties.LabeledBy because its
+       own label does not move onto it until Task 6 rewrites the row grammar — see BehaviorCard.axaml's
+       header block for that split and for the measurement behind it. The per-tool boxes are untouched:
+       they were already CheckBoxes, they carry their own Content, and they wire Click rather than
+       IsCheckedChanged for the reason the code-behind's _loading remark gives. -->
   <HeaderedContentControl Classes="tm-group-box" Theme="{StaticResource GroupBox}">
     <HeaderedContentControl.Header>
       <TextBlock x:Name="GroupHead" Classes="tm-group-head" />
@@ -54,8 +64,9 @@
             <TextBlock x:Name="ShowToolsTitle" Classes="tm-card-title" />
             <TextBlock x:Name="ShowToolsSub" Classes="tm-card-sub" />
           </StackPanel>
-          <ToggleSwitch Grid.Column="2" x:Name="ShowToolsToggle" Classes="tm-card-toggle"
-                        IsCheckedChanged="OnShowToolsChanged" />
+          <CheckBox Grid.Column="2" x:Name="ShowToolsToggle" VerticalAlignment="Center"
+                    AutomationProperties.LabeledBy="{Binding #ShowToolsTitle}"
+                    IsCheckedChanged="OnShowToolsChanged" />
 
           <!-- Disabled (not hidden) while ShowToolsToggle is off — ported verbatim from
                SettingsWindow.BuildToolCheckboxes ("Unchecking only disables the list; the individual

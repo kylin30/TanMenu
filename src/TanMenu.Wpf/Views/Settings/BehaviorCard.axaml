@@ -21,10 +21,52 @@
        is where the spec puts a line that describes the row rather than a value the row holds, and both
        cards are ordinary two-line rows.
 
-       OnContent/OffContent are no longer blanked per row: ToggleSwitch.tm-card-toggle does it for all of
-       them, and carries the negative right margin that puts the pill's ink on the same x as every other
-       row's control. Avalonia's default content is the untranslated English "On"/"Off", which would sit
-       next to a Chinese row label whenever AppLanguage is zh-Hans. -->
+       ── ROUND 8, TASK 5: THE FOUR TRAILING TOGGLES ARE CHECK BOXES ────────────────────────────────
+       Windows 7 has no toggle-switch control — the round's own Windows 7 survey found it in none of the
+       UX Guide's articles and in no part/state class of parts-and-states — so the pill this row shipped
+       with was an anachronism with a real counterpart, and Round 7's review had already flagged it as
+       one. PUBLISHED, ctrl-check-boxes: "check boxes should be used only to toggle an option on or
+       off", which is precisely what these four rows do. Nothing else about the rows moves:
+       the handlers keep their names and their event, because IsCheckedChanged is declared on
+       ToggleButton (Avalonia.Controls.Primitives.ToggleButton, decompiled 12.1.0) and both CheckBox and
+       ToggleSwitch inherit it, and every IsChecked read in the code-behind reads the same property on
+       the same base class. The x:Names keep the …Toggle suffix so the draft/commit call sites and the
+       design's own verification steps still name the same elements.
+
+       WHAT WENT WITH THEM: Themes/Shell/Launcher.axaml's ToggleSwitch.tm-card-toggle, whose two jobs
+       both lose their subject rather than moving. (a) OnContent/OffContent do not exist on a CheckBox —
+       there is one Content and it is unset here — so there is no untranslated English "On"/"Off" left
+       to blank. (b) The negative right margin compensated for a hard 12 DIP spacer ColumnDefinition in
+       the ToggleSwitch template that no /template/ selector can reach; the vendored Aero CheckBox
+       (Themes/Aero/ControlStyles/CheckBox.axaml) has an "Auto,*" grid instead, whose ContentPresenter
+       carries IsVisible="{TemplateBinding Content, Converter=IsNotNull}", so a contentless box measures
+       its 13 DIP glyph and nothing else. Measured on this machine at 150 % on a build with this task
+       and a build without — UIA BoundingRectangle for the bounds, a PrintWindow row scan across each
+       control's centre for the ink — on all four rows:
+
+         element bounds   102 x 51 physical  ->  20 x 20   (68 x 34 DIP -> 13.33 x 13.33)
+         element RIGHT    x = 4365           ->  x = 4347
+         last INK column  x = 4346           ->  x = 4346  (UNCHANGED)
+
+       (One of the four reads 20 x 19: UIA rounds an integral rectangle out of a 13.33 DIP box.) 4346 is
+       PinTaskbarBtn's last ink column in the same capture; HotkeyClearBtn's is 4345, one physical pixel
+       earlier, which is that button's own width rounding and is true before and after. The toggle only
+       reached that column by overhanging its own bounds by the 12 DIP of empty presenter; the check box
+       reaches it with its bounds, which is why deleting the class costs nothing.
+
+       THE ROW'S TITLE STAYS WHERE IT IS. A check box carries its own label and the published end state
+       is that label ON the box (ctrl-check-boxes) — that is Round 8, Task 6's move, together with the
+       row grammar it belongs to, because these five titles are NAMED elements this file's code-behind
+       writes and deleting one without rewriting ReloadFromConfig in the same commit is a compile break.
+       Until then each box takes its accessible name from its own title through
+       AutomationProperties.LabeledBy: Avalonia's ControlAutomationPeer.GetNameCore falls back to the
+       LabeledBy peer's name when AutomationProperties.Name is unset (decompiled 12.1.0), so the name is
+       the title's live text and there is no second copy of the string to keep in step. Nothing is
+       duplicated on screen either — the box has no visible label of its own yet. It is a name GAINED
+       rather than preserved: measured on the build before this task, all four ToggleSwitches reported
+       UIA Name='' (ContentControlAutomationPeer's fallbacks are the presenter's TextBlock and
+       Content?.ToString(), and a blanked toggle has neither), i.e. the rows were nameless to a screen
+       reader. Task 6 moves the label onto the box and takes these four attributes off with the titles. -->
   <HeaderedContentControl Classes="tm-group-box" Theme="{StaticResource GroupBox}">
     <HeaderedContentControl.Header>
       <TextBlock x:Name="GroupHead" Classes="tm-group-head" />
@@ -38,8 +80,9 @@
             <TextBlock x:Name="AutoCloseTitle" Classes="tm-card-title" />
             <TextBlock x:Name="AutoCloseSub" Classes="tm-card-sub" />
           </StackPanel>
-          <ToggleSwitch Grid.Column="2" x:Name="AutoCloseToggle" Classes="tm-card-toggle"
-                        IsCheckedChanged="OnAutoCloseChanged" />
+          <CheckBox Grid.Column="2" x:Name="AutoCloseToggle" VerticalAlignment="Center"
+                    AutomationProperties.LabeledBy="{Binding #AutoCloseTitle}"
+                    IsCheckedChanged="OnAutoCloseChanged" />
         </Grid>
       </Border>
 
@@ -50,8 +93,9 @@
             <TextBlock x:Name="TopMostTitle" Classes="tm-card-title" />
             <TextBlock x:Name="TopMostSub" Classes="tm-card-sub" />
           </StackPanel>
-          <ToggleSwitch Grid.Column="2" x:Name="TopMostToggle" Classes="tm-card-toggle"
-                        IsCheckedChanged="OnTopMostChanged" />
+          <CheckBox Grid.Column="2" x:Name="TopMostToggle" VerticalAlignment="Center"
+                    AutomationProperties.LabeledBy="{Binding #TopMostTitle}"
+                    IsCheckedChanged="OnTopMostChanged" />
         </Grid>
       </Border>
 
@@ -62,8 +106,9 @@
             <TextBlock x:Name="AutoStartTitle" Classes="tm-card-title" />
             <TextBlock x:Name="AutoStartSub" Classes="tm-card-sub" />
           </StackPanel>
-          <ToggleSwitch Grid.Column="2" x:Name="AutoStartToggle" Classes="tm-card-toggle"
-                        IsCheckedChanged="OnAutoStartChanged" />
+          <CheckBox Grid.Column="2" x:Name="AutoStartToggle" VerticalAlignment="Center"
+                    AutomationProperties.LabeledBy="{Binding #AutoStartTitle}"
+                    IsCheckedChanged="OnAutoStartChanged" />
         </Grid>
       </Border>
 
@@ -119,8 +164,9 @@
             <TextBlock x:Name="HotkeyEnabledTitle" Classes="tm-card-title" />
             <TextBlock x:Name="HotkeyEnabledSub" Classes="tm-card-sub" />
           </StackPanel>
-          <ToggleSwitch Grid.Column="2" x:Name="HotkeyEnabledToggle" Classes="tm-card-toggle"
-                        IsCheckedChanged="OnHotkeyEnabledChanged" />
+          <CheckBox Grid.Column="2" x:Name="HotkeyEnabledToggle" VerticalAlignment="Center"
+                    AutomationProperties.LabeledBy="{Binding #HotkeyEnabledTitle}"
+                    IsCheckedChanged="OnHotkeyEnabledChanged" />
         </Grid>
       </Border>
 
