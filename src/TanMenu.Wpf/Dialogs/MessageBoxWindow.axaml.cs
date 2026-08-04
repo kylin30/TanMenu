@@ -83,10 +83,18 @@ public partial class MessageBoxWindow : Window
             // No Theme is set, deliberately: that is what puts these on whatever ControlTheme the
             // application publishes for {x:Type Button}, which since Round 7 Task 3 is the vendored
             // Aero one. MessageBoxWindow.axaml's remark carries the measurement and the reason.
+            // 75 x 23, PUBLISHED,
+            // https://learn.microsoft.com/en-us/windows/win32/uxguide/vis-layout: "Command
+            // buttons — 75x23". Round 8, Task 7 put every other command button in the app on that
+            // pair and this one kept an inherited MinWidth of 84 with no height floor at all, which
+            // the round's review found. MinWidth/MinHeight rather than Width/Height because these
+            // captions are built at run time in two languages — 是/否 against Yes/No — and a floor
+            // that a longer caption can grow past is what the published figure is.
             var button = new Button
             {
                 Content = Label(result, language),
-                MinWidth = 84,
+                MinWidth = 75,
+                MinHeight = 23,
                 HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center,
                 IsDefault = result == _defaultResult,
                 IsCancel = result == _escapeResult && results.Length > 1,

@@ -372,7 +372,12 @@ public sealed partial class WindowHost : IWindowHost
         {
             // Config is read live on every deactivation (never cached) so toggling 失焦自动隐藏 in
             // settings takes effect immediately. Off by default since 0.12.
-            if (_config.Config.General.AutoClose && _suppressDepth == 0)
+            //
+            // THE SUPPRESSION TEST THAT USED TO BE SPELLED OUT HERE (_suppressDepth == 0) IS GONE
+            // BECAUSE Hide() MAKES IT ITSELF NOW — see Hide's own remarks and the Round 8 review
+            // defect they record. This was the only caller that made it, and it was not the caller
+            // that needed it.
+            if (_config.Config.General.AutoClose)
                 Hide();
         };
 
@@ -1051,8 +1056,39 @@ public sealed partial class WindowHost : IWindowHost
         }
     }
 
+    /// <summary>
+    /// Take the launcher off screen, flushing its placement on the way.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>A SUPPRESSION IN FORCE MAKES THIS A NO-OP, AND THAT IS THE ROUND 8 REVIEW'S HIGH DEFECT.</b>
+    /// <see cref="SuppressHide"/> means "something modal we own has the user's attention"; the launcher
+    /// is that modal's OWNER, and hiding an owner does not close what it owns — MEASURED on the live
+    /// app: with the 选项 dialog up, one <see cref="Hide"/> left BOTH HWNDs alive
+    /// (<c>IsWindow</c> true) and BOTH invisible (<c>IsWindowVisible</c> false). The dialog was then
+    /// unreachable for the rest of the session: it never reached <c>OnClosed</c>, so
+    /// <c>OptionsWindow.Current</c> went on pointing at it — accurately — and every later 设置 took
+    /// <c>SettingsLauncher.OpenCoreAsync</c>'s single-instance branch and <c>Activate()</c>d a window
+    /// nobody could see. Nothing threw and nothing was logged.
+    /// </para>
+    /// <para>
+    /// The route measured was a key press: Avalonia routes a key to the FOCUSED ELEMENT, and when the
+    /// dialog is opened from the menu band by keyboard the focus can still be on the band, so an
+    /// Escape aimed at the dialog's HWND ran <c>MainWindow.OnKeyDown</c> → <c>HandleSearchEscape</c> →
+    /// this method instead. But the guard is not written for that route: ALL THREE callers —
+    /// <c>MainWindow.OnClosing</c>'s hide-to-tray, <c>LauncherViewModel.HandleSearchEscape</c> and
+    /// <c>LauncherViewModel.LaunchItem</c> — are launcher-window gestures, and not one of them is
+    /// something the user can mean while a dialog we own is up. Testing it HERE is what makes that
+    /// true by construction instead of once per caller; the <c>Deactivated</c> handler in
+    /// <see cref="Attach"/> used to be the only caller that tested, and it was the only one that could
+    /// not cause the defect.
+    /// </para>
+    /// </remarks>
     public void Hide()
     {
+        if (_suppressDepth > 0)
+            return;
+
         SavePlacement();
         FlushPlacement(); // hiding is often the last thing before exit; do not leave it to the timer
         _window?.Hide();

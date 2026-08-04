@@ -26,25 +26,30 @@
     would freeze the launcher in whatever variant happened to be active at parse time.
 
     ── The focus visual ─────────────────────────────────────────────────────────────────────────
-    Every FocusAdorner below is the CLASSIC DOTTED RECTANGLE: a Rectangle stroked in
-    FocusStrokeOuterBrush (= AeroForeground) at thickness 1 with StrokeDashArray="1,1". Windows 11's
-    two-ring rectangle — a 2 px outer ring in the ink colour plus a 1 px inner ring in the opposite
-    one — went with FocusStrokeInnerBrush, the token that made the second ring possible. Task 3
-    verified with a synthetic VK_TAB that Avalonia's default adorner does draw on the vendored Aero
-    Button (SetFocus() alone shows nothing: Control.OnGotFocus builds an adorner only for
-    NavigationMethod.Tab or Directional), so what an Aero button showed on Tab was still Fluent's
-    ring; these three adorners are what replace it on everything this file themes.
+    ONE FocusAdorner, in ONE rule, below the Styles.Resources block: the CLASSIC DOTTED RECTANGLE, a
+    Rectangle stroked in FocusStrokeOuterBrush (= AeroForeground) at thickness 1 with
+    StrokeDashArray="1,1". Windows 11's two-ring rectangle — a 2 px outer ring in the ink colour plus
+    a 1 px inner ring in the opposite one — went with FocusStrokeInnerBrush, the token that made the
+    second ring possible. Task 3 verified with a synthetic VK_TAB that Avalonia's default adorner
+    does draw on the vendored Aero Button (SetFocus() alone shows nothing: Control.OnGotFocus builds
+    an adorner only for NavigationMethod.Tab or Directional), so what an Aero button showed on Tab
+    was still Fluent's ring.
 
-    THREE, NOT FIVE, SINCE ROUND 8, TASK 3. There were five until that task deleted the navigation
-    pane and the two themes that dressed its rows, TmNavRowButton and TmNavRowItem, each of which
-    carried one. What is left is TmTileButton's, TmIconButton's and TmButton's. Nothing was added
-    back on the menu band: the vendored Themes/Aero/ControlStyles/Menu.axaml declares no FocusAdorner
-    and none is authored here, because a top-level menu item is reached with Alt and the arrow keys
-    rather than with Tab — Menu overrides KeyboardNavigation.TabNavigation to Once (decompiled,
-    Avalonia 12.1.0) — so the dotted rectangle a Tab would draw is not the affordance that bar uses.
+    IT WAS THREE SETTERS ON THREE ControlThemes UNTIL THE ROUND 8 REVIEW, and that arrangement is
+    what the review's MEDIUM finding is about: an x:Key'd theme only reaches a button that names it,
+    and the three dialogs Round 8 built name none of them. The rule below carries the whole account.
+    (Five became three in Round 8, Task 3, which deleted the navigation pane and the two themes that
+    dressed its rows, TmNavRowButton and TmNavRowItem; three became one here.)
 
-    THE MARGIN IS 2 AND IT MUST NEVER GO NEGATIVE. AN ADORNER IS CLIPPED. Task 7's first cut wrote
-    Margin="-2" on all of them, meaning "draw just outside the control", and it rendered NOTHING.
+    NOTHING WAS ADDED ON THE MENU BAND and the type selector below does not reach it either: the
+    vendored Themes/Aero/ControlStyles/Menu.axaml declares no FocusAdorner, a MenuItem is not a
+    Button, and a top-level menu item is reached with Alt and the arrow keys rather than with Tab —
+    Menu overrides KeyboardNavigation.TabNavigation to Once (decompiled, Avalonia 12.1.0) — so the
+    dotted rectangle a Tab would draw is not the affordance that bar uses.
+
+    THE MARGIN IS 2 AND IT MUST NEVER GO NEGATIVE. AN ADORNER IS CLIPPED. Round 7, Task 7's first
+    cut wrote Margin="-2" on all five adorners of the day, meaning "draw just outside the control",
+    and it rendered NOTHING.
     THE MEASUREMENT BELOW IS KEPT AS A HISTORICAL RECORD AND ITS SUBJECT NO LONGER EXISTS: it was
     taken in Round 7 on a navigation-pane row, which Round 8, Task 3 deleted. It is kept rather than
     rewritten because what it establishes is a fact about AdornerLayer, not about that row.
@@ -148,19 +153,9 @@
       <Setter Property="VerticalContentAlignment" Value="Center" />
       <Setter Property="Cursor" Value="Hand" />
 
-      <!-- An adorner rather than a border: it is painted by the adorner layer and costs no layout
-           at all, so showing focus cannot reflow the grid the way a border thickness change would.
-           That is the whole reason, and it holds at any margin — the ADORNER is what buys it, not
-           the direction the rectangle is offset in. The classic dotted rectangle, inset 2 DIP; see
-           this file's header for what it replaced and for the measurement that says why the margin
-           is positive rather than the negative one this task first shipped. -->
-      <Setter Property="FocusAdorner">
-        <Template>
-          <Rectangle Stroke="{DynamicResource FocusStrokeOuterBrush}"
-                     StrokeThickness="1" StrokeDashArray="1,1" Margin="2" />
-        </Template>
-      </Setter>
-
+      <!-- THE FocusAdorner SETTER THAT USED TO BE HERE IS GONE, and so are its two copies in the
+           themes below: one Style Selector="Button" outside this Styles.Resources block now states
+           the focus rectangle once, for every button in the app. See this file's header. -->
       <Setter Property="Template">
         <ControlTemplate>
           <Border x:Name="Root"
@@ -220,12 +215,6 @@
       <Setter Property="HorizontalContentAlignment" Value="Center" />
       <Setter Property="VerticalContentAlignment" Value="Center" />
       <Setter Property="Cursor" Value="Hand" />
-      <Setter Property="FocusAdorner">
-        <Template>
-          <Rectangle Stroke="{DynamicResource FocusStrokeOuterBrush}"
-                     StrokeThickness="1" StrokeDashArray="1,1" Margin="2" />
-        </Template>
-      </Setter>
       <Setter Property="Template">
         <ControlTemplate>
           <Border x:Name="Root"
@@ -326,12 +315,6 @@
       <Setter Property="HorizontalContentAlignment" Value="Center" />
       <Setter Property="VerticalContentAlignment" Value="Center" />
       <Setter Property="Cursor" Value="Hand" />
-      <Setter Property="FocusAdorner">
-        <Template>
-          <Rectangle Stroke="{DynamicResource FocusStrokeOuterBrush}"
-                     StrokeThickness="1" StrokeDashArray="1,1" Margin="2" />
-        </Template>
-      </Setter>
       <Setter Property="Template">
         <ControlTemplate>
           <Border x:Name="Root"
@@ -370,6 +353,42 @@
     </ControlTheme>
 
   </Styles.Resources>
+
+  <!-- ══ THE FOCUS RECTANGLE, STATED ONCE, FOR EVERY BUTTON IN THE APP ═══════════════════════════
+       THIS IS THE ONE RULE IN THIS FILE THAT IS NOT OPT-IN, and the exception is deliberate. Round
+       8's review measured the consequence of the old arrangement: the rectangle was a Setter inside
+       three x:Key'd ControlThemes, so it reached exactly the buttons that asked for one of those
+       three themes by name — and the Options dialog's 确定/取消/应用, the About box's 确定 and every
+       MessageBoxWindow button ask for none of them. They ride the vendored {x:Type Button}, which
+       declares no FocusAdorner, so Control.OnGotFocus fell back to adornerLayer.DefaultFocusAdorner:
+       Fluent's Windows 11 two-ring rectangle, MEASURED on the shipped build as a solid ~2 DIP black
+       square frame over 取消's rounded Aero border (A/B PrintWindow, 1245 of 5535 px changed). Two
+       focus visuals in one app, and the modern one on the surfaces Round 8 created.
+
+       A bare type selector fixes that by construction rather than one button at a time, and it costs
+       nothing else: FocusAdorner is a Control property, not a template part, so this Setter changes
+       no button's resting appearance and overrides no vendored template. It replaced three identical
+       copies — TmTileButton's, TmIconButton's and TmButton's — which a Style outranks anyway
+       (a Style Setter beats a ControlTheme Setter in Avalonia's value precedence), so keeping them
+       would have left three declarations that no longer decide anything.
+
+       An adorner rather than a border: it is painted by the adorner layer and costs no layout at
+       all, so showing focus cannot reflow the grid a border thickness change would. That holds at
+       any margin — the ADORNER is what buys it, not the direction the rectangle is offset in.
+
+       WHAT IT DOES NOT REACH, stated rather than implied. Text fields opt OUT: the vendored
+       TextBox, ComboBox and NumericUpDown all set FocusAdorner="{x:Null}" and repaint their frame
+       in Aero's focus brushes instead, which their own files argue for. Non-Button focusables —
+       check boxes, tab items, list rows — are outside this selector and were not measured here; the
+       claim made is "one focus visual on every BUTTON", which is the finding this rule answers. -->
+  <Style Selector="Button">
+    <Setter Property="FocusAdorner">
+      <Template>
+        <Rectangle Stroke="{DynamicResource FocusStrokeOuterBrush}"
+                   StrokeThickness="1" StrokeDashArray="1,1" Margin="2" />
+      </Template>
+    </Setter>
+  </Style>
 
   <!-- Iconography is Segoe Fluent Icons, and it is the ONE deliberate Windows 11 anachronism this
        conversion keeps: Windows 7 had no icon font at all — its shell glyphs were bitmap resources —

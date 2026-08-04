@@ -25,7 +25,7 @@
        forbids verbatim — "Don't add controls to a window frame. Put the controls within the window
        instead." The menu band is inside the client area, which is the "within the window" that same
        sentence asks for. The ⋯ overflow button and the page-close glyph that shared the old title
-       strip do NOT come back either way: 打开主目录/刷新/退出 are menu items now and 关于 is one too. -->
+       strip do NOT come back either way: 主目录/刷新/退出 are menu items now and 关于 is one too. -->
 
 
   <!-- Round 3, Task 4 removed the 小/中/大 button-size setting, so the Classes.size-* bindings this

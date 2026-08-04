@@ -318,7 +318,14 @@ public static class AppLanguage
             // ROUND 8, TASK 3 BROUGHT 关于 BACK TO A MENU and did NOT re-mint a Menu* key for it: the
             // string is still shared with the About group head, so re-naming it would have made the
             // same kind of lie in the other direction. Only its access-key twin below is Menu*-named.
-            ["MenuOpenRoot"] = ("打开主目录", "Open Main Folder"),
+            // 主目录, NOT 打开主目录 / "Open Main Folder", and the change is Round 8's review round
+            // undoing an inheritance rather than a rename for taste. The verb-first string was minted
+            // for the Round 3 title strip's ⋯ overflow menu and carried through two moves untouched;
+            // the user's own list for this round names the item 主目录 and the design's §3.3 table
+            // lists it that way too, so the string was the last thing still saying otherwise. The
+            // English half drops "Open" with it, which also brings the item into line with the other
+            // four — every one of them is a noun or a bare verb, none of them is a sentence.
+            ["MenuOpenRoot"] = ("主目录", "Main Folder"),
             ["MenuRefresh"] = ("刷新", "Refresh"),
             ["MenuExit"] = ("退出", "Exit"),
             // 设置's own menu-bar string, minted by Round 8, Task 3. THE THIRD OF THREE 设置-ish keys
@@ -335,9 +342,10 @@ public static class AppLanguage
             // ══ The same five, with their access-key markers ══════════════════════════════════════
             // Every menu item gets an access key, no exceptions — PUBLISHED,
             // https://learn.microsoft.com/en-us/windows/win32/uxguide/inter-keyboard. O = Options,
-            // x = Exit and A = About are that article's own standard table; M for 打开主目录 and R for
+            // x = Exit and A = About are that article's own standard table; M for 主目录 and R for
             // 刷新 are app-specific (it assigns neither), with M taken on the article's stated
-            // preference for wide letters "such as w, m".
+            // preference for wide letters "such as w, m". M survived the review round's relabelling
+            // of that item — it was the M of "Main Folder" before and it still is.
             //
             // A SECOND KEY PER ITEM RATHER THAN AN UNDERSCORE SPLICED IN BY CODE, exactly as
             // "ApplyWithAccessKey" above: where the marker goes is a localisation decision. English
@@ -349,7 +357,7 @@ public static class AppLanguage
             // this one as the Header. That pairing was MEASURED in Round 8, Task 2 on the Options
             // dialog's 应用 button, whose name read literally "应用(_A)" until it was given one.
             ["MenuOptionsWithAccessKey"] = ("设置(_O)", "_Options"),
-            ["MenuOpenRootWithAccessKey"] = ("打开主目录(_M)", "Open _Main Folder"),
+            ["MenuOpenRootWithAccessKey"] = ("主目录(_M)", "_Main Folder"),
             ["MenuRefreshWithAccessKey"] = ("刷新(_R)", "_Refresh"),
             ["MenuExitWithAccessKey"] = ("退出(_X)", "E_xit"),
             ["MenuAboutWithAccessKey"] = ("关于(_A)", "_About"),

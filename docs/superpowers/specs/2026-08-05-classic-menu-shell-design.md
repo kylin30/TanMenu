@@ -680,10 +680,17 @@ activate the bar (decompiled, r8-shell §6.2).
 | Item | Key today | English string | Access key | Basis |
 |---|---|---|---|---|
 | 设置 | **new** `MenuOptions` = ("设置", "Options") | Options | **O** | PUBLISHED, `cmd-menus` "Use Options instead"; `inter-keyboard` standard table gives O = Options |
-| 主目录 | `MenuOpenRoot` (`AppLanguage.cs:219`) | Open Main Folder | **M** | app-specific; PUBLISHED preference for wide letters "such as w, m" |
+| 主目录 | `MenuOpenRoot` | Main Folder | **M** | app-specific; PUBLISHED preference for wide letters "such as w, m" |
 | 刷新 | `MenuRefresh` (`:220`) | Refresh | **R** | app-specific, no published assignment |
 | 退出 | `MenuExit` (`:221`) | Exit | **x** | PUBLISHED, `inter-keyboard` standard table |
 | 关于 | `About` (`:227`) | About | **A** | PUBLISHED, `inter-keyboard` standard table |
+
+**The 主目录 row was shipped as 打开主目录 / "Open Main Folder" and the review round corrected it to the
+label this table always named.** The verb-first string was minted for the Round 3 title strip's `⋯`
+overflow menu and inherited unchanged through two moves; nothing but the string itself said "Open".
+`AppLanguage`'s `MenuOpenRoot` and `MenuOpenRootWithAccessKey` both changed; the **key names did not**,
+because the command still opens the root folder — only its label is a noun. The access key stays **M**
+(it was the M of *Main Folder* before and still is).
 
 No ellipses (PUBLISHED). **No icons** — `cmd-menus`: *"If you use icons, don't feel obligated to provide
 them for all menu items."* That removes five of the app's `Segoe Fluent Icons` uses, shrinking the one
@@ -761,6 +768,13 @@ themes"* and *"Task 7's first cut wrote `Margin="-2"` on all five"*. T3 deletes 
 after this task. The measurement the header records was taken on a `TmNavRowButton` row, which no longer
 exists; the record is kept and re-dated as historical rather than rewritten, because the finding it
 records (a negative adorner margin renders nothing) is about `AdornerLayer`, not about that row.
+
+> **SUPERSEDED BY THE REVIEW ROUND — the count is ONE, and not by another deletion.** Three setters on
+> three `x:Key`'d `ControlThemes` reach only the buttons that name one of those themes, and the three
+> dialogs this round built name none of them, so 确定/取消/应用, the About box's 确定 and every
+> `MessageBoxWindow` button kept falling back to Fluent's two-ring adorner. The three were replaced by
+> one bare `Style Selector="Button"` in the same file — the only rule in it that is not opt-in, which
+> `App.axaml`'s layer list now says. §10.6 carries the A/B measurements.
 
 Fit-arithmetic terms that move: `RailWidthDip` (deleted), `PaneBorderDip` (deleted),
 `ChromeHeightDip` (31 → 55 via a new `MenuBandHeightDip = 25`), `MinWindowWidthDip` (872 → 711),
@@ -1689,7 +1703,7 @@ read out of the code, the commits or an instrument this session; nothing is infe
 | §0 r8 | if it does not fit, **split 文件夹** → six tabs | not needed. T6's re-layout took 108.67 DIP off the tab; the strip holds **five** tabs, MEASURED live by T9 in the UIA tree: 外观 \| 行为 \| 文件夹 \| 常用工具 \| 更新. |
 | §8.3 | *"Net: ≈194 → ≈205"* | **222**. The estimate missed by 17: `SettingsDraftTests` alone shipped 14 attributes against the six §T1 named, `MenuBarTests` 5 against 4, `OptionsWindowTests` 5 against 3, and `AboutWindowTests` + `ShellTypographyTests` were not forecast at all. |
 | §8.2 | the PREDICTED log line | matched, to every field: `1486.6666666666667x568 DIP (page 1486.6666666666667x470.6666666666667 + chrome 0x55)`, re-read by T9 off a fresh sandbox log. **One digit differs**: the x is `1816.6666666666665`, not the design's `…667` — the design did the arithmetic, the code prints the double. |
-| §5 | band minimum width **ESTIMATED ≈686 DIP** | **MEASURED 670 DIP** in Chinese and **663.33 DIP** in English, by T9 through UIA at 150 %: the menu run's right edge is 316 / 309.33 DIP, plus the separator's whole 23 DIP footprint (`Width` 1 + `Margin` 11,3), plus the 320 DIP field, plus the 11 DIP trailing margin. Both are under `MinWindowWidthDip` 711, so the estimate's *conclusion* — that the band does not set the window's floor — holds with more room than it claimed. |
+| §5 | band minimum width **ESTIMATED ≈686 DIP** | **MEASURED 646 DIP** in Chinese and **630.67 DIP** in English, by the review round through UIA at 150 %: the menu run (`MenuOptions.Left` → `MenuAbout.Right`) is **438 px = 292 DIP** / **415 px = 276.67 DIP**, plus the separator's whole 23 DIP footprint (`Width` 1 + `Margin` 11,3), plus the 320 DIP field, plus the 11 DIP trailing margin. **T9 measured 670 / 663.33 DIP** off a run of **474 / 464 px**; the review round's relabelling of 打开主目录 → 主目录 took 36 px (two CJK glyphs at 12 DIP) off the Chinese run and 49 px ("Open ") off the English one, which is the whole of the difference. Both figures, before and after, are under `MinWindowWidthDip` 711, so the estimate's *conclusion* — that the band does not set the window's floor — holds with more room than it claimed. |
 | §1, §8.3 | `AeroResources.axaml` merges **fourteen** `ControlStyles` dictionaries; **21** vendored files | **17** and **25**. `Menu`, `TabControl`, `TabItem` and one converter were vendored by this round's own tasks. The half of §1 that matters is untouched: every `TargetType` under `Themes/Aero/` is still a *control*, so a rule that gives a `Border`/`TextBlock`/`StackPanel`/`Image`/`Panel` its geometry still has no theme value under it. |
 | §3 T9 | *"update `MainWindow.axaml.cs`'s class summary (it still describes the pane and the two pages)"* | **already done, by T3 and its review.** T9 read it and changed nothing: the summary describes the band, the single page and the two moves, and names the pane only as what was deleted. Recorded here because "the task did nothing" is a result worth being able to check. |
 | §T3 | the vendored `Menu.axaml` left inset — COULD NOT VERIFY | resolved in T3: `PART_ItemsPresenter` is a *sibling* of the bordered `Border`, so there is no inset to correct, and the gap was measured to confirm it. |
@@ -1747,11 +1761,21 @@ changing that accelerator would meet it.
 
 ### 10.5 Carried forward, knowingly
 
-- **Posting `Esc` to the Options dialog closes it *and* opens a second one.** Reported by T5, which
+- ~~**Posting `Esc` to the Options dialog closes it *and* opens a second one.** Reported by T5, which
   reproduced it on a **pre-T5 build** — so it predates this round and no task here owns it. **T9 did
-  not re-test it**; every dialog this task drove was closed through 取消's `InvokePattern` instead.
+  not re-test it**; every dialog this task drove was closed through 取消's `InvokePattern` instead.~~
+  **BOTH SENTENCES WERE FALSE AND THE BUG IS FIXED — see §10.6.** *"It predates this round"* does not
+  follow from *"reproduced on a pre-T5 build"*: a pre-T5 build is still a **Round 8** build, and the
+  dialog the bug happens in **did not exist before Round 8, Task 2**, so nothing about it can predate
+  the round. This round owns it. *"T9 did not re-test it"* was true when written; the whole-round
+  review then did, found the symptom **worse** than reported (no second window, no visible launcher
+  either, and 设置 dead for the rest of the session), and the review round diagnosed and fixed it.
+  The mechanism was also not what T5's report implied: **no second dialog is ever constructed.**
 - **Dark-mode check-box contrast measures 2.35:1** (light 6.25:1). Those are the **vendored Aero
-  brushes, unmodified**; no threshold is claimed here and nothing in this round changed them.
+  brushes, unmodified**; no threshold is claimed here and nothing in this round changed them. *(The
+  whole-round review could not reproduce that pair — its own sample, the 16 × 16 box against its own
+  fill, gives 1.77 / 1.88:1 — and the region behind 2.35 / 6.25 is not stated anywhere in the record.
+  Neither figure is confirmed here; what is certain is that nothing in this round painted them.)*
 - **Upstream's own dark `AeroMenuBarItem*` defect** (§8.6) — four item-state colours byte-identical in
   both variants, carrying upstream's own `[TODO: Dark-ify …]`. Inherited, not fixed, because a hover
   state cannot be produced on this machine and authoring a colour blind is what the accuracy rule
@@ -1769,3 +1793,94 @@ changing that accelerator would meet it.
   menu bar (§0 ruling 6), and the exact wording of `win-property-win`'s unsaved-changes exception —
   which is why the discard prompt is booked as a **named deviation** in `OptionsWindow.axaml.cs`
   rather than dressed up as compliance.
+
+### 10.6 The review round — the five things the whole-round review sent back
+
+**1 · HIGH — `Esc` in the Options dialog killed 设置 for the session. ROOT CAUSE FOUND, FIXED, TESTED.**
+
+The review's hypothesis — a **second** `OptionsWindow` constructed, claiming `Current`, the first one's
+`OnClosed` then declining to clear it — is **REFUTED**. Only one 选项 HWND ever exists. What happens,
+measured by `EnumWindows` + `IsWindow`/`IsWindowVisible` over the app's own process before and after:
+
+| | dialog HWND | launcher HWND |
+|---|---|---|
+| dialog up | alive, **visible** | alive, visible, **disabled** (modal) |
+| after the posted `Esc` | **alive**, *invisible* | **alive**, *invisible* |
+| +3 s, +12 s, after summoning the launcher | **alive**, still invisible | alive, visible again |
+
+**The dialog is never closed. It is hidden.** The chain, each link measured rather than reasoned:
+
+1. Avalonia routes a key to the **focused element**, not to the HWND the message arrived on. Opened
+   from the menu band by keyboard, focus is still on the band, so an `Esc` posted to the *dialog's*
+   HWND ran **`MainWindow.OnKeyDown`** → `HandleSearchEscape()` → the filter was empty → `_host.Hide()`.
+   The log line `Config saved (0 folders)` in the same second is `Hide`'s own `FlushPlacement`, which
+   is what identifies the caller: `autoClose` is `false` in that sandbox, so the `Deactivated` path —
+   the one caller that *did* test the suppression count — cannot have been it.
+2. **Hiding the launcher takes the modal it owns off screen with it, without closing it.** Both HWNDs
+   go invisible together and both stay alive.
+3. So `OnClosed` never runs, and `OptionsWindow.Current` goes on pointing at that window — **accurately**.
+   Every later 设置 takes `SettingsLauncher.OpenCoreAsync`'s single-instance branch and `Activate()`s a
+   window nobody can see. Silently, for the rest of the session, which is exactly the failure that
+   branch's own remark predicted for a stuck guard. 关于 and 刷新 keep working because neither goes
+   through it.
+
+**Isolated against the instrument, in the same session:** with UIA focus moved *inside* the dialog
+first, the identical posted `Esc` **closes it cleanly** (dialog HWND destroyed, launcher visible, 设置
+reopens). So the trigger is stale focus on the launcher, which is reachable here because no window in
+this session is ever the system foreground window (`GetForegroundWindow()` returns 0). **Whether a real
+keyboard reproduces the trigger is still unverified** — but the *consequence* is instrument-independent
+and is what was fixed: nothing may hide the launcher while it owns a modal.
+
+**The fix, at the choke point:** `WindowHost.Hide()` returns immediately while `_suppressDepth > 0`.
+`SuppressHide` already meant "something modal we own has the user's attention"; only the `Deactivated`
+caller tested it, and that is the one caller that could never cause this. All three that could —
+`MainWindow.OnClosing`, `HandleSearchEscape`, `LauncherViewModel.LaunchItem` — are launcher gestures
+nobody can mean while a dialog is up. The duplicated test in `Deactivated` was deleted with the fix.
+
+**The hardening, behind it:** `OpenCoreAsync` activates the existing dialog only if it **`IsVisible`**;
+a non-visible one is **logged as a warning** and released through a new `OptionsWindow.ReleaseCurrent`,
+so the field can never own the session again. The review's other suggestion — clear `Current` in
+`OnClosing` too — is **rejected on the code**: `OnClosing` is cancellable and *is* cancelled on two
+paths (the discard prompt, a commit in flight), so clearing there would null the field while the dialog
+is still on screen and let a second modal stack on the same owner.
+
+**Verified after the fix, live:** the reviewer's exact sequence leaves both windows up and the dialog
+usable; 取消 then closes it and 设置 reopens; `Esc` with focus inside the dialog still closes it; `Esc`
+in the *launcher* still hides the launcher. `config.json` byte-identical throughout.
+
+**2 · MEDIUM — two focus visuals. FIXED, measured by the review's own A/B method.**
+
+One `Style Selector="Button"` in `Themes/Shell/Launcher.axaml` replaces the three `FocusAdorner`
+setters that lived inside `TmTileButton` / `TmIconButton` / `TmButton`. A `Style` Setter outranks a
+`ControlTheme` Setter, so keeping the three would have left three declarations deciding nothing.
+A/B `PrintWindow` (flag 2, 150 %), a synthetic `VK_TAB` between the captures, diffed over each
+control's UIA rect + 6 px:
+
+| Surface | Before (review) | After |
+|---|---|---|
+| Options 取消 (vendored `{x:Type Button}`) | **1245 px**, a solid ~2 DIP black square frame *replacing* the Aero border | **424 px**, bbox **107 × 29** — the dotted rectangle, inside the intact Aero border |
+| About box 确定 | same solid frame | **424 px**, bbox **107 × 29** |
+| `MessageBoxWindow` 是 (built in code) | same | **424 px**, bbox **107 × 29** |
+| `PickRootBtn` (`TmButton`) | 424 / 5922 dotted | **424 px**, bbox 107 × 29 — unchanged to the pixel |
+| a launcher tile (`TmTileButton`) | 602 dotted | **602 px** — unchanged |
+
+Same pass: `MessageBoxWindow.axaml.cs`'s run-time buttons go from `MinWidth = 84` with no height floor
+to **`MinWidth = 75`, `MinHeight = 23`** — PUBLISHED, `vis-layout` *"Command buttons — 75x23"*. MEASURED
+on the live discard prompt: **113 × 35 px = 75.33 × 23.33 DIP**, the same figure the Options commit row
+reads. Not widened to a fixed `Width`, because these captions are built at run time in two languages.
+
+**3 · Minor — `StrokeDividerBrush` deleted**, Light and Dark, by the same test T7 applied to
+`Space1/2/3` and did not apply here: zero `{DynamicResource}` consumers in `src/` or `tests/` since T3
+deleted `Border.tm-header` and `Border.tm-nav-separator`. `Tokens.axaml`'s census goes **32 → 31 keys**
+(20 themed, 11 variant-independent) and its alias block records what the key was for.
+
+**4 · Minor — the menu item is 主目录 / "Main Folder"**, not 打开主目录 / "Open Main Folder". §3.3 above
+carries the change; §10.2's band-width row carries the two measurements it moved.
+
+**5 · The record corrected** — §10.5's first bullet, above.
+
+**Tests: 222 → 226.** `WindowHostHideTests` (3) drives `WindowHost.Hide` with no window attached and
+reads the guard off whether the placement flush wrote `config.json` — the control case, the suppressed
+case, and the nested balance the dialog's own message boxes produce. `OptionsWindowTests` gains one
+source test pinning the launcher's `IsVisible` branch and the *absence* of a `Current` clear in
+`OnClosing`.

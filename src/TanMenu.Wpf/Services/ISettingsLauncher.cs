@@ -103,13 +103,41 @@ public sealed class SettingsLauncher : ISettingsLauncher
     /// a window that never opens and therefore never reaches <c>OnClosed</c>, and this branch would
     /// then <c>Activate()</c> that dead window, silently, for the rest of the session.
     /// </para>
+    /// <para>
+    /// <b>THE SILENT DEATH THE PARAGRAPH ABOVE PREDICTS WAS REACHED IN THE ROUND 8 REVIEW, BY A ROUTE
+    /// THE CONSTRUCTOR'S ORDERING CANNOT COVER</b>, so this branch now tests the window rather than the
+    /// field. The dialog was not dead, it was OFF SCREEN: hiding the launcher while it owns a modal
+    /// takes the modal with it without closing it (<c>WindowHost.Hide</c> carries the measurement and
+    /// the fix that stops it happening), leaving a live window that never reaches <c>OnClosed</c>, a
+    /// <c>Current</c> that is ACCURATE and useless, and an <c>Activate()</c> nobody can see. The
+    /// liveness test is defence in depth behind that fix, and it covers the other way here — a
+    /// <c>ShowDialog</c> that throws after the constructor has claimed the field.
+    /// </para>
+    /// <para>
+    /// <b>The field is NOT also cleared in <c>OptionsWindow.OnClosing</c>,</b> which the review offered
+    /// as the alternative hardening. It would be wrong: <c>OnClosing</c> is cancellable and IS
+    /// cancelled on two of its paths — the discard prompt (which cancels, asks, and closes again) and a
+    /// commit in flight — so clearing it there would null <c>Current</c> while the dialog is still on
+    /// screen, and a 设置 during either would stack a second modal on the same owner. It would also
+    /// point <c>App.WarnHotkeyRegistrationFailedAsync</c> at the launcher, which this dialog has
+    /// disabled. <c>OnClosed</c> stays the one place, and this branch stops trusting it blindly.
+    /// </para>
     /// </remarks>
     private async Task OpenCoreAsync()
     {
         if (OptionsWindow.Current is { } existing)
         {
-            existing.Activate();
-            return;
+            if (existing.IsVisible)
+            {
+                existing.Activate();
+                return;
+            }
+
+            // Non-visible and still holding the field. Say so — the defect this replaces was silent,
+            // and a warning in the log is the difference between "设置 does nothing" and a diagnosis.
+            Serilog.Log.Warning(
+                "The 选项 dialog still owns the single-instance field but is not visible; releasing it and opening a fresh one");
+            OptionsWindow.ReleaseCurrent(existing);
         }
 
         _host.ShowAndActivate();

@@ -24,7 +24,7 @@
   原本的用途。窗口失去焦点时玻璃转为较淡的一档。拖动、双击最大化、右键系统菜单全部照旧，因为这条标题栏
   是真正的非客户区。
 - **左侧导航窗格删除，改为 Windows 经典主菜单栏。** 标题栏正下方、客户区之内是一条 25 DIP 高的菜单栏：
-  设置(O) · 打开主目录(M) · 刷新(R) · 退出(X) · 关于(A)。五项全是直接命令，没有下级菜单、没有图标、
+  设置(O) · 主目录(M) · 刷新(R) · 退出(X) · 关于(A)。五项全是直接命令，没有下级菜单、没有图标、
   没有省略号——「菜单栏通常放菜单名，但也可以放命令项」是微软自己的原话，About / Options 这类「点了就开
   另一个窗口、不再需要用户补充信息」的项按规定不加省略号。每一项都有访问键（Alt 呼出）。
 - 搜索框放在菜单栏里、紧跟在「关于」后面，中间隔一条竖直分隔条，宽 320 DIP、高 23 DIP。菜单栏在客户区
@@ -58,8 +58,8 @@
   数据文件夹 / 缓存 / 备份）；其余四页整页就是一组，选项卡标题本身就是组名。
 - **「关于」成了真正的关于对话框**：模态、按内容定尺寸、右下角一个「确定」，里面是产品图标、发行者、
   当前版本和版权。它不再是设置里的一个分组，也不再占一个选项卡。
-- 焦点框改成 Windows 经典的 1 px 点线矩形，替换 Windows 11 的双环焦点框；命令按钮按发布值统一到
-  75 × 23 相对像素。
+- 每一个按钮的焦点框都改成 Windows 经典的 1 px 点线矩形，替换 Windows 11 的双环焦点框；设置对话框、
+  关于对话框和消息框里的命令按钮，全部按发布值统一到 75 × 23 相对像素。
 - 窗口最小宽度回到 711 DIP、首次打开的尺寸回到 1000×688——删掉导航窗格后，内容区旁边不再有东西要加宽度，
   这两个数就退回内容区自己的下限。窗口的定位规则不变：每次唤起和每次按内容重新适配后，都水平居中于主屏
   工作区、底边距工作区底部 8 DIP；手动拖走的窗口留在原处，直到内容变化或再次唤起。
@@ -102,7 +102,7 @@
   maximize and the right-click system menu all work as before, because this caption really is
   non-client.
 - **The left navigation pane is gone; a classic main menu bar replaces it.** Directly below the
-  caption and inside the client area sits a 25 DIP band: Options · Open Main Folder · Refresh · Exit ·
+  caption and inside the client area sits a 25 DIP band: Options · Main Folder · Refresh · Exit ·
   About. All five are direct commands — no submenus, no icons, no ellipses. Published, in as many
   words: *"A menu bar typically contains menu names, but it can also contain command items"*, and
   About/Options *"must display another window when clicked, but don't require additional information
@@ -153,8 +153,9 @@
 - **About is a real About box**: modal, sized to its content, one OK button, showing the product tile,
   the publisher, the current version and the copyright. It is neither a settings group nor a tab any
   more.
-- The focus rectangle is the classic Windows 1 px dotted rectangle, replacing Windows 11's two-ring
-  focus ring, and command buttons are on the published 75 × 23 relative pixels.
+- The focus rectangle on every button is the classic Windows 1 px dotted rectangle, replacing
+  Windows 11's two-ring focus ring, and every command button — the Options dialog's, the About box's
+  and the message box's — is on the published 75 × 23 relative pixels.
 - The window's minimum width is back to 711 DIP and its first-open size back to 1000×688. With the
   navigation pane deleted there is nothing beside the content to add width for, so both numbers fall
   back to the content area's own floor. Window placement is unchanged: on every summon and every re-fit

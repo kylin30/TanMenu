@@ -75,7 +75,7 @@ public partial class AppPage : UserControl, IDisposable
 
     /// <summary>The one <see cref="LauncherViewModel"/> instance for the launcher's whole life. Exposed
     /// so the shell can reach it directly: MainWindow's three rail command rows
-    /// (打开主目录/刷新/退出) dispatch through it, and its <c>PendingFocus</c> flag is the channel every
+    /// (主目录/刷新/退出) dispatch through it, and its <c>PendingFocus</c> flag is the channel every
     /// "focus the search box" request travels on. There is deliberately only ever one instance.</summary>
     public LauncherViewModel ViewModel => _viewModel;
 

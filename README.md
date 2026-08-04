@@ -2,7 +2,7 @@
 
 A Windows desktop launcher drawn as a **Windows 7 Aero** application window: a hand-drawn 30 DIP
 glass caption (app icon, title, and minimize / maximize / close at the measured 28 / 27 / 48 DIP) over
-an opaque client, and under it a **classic main menu band** — 设置 · 打开主目录 · 刷新 · 退出 · 关于,
+an opaque client, and under it a **classic main menu band** — 设置 · 主目录 · 刷新 · 退出 · 关于,
 five direct commands with access keys and no submenus, then a vertical separator, then the search
 field. The 应用 page scans configured folders for apps / `.lnk` shortcuts and lays them out as
 horizontally-scrolling categories, each in its own group box. 设置 opens a **modal Options dialog** —
@@ -99,7 +99,7 @@ source-generated `System.Text.Json`, `Microsoft.Extensions.DependencyInjection`,
   the colour of Explorer's list background, and the window's own surface runs unbroken from the menu
   band through it.
 - **A classic main menu band**, 25 DIP tall, directly under the caption and inside the client area:
-  设置 · 打开主目录 · 刷新 · 退出 · 关于. Every item is a **direct command** with an access key and no
+  设置 · 主目录 · 刷新 · 退出 · 关于. Every item is a **direct command** with an access key and no
   submenu — legal and rare, and published as such: *"A menu bar typically contains menu names, but it
   can also contain command items."* No icons and no ellipses (published for both). It replaced a
   160 DIP navigation pane whose five rows were, by the time it went, one page row and four commands —

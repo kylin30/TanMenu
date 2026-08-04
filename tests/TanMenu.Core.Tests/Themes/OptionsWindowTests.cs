@@ -267,4 +267,47 @@ public class OptionsWindowTests
             "constructor. A constructor that faults after claiming the field leaves it pointing at a " +
             "window that never opens and never reaches OnClosed, latching 设置 shut for the session.");
     }
+
+    /// <summary>
+    /// <c>SettingsLauncher</c>'s single-instance branch activates the existing dialog only if it is
+    /// VISIBLE, and <c>OnClosing</c> never clears <c>Current</c>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Round 8's review reached the silent death the test above guards against, by a route the
+    /// constructor's ordering cannot cover: the dialog was alive and OFF SCREEN, so <c>Current</c> was
+    /// ACCURATE and useless and <c>Activate()</c> did nothing anyone could see, for the rest of the
+    /// session, with nothing logged. <c>WindowHostHideTests</c> pins the fix that stops it happening;
+    /// this pins the liveness test behind it.
+    /// </para>
+    /// <para>
+    /// The second half is the review's OTHER suggested hardening, rejected on the code: clearing the
+    /// field in <c>OnClosing</c> would null it while the dialog is still on screen, because
+    /// <c>OnClosing</c> is cancellable and IS cancelled on two paths — the discard prompt and a commit
+    /// in flight — so a 设置 during either would stack a second modal on the same owner.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void TheLauncherActivatesOnlyAVisibleDialogAndOnClosingNeverClearsCurrent()
+    {
+        var launcher = Regex.Replace(
+            File.ReadAllText(Path.Combine(RepoRoot(), "src", "TanMenu.Wpf", "Services",
+                "ISettingsLauncher.cs")),
+            @"//[^\r\n]*", " ");
+        // Comments are stripped but XML doc remarks are not (they are /// lines, i.e. also //), so the
+        // prose that DISCUSSES IsVisible cannot be what satisfies this — the match has to be code.
+        Assert.Matches(@"OptionsWindow\.Current\s+is\s*\{[^}]*\}\s+existing", launcher);
+        Assert.Matches(@"existing\.IsVisible", launcher);
+        Assert.Matches(@"OptionsWindow\.ReleaseCurrent\(\s*existing\s*\)", launcher);
+
+        var code = CodeWithoutComments();
+        var onClosing = code.IndexOf("protected override void OnClosing(", StringComparison.Ordinal);
+        var onClosed = code.IndexOf("protected override void OnClosed(", StringComparison.Ordinal);
+        Assert.True(onClosing >= 0 && onClosed > onClosing,
+            "OptionsWindow.axaml.cs must override OnClosing before OnClosed for this span test to hold.");
+
+        var closingBody = code[onClosing..onClosed];
+        Assert.DoesNotContain("Current = null", closingBody);
+        Assert.DoesNotContain("ReleaseCurrent", closingBody);
+    }
 }

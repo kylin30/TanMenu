@@ -18,11 +18,15 @@
     and 14 variant-independent.
 
     ROUND 8, TASK 7 CUT THREE MORE and the census moves again: Space1 / Space2 / Space3, deleted for
-    having no consumer and no way to gain one (the spacing block below carries that account). This
-    file declares 32 KEYS TODAY — 21 themed and 11 variant-independent. Counted with comments
-    stripped, the two ThemeDictionaries' own "Light"/"Dark" keys excluded. Task 7 also stopped
-    FontSizeBody and FontSizeSubtitle restating vendored numbers; that changed their FORM, not the
-    count.
+    having no consumer and no way to gain one (the spacing block below carries that account). Task 7
+    also stopped FontSizeBody and FontSizeSubtitle restating vendored numbers; that changed their
+    FORM, not the count.
+
+    ROUND 8'S REVIEW ROUND CUT ONE MORE, by Task 7's own test applied where Task 7 did not apply it:
+    StrokeDividerBrush had had zero consumers since Task 3 deleted its last two readers (the alias
+    block below carries that account). This file declares 31 KEYS TODAY — 20 themed and 11
+    variant-independent. Counted with comments stripped, the two ThemeDictionaries' own
+    "Light"/"Dark" keys excluded.
 
     The values are Aero's; the NAMES are still ours, and that is the whole point of the seam. Aero's
     fills are two- and four-stop vertical gradients (Themes/Aero/AVMAP/Brushes.axaml); a token layer
@@ -36,7 +40,7 @@
     AVMAP/Metrics.axaml's own ControlContentThemeFontSize line as precedent. That form is used below
     for the FOUR VARIANT-INDEPENDENT aliases — RadiusControl and ControlCornerRadius since Round 7,
     Task 7, plus FontSizeBody and FontSizeSubtitle since Round 8, Task 7 — and is NOT used for the
-    seven themed ones, because the seven would resolve wrongly: every Aero brush lives inside a
+    six themed ones, because the six would resolve wrongly: every Aero brush lives inside a
     ThemeDictionaries block keyed
     "Light"/"Dark" (Themes/Aero/AeroResources.axaml), a StaticResource is resolved once against
     whichever variant happens to be live at parse time, and the resulting object would then be
@@ -74,17 +78,25 @@
                  TextPrimaryBrush      AeroForegroundColor             #000000 / #FFFFFF
                  TextDisabledBrush     AeroDisabledForegroundColor     #7F7F7F in BOTH
                  StrokeControlBrush    AeroGroupBoxBorderBrushColor    #D5DFE5 / #1B252B
-                 StrokeDividerBrush    AeroGroupBoxBorderBrushColor    (a divider and a group-box
-                                                                        outline are one hairline in
-                                                                        a Windows 7 dialog)
                  FocusStrokeOuterBrush AeroForegroundColor             (the classic dotted focus
                                                                         rectangle, drawn in the ink
-                                                                        colour — see the three
-                                                                        FocusAdorners in
+                                                                        colour — see the ONE
+                                                                        FocusAdorner in
                                                                         Launcher.axaml; there were
                                                                         five until Round 8, Task 3
                                                                         deleted the two navigation
-                                                                        rows that carried them)
+                                                                        rows that carried two of
+                                                                        them, and the review round
+                                                                        folded the remaining three
+                                                                        into one type selector)
+
+               STROKEDIVIDERBRUSH USED TO SIT BETWEEN THOSE TWO AND IS DELETED, in Round 8's review
+               round, by the same test Task 7 applied to Space1/2/3: zero {DynamicResource}
+               consumers. Its last two readers were Border.tm-header and Border.tm-nav-separator,
+               both deleted with the navigation pane in Task 3, and its own line here — "a divider
+               and a group-box outline are one hairline in a Windows 7 dialog" — had outlived its
+               subject. Anything that wants that hairline back names StrokeControlBrush, which is
+               the same Aero colour and has consumers.
 
                SurfaceBaseBrush has TWO consumers, not the one §3.2 predicted. Besides
                MainWindow.ApplyBackdrop's opaque fallback it now paints the window's CLIENT AREA —
@@ -99,7 +111,6 @@
           <SolidColorBrush x:Key="TextPrimaryBrush"      Color="{DynamicResource AeroForegroundColor}" />
           <SolidColorBrush x:Key="TextDisabledBrush"     Color="{DynamicResource AeroDisabledForegroundColor}" />
           <SolidColorBrush x:Key="StrokeControlBrush"    Color="{DynamicResource AeroGroupBoxBorderBrushColor}" />
-          <SolidColorBrush x:Key="StrokeDividerBrush"    Color="{DynamicResource AeroGroupBoxBorderBrushColor}" />
           <SolidColorBrush x:Key="FocusStrokeOuterBrush" Color="{DynamicResource AeroForegroundColor}" />
 
           <!-- The heading ink, for the 设置 page's five group headings, its page title and the 应用
@@ -308,7 +319,6 @@
           <SolidColorBrush x:Key="TextPrimaryBrush"      Color="{DynamicResource AeroForegroundColor}" />
           <SolidColorBrush x:Key="TextDisabledBrush"     Color="{DynamicResource AeroDisabledForegroundColor}" />
           <SolidColorBrush x:Key="StrokeControlBrush"    Color="{DynamicResource AeroGroupBoxBorderBrushColor}" />
-          <SolidColorBrush x:Key="StrokeDividerBrush"    Color="{DynamicResource AeroGroupBoxBorderBrushColor}" />
           <SolidColorBrush x:Key="FocusStrokeOuterBrush" Color="{DynamicResource AeroForegroundColor}" />
 
           <!-- AUTHORED; see the Light block for the measurement that says why, and for what this

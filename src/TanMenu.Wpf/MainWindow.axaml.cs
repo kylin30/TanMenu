@@ -506,9 +506,19 @@ public partial class MainWindow : Window
     /// user could not see, so the first Escape would have been spent clearing something invisible.
     /// Ctrl+E had a matching page guard, for the mirror-image reason. There is one page now, so
     /// <b>Escape always routes to <c>HandleSearchEscape</c></b> — which is what the launcher did before
-    /// the rail existed — and Ctrl+E always focuses the search box. Escape inside the Options DIALOG is
-    /// not this window's business at all: that dialog is modal and its own 取消 button carries
-    /// <c>IsCancel</c>.
+    /// the rail existed — and Ctrl+E always focuses the search box.
+    /// <para>
+    /// <b>A SENTENCE HERE USED TO SAY "Escape inside the Options DIALOG is not this window's business
+    /// at all: that dialog is modal and its own 取消 button carries <c>IsCancel</c>." THAT IS FALSE
+    /// AND THE ROUND 8 REVIEW MEASURED IT FALSE.</b> Avalonia routes a key to the FOCUSED ELEMENT, not
+    /// to the window whose HWND the message arrived on, and the dialog opened from THIS band by
+    /// keyboard can leave the focus on the band — so an Escape aimed at the dialog ran this method,
+    /// took the <c>_host.Hide()</c> arm of <c>HandleSearchEscape</c> and hid the launcher out from
+    /// under its own modal, which does not close the modal but strands it invisible. The correction is
+    /// NOT here: <c>WindowHost.Hide</c> is now a no-op while a <c>SuppressHide</c> is in force, which
+    /// covers this route and the other two callers that could take it. That method's remarks carry the
+    /// measurement.
+    /// </para>
     /// </remarks>
     protected override void OnKeyDown(KeyEventArgs e)
     {

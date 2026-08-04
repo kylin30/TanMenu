@@ -52,6 +52,18 @@ public partial class OptionsWindow : Window
     /// <see cref="OnClosed"/>. See the class remarks for both of its two jobs.</summary>
     public static OptionsWindow? Current { get; private set; }
 
+    /// <summary>Give up <see cref="Current"/> if it still references <paramref name="window"/>. The one
+    /// caller is <c>SettingsLauncher.OpenCoreAsync</c>, on the branch that has just found the field
+    /// pointing at a window that is not on screen and therefore cannot be activated; its remarks carry
+    /// the defect and why <see cref="OnClosing"/> is the wrong place to clear this. The reference test
+    /// is the same one <see cref="OnClosed"/> makes, and for the same reason: never take the field away
+    /// from a LATER window that has legitimately claimed it.</summary>
+    internal static void ReleaseCurrent(OptionsWindow window)
+    {
+        if (ReferenceEquals(Current, window))
+            Current = null;
+    }
+
     private readonly AppEvents _events;
     private readonly ConfigService _config;
     private readonly SettingsDraft _draft;

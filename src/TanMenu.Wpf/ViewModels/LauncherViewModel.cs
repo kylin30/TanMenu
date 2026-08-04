@@ -229,7 +229,10 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>Escape in the search box, two-stage: a non-empty filter is cleared (the box keeps
-    /// focus and the window stays up); a second press on an empty filter hides the launcher.</summary>
+    /// focus and the window stays up); a second press on an empty filter hides the launcher — unless a
+    /// modal we own is up, which <see cref="IWindowHost.Hide"/> itself tests for. This method was one of
+    /// the three unguarded callers behind the Round 8 review's HIGH defect; see
+    /// <c>WindowHost.Hide</c>'s remarks.</summary>
     public void HandleSearchEscape()
     {
         if (!string.IsNullOrEmpty(_filter))
@@ -465,7 +468,7 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
 
     public void ExitApp() => _shell.Exit();
 
-    /// <summary>"打开主目录". A blank root folder is a deliberate silent no-op.</summary>
+    /// <summary>"主目录". A blank root folder is a deliberate silent no-op.</summary>
     public void OpenRoot()
     {
         if (!string.IsNullOrWhiteSpace(_cfg.RootFolder))
