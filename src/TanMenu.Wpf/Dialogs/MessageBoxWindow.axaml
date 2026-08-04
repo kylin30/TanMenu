@@ -46,9 +46,20 @@
        Task 7 re-derived all four from the Fluent values 22,20 / 14 / 0,22,0,0 / 8. -->
   <StackPanel Margin="11">
     <StackPanel Orientation="Horizontal" Spacing="11">
+      <!-- The 30×30 icon plate. It carried CornerRadius="15" until Round 8, Task 8 — half of 30, i.e.
+           a disc, which is WinUI's badge form and not a Windows 7 one. The attribute is DELETED rather
+           than rewritten as "0": 0 IS Border's own default, and this tree already treats a restatement
+           of that default as the cosmetic it is (Themes/Shell/Launcher.axaml's content-pane remark,
+           where Task 3 dropped exactly such a CornerRadius="0"). Themes/Shell/Tokens.axaml declares
+           OverlayCornerRadius as 0 on the same reasoning and carries the citation.
+
+           THE FILL AND THE GLYPH STAY. ApplyIcon in the code-behind sets this Border's Background per
+           MessageBoxIcon and writes the glyph into the TextBlock below; Windows 7's own answer is a
+           system icon bitmap, which this app carries no asset for. The glyph's Bold is a glyph weight
+           rather than UI text — vis-fonts' "Most UI text should be plain without any attributes"
+           sanctions bold "to draw attention to text users must read", which is what an alert icon is. -->
       <Border Name="IconHost"
               Width="30" Height="30"
-              CornerRadius="15"
               IsVisible="False"
               VerticalAlignment="Top">
         <TextBlock Name="IconGlyph"

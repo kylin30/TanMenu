@@ -648,13 +648,20 @@
        https://learn.microsoft.com/en-us/windows/win32/uxguide/vis-fonts, which gives group headers as
        11 pt in a blue this file may not quote as hex — Tokens.axaml's HeadingBrush carries the value
        and the citation. A labelled group is a labelled group whichever page it is on, and Aero got
-       its heading hierarchy from colour rather than from size or weight; the SemiBold is kept anyway
-       because 11 pt is only 3 DIP above body here. The FACE stays inherited rather than pinned: a
-       user who picked a font in settings expects it here too. Task 9 owns the 应用 page's final
-       geometry and may move this. -->
+       its heading hierarchy from colour rather than from size or weight. The FACE stays inherited
+       rather than pinned: a user who picked a font in settings expects it here too.
+
+       ROUND 8, TASK 8 DELETED THE LAST OF THE RAMP — the SemiBold. Round 7 kept it with the argument
+       that "11 pt is only 3 DIP above body here", which is a reason to ADD an attribute the published
+       table does not have: its group-header row gives a point size, a blue and a face and no weight
+       at all (the hex stays in Tokens.axaml's HeadingBrush, because this file may not quote one even
+       in prose and ShellTokenTests enforces that), and the same page's Attributes section opens "Most
+       UI text should be plain without any attributes" — both read verbatim off that URL this session.
+       Size and colour are the whole of the separation now, exactly as on TextBlock.tm-group-head at
+       the bottom of this file, which Task 8 changed in the same commit for the same sentence — "the
+       SAME treatment" above is still true, which is why both moved together. -->
   <Style Selector="TextBlock.tm-section">
     <Setter Property="FontSize" Value="{DynamicResource FontSizeGroupHead}" />
-    <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Foreground" Value="{DynamicResource HeadingBrush}" />
     <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
@@ -708,10 +715,20 @@
        is 16 now, not 20: vis-fonts gives a main instruction as 12 pt = 16 DIP, and the vendored
        AeroFontSizeLarge agrees exactly. Full ink and full opacity, against the 60 % body lines above.
        The FACE comes from the view model (TitleFontFamily) only while the user has not chosen a font
-       of their own; pinning it here would silently override that setting. -->
+       of their own; pinning it here would silently override that setting.
+
+       ROUND 8, TASK 8 DELETED ITS SemiBold, the third and last one this file carried. It was Windows
+       11's Subtitle weight; vis-fonts' main-instruction row gives 12 pt, a blue and a face and no
+       weight on it, and the page's Attributes section opens "Most UI text should be plain without
+       any attributes". SIZE is what separates this line from the 60 % body lines above — 16 DIP
+       against FontSizeBody — and it still does.
+
+       WHAT TASK 8 DID NOT DO is take the COLOUR to that row's blue (HeadingBrush). TextPrimaryBrush at full
+       opacity is not a modern idiom, so item 4's sweep has no claim on it; moving an empty state's
+       heading to heading blue is a new decision about a surface no Round 8 task measured, and it is
+       recorded as open rather than made here. -->
   <Style Selector="StackPanel.tm-empty > TextBlock.title">
     <Setter Property="FontSize" Value="{DynamicResource FontSizeSubtitle}" />
-    <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
     <Setter Property="Opacity" Value="1" />
     <Setter Property="Margin" Value="0,0,0,5" />
@@ -1030,10 +1047,18 @@
        The gap between one box and the next is FoldersCard's own Spacing="11" now, not a Style
        Setter: Round 8, Task 6 deleted HeaderedContentControl.tm-group-box, whose three overrides
        (CornerRadius 5 -> 3, Padding 10 -> 11, Margin -> 0,0,0,11) were the file's cleanest cosmetic
-       item, so the surviving boxes take the vendored theme's own numbers. -->
+       item, so the surviving boxes take the vendored theme's own numbers.
+
+       ROUND 8, TASK 8 DELETED THE SemiBold. The vis-fonts table cited above gives this row a SIZE and
+       a COLOUR and nothing else — 11 pt, in the blue Tokens.axaml's HeadingBrush holds because this
+       file may not quote a hex — and the same page's Attributes
+       section opens "Most UI text should be plain without any attributes", reserving bold for control
+       labels and for text users must read. A group-box header is neither. The weight was the Windows
+       11 ramp's, inherited through Round 7's conversion rather than derived from Aero, and it is the
+       last thing on this heading that had no published source. TextBlock.tm-section, the 应用 page's
+       category heading, lost its own in the same commit for this sentence. -->
   <Style Selector="TextBlock.tm-group-head">
     <Setter Property="FontSize" Value="{DynamicResource FontSizeGroupHead}" />
-    <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Foreground" Value="{DynamicResource HeadingBrush}" />
   </Style>
 

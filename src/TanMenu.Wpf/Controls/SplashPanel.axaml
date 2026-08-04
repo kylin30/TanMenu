@@ -88,8 +88,26 @@
 
     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="400">
 
-      <!-- 60×60 white rounded plate holding the 46×46 app icon. -->
-      <Border Width="60" Height="60" CornerRadius="12" Background="White"
+      <!-- 60×60 white plate holding the 46×46 app icon.
+
+           ROUND 8, TASK 8 TOOK THE RADIUS OFF THE WINDOWS 11 RAMP. It was a literal 12 — a WinUI
+           plate — and it is Aero's own control radius now. RadiusControl is Themes/Shell/Tokens.axaml's
+           <StaticResource> alias onto the vendored AeroControlCornerRadius, which
+           Themes/Aero/AVMAP/Metrics.axaml:36 declares as 3; the alias is read rather than a second
+           literal 3 written here, for the reason Tokens.axaml states beside it — one number, not two.
+           The key resolves from here even though nothing on this control carries a tm- class:
+           Tokens.axaml is a StyleInclude in Application.Styles (App.axaml), so a {DynamicResource}
+           walks up to the application's resources. NOT observed on this splash — it is up for under
+           ~260 ms on this machine and no PrintWindow frame in a 14-shot burst caught it rendered —
+           but the identical construct on Views/Settings/ToolsCard.axaml's list Border was measured on
+           the 常用工具 tab in the same session and draws a ~4 px arc at 150 % scale, i.e. Aero's 3.
+
+           THE REST OF THIS PANEL'S VISUAL LANGUAGE IS UNCHANGED and is not claimed to be Windows 7:
+           the accent gradient behind it, this plate's BoxShadow, and the two Light-weight lines below
+           are a branded splash, and converting them is a design decision Round 8 did not take. Task
+           8's report hands all three to Task 9 as undeclared residue rather than this file claiming
+           they were swept. -->
+      <Border Width="60" Height="60" CornerRadius="{DynamicResource RadiusControl}" Background="White"
               Margin="0,0,0,14" HorizontalAlignment="Center" ClipToBounds="True"
               BoxShadow="0 8 32 0 #2E000000">
         <Image Source="avares://TanMenu.Wpf/wwwroot/app-tile.png"
