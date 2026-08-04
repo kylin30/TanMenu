@@ -35,8 +35,11 @@ public partial class MessageBoxWindow : Window
         if (icon == MessageBoxIcon.None)
             return;
 
-        // A glyph on a coloured disc rather than a bitmap: it scales to any DPI, needs no asset, and
-        // stays legible in both the Fluent light and dark palettes.
+        // A glyph on a coloured plate rather than a bitmap: it scales to any DPI and needs no asset.
+        // The plate is a SQUARE, not a disc — Round 8, Task 8 deleted the CornerRadius="15" that made
+        // it one; MessageBoxWindow.axaml's IconHost remark carries the reason. Contrast does not
+        // depend on the app's light/dark variant either way: the fill is one of the four fixed colours
+        // below and the glyph is a literal White, neither of them a themed brush.
         var (glyph, color) = icon switch
         {
             MessageBoxIcon.Info => ("i", Color.FromRgb(0x2D, 0x7D, 0xD2)),

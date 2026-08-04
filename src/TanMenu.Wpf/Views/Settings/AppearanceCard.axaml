@@ -63,7 +63,10 @@
        this can never fight the vendored themes (they set the same 12 anyway) and it reaches only
        the primitives nothing themes. TextBlock.tm-group-head's FontSizeGroupHead (15) likewise
        still wins on 文件夹's four heads. Tokens.axaml states the rule this restores: "a Windows 7
-       property sheet uses ONE body size and gets its hierarchy from colour and weight."
+       property sheet uses ONE BODY size and gets its separation from ink colour and from the two
+       LARGER published roles" — 11 pt group headers and 12 pt main instructions. (That quote ended
+       "from colour and weight" in both files until Round 8, Task 8's review; vis-fonts states a
+       weight on none of the three rows, and after Task 8 no app .axaml states one either.)
 
        EVERY NUMBER BELOW IS PUBLISHED by
        https://learn.microsoft.com/en-us/windows/win32/uxguide/vis-layout (relative pixels, 9 pt

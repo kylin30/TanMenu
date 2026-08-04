@@ -320,9 +320,13 @@ public partial class MainWindow : Window
     /// element-locally as <c>Theme="{StaticResource TmTileButton}"</c> in <c>Views/AppPage.axaml</c>, so
     /// its Setters are a theme frame and the detach does not touch them. What IS lost is every
     /// APP-LEVEL, class-scoped style frame the page depends on, which is plenty to corrupt a
-    /// measurement: <c>Image.tm-tile-icon</c>'s 20x20 icon box, <c>TextBlock.tm-section</c>'s
-    /// size/line-height/weight, <c>Border.tm-section-head</c>'s padding, <c>StackPanel.tm-group</c>'s
-    /// alignment, the search field's whole geometry, and so on. Which of those produced 850x568
+    /// measurement: <c>Image.tm-tile-icon</c>'s 20x20 icon box, <c>TextBlock.tm-section</c>'s size,
+    /// ink and alignment, <c>Border.tm-section-head</c>'s padding, <c>StackPanel.tm-group</c>'s
+    /// alignment, the search field's whole geometry, and so on. (That enumeration used to read
+    /// "<c>TextBlock.tm-section</c>'s size/line-height/weight". Neither survives: Round 7, Task 7
+    /// deleted the LineHeight keys with Windows 11's ramp, and Round 8, Task 8 deleted the SemiBold.
+    /// Re-derived against the tree this session — the Style sets exactly FontSize, Foreground and
+    /// VerticalAlignment.) Which of those produced 850x568
     /// specifically was not isolated, and is not claimed here — the guard is justified by the
     /// reproduction, and the mechanism above is stated only as far as the decompile actually supports
     /// it.

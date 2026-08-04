@@ -105,8 +105,12 @@
           <!-- The heading ink, for the 设置 page's five group headings, its page title and the 应用
                page's category headings. #003399 is PUBLISHED:
                https://learn.microsoft.com/en-us/windows/win32/uxguide/vis-fonts gives "main
-               instructions" as 12 pt blue #003399 and "group headers" as 11 pt #003399. Aero's one
-               piece of text hierarchy was colour, not size, and this is it.
+               instructions" as 12 pt blue #003399 and "group headers" as 11 pt #003399. "Normal text"
+               on the same table is 9 pt black, so a heading is separated from body by a SIZE and by
+               this INK — and by nothing else: not one of the three rows states a weight. (This
+               sentence read "Aero's one piece of text hierarchy was colour, not size" until Round 8,
+               Task 8's review. The table above, in this same comment, always contradicted the "not
+               size" half; the tree does too, at 12 DIP body against FontSizeGroupHead's 15.)
 
                THE DARK VALUE IS AUTHORED AND ITS DESIGN-DOCUMENT DERIVATION IS WRONG. §3.2 offers
                #6699FF as "#003399 lifted to keep the same contrast ratio against #373737 that the
@@ -451,8 +455,15 @@
              FontSizeBody      9 pt at 96 dpi = 12 DIP    = AeroFontSizeNormal 12   (VENDORED)
              FontSizeSubtitle  main instruction 12 pt = 16 DIP = AeroFontSizeLarge 16 (VENDORED)
              FontSizeGroupHead group headers 11 pt = 14.667 DIP, rounded up to 15    (PUBLISHED)
-           FontSizeCaption (12) is deleted: a Windows 7 property sheet uses ONE body size and gets its
-           hierarchy from colour and weight. The three LineHeight keys go with it — Windows 11's ramp
+           FontSizeCaption (12) is deleted: a Windows 7 property sheet uses ONE BODY size and gets its
+           separation from ink colour and from the two LARGER published roles in the table above — not
+           from a fourth size BELOW body. This read "from colour and weight" until Round 8, Task 8's
+           review, and that half was never true of the source: the table gives body 9 pt black, group
+           headers 11 pt blue and main instructions 12 pt blue, and NOT ONE of the three states a
+           weight (re-read verbatim off vis-fonts this session). It had stopped describing the markup
+           too — Task 8 deleted the tree's last three SemiBold setters, and
+           ShellTypographyTests.NoAppMarkup_StatesAFontWeight now enforces that no app .axaml states
+           one at all. The three LineHeight keys go with it — Windows 11's ramp
            encodes line heights, GDI text does not, and every consumer now takes its natural one.
 
            ROUND 8, TASK 7 STOPPED TWO OF THE THREE RESTATING A VENDORED NUMBER. FontSizeBody was

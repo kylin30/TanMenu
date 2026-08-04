@@ -53,7 +53,10 @@ public static class AppFonts
     /// It was <c>Segoe UI Variable Display, Segoe UI, Microsoft YaHei UI</c> — Segoe UI Variable ships
     /// three optical sizes and Windows 11 selects between them by size band (Small below 14, Text at
     /// 14, Display from 18). Aero has no such band: its published ramp is one family at 9 pt body,
-    /// 11 pt group headers and 12 pt main instructions, and hierarchy comes from colour and weight.
+    /// 11 pt group headers and 12 pt main instructions, and the hierarchy is those sizes plus ink
+    /// colour — never a weight. (This ended "from colour and weight" until Round 8, Task 8's review.
+    /// Not one of the three rows on that table states a weight, and after Task 8 no app <c>.axaml</c>
+    /// does either — <c>ShellTypographyTests.NoAppMarkup_StatesAFontWeight</c> enforces it.)
     /// </remarks>
     public const string DisplayStack = "Segoe UI, Microsoft YaHei UI";
 

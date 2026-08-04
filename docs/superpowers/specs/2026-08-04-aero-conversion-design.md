@@ -380,7 +380,7 @@ and `Themes/Shell/` (ours) is the end state.
 | 33 | `FontFamilyText` | **DELETE** | same |
 | 34 | `FontFamilyDisplay` | **DELETE** | same. Also already dead |
 | 35 | `AppFontFamily` | **RE-VALUE** | `Segoe UI, Microsoft YaHei UI`. **PUBLISHED** `vis-fonts`: *"Segoe UI 9 pt is the system font"* — plain Segoe UI, not Variable. Consumers `SplashPanel.axaml`, `Services/AppFonts.cs` are untouched |
-| 36 | `FontSizeCaption` | **DELETE** | a Windows 7 property sheet uses one body size; hierarchy comes from colour and weight, not from a fourth size |
+| 36 | `FontSizeCaption` | **DELETE** | a Windows 7 property sheet uses one body size; hierarchy comes from colour and weight, not from a fourth size. **[Round 8, Task 8 review — the "and weight" half is withdrawn, and the decision stands without it.** `vis-fonts`' table states a weight on none of its rows: body 9 pt black, group headers 11 pt blue, main instructions 12 pt blue. The separation is size + ink. Round 8, Task 8 deleted the tree's last three `SemiBold` setters and `ShellTypographyTests.NoAppMarkup_StatesAFontWeight` now enforces that no app `.axaml` states a weight; the corrected sentence lives at `Themes/Shell/Tokens.axaml`'s Type block.**]** |
 | 37 | `LineHeightCaption` | **DELETE** | Windows 11's ramp encodes line heights; GDI text does not. All three go |
 | 38 | `FontSizeBody` | **RE-VALUE 14 → 12** | **PUBLISHED** 9 pt at 96 dpi = 12 DIP, and **VENDORED** `AeroFontSizeNormal = 12` agrees exactly |
 | 39 | `LineHeightBody` | **DELETE** | natural line height |
