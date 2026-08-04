@@ -112,10 +112,12 @@ public partial class AppPage : UserControl, IDisposable
     /// <summary>Dispose the owned view model. Called exactly once, from <c>MainWindow.OnClosed</c> —
     /// the only path that fires at real application exit, since <c>MainWindow.OnClosing</c> hides to
     /// the tray otherwise. This page is a field <see cref="MainWindow"/> keeps alive for the whole
-    /// session (<c>ShowPage</c> never rebuilds it), so disposal must NOT be tied to this control's own
-    /// Unloaded/DetachedFromVisualTree: switching the rail to 设置 detaches it from the page host
-    /// without ending the launcher's lifetime, and disposing here would break it for the next switch
-    /// back to 应用.</summary>
+    /// session — hosted once, in that window's constructor, and never rebuilt — so disposal must NOT be
+    /// tied to this control's own Unloaded/DetachedFromVisualTree. That used to matter because
+    /// switching the rail to 设置 detached this page from the page host without ending the launcher's
+    /// lifetime; Round 8, Task 2 removed the switch (设置 is a modal dialog now) and the rule stands
+    /// unchanged for a plainer reason: a window that hides to the tray detaches nothing, and the one
+    /// path that really ends this page's life is the one this method is already called from.</summary>
     public void Dispose()
     {
         _disposed = true;

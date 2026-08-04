@@ -57,11 +57,13 @@ public partial class UpdatesCard : UserControl, ISettingsCard
     }
 
     /// <summary><see cref="IAppUpdateService"/> is a singleton kept alive for the app's whole life, while
-    /// this card is detached and re-attached every time the user navigates away from and back to 设置
-    /// (<c>SettingsPage</c> is cached — see <c>MainWindow.ShowPage</c>). Subscribing once in the
+    /// this card is detached and re-attached every time its container comes and goes — the cached
+    /// <c>SettingsPage</c> was detached by every navigation away from 设置, and Round 8, Task 2's
+    /// <c>OptionsWindow</c> is destroyed on close and realises this card's tab only while it is the
+    /// selected one. Subscribing once in the
     /// constructor and never unsubscribing would make the singleton hold this control (and everything it
     /// references) for the rest of the process after the very first visit, and would leave the handler
-    /// wired even while this card sits detached inside a page nobody is looking at. Pair with
+    /// wired even while this card sits detached inside a window nobody is looking at. Pair with
     /// <see cref="OnDetachedFromVisualTree"/> instead — same pattern
     /// <c>BehaviorCard.OnAttachedToVisualTree</c> / <c>FoldersCard.OnAttachedToVisualTree</c> use for
     /// their own re-attach hooks. Re-render on every attach, too: the state can have moved on while this

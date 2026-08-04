@@ -1010,9 +1010,19 @@
   </Style>
 
   <!-- ══ The content pane ═════════════════════════════════════════════════════════════════════════
-       MainWindow.axaml's PagePane — the Border that hosts whichever page is showing. The two rules
-       below are MUTUALLY EXCLUSIVE by construction (.app against :not(.app)), not a base rule plus an
-       override, and that is deliberate: see "WHY THESE LIVE HERE" at the end.
+       MainWindow.axaml's PagePane — the Border that hosts the 应用 page.
+
+       ROUND 8, TASK 2 DELETED THE SECOND RULE. There were two, mutually exclusive by construction
+       (.app against :not(.app)) rather than a base rule plus an override, and the class was flipped
+       from MainWindow's ShowPageCore. 设置 was the ONLY subject :not(.app) ever had, and 设置 is a
+       modal dialog now (Dialogs/OptionsWindow) rather than a page in this window, so that rule
+       matched nothing and is gone; PagePane carries "app" statically in the markup instead, and the
+       rule below is byte-identical to what it has been since Round 7, Task 7. The deleted rule's
+       three setters were Background="Transparent", BorderThickness="0", CornerRadius="0" — recorded
+       here rather than lost, because the DECISION behind them (Round 6, item 2:
+       除了应用页，其他页面使用和窗口相同的材质面板) is what a future second page would have to be
+       measured against again. Round 8, Task 3 collapses what is left into a plain
+       Border.tm-page-pane and drops the BorderThickness with the nav pane it separated from.
 
        ROUND 7, TASK 7 REWROTE THIS BLOCK RATHER THAN EDITING IT, and the reason is worth stating
        once. What stood here was a 147-line argument about Mica: it measured this window's Mica
@@ -1056,14 +1066,14 @@
        WindowHost.ChromeHeightDip does the same for the top one — see both constants' own remarks. Do
        not change this thickness without changing those.
 
-       ── every other page (the :not(.app) rule) ─────────────────────────────────────────────────────
-       Paints NOTHING: Transparent, no border, no corner, so the window's own surface runs unbroken
+       ── every other page (the :not(.app) rule, DELETED in Round 8, Task 2) ─────────────────────────
+       It painted NOTHING: Transparent, no border, no corner, so the window's own surface ran unbroken
        from the navigation pane straight through the content. (Not from the CAPTION: that band is
        glass over the acrylic and the client below it is opaque, so the two never meet in one
-       surface — the phrase said "from the rail and the caption" until Round 7, Task 10.) That is
+       surface — the phrase said "from the rail and the caption" until Round 7, Task 10.) That was
        Round 6 item 2's decision
-       (除了应用页，其他页面使用和窗口相同的材质面板) and Task 7 keeps it to the letter — these three
-       setters are byte-identical to the ones that shipped.
+       (除了应用页，其他页面使用和窗口相同的材质面板), kept to the letter by Round 7, Task 7. It is
+       deleted rather than retained because it has no subject: the shell has one page.
 
        WHAT CHANGED IS WHAT SHOWS THROUGH, AND IT CHANGED IN MainWindow.axaml, NOT HERE. The window's
        client area is opaque now: the content Grid below the caption paints SurfaceBaseBrush, i.e.
@@ -1079,7 +1089,7 @@
        setter reads as an oversight, and a null-background Border is not hit-testable in Avalonia, so
        the gaps between settings cards would stop absorbing pointer input.
 
-       ── WHY THESE LIVE HERE, AND NOT AS LOCAL VALUES ON THE BORDER ─────────────────────────────────
+       ── WHY THIS LIVES HERE, AND NOT AS LOCAL VALUES ON THE BORDER ─────────────────────────────────
        Because a style setter cannot override a local value in Avalonia, in either direction. A class
        selector's setters are applied at BindingPriority.StyleTrigger, which the framework's own
        documentation on that member describes as overriding a TEMPLATE value; LocalValue is a strictly
@@ -1088,18 +1098,14 @@
        side — see the SearchBox TextBox's own remarks in Views/AppPage.axaml, where a LOCAL Background is
        what stops the theme's :pointerover rule repainting the field. So writing the 应用 look as
        Background/BorderThickness/CornerRadius attributes on PagePane and then trying to switch it with a
-       class toggle would silently do nothing at all: the pane would stay white everywhere. Both states
-       are therefore styles, and they are written as non-overlapping selectors so the result does not
-       depend on this file's rule ORDER either. -->
+       class toggle would silently do nothing at all: the pane would stay white everywhere. The look is
+       therefore a style. That argument OUTLIVES the class flip that first needed it — a local value
+       still outranks a style setter now that the class is static — which is why Round 8, Task 2
+       deleted the second rule without moving the first one's setters onto the Border. -->
   <Style Selector="Border.tm-page-pane.app">
     <Setter Property="Background" Value="{DynamicResource SurfacePageBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource StrokeControlBrush}" />
     <Setter Property="BorderThickness" Value="1,1,0,0" />
-    <Setter Property="CornerRadius" Value="0" />
-  </Style>
-  <Style Selector="Border.tm-page-pane:not(.app)">
-    <Setter Property="Background" Value="Transparent" />
-    <Setter Property="BorderThickness" Value="0" />
     <Setter Property="CornerRadius" Value="0" />
   </Style>
 
@@ -1326,10 +1332,17 @@
        lived in column 1, BESIDE those controls. Round 5 moved every value line onto a Grid.Row="1"
        ColumnSpan="2" expansion row, and it does not reach there — re-measured rather than reasoned:
        with the Setter deleted and DataPathText fed a ~250-character path, still ellipsized on the
-       widest row this page has, at the app's own floor. THE MECHANISM is what carries this and it has
-       not moved: SettingsPage's ScrollViewer never enables horizontal scrolling, so
-       ScrollContentPresenter measures CardStack against the real viewport width, everything under it
-       stretches to that, and a spanning child's desired width has nowhere to inflate into.
+       widest row this page has, at the app's own floor. THE MECHANISM is what carried this, and Round
+       8, Task 2 REPLACED IT rather than letting the sentence stand: it used to be that SettingsPage's
+       ScrollViewer never enabled horizontal scrolling, so ScrollContentPresenter measured CardStack
+       against the real viewport width. There is no ScrollViewer and no CardStack — the settings
+       surface is a fixed-size modal dialog (Dialogs/OptionsWindow) whose TabControl arranges each
+       card into a PART_SelectedContentHost of the window's own width — and the conclusion is the
+       same one for a simpler reason, and a stronger one: the dialog's width is a LITERAL on the
+       Window with CanResize="False", so no child's desired width can move it at all. What a long path
+       can still do is be clipped rather than ellipsized, which is a paint question about the row it is
+       in and not about this Setter; Task 2 checked it on a capture of the 文件夹 tab and the real
+       data path ellipsized as it did on the page.
 
        THE NUMBERS HAVE MOVED THREE TIMES AND ARE STATED WITH THE ROUND AND THE CONFIGURATION THAT
        READ THEM, because two rounds re-derived the geometry around them and one of those left this
@@ -1372,8 +1385,11 @@
        against UpdateHelpText, a plain tm-card-sub on the same kind of row, which reports the full
        624 DIP span at the floor in both languages (Round 7 Task 9, default font, scrolled into view;
        Round 5 read 1185.33 fitted and 599.33 at its own narrower floor) — which would spread the two
-       path lines' ToolTip across the empty width beside them. The centring mechanism is separately
-       load-bearing in SettingsPage.axaml, which uses it deliberately to centre CardStack at its own cap.
+       path lines' ToolTip across the empty width beside them. The centring mechanism used to be
+       separately load-bearing in SettingsPage.axaml, which centred CardStack at its own 1250 DIP cap;
+       Round 8, Task 2 deleted that file with the page, and the Options dialog has no capped column —
+       it has a fixed window width — so nothing in the tree relies on the mechanism any more. It is
+       still the reason THIS rule states an alignment.
 
        THE ToolTip RULE SURVIVES THE BOUND, restated against the row rather than against 260: a value
        line whose text CAN outgrow the row it sits on and has no ToolTip is a defect in that card, and

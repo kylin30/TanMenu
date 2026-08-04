@@ -29,6 +29,12 @@ namespace TanMenu.Wpf.Views.Settings;
 /// RE-SEED the draft when they complete (<see cref="SettingsDraft.Reseed"/>), or a later 确定 would copy
 /// a clone taken before the relocation straight back over the file they just wrote.
 /// </para>
+/// <para>
+/// 备份 is the fourth command the draft is visible to, and it is the only one that READS the config
+/// rather than replacing it — so there is nothing to re-seed, and Round 8, Task 2 gave it a WARNING
+/// instead: with a dirty draft it says the backup will contain only what is saved, and lets the user
+/// go ahead or go and press 应用 first. See <see cref="OnBackupConfigClick"/> for the full reasoning.
+/// </para>
 /// </summary>
 /// <remarks>
 /// No <c>_loading</c> guard, unlike every other card group: every control here is either read-only
@@ -83,12 +89,13 @@ public partial class FoldersCard : UserControl, ISettingsCard
 
     /// <summary>The data folder can change size — or even be moved — entirely outside this app (files
     /// dropped in via Explorer, another running instance relocating it), so the size this card shows is
-    /// only trustworthy at the moment it was measured. This card is constructed once and kept alive for
-    /// the app's whole life (<c>SettingsPage</c> is cached — see <c>MainWindow.ShowPage</c>), so there is
-    /// no per-visit "window opened" moment to hook the way <c>SettingsWindow</c> had. Navigating between
-    /// 应用 and 设置 swaps <c>PageHost.Content</c>, detaching and re-attaching this control each time —
-    /// re-measure here instead, on every re-attach including the first. Same pattern as
-    /// <c>BehaviorCard.RefreshTaskbarPinStateAsync</c>.</summary>
+    /// only trustworthy at the moment it was measured. Hooking the ATTACH rather than a window's
+    /// <c>Opened</c> is what has survived three different containers unchanged: <c>SettingsWindow</c>
+    /// had an <c>Opened</c> per visit, the cached <c>SettingsPage</c> had none and was detached and
+    /// re-attached by every navigation between 应用 and 设置, and Round 8, Task 2's
+    /// <c>OptionsWindow</c> is built fresh per open with its <c>TabControl</c> realising this card's tab
+    /// when it is first selected. Re-measure here, on every re-attach including the first. Same pattern
+    /// as <c>BehaviorCard.RefreshTaskbarPinStateAsync</c>.</summary>
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
@@ -97,7 +104,7 @@ public partial class FoldersCard : UserControl, ISettingsCard
 
     /// <summary>Populate every control from the draft's working clone. Cheap and side-effect-free: it
     /// never walks the data folder (see <see cref="ApplyDataInfoLabel"/>) and never shows a dialog, so it
-    /// is always safe to call from <c>SettingsPage.ApplyStaticText</c>'s SettingsChanged handler.</summary>
+    /// is always safe to call from <c>OptionsWindow.ApplyText</c>'s SettingsChanged handler.</summary>
     public void ReloadFromConfig()
     {
         var lang = UiLanguage;
@@ -372,11 +379,33 @@ public partial class FoldersCard : UserControl, ISettingsCard
     private void OnBackupConfigClick(object? sender, RoutedEventArgs e) => RunSafely(async () =>
     {
         // 备份 writes ConfigService.Config — what is COMMITTED, not what the draft is holding. Round 8,
-        // Task 1 re-opened the staged/unsaved gap this comment used to say did not exist (it was
-        // accurate for the immediate-apply page it was written for, and is not any more), so a backup
-        // taken with 应用 still enabled will not contain the pending edits. Stated rather than guarded:
-        // the design's command list keeps 备份 immediate and specifies no warning for it, and inventing
-        // a dialog here is not this task's to invent.
+        // Task 1 re-opened the staged/unsaved gap (the comment here used to say there was none, which
+        // was accurate for the immediate-apply page it was written for and stopped being so), left it
+        // unguarded because it had no prompt machinery, and handed it to Task 2 in its report.
+        //
+        // ROUND 8, TASK 2 CLOSES IT, and closes it with the mechanism §7 of the design already
+        // specifies for the other boundary a dirty draft is invisible at: 取消 and the title-bar ×
+        // prompt with a MessageBox.YesNo when draft.IsDirty, bracketed by SuppressHide. This is that
+        // same prompt, at this boundary. It is a WARNING and not a block: a backup of the committed
+        // config is a legitimate thing to want, and the point is that the user should not learn which
+        // one they took by restoring it later. The command itself stays IMMEDIATE — the design's
+        // command list keeps it so — and nothing here writes the draft.
+        //
+        // The other two rows around it need no such warning and neither is an omission: 恢复 and
+        // 更改数据文件夹 REPLACE the config underneath the surface, so they re-seed the draft when they
+        // complete, which is a stronger answer than a warning. 备份 only reads, so there is nothing to
+        // re-seed and nothing to undo — only something to say.
+        // The COMMITTED language, not this card's own L() — which reads the draft. Everything a card
+        // DISPLAYS comes from the draft and should; a prompt ABOUT the draft appears over a window
+        // whose labels are still in the committed language (ApplyText only re-labels on a commit), and
+        // MessageBox resolves its own 确定/取消 from ConfigService regardless. Reading the draft here
+        // would produce a half-English, half-Chinese box the moment the pending edit IS the language.
+        if (_draft.IsDirty &&
+            !await ConfirmAsync(
+                AppLanguage.Text("BackupPendingChanges", _config.Config.General.Language),
+                MessageBoxIcon.Warning))
+            return;
+
         var path = await PickSaveFileAsync(new FilePickerSaveOptions
         {
             Title = L("BackupConfig"),

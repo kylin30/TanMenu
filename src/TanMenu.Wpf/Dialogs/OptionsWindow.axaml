@@ -1,0 +1,141 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:cards="using:TanMenu.Wpf.Views.Settings"
+        x:Class="TanMenu.Wpf.Dialogs.OptionsWindow"
+        Width="711" Height="452"
+        CanResize="False"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource SurfaceBaseBrush}">
+
+  <!--
+    ══ THE OPTIONS DIALOG — a Windows 7 property sheet ═══════════════════════════════════════════
+    Round 8, Task 2. The settings surface was a PAGE inside the shell (Views/SettingsPage.axaml,
+    deleted in the same commit) and is a modal dialog now. Everything below is PUBLISHED unless it
+    says otherwise, and every published sentence is quoted rather than paraphrased.
+
+    MODAL, and not by preference.
+    https://learn.microsoft.com/en-us/windows/win32/uxguide/win-property-win — "Options dialog boxes.
+    Properties for an application are displayed in a modal dialog box." win-dialog-box then pairs
+    modality strictly with the commit model: "Modal dialog boxes ... Use a delayed commit model",
+    "Don't use OK buttons in modeless dialog boxes", "Don't use Cancel buttons in modeless dialog
+    boxes. Rather, use Close instead." Round 8, Task 1 chose delayed commit with OK/Cancel, so modal
+    is the only sanctioned pairing left. The modality is not declared here — it is ShowDialog(owner),
+    in Services/ISettingsLauncher.cs's SettingsLauncher.
+
+    TITLE: 选项 / Options, written by ApplyText() from AppLanguage's "Options" key rather than
+    declared here, because AppLanguage has no change notification and a 语言 commit has to re-label
+    this window without closing it. PUBLISHED, win-property-win: "Options dialog box titles — Use
+    'Options.' Use title-style capitalization. Don't use ending punctuation." Not "TanMenu 设置".
+
+    THE SYSTEM CAPTION, not MainWindow's hand-drawn Aero one. Re-drawing chrome for a second window
+    is authoring more of exactly what this round's item 1 strips, and Dialogs/MessageBoxWindow.axaml
+    already records the rule this file follows — "a system caption is right for a platform surface."
+    CanResize="False" and ShowInTaskbar="False" and no Icon= here. PUBLISHED, win-dialog-box — "Dialog
+    boxes don't have title bar icons", "Resizable dialogs can have a Maximize button" (so a fixed one
+    has none), "Don't disable the Close button." NONE OF THOSE THREE COME OUT RIGHT FROM THE MARKUP
+    ALONE, which was measured rather than assumed: the first build of this window drew an enabled
+    Minimize box, a greyed Maximize box and the app's own icon. The code-behind's OnOpened is where
+    that is corrected, in Win32, and its remarks carry the measurement and the reason Avalonia's
+    SystemDecorations — the design's own suggested remedy — is the wrong tool for it.
+
+    NO ScrollViewer ANYWHERE, and that is a requirement rather than a preference. PUBLISHED,
+    win-property-win: "Don't scroll property pages. Instead of using scrollbars, make the property
+    pages larger and lay out the pages efficiently." The page this replaced was a ScrollViewer, and
+    the long ScrollContentPresenter-padding defect its markup documented goes with it. The one
+    ScrollViewer still reachable from this window is inside ToolsCard's per-tool checkbox LIST — a
+    control's own scroller, not a property page's — and it is Auto, so it shows no bar at the tool
+    counts this app ships. OptionsWindowTests.NoTabHostsAScrollViewer holds the rule on this file.
+
+    SIZE — 711 x 452, MEASURED, not the design's provisional 540 x 540. The full method and every
+    number are in the code-behind's ApplyText remarks. In short: with the window temporarily switched
+    to SizeToContent, each of the six tabs was selected through UIA and the window's own client
+    rectangle read, twice — once with the width free, once pinned to 711. 452 is the tallest tab
+    (行为) at 711 wide. The PUBLISHED floor it clears is win-property-win's "Support the minimum
+    Windows Vista screen resolution of 800 x 600 pixels": the OUTER window is 725.67 x 489.33 DIP,
+    measured as client + a 22 x 56 physical px frame at this machine's 150 %.
+    Explicit Width/Height rather than SizeToContent, because a tabbed dialog that resized per tab
+    would break PUBLISHED, win-property-win: "Don't assign effects to changing tabs." The measurement
+    proves that is not hypothetical here — free, the six tabs wanted 646, 584, 784, 305, 582 and 283
+    DIP of width and 345, 452, 357, 320, 213 and 230 of height.
+
+    TABS: horizontal, top, six of them, in the page's own order. PUBLISHED, win-property-win: "Use
+    horizontal tabs if the property window has seven or fewer tabs"; "Use concise tab labels. Use one
+    or two words"; "Don't put icons on tabs"; "Don't assign a unique access key" (they cycle with
+    Ctrl+Tab); "Otherwise, select the first page by default." The tab index is deliberately NOT
+    persisted — "If users are likely to start with the last page displayed, make the page tab
+    persist" is conditional and there is no evidence for its antecedent here. Round 8, Task 4 takes
+    关于 out into an About box, leaving five.
+
+    NOT ONE TabItem CARRIES A LITERAL Header. All six are written by ApplyText() from the same six
+    AppLanguage keys each card's own GroupHead already uses, and that is structural rather than
+    tidy: Round 8, Task 6 deletes five of the six group boxes, which deletes those five GroupHead
+    TextBlocks and the five assignments behind them, so the header text has to have moved off the
+    cards BEFORE then. OptionsWindowTests.EveryTabHeaderComesFromAppLanguage is what keeps a literal
+    from creeping back in and leaving a tab unnamed after that task.
+  -->
+  <DockPanel Margin="11">
+
+    <!-- ══ The commit row ═══════════════════════════════════════════════════════════════════════
+         Docked BOTTOM, so the TabControl above it fills whatever is left; a right-aligned single
+         row, above nothing else. Every number is PUBLISHED in
+         https://learn.microsoft.com/en-us/windows/win32/uxguide/vis-layout (relative pixels, 9 pt
+         Segoe UI at 96 dpi): "Command buttons — 75x23"; "Between buttons — 4 / 7"; "Between
+         unrelated controls — 7 / 11" for the gap above the row. The ORDER is PUBLISHED too, stated
+         identically in three articles: "Right-align the buttons and use this order (from left to
+         right): OK, Cancel, and Apply." OptionsWindowTests.CommitRow_IsOkCancelApplyRightAligned
+         reads all of that back off this markup.
+
+         SEMANTICS, all PUBLISHED in win-property-win: 确定 = commit + close; 应用 = commit + stay
+         open + re-disable itself; 取消 = discard + close; and the title-bar × is 取消, verbatim —
+         "Make sure the Close button on the title bar has the same effect as Cancel or Close. Never
+         give it the same effect as OK."
+
+         应用 IS A NAMED DEVIATION and the deviation is booked here rather than argued away.
+         PUBLISHED, win-property-win: "Use Apply buttons only with property sheets, not with options
+         dialog boxes." PUBLISHED, win-dialog-box: "Don't use Apply buttons in dialog boxes that
+         aren't property sheets or control panels." Both are set aside deliberately, because (a) the
+         user chose the three-button set, and (b) the guideline that ADMITS Apply is satisfied on its
+         own terms — "Provide an Apply button only if the property sheet has settings (at least one)
+         with effects that users can evaluate in a meaningful way" — and three of this dialog's
+         settings have exactly that: 外观, 字体 and 每列个数 all repaint the launcher behind it.
+         Apply is also what gives back the live 外观 preview Task 1's delayed commit removed.
+
+         ACCESS KEYS: none on 确定/取消, "A" on 应用. PUBLISHED, inter-keyboard: "Enter and Esc are
+         used for their access keys"; win-property-win on Apply: "Assign 'A' as the access key."
+         The marker is in the LABEL, which ApplyText() writes, not here.
+
+         IsDefault / IsCancel are what wire Enter and Esc, and they are declared here because they
+         are the buttons' roles, not their text. 应用 opens disabled: PUBLISHED, win-property-win —
+         only Apply is "initially disabled" and "enabled when users make a change". It tracks
+         SettingsDraft.DirtyChanged rather than being poked by each card, because the cards are in a
+         different visual tree from this row. -->
+    <StackPanel x:Name="CommitRow" DockPanel.Dock="Bottom"
+                Orientation="Horizontal"
+                HorizontalAlignment="Right"
+                Spacing="7" Margin="0,11,0,0">
+      <Button x:Name="OkBtn" Width="75" Height="23" IsDefault="True" Click="OnOkClick" />
+      <Button x:Name="CancelBtn" Width="75" Height="23" IsCancel="True" Click="OnCancelClick" />
+      <Button x:Name="ApplyBtn" Width="75" Height="23" IsEnabled="False" Click="OnApplyClick" />
+    </StackPanel>
+
+    <!-- The tab strip and the page body are entirely the vendored Aero theme's
+         (Themes/Aero/ControlStyles/TabControl.axaml + TabItem.axaml, Round 8 Task 2): no Theme=, no
+         class, no local Background or BorderBrush. That is the model this round's item 1 wants and
+         Button.tm-update already demonstrates — ride the vendored theme and set nothing it sets.
+         TabStripPlacement is left at its default Top, which is the branch both vendored files carry
+         their real rules for. -->
+    <TabControl x:Name="Tabs">
+      <TabItem x:Name="AppearanceTab"><cards:AppearanceCard x:Name="Appearance" /></TabItem>
+      <TabItem x:Name="BehaviorTab"><cards:BehaviorCard x:Name="Behavior" /></TabItem>
+      <TabItem x:Name="FoldersTab"><cards:FoldersCard x:Name="Folders" /></TabItem>
+      <TabItem x:Name="ToolsTab"><cards:ToolsCard x:Name="Tools" /></TabItem>
+      <TabItem x:Name="UpdatesTab"><cards:UpdatesCard x:Name="Updates" /></TabItem>
+      <!-- 关于 is last and is the only tab with no interactive control. Round 8, Task 4 moves it out
+           into a real About box — PUBLISHED, win-property-win: "Is the content solely an
+           application's attributes? If so, use an About box." — leaving five tabs here. -->
+      <TabItem x:Name="AboutTab"><cards:AboutCard x:Name="About" /></TabItem>
+    </TabControl>
+
+  </DockPanel>
+</Window>

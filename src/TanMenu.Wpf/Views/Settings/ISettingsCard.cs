@@ -1,8 +1,10 @@
 namespace TanMenu.Wpf.Views.Settings;
 
-/// <summary>Contract every settings card group implements. SettingsPage discovers its card groups
-/// structurally (iterating its own child controls that implement this), rather than through a
-/// per-group method call in ApplyStaticText that a new group could forget to add.</summary>
+/// <summary>Contract every settings card group implements. <c>OptionsWindow</c> discovers its card
+/// groups structurally (iterating its <c>TabControl</c>'s items and taking each tab's content that
+/// implements this), rather than through a per-group method call in <c>ApplyText</c> that a new group
+/// could forget to add. The discoverer was <c>SettingsPage</c>, over its own children, until Round 8,
+/// Task 2 replaced the page with the dialog; the contract itself did not change.</summary>
 internal interface ISettingsCard
 {
     /// <summary>Populate every control in this group from the shared <see cref="SettingsDraft"/> —

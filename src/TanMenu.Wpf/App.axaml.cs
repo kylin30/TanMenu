@@ -124,11 +124,10 @@ public partial class App : Application
             TaskbarPinService.ResolveLauncherPath));
         services.AddSingleton<GlobalHotkeyService>();
         services.AddSingleton<AppEvents>();
-        services.AddSingleton<ShellNavigator>();
-        // Same singleton instance behind both registrations, matching the WindowHost/IWindowHost
-        // pair above: MainWindow's constructor needs the concrete ShellNavigator to Attach, while
-        // everything else (the tray menu, Task 8's settings entry points) only ever sees the interface.
-        services.AddSingleton<IShellNavigator>(sp => sp.GetRequiredService<ShellNavigator>());
+        // ROUND 8, TASK 2 REMOVED TWO REGISTRATIONS HERE — ShellNavigator and IShellNavigator, the
+        // shell's page router. The launcher has exactly one page now: 设置 became a modal dialog
+        // (Dialogs/OptionsWindow), so there is nothing to navigate BETWEEN, and Services/IShellNavigator.cs
+        // was deleted whole rather than left registered and unread.
         services.AddSingleton<ISettingsLauncher, SettingsLauncher>();
         // The settings surface's pending-changes buffer (Round 8, Task 1). Registered rather than
         // constructed by the page because all six card groups and the commit row have to share ONE
@@ -270,6 +269,25 @@ public partial class App : Application
         }
     }
 
+    /// <summary>
+    /// The one <c>SettingsChanged</c> consequence that can BOTH fail and want a dialog:
+    /// <c>GlobalHotkeyService.Apply</c> raises <c>RegistrationFailed</c> when Windows refuses the
+    /// combination, and a rejected hotkey the user cannot see is a setting that silently did not take.
+    /// </summary>
+    /// <remarks>
+    /// <b>THE OWNER IS <c>OptionsWindow.Current ?? host.Window</c>, and the fallback is not defensive
+    /// tidiness.</b> Round 8, Task 2 made 设置 a MODAL dialog on the launcher, and a modal owner is a
+    /// DISABLED owner — so owning this warning to <c>host.Window</c> while that dialog is up is a
+    /// <c>ShowDialog</c> on a window Windows will not let take input. The timing settles which branch
+    /// runs, deterministically rather than by luck: this method is <c>Dispatcher.UIThread.Post</c>ed
+    /// (see the subscription in <see cref="StartupAsync"/>), so it lands AFTER
+    /// <c>SettingsCommit.ApplyAsync</c> has returned. On 应用 the dialog is still open and
+    /// <c>Current</c> is non-null; on 确定 the dialog has closed — 确定 awaits the commit before it
+    /// closes, exactly so that this is not a race — <c>Current</c> is null, and the launcher is enabled
+    /// again by then. Nesting is safe because <c>WindowHost.SuppressHide</c> is reference-counted, so
+    /// the bracket below cannot release the one <c>SettingsLauncher</c> holds around the dialog, and
+    /// <c>MessageBox.ShowCoreAsync</c>'s own hidden-owner fallback still covers both branches.
+    /// </remarks>
     private static async Task WarnHotkeyRegistrationFailedAsync(string combo)
     {
         var host = Services.GetRequiredService<IWindowHost>();
@@ -277,7 +295,7 @@ public partial class App : Application
         host.SuppressHide(true);
         try
         {
-            await MessageBox.ShowAsync(host.Window,
+            await MessageBox.ShowAsync(OptionsWindow.Current ?? host.Window,
                 AppLanguage.Format("HotkeyRegistrationFailed", language, combo),
                 "TanMenu", MessageBoxButtons.Ok, MessageBoxIcon.Warning);
         }

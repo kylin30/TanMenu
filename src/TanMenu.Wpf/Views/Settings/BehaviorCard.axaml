@@ -99,11 +99,14 @@
                IsEnabled="false" — set by ApplyTaskbarPinState from the live COM pin query — instead of
                out of a second theme. One fewer moving part for the same rendering.
 
-               The static Theme is also what makes the first frame of a process defensible. SettingsPage's
-               constructor calls ReloadFromConfig (hence ApplyTaskbarPinState) while this card tree is
-               still detached from the logical tree, where FindResource cannot reach Application.Styles at
-               all; a Button with no Theme and no Classes would have rendered as stock Fluent for that
-               frame. It renders as TmButton instead, which is what it renders as afterwards too. -->
+               The static Theme is also what makes the first frame of a process defensible.
+               OptionsWindow's constructor calls ReloadFromConfig (hence ApplyTaskbarPinState) through
+               ApplyText while this card tree is still detached from the logical tree — it was
+               SettingsPage's constructor until Round 8, Task 2 and the hazard is identical, since a
+               TabControl only realises the selected tab's content and this card sits on the second tab —
+               and there FindResource cannot reach Application.Styles at all; a Button with no Theme and
+               no Classes would have rendered as stock Fluent for that frame. It renders as TmButton
+               instead, which is what it renders as afterwards too. -->
           <Button Grid.Column="2" x:Name="PinTaskbarBtn" Theme="{StaticResource TmButton}"
                   Click="OnPinTaskbarClick" VerticalAlignment="Center" />
         </Grid>

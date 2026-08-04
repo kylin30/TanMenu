@@ -39,7 +39,7 @@ public class AppLanguageTests
     /// <see cref="ArgumentNullException"/> out of a <see cref="System.Collections.Generic.Dictionary{TKey,TValue}"/>
     /// lookup on a null key (<c>Path.GetFileName(null)</c> returns null, and a null dictionary key is
     /// rejected) — reachable from <c>ToolsCard.ReloadFromConfig</c>, which runs from
-    /// <c>SettingsPage</c>'s constructor and on every <c>SettingsChanged</c> broadcast, with no global
+    /// <c>OptionsWindow</c>'s constructor and on every <c>SettingsChanged</c> broadcast, with no global
     /// unhandled-exception hook in Avalonia to catch it.
     /// </summary>
     [Fact]

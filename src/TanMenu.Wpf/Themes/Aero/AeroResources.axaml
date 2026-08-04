@@ -36,23 +36,30 @@
     Round 7 Task 2 vendored the resource layer above and wired it to NOTHING - no control theme, no
     style, no converter was referenced from here - so that a mistake in it would surface as a build
     error or as a pixel difference against Task 1's captures rather than as a silently wrong-looking
-    app. Task 3 is what spent it, below. BOTH surviving converters under Converters/ are now spent:
+    app. Task 3 is what spent it, below. ALL THREE converters under Converters/ are spent:
     AdjustCornerRadiusConverter is instantiated three times (ControlStyles/Button_*, ListBox and
-    ListBoxItem) and ProgressBarFillBrushConverter once, as an x:Static singleton, by the progress
-    bar's indicator fill. Four were vendored; Task 5 deleted ProgressBarAnimationConverter.cs and
-    ProgressBarFillColorConverter.cs with the indeterminate machinery that was their only caller.
+    ListBoxItem), ProgressBarFillBrushConverter once, as an x:Static singleton, by the progress
+    bar's indicator fill, and AdjustThicknessForTabsConverter once, likewise as an x:Static
+    singleton, by ControlStyles/TabItem.axaml's outer border. Four were vendored in Round 7; Task 5
+    deleted ProgressBarAnimationConverter.cs and ProgressBarFillColorConverter.cs with the
+    indeterminate machinery that was their only caller, and ROUND 8 TASK 2 VENDORED THE THIRD
+    surviving one with the two tab dictionaries, because TabItem.axaml does not parse without it.
 
-    ── The control themes, added by Round 7 Tasks 3, 4, 5, 6 and 9 ───────────────────────────────
-    Fourteen ControlStyles dictionaries are merged below, VARIANT-INDEPENDENTLY: a control theme holds
+    ── The control themes, added by Round 7 Tasks 3, 4, 5, 6 and 9 and Round 8 Task 2 ────────────
+    Sixteen ControlStyles dictionaries are merged below, VARIANT-INDEPENDENTLY: a control theme holds
     geometry and {DynamicResource} brush references, never a colour, so the same dictionary serves
     both variants and the brushes it names re-resolve when ActualThemeVariant changes. That is
     upstream AVMAP/Controls.axaml's own arrangement.
 
-    Thirteen of the fourteen are keyed {x:Type X} and therefore auto-apply to every X that does not
+    Fifteen of the sixteen are keyed {x:Type X} and therefore auto-apply to every X that does not
     set Theme= itself. HeaderedContentControl is the exception and is OPT-IN, keyed "GroupBox",
     which is upstream's own choice rather than an adaptation: HeaderedContentControl is the base
     class of TabItem and of several other headered controls, so a {x:Type} key there would repaint
     things nobody asked for. Its consumers name it with Theme="{StaticResource GroupBox}".
+    THAT CHOICE STOPPED BEING HYPOTHETICAL IN ROUND 8, TASK 2, which added a real
+    {x:Type TabItem} theme: the two coexist precisely because GroupBox is not keyed by type, so the
+    Options dialog's five tabs take TabItem.axaml and the six group boxes inside them keep taking
+    HeaderedContentControl.axaml, with no rule reaching the other's subject.
 
     Counted against the tree - MARKUP AND CODE-BEHIND BOTH, because a control built in code has no
     Theme= to grep for - that reach is:
@@ -76,9 +83,16 @@
         container and a hand-built one pick up a {x:Type} ControlTheme the same way - neither can
         carry a Theme= - which is what makes the code-built rows and the markup-built combos one
         look rather than two. Task 6.
-      - ScrollViewer, three (AppPage, SettingsPage, ToolsCard) plus the one inside this layer's own
-        ListBox template, and every ScrollBar those instantiate.
-      - ListBox, both navigation rails in MainWindow.axaml.
+      - ScrollViewer, TWO (AppPage and ToolsCard's per-tool list) plus the one inside this layer's
+        own ListBox template, and every ScrollBar those instantiate. It was three until Round 8,
+        Task 2 deleted Views/SettingsPage.axaml: a property page does not scroll (PUBLISHED,
+        win-property-win, "Don't scroll property pages"), so the Options dialog has no scroller of
+        its own and the settings surface's scrolling ScrollViewer went with the page.
+      - TabControl, ONE, and TabItem, FIVE - Dialogs/OptionsWindow.axaml, the whole of Round 8
+        Task 2's reason for vendoring them. Neither carries a Theme=.
+      - ListBox, ONE navigation rail in MainWindow.axaml. It was both until Round 8, Task 2 deleted
+        NavFooterRail: 设置 is a command that opens a dialog now, not a page the shell navigates to,
+        so its row is a Button like the three commands above it.
       - TextBox, TWO: AppPage.axaml's SearchBox and BehaviorCard.axaml's HotkeyBox. Both carry a
         tm- CLASS rather than a Theme=, and a class does not stop a {x:Type} ControlTheme reaching
         them - it only adds rules on top. Added by Task 4.
@@ -131,19 +145,24 @@
     nine branches, so there is no upstream file it could be a copy of and no path a Source: line
     could name; its header names item by item the vocabulary it does reuse. AeroAttributionTests
     encodes exactly that split - ProgressBar and ComboBoxItem keep the notice, ComboBox alone is
-    listed as not-vendored. HeaderedContentControl, the last merge to land (Task 9), is an ordinary
+    listed as not-vendored. HeaderedContentControl (Round 7, Task 9) is an ordinary
     copy and needs no note beyond its own header - but it brings the only vendored CONTROL in the
     tree with it, Controls/HeaderGapClipper.cs, without which its template draws the group label on
-    top of an unbroken outline instead of in a notch cut out of it.
+    top of an unbroken outline instead of in a notch cut out of it. TabControl and TabItem, the last
+    two merges to land (Round 8, Task 2), are ordinary copies too - TabControl's header records
+    "Changes from upstream: none.", TabItem's records the one re-pointed xmlns - and TabItem brings
+    Converters/AdjustThicknessForTabsConverter.cs with it for the same kind of reason: without that
+    file its template does not parse.
 
     ── The keys here that are not Aero-prefixed ─────────────────────────────────────────────────
-    64 keys are merged below (comments stripped, Metrics plus the fourteen control-style
-    dictionaries). All but 33 are Aero-prefixed, and all 33 are wanted:
+    66 keys are merged below (comments stripped, Metrics plus the sixteen control-style
+    dictionaries). All but 35 are Aero-prefixed, and all 35 are wanted:
 
-      - the FIFTEEN {x:Type X} ControlTheme keys - Button, RepeatButton, ToggleButton (the Button
+      - the SEVENTEEN {x:Type X} ControlTheme keys - Button, RepeatButton, ToggleButton (the Button
         file keys three), ButtonSpinner, CheckBox, ComboBox, ComboBoxItem, ListBox, ListBoxItem,
-        NumericUpDown, ProgressBar, ScrollBar, ScrollViewer, TextBox, ToggleSwitch. A {x:Type} key
-        is how a ControlTheme auto-applies at all, so these are the reach listed above;
+        NumericUpDown, ProgressBar, ScrollBar, ScrollViewer, TabControl, TabItem, TextBox,
+        ToggleSwitch. A {x:Type} key is how a ControlTheme auto-applies at all, so these are the
+        reach listed above;
       - GroupBox (ControlStyles/HeaderedContentControl.axaml), the one opt-in theme, keyed by name
         upstream and kept that way here for the reason given above;
       - ELEVEN inside ControlStyles/ButtonSpinner.axaml: two spinner arrow geometries, the
@@ -209,6 +228,8 @@
         <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/ProgressBar.axaml" />
         <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/ScrollBar.axaml" />
         <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/ScrollViewer.axaml" />
+        <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/TabControl.axaml" />
+        <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/TabItem.axaml" />
         <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/TextBox.axaml" />
         <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/ToggleSwitch.axaml" />
       </ResourceDictionary.MergedDictionaries>

@@ -1,0 +1,108 @@
+<!--
+    Copyright (c) 2026 Splitwirez
+    Licensed under the MIT License. See LICENSE-aero-theme-for-avalonia.txt in the Themes/Aero
+    directory for the full text of the copyright notice and permission notice.
+    Source: https://github.com/Splitwirez/aero-theme-for-avalonia at main = a705b7c0
+            src/AeroAvalonia/ControlStyles/TabControl.axaml
+    Changes from upstream: none.
+    Every character below, blank lines and the author's own commented-out blocks included, is byte
+    for byte upstream, line endings included. cmp against the raw file at that revision passes.
+
+    Round 8, Task 2 vendored this file and ControlStyles/TabItem.axaml together: the Options dialog
+    (Dialogs/OptionsWindow.axaml) is a Windows 7 property sheet and its five tabs are the first and
+    only TabControl in this app. NO COLOUR WORK WAS NEEDED. Every key the two files name already
+    exists in the vendored layer - AeroTabControlBackground / OuterBorderBrush / InnerBorderBrush at
+    AVMAP/Brushes.axaml:184-186 over Variant/Light.axaml:151-155 and its Dark twin, and the whole
+    AeroButton* family the tab item borrows for its idle, hover and disabled states.
+
+    THE COMMENTED-OUT STYLE BLOCKS ARE UPSTREAM'S OWN and are kept rather than stripped. This project
+    deletes dead markup it writes; it does not edit a vendored file to tidy the author's work, because
+    every such edit has to be declared above and each declaration is a place the copy can drift from
+    its source. "Changes from upstream: none." is the strongest claim this header can make.
+
+    WHAT THE TEMPLATE DRAWS, read out of the markup below rather than assumed: an ItemsPresenter
+    docked on TabStripPlacement (Top for this app), then a two-Border page body - an outer
+    AeroTabControlOuterBorderBrush at 0,0,2,1 and an inner AeroTabControlInnerBorderBrush at 1 over
+    AeroTabControlBackground - with a 4x4 EdgePaddingHelper docked on the same edge as the strip so
+    the selected tab's overhang has somewhere to sit. PART_SelectedContentHost is what a tab's
+    content is arranged into, and Padding is 0, so the dialog's own Margin is the only inset.
+-->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    x:ClassModifier="Internal">
+    <ControlTheme x:Key="{x:Type TabControl}" TargetType="TabControl">
+        <Setter Property="Background" Value="{DynamicResource AeroTabControlBackground}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AeroTabControlInnerBorderBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <!--Setter Property="Margin" Value="6,7,4,6"/-->
+        <!--Setter Property="Padding" Value="14,15"/-->
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <DockPanel>
+                    <ItemsPresenter x:Name="PART_ItemsPresenter"
+                                    ItemsPanel="{TemplateBinding ItemsPanel}"
+                                    ZIndex="1"
+                                    DockPanel.Dock="{TemplateBinding TabStripPlacement}"/>
+                    <Border BorderBrush="{DynamicResource AeroTabControlOuterBorderBrush}"
+                            BorderThickness="0,0,2,1">
+                        <Border BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                Background="{TemplateBinding Background}">
+                            <DockPanel>
+                                <Control x:Name="EdgePaddingHelper"
+                                        Width="4"
+                                        Height="4"
+                                        DockPanel.Dock="{TemplateBinding TabStripPlacement}"/>
+                                <ContentPresenter x:Name="PART_SelectedContentHost"
+                                                Margin="{TemplateBinding Padding}"
+                                                HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                Content="{TemplateBinding SelectedContent}"
+                                                ContentTemplate="{TemplateBinding SelectedContentTemplate}" />
+                            </DockPanel>
+                        </Border>
+                    </Border>
+                </DockPanel>
+            </ControlTemplate>
+        </Setter>
+        <!--Style Selector="^[TabStripPlacement=Top]">
+            <Setter Property="Padding" Value="0,4,0,0"/>
+        </Style-->
+        <Style Selector="^[TabStripPlacement=Top] /template/ ItemsPresenter#PART_ItemsPresenter">
+            <Setter Property="Margin" Value="2,0,0,0"/>
+        </Style>
+        <!--Style Selector="^[TabStripPlacement=Top] /template/ ItemsPresenter#PART_ItemsPresenter">
+            <Setter Property="DockPanel.Dock" Value="Top"/>
+        </Style>
+        <Style Selector="^[TabStripPlacement=Bottom] /template/ ItemsPresenter#PART_ItemsPresenter">
+            <Setter Property="DockPanel.Dock" Value="Bottom"/>
+        </Style-->
+        <!--Style Selector="^[TabStripPlacement=Bottom]">
+            <Setter Property="Padding" Value="0,0,0,4"/>
+        </Style-->
+        <!--Style Selector="^[TabStripPlacement=Left] /template/ ItemsPresenter#PART_ItemsPresenter">
+            <Setter Property="DockPanel.Dock" Value="Left"/>
+        </Style-->
+        <Style Selector="^[TabStripPlacement=Left] /template/ ItemsPresenter#PART_ItemsPresenter > WrapPanel,
+                        ^[TabStripPlacement=Right] /template/ ItemsPresenter#PART_ItemsPresenter > WrapPanel">
+            <Setter Property="Orientation" Value="Vertical"/>
+        </Style>
+        <Style Selector="^[TabStripPlacement=Left] /template/ ItemsPresenter#PART_ItemsPresenter > StackPanel,
+                        ^[TabStripPlacement=Right] /template/ ItemsPresenter#PART_ItemsPresenter > StackPanel">
+            <Setter Property="Orientation" Value="Vertical"/>
+        </Style>
+        <!--Style Selector="^[TabStripPlacement=Left]">
+            <Setter Property="Padding" Value="4,0,0,0"/>
+        </Style-->
+        <!--Style Selector="^[TabStripPlacement=Right] /template/ ItemsPresenter#PART_ItemsPresenter">
+            <Setter Property="DockPanel.Dock" Value="Right"/>
+        </Style>
+        <Style Selector="^[TabStripPlacement=Right] /template/ ItemsPresenter#PART_ItemsPresenter > WrapPanel">
+            <Setter Property="Orientation" Value="Vertical"/>
+        </Style-->
+        <!--Style Selector="^[TabStripPlacement=Right]">
+            <Setter Property="Padding" Value="0,0,0,4"/>
+        </Style-->
+    </ControlTheme>
+</ResourceDictionary>

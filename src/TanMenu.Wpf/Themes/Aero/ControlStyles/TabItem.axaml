@@ -1,0 +1,163 @@
+<!--
+    Copyright (c) 2026 Splitwirez
+    Licensed under the MIT License. See LICENSE-aero-theme-for-avalonia.txt in the Themes/Aero
+    directory for the full text of the copyright notice and permission notice.
+    Source: https://github.com/Splitwirez/aero-theme-for-avalonia at main = a705b7c0
+            src/AeroAvalonia/ControlStyles/TabItem.axaml
+    Changes from upstream:
+      1. RE-POINTED the aecnv xmlns from "using:AeroAvalonia.Converters" to
+         "using:TanMenu.Wpf.Themes.Aero.Converters" - the same one-line change
+         ControlStyles/ListBoxItem.axaml records, and for the same reason: the upstream namespace
+         does not exist in this assembly.
+    Everything else is byte for byte upstream, line endings included - the author's own blank runs
+    and the stray trailing spaces on lines 61-63 among them.
+
+    THE CONVERTER IT NAMES HAD TO BE VENDORED WITH IT. Converters/AdjustThicknessForTabsConverter.cs
+    is upstream's, carries its own notice, and is what drops the border on whichever edge the tab
+    strip is docked against, so the selected tab opens into the page body instead of being fenced off
+    from it. Without that file this template does not parse.
+
+    WHAT IT DRAWS: two nested Borders on the same aeroState2 cross-fade every other Aero control uses
+    (AVMAP/StyleTrailMix.axaml), the outer one carrying the tab outline and the inner one the fill,
+    over a 2x2 transparent Spacer docked on the strip's edge. Selected pulls the item 2 DIP out on
+    three sides and 1 DIP into the page on the fourth, raises ZIndex to 7601, and paints the outer
+    border with AeroTabControlBackground so the tab and the page read as one surface - which is
+    exactly the Windows 7 property-sheet tab, and is why no colour work was needed here.
+
+    ONE THING THIS APP CANNOT VERIFY, and it is stated rather than glossed: the :pointerover branch.
+    This machine has no mouse and nothing synthetic sets :pointerover, so the hover fill and border
+    below ship exactly as upstream wrote them and have never been seen on screen here. Same standing
+    as the note ControlStyles/Button_RepeatButton_ToggleButton.axaml already carries.
+-->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:aecnv="using:TanMenu.Wpf.Themes.Aero.Converters"
+                    x:ClassModifier="Internal">
+    <ControlTheme x:Key="{x:Type TabItem}" TargetType="TabItem">
+        <Setter Property="Background" Value="{DynamicResource AeroButtonIdleBackground}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AeroTabControlInnerBorderBrush}"/>
+        <Setter Property="FontSize" Value="{DynamicResource AeroFontSizeNormal}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AeroForeground}"/>
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        <Setter Property="VerticalContentAlignment" Value="Stretch"/>
+        <Setter Property="Padding" Value="4,1" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <DockPanel>
+                    <Rectangle x:Name="Spacer"
+                            Opacity="0"
+                            Focusable="False"
+                            IsTabStop="False"
+                            IsHitTestVisible="False"
+                            Width="2"
+                            Height="2"
+                            DockPanel.Dock="{TemplateBinding TabStripPlacement}" />
+                    <Border x:Name="Outer"
+                            Classes="aeroState2"
+                            BorderBrush="{TemplateBinding BorderBrush}">
+                        <Border.BorderThickness>
+                            <MultiBinding Converter="{x:Static aecnv:AdjustThicknessForTabsConverter.Instance}">
+                                <MultiBinding.Bindings>
+                                    <Binding Path="BorderThickness"
+                                            RelativeSource="{RelativeSource Mode=TemplatedParent}"
+                                            Mode="OneWay" />
+                                    <Binding Path="TabStripPlacement"
+                                            RelativeSource="{RelativeSource Mode=TemplatedParent}"
+                                            Mode="OneWay" />
+                                </MultiBinding.Bindings>
+                            </MultiBinding>
+                        </Border.BorderThickness>
+                        <Border x:Name="Inner"
+                                Classes="aeroState2"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{DynamicResource AeroButtonIdleInnerBorderBrush}"
+                                BorderThickness="1">
+                            <ContentPresenter x:Name="PART_ContentPresenter"
+                                            HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                            VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                            Content="{TemplateBinding Header}"
+                                            ContentTemplate="{TemplateBinding HeaderTemplate}"
+                                            Padding="{TemplateBinding Padding}" />
+                        </Border>
+                    </Border>
+                </DockPanel>
+            </ControlTemplate>
+        </Setter>
+        <Style Selector="^[TabStripPlacement=Left],
+                        ^[TabStripPlacement=Right]">
+            <Setter Property="Padding" Value="1,4" />
+        </Style>
+
+
+
+        
+        <!-- pointerover (hover) state -->
+        <Style Selector="^:pointerover">
+            <Style Selector="^ /template/ Border#Outer">
+                <Setter Property="BorderBrush" Value="{DynamicResource AeroButtonHoverOuterBorderBrush}" />
+            </Style>
+            <Style Selector="^ /template/ Border#Inner">
+                <Setter Property="Background" Value="{DynamicResource AeroButtonHoverBackground}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource AeroButtonHoverInnerBorderBrush}" />
+            </Style>
+        </Style>
+
+
+        <!-- selected state -->
+        <Style Selector="^:selected">
+            <Style Selector="^[TabStripPlacement=Left]">
+                <Setter Property="Margin" Value="-2,-2,-1,-2" />
+            </Style>
+            <Style Selector="^[TabStripPlacement=Top]">
+                <Setter Property="Margin" Value="-2,-2,-2,-1" />
+            </Style>
+            <Style Selector="^[TabStripPlacement=Right]">
+                <Setter Property="Margin" Value="-1,-2,-2,-2" />
+            </Style>
+            <Style Selector="^[TabStripPlacement=Bottom]">
+                <Setter Property="Margin" Value="-2,-1,-2,-2" />
+            </Style>
+
+            <Setter Property="ZIndex" Value="7601" />
+
+
+            <Style Selector="^ /template/ Border#Outer">
+                <Setter Property="Background" Value="{DynamicResource AeroTabControlBackground}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource AeroTabControlInnerBorderBrush}" />
+            </Style>
+            <Style Selector="^ /template/ Border#Inner">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderBrush" Value="Transparent" />
+            </Style>
+            
+            <Style Selector="^[TabStripPlacement=Left] /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Margin" Value="0,2,2,2" />
+            </Style>
+            <Style Selector="^[TabStripPlacement=Top] /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Margin" Value="2,0,2,2" />
+            </Style>
+            <Style Selector="^[TabStripPlacement=Right] /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Margin" Value="2,2,0,2" />
+            </Style>
+            <Style Selector="^[TabStripPlacement=Bottom] /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Margin" Value="2,2,2,0" />
+            </Style>
+        </Style>
+
+
+        <!-- disabled state -->
+        <Style Selector="^:disabled">
+            <Style Selector="^ /template/ Border#Outer">
+                <Setter Property="BorderBrush" Value="{DynamicResource AeroButtonDisabledOuterBorderBrush}" />
+            </Style>
+            <Style Selector="^ /template/ Border#Inner">
+                <Setter Property="Background" Value="{DynamicResource AeroButtonDisabledBackground}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource AeroButtonDisabledInnerBorderBrush}" />
+            </Style>
+            <Style Selector="^ /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="TextBlock.Foreground" Value="{DynamicResource AeroButtonDisabledForeground}" />
+            </Style>
+        </Style>
+    </ControlTheme>
+</ResourceDictionary>

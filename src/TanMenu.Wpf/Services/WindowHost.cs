@@ -163,7 +163,6 @@ public sealed partial class WindowHost : IWindowHost
 
     private readonly ConfigService _config;
     private readonly AppEvents _events;
-    private readonly IShellNavigator _navigator;
     private readonly DispatcherTimer _saveDebounce;
     private Window? _window;
     private int _suppressDepth;
@@ -299,11 +298,10 @@ public sealed partial class WindowHost : IWindowHost
     /// </remarks>
     private bool _fitBasisStale;
 
-    public WindowHost(ConfigService config, AppEvents events, IShellNavigator navigator)
+    public WindowHost(ConfigService config, AppEvents events)
     {
         _config = config;
         _events = events;
-        _navigator = navigator;
 
         // Keeps the disk write off the WindowState transition that scheduled it, and coalesces a
         // maximize/restore flurry into one write. It used to coalesce the PositionChanged storm a
@@ -1011,14 +1009,14 @@ public sealed partial class WindowHost : IWindowHost
         FlushPlacement(); // hiding is often the last thing before exit; do not leave it to the timer
         _window?.Hide();
 
-        // Reset the shell to 应用 AFTER the window is off screen, so the page swap is never visible.
-        // Spec §2: "the window always opens on 应用". ShellNavigator.Current is process-lifetime state
-        // that survives hide/show, so without this a session that visited 设置 re-summons onto 设置 —
-        // with AppPage detached, which also silently kills the search box's type-to-filter focus.
-        // Done on HIDE rather than inside ShowAndActivate deliberately: SettingsLauncher.OpenCore
-        // navigates to 设置 and THEN calls ShowAndActivate, so resetting on show would break the tray's
-        // 选项 entry.
-        _navigator.Navigate(ShellPage.App);
+        // ROUND 8, TASK 2 DELETED THE LINE THAT USED TO FOLLOW: _navigator.Navigate(ShellPage.App).
+        // It reset the shell to 应用 after the window went off screen, because ShellNavigator.Current
+        // was process-lifetime state that survived hide/show and a session that had visited 设置 would
+        // otherwise re-summon onto 设置 — with AppPage detached, which also killed the search box's
+        // type-to-filter focus. There is one page now: 设置 is a modal dialog (Dialogs/OptionsWindow),
+        // the whole page model is gone, and "the window always opens on 应用" is true by construction
+        // rather than by a reset here. Nothing replaces it, and this class no longer takes a navigator
+        // at all.
     }
 
     public void ShowAndActivate()

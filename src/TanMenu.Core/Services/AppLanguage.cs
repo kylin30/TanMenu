@@ -24,6 +24,42 @@ public static class AppLanguage
             // Windows' own — Apply and Apps are both 应用 in the Chinese Windows UI — so the two keys
             // stay separate rather than being folded together.
             ["Apply"] = ("应用", "Apply"),
+            // The SAME button, with its access-key marker (Round 8, Task 2). PUBLISHED,
+            // https://learn.microsoft.com/en-us/windows/win32/uxguide/win-property-win — of the three
+            // commit buttons only Apply gets one: "Assign 'A' as the access key." 确定 and 取消 get
+            // none, because PUBLISHED, inter-keyboard, "Enter and Esc are used for their access keys."
+            //
+            // A SECOND KEY RATHER THAN AN UNDERSCORE SPLICED IN BY CODE, because where the marker goes
+            // is a localisation decision and not an arithmetic one. English underlines the letter in
+            // the word; Chinese cannot (the letter is not in 应用) and Windows' own Chinese UI appends
+            // the Latin letter in parentheses instead. Both halves therefore have to be written out,
+            // and the plain "Apply" above stays for anything that wants the label without the marker.
+            // "_" is Avalonia's marker character (Avalonia.Controls.Primitives.AccessText, decompiled:
+            // the first "_" not followed by another "_" marks the next rune) and it is stripped before
+            // the text is drawn, so neither string ever renders an underscore.
+            ["ApplyWithAccessKey"] = ("应用(_A)", "_Apply"),
+            // The Options dialog's own window title (Round 8, Task 2). PUBLISHED,
+            // https://learn.microsoft.com/en-us/windows/win32/uxguide/win-property-win — "Options
+            // dialog box titles — Use 'Options.' Use title-style capitalization. Don't use ending
+            // punctuation." So it is "Options", not "TanMenu Settings" and not "TanMenu 设置".
+            //
+            // A KEY OF ITS OWN, not a reuse of "NavSettings" ("设置"/"Settings"), because the two
+            // differ in BOTH halves: the English is fixed by the sentence above, and the Chinese
+            // title of a Windows property window is 选项 while the thing the user clicks to reach it
+            // is 设置. Round 8, Task 3 mints a third, "MenuOptions" = ("设置", "Options"), for the
+            // menu bar's own item — same English word, the other Chinese one — which is exactly why
+            // none of the three can be folded into another.
+            ["Options"] = ("选项", "Options"),
+            // 取消 and the title-bar × ask this, identically, when the draft is dirty (Round 8, Task 2).
+            // A NAMED DEVIATION: PUBLISHED, win-property-win — "Don't confirm if users discard their
+            // changes." It is deviated from on the instruction for this round and on one defensible
+            // ground of its own: two of this dialog's settings are HIGH-EFFORT to re-enter — a captured
+            // global hotkey (BehaviorCard.OnHotkeyKeyDown) and a picked root folder
+            // (FoldersCard.OnPickRootClick) — and each costs the user a real interaction to redo.
+            // 取消 and × share the one string because PUBLISHED, same article, "Make sure the Close
+            // button on the title bar has the same effect as Cancel or Close" is verbatim and is the
+            // rule this deviation must not also break.
+            ["DiscardChangesConfirm"] = ("有尚未应用的更改，关闭将丢弃它们。\n确定？", "There are changes you have not applied yet. Closing will discard them.\nContinue?"),
             ["Appearance"] = ("外观", "Appearance"),
             ["Behavior"] = ("行为", "Behavior"),
             ["Folders"] = ("文件夹", "Folders"),
@@ -201,6 +237,21 @@ public static class AppLanguage
             ["JsonConfigFilter"] = ("JSON 配置 (*.json)|*.json", "JSON config (*.json)|*.json"),
             ["AllFilesFilter"] = ("JSON 配置 (*.json)|*.json|所有文件 (*.*)|*.*", "JSON config (*.json)|*.json|All files (*.*)|*.*"),
             ["BackupFileName"] = ("TanMenu-config-备份.json", "TanMenu-config-backup.json"),
+            // Round 8, Task 2 closes the one gap Task 1 shipped knowingly and recorded in its report.
+            // 备份 serialises ConfigService.Config — what is COMMITTED — so a backup taken while 应用 is
+            // still enabled silently omits every pending edit. Task 1 left it unguarded because the
+            // design's command list keeps 备份 immediate and specifies no warning, and Task 1 had no
+            // prompt machinery of its own. Task 2 does: the Options dialog prompts on 取消 / × when the
+            // draft is dirty, and this is the same idea at the other boundary where a dirty draft is
+            // invisible. The delivery is FoldersCard's own ConfirmAsync (OkCancel), which is what its
+            // three other data-touching commands already use — not the dialog's YesNo — because the
+            // question here is "go ahead?", not "discard?".
+            //
+            // It STATES the fact and offers to continue rather than blocking: a backup of the committed
+            // config is a legitimate thing to want, and the failure this prevents is learning WHICH
+            // config you backed up only when you restore it. 备份 itself stays immediate; nothing about
+            // the command changes.
+            ["BackupPendingChanges"] = ("有尚未应用的更改，备份只包含已保存的设置。\n仍要继续？", "There are changes you have not applied yet. The backup will contain only the settings already saved.\nContinue anyway?"),
             ["BackupSaved"] = ("配置已备份到：\n{0}", "Config backed up to:\n{0}"),
             ["BackupFailed"] = ("备份失败：{0}", "Backup failed: {0}"),
             ["RestoreConfig"] = ("从备份恢复配置", "Restore Config from Backup"),
@@ -318,7 +369,7 @@ public static class AppLanguage
     /// avoids <c>Path.GetFileName</c> producing a null <c>key</c>, which would otherwise throw
     /// <see cref="ArgumentNullException"/> out of the <see cref="Dictionary{TKey,TValue}"/> lookup below
     /// (reference-type keys are not allowed to be null) — reachable from <c>ReloadFromConfig</c>, which
-    /// runs from <c>SettingsPage</c>'s constructor and on every <c>SettingsChanged</c> broadcast, and
+    /// runs from <c>OptionsWindow</c>'s constructor and on every <c>SettingsChanged</c> broadcast, and
     /// Avalonia has no global unhandled-exception hook to catch it.
     /// </summary>
     public static string LocalizeToolName(string? command, string? currentName, string? language)

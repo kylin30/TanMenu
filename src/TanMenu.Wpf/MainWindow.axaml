@@ -29,6 +29,18 @@
     than by a style rule a future edit could defeat. That split got MORE load-bearing in Round 7,
     Task 8, not less — see TmNavRowButton's own remark in Themes/Shell/Launcher.axaml.
 
+    ROUND 8, TASK 2 MOVED 设置 ACROSS THAT SPLIT AND DELETED THE SHELL'S PAGE MODEL WITH IT. 设置 was
+    the second PAGE and had a ListBox of its own (NavFooterRail) so it could carry a selected look; it
+    is a modal Options DIALOG now (Dialogs/OptionsWindow) — PUBLISHED,
+    https://learn.microsoft.com/en-us/windows/win32/uxguide/win-property-win, "Properties for an
+    application are displayed in a modal dialog box" — which makes it a command by the paragraph
+    above's own test, so its row is a Button like the three around it and NavFooterRail is gone. What
+    went with it, in the code-behind: ShowPage, ShowPageCore, OnNavSelectionChanged, the _inShowPage
+    and _navReady flags, the _settingsPage field; and, outside this file, Services/IShellNavigator.cs
+    whole, its two DI registrations, WindowHost's navigator dependency, and Views/SettingsPage.axaml.
+    ONE PAGE REMAINS. PageHost.Content is assigned once, in MainWindow's constructor. The pane itself
+    dies in Round 8, Task 3, which replaces it with a horizontal menu band.
+
     ROUND 7, TASK 8 TURNED THE 48 DIP ICON RAIL INTO A 160 DIP LABELLED PANE, and it is ONE width, not
     two. Round 4, item 1 had deleted the rail's expand capability in five pieces — the label
     TextBlocks, the StackPanels that paired them with icons, the 200 DIP second width, the
@@ -386,9 +398,11 @@
          the same two elements measure 10.59:1 and 20.47:1 in Light and 4.29:1 and 11.90:1 in Dark,
          read off PrintWindow captures rather than computed.
 
-         Border.tm-page-pane:not(.app) in Themes/Shell/Launcher.axaml is UNCHANGED by this: it still
-         paints nothing, which is still Round 6 item 2's decision that every non-应用 page shows the
-         window's own material. What changed is what the window's own material IS. -->
+         Border.tm-page-pane:not(.app) in Themes/Shell/Launcher.axaml carried Round 6 item 2's
+         decision that every non-应用 page shows the window's own material; ROUND 8, TASK 2 DELETED
+         THAT RULE, because 设置 was its only subject and 设置 is a modal dialog now rather than a
+         page. Nothing about the paragraph above changes — it is about what the window's own material
+         IS, and the dialog's own Background reads the same SurfaceBaseBrush. -->
     <Grid Grid.Row="1" ColumnDefinitions="Auto,*"
           Background="{DynamicResource SurfaceBaseBrush}">
 
@@ -516,22 +530,28 @@
              class. -->
         <Grid x:Name="NavRailContent" Classes="tm-nav-rail" RowDefinitions="*,Auto">
 
-          <!-- Page list: 应用 only. 设置 is a real page too (PageHost.Content still swaps between the
-               two exactly as before — see ShowPage), but it lives in NavFooterRail below, pinned to the
-               pane's bottom footer and separated from this list.
+          <!-- Page list: 应用, and since Round 8, Task 2 that is not a shorthand — it is the ONLY page
+               the shell has. 设置 was the second, in NavFooterRail below; it is a modal dialog now and
+               its row is a command Button, so this ListBox is the last one in the pane and
+               PageHost.Content never swaps.
 
                Padding is "0,11". The horizontal component is ZERO, unlike a plain ListBox default,
                because the rows' own Margin="2,1" (TmNavRowItem / TmNavRowButton, Launcher.axaml) is what
                supplies the item column's gutter: a second ListBox-level inset on top of it would narrow
                the item column below the 156 DIP the pane's derivation above and
-               Border.tm-nav-separator's span both depend on, and it would do so on ONE of the two
-               ListBoxes. The vertical 11 is PUBLISHED, vis-layout: "Dialog box margins — 7 DLU / 11
-               relative pixels on all sides". It was 12, a rung of the Fluent ramp Round 7, Task 7
-               retired. Grid.Row="0" since Round 4, item 1 deleted the hamburger row above it. -->
+               Border.tm-nav-separator's span both depend on. The vertical 11 is PUBLISHED, vis-layout:
+               "Dialog box margins — 7 DLU / 11 relative pixels on all sides". It was 12, a rung of the
+               Fluent ramp Round 7, Task 7 retired. Grid.Row="0" since Round 4, item 1 deleted the
+               hamburger row above it. -->
+          <!-- Round 8, Task 2 removed this ListBox's SelectionChanged handler. It existed to route a
+               row click into ShellNavigator, and there is nothing to route to: 应用 is the only page.
+               SelectedIndex="0" STAYS — it is what gives the one row its selected look, which is the
+               whole reason 应用 is a ListBoxItem rather than a Button (a destination the window is
+               ON, versus a command that leaves the page alone). The list is a one-item selection
+               display now rather than a navigation control, and Task 3 deletes it with the pane. -->
           <ListBox x:Name="NavRail"
                    Grid.Row="0"
                    SelectedIndex="0"
-                   SelectionChanged="OnNavSelectionChanged"
                    Background="Transparent"
                    BorderThickness="0"
                    Padding="0,11">
@@ -612,8 +632,9 @@
                over a type that does not exist, and every DataTemplate in this app must carry an
                x:DataType (AvaloniaUseCompiledBindingsByDefault + PublishAot, TanMenu.Wpf.csproj), so
                a reorder is an edit HERE and nowhere else. Nothing downstream is index-based —
-               OnNavSelectionChanged branches on ReferenceEquals against NavFooterRail and ApplyRailText
-               addresses every row by x:Name — so moving a row is inert by construction.
+               every row is its own Click handler and ApplyRailText addresses every row by x:Name — so
+               moving a row is inert by construction. (This sentence also named OnNavSelectionChanged's
+               ReferenceEquals branch against NavFooterRail until Round 8, Task 2 deleted both.)
 
                退出 IS LAST BECAUSE THE USER ASKED FOR IT ("退出移动到最下"). The placement is the user's
                call and is not re-litigated here. Round 4 had put it FIRST, and its argument was never
@@ -648,9 +669,10 @@
 
                Margin="0,0,0,4" on this StackPanel is the footer's own inset from the pane's bottom edge
                (Task Manager's measured ~4 DIP gap between its FooterMenuItemsHost and the window edge).
-               It used to be NavFooterRail's Padding, back when that ListBox was the last child; putting
-               it on the footer states the fact where it actually lives, so the next reorder does not
-               have to unpick it. -->
+               It used to be the 设置 ListBox's Padding, back when that ListBox was the last child;
+               Round 5, item 1 put 退出 below it and the inset moved onto the footer, where the fact it
+               states actually lives — which is why Round 8, Task 2 could delete that ListBox outright
+               without having to unpick a number out of it. -->
           <StackPanel Grid.Row="1" Margin="0,0,0,4">
             <Button x:Name="NavOpenRootItem"
                     Theme="{StaticResource TmNavRowButton}"
@@ -671,32 +693,38 @@
               </DockPanel>
             </Button>
 
-            <!-- 设置: a real page (see ShowPage), styled and measured exactly like NavRail's own
-                 NavAppsItem — both carry Theme="{StaticResource TmNavRowItem}", so its selected
-                 treatment reads identically to 应用's own. That theme (Launcher.axaml) is where the
-                 shape lives; since Round 7, Task 8 it is the VENDORED Aero ListBoxItem with four
-                 setters on top, so a selected row is Aero's two nested borders over a gradient and the
-                 accent pill Round 6 matched to Task Manager is gone with the icon rail that framed it.
+            <!-- 设置: A COMMAND ROW SINCE ROUND 8, TASK 2, and this is the one structural change that
+                 task makes to this pane. It used to be a real PAGE — a ListBoxItem inside its own
+                 second ListBox (NavFooterRail), selected and navigated to like NavAppsItem above,
+                 with OnNavSelectionChanged keeping the two lists acting as one selection group.
+                 设置 is a modal dialog now (Dialogs/OptionsWindow), which is PUBLISHED,
+                 https://learn.microsoft.com/en-us/windows/win32/uxguide/win-property-win — "Options
+                 dialog boxes. Properties for an application are displayed in a modal dialog box."
 
-                 Padding is "0" — not the "0,11" NavRail uses, and no longer the "0,0,0,4" it carried
-                 through Round 4. No top inset, because the command row directly above (NavRefreshItem)
-                 carries Margin="2,1" and its bottom half already supplies that gap. No BOTTOM inset any
-                 more either: that 4 DIP was the encoding of "I am the last child of the footer
-                 StackPanel", and Round 5, item 1 put 退出 below this ListBox, so it is not. The inset
-                 moved onto the footer StackPanel's own Margin, where the fact it states — the footer's
-                 distance from the pane's bottom edge — actually lives. -->
-            <ListBox x:Name="NavFooterRail"
-                     SelectionChanged="OnNavSelectionChanged"
-                     Background="Transparent"
-                     BorderThickness="0"
-                     Padding="0">
-              <ListBoxItem x:Name="NavSettingsItem" Theme="{StaticResource TmNavRowItem}">
-                <DockPanel>
-                  <TextBlock Classes="tm-icon" DockPanel.Dock="Left" Width="16" Text="&#xE713;" />
-                  <TextBlock x:Name="NavSettingsLabel" Classes="tm-nav-label" />
-                </DockPanel>
-              </ListBoxItem>
-            </ListBox>
+                 So it is now exactly what the three rows around it already are, and it takes their
+                 form for the reason this footer's own comment gives above: a command leaves whatever
+                 is on screen alone and is never a destination the window sits ON, and a Button has no
+                 :selected pseudo-class at all — so "设置 must never look selected" holds by
+                 construction rather than by a style rule a later edit could defeat. It was true of
+                 打开主目录/刷新/退出 from Round 3; it is true of 设置 from here.
+
+                 The ListBox that wrapped it is DELETED, not emptied, and with it the second half of
+                 the shell's page model: OnNavSelectionChanged, ShellNavigator, ShowPage. NavRail
+                 above keeps its own selection because 应用 really is a page.
+
+                 The row's position, its glyph and its label are all unchanged — 设置 stays
+                 bottom-most among the reversible rows, above the separator and 退出, which is Round 5
+                 item 1's ordering and is not re-litigated here. ApplyRailText still writes both its
+                 AutomationProperties.Name and its visible label, from the same NavSettings key. -->
+            <Button x:Name="NavSettingsItem"
+                    Theme="{StaticResource TmNavRowButton}"
+                    Classes="tm-nav-row"
+                    Click="OnOptionsClick">
+              <DockPanel>
+                <TextBlock Classes="tm-icon" DockPanel.Dock="Left" Width="16" Text="&#xE713;" />
+                <TextBlock x:Name="NavSettingsLabel" Classes="tm-nav-label" />
+              </DockPanel>
+            </Button>
 
             <!-- The one group boundary, between the reversible rows above and the terminal action
                  below. Geometry is in Launcher.axaml's "Border.tm-nav-separator" rule; its Margin is
@@ -719,45 +747,44 @@
         </Grid>
       </Border>
 
-      <!-- ══ Content pane: an opaque surface on 应用, the window's own material everywhere else ══════
+      <!-- ══ Content pane: the opaque 应用 surface ═════════════════════════════════════════════════
            The acrylic reaches ONE band and one only — row 0, the caption. Everything from the
            navigation pane down is the opaque SurfaceBaseBrush the content Grid above paints, so
            "the window's own material" below this point means AeroWindowBackground, not a backdrop.
            (This sentence read "the backdrop shows through the caption and the nav rail" until Round 7,
            Task 10; Task 7 made the client opaque and the claim stopped being true then. The two
            paragraphs below already described the change and this one had not been rewritten with
-           them.) On the 应用 page that surface is covered again, by this Border. Neither page paints
-           a surface of its own — SettingsPage's root ScrollViewer sets no Background at all and
-           AppPage's root Panel sets only Transparent — which is what lets this single Border decide
-           the surface under EITHER page instead of each page having to paint it separately. (An
-           earlier revision of this comment said both were "left with no background of their own";
-           AppPage's root does carry Background="Transparent", so that was half wrong.)
+           them.) On the 应用 page that surface is covered again, by this Border. The page paints no
+           surface of its own — AppPage's root Panel sets only Transparent — which is what lets this
+           single Border decide the surface under it.
 
-           Round 4, item 5 gave the two pages two DIFFERENT looks on this one Border, and Round 6,
-           item 2 flipped which of them is the exception. 应用 gets an opaque pane with a 1 DIP
-           top+left hairline; every other page paints NOTHING — Transparent, no border, no corner — so
-           the window's own surface runs unbroken from the navigation pane through the content. (Not
-           "from the caption": the caption is glass over the acrylic and the client below it is opaque,
-           so the two are different surfaces and always have been since Task 7.)
-           ShowPageCore (code-behind) toggles the "app" class, and it is "app" rather than "settings"
-           on purpose: "on the window material" is the default, so a third page cannot silently come
-           up white.
+           Round 4, item 5 gave the shell's two pages two DIFFERENT looks on this one Border, and
+           Round 6, item 2 flipped which of them was the exception: 应用 got an opaque pane with a
+           1 DIP top+left hairline, every other page painted NOTHING. ROUND 8, TASK 2 ENDED THE PAIR
+           by ending the plurality — 设置 is a modal dialog now, so 应用 is the only page there is,
+           the :not(.app) rule's only subject is gone and that rule is deleted from Launcher.axaml.
+           The class is written here, statically, instead of being flipped from ShowPageCore, which
+           went with the page model. The look is byte-identical to what shipped; what changed is that
+           it can no longer be turned off. Task 3 collapses the surviving .app rule into a plain
+           Border.tm-page-pane and drops the hairline with the pane it separated from.
 
-           ROUND 7, TASK 7 CHANGED WHAT BOTH HALVES ARE MADE OF, and the second half's colours are
-           now stated at the top of this file rather than here. 应用's fill is SurfacePageBrush aliased
+           ROUND 7, TASK 7 CHANGED WHAT THE LOOK IS MADE OF. 应用's fill is SurfacePageBrush aliased
            onto the vendored AeroListBoxBackground — Explorer's own content area was a list background
            — and its 8 DIP top-left arc is GONE: Aero's ListBox sets CornerRadius="0" and a Windows 7
            content pane has no rounded corner, so RadiusPaneTopLeft was deleted with its measurement.
-           The other pages' Transparent is unchanged to the letter; what shows through it is the
-           opaque Aero client surface this file's own content Grid now paints (see its remark above),
-           which is what makes those pages legible and what replaces the Mica-straddle argument Round
-           6 relied on. That argument's premises are all gone — there is no Mica, no card fill and no
-           SurfaceLayerBrush — and its measurements are archived in
-           docs/superpowers/archive/2026-08-04-windows11-measurement-record.md. The
-           backdrop-refused fallback is unchanged and still the single source of truth for the
-           window's colour (Window.Background, set by ApplyBackdrop); this Border must never grow a
-           fallback of its own. Why both looks are STYLES rather than local attributes here is in
-           Launcher.axaml's "Border.tm-page-pane" block.
+           What used to show through the OTHER pages' Transparent is the opaque Aero client surface
+           this file's own content Grid paints (see its remark above), which is what made those pages
+           legible and what replaced the Mica-straddle argument Round 6 relied on. That argument's
+           premises are all gone — there is no Mica, no card fill and no SurfaceLayerBrush — and its
+           measurements are archived in
+           docs/superpowers/archive/2026-08-04-windows11-measurement-record.md; Round 8, Task 2 took
+           the last non-应用 page out of the window entirely, so the second look has no subject left
+           either. The backdrop-refused fallback is unchanged and still the single source of truth for
+           the window's colour (Window.Background, set by ApplyBackdrop); this Border must never grow
+           a fallback of its own. Why the look is a STYLE rather than local attributes here is in
+           Launcher.axaml's "Border.tm-page-pane" block — a style setter cannot override a local
+           value in Avalonia, in either direction, and that argument outlives the class flip that
+           first needed it.
 
            ClipToBounds — AND WHY THE EVIDENCE THAT ONCE JUSTIFIED IT IS NOW MOOT TWICE OVER. Round 4
            recorded here that a Border clips its child to its CORNER RADIUS rather than to its bounds
@@ -770,9 +797,17 @@
            the WHOLE panel rect) would otherwise be free to paint over the pane's 1 DIP hairline. None
            of the five children it has today can: the DockPanel's own children inset themselves, and
            SplashPanel, both tm-empty panels and tm-toast are all centred. -->
+      <!-- Classes carries "app" STATICALLY since Round 8, Task 2. It used to be flipped from
+           ShowPageCore, which is deleted with the rest of the page model, and Launcher.axaml's
+           Border.tm-page-pane:not(.app) branch is deleted with it — 设置 was that branch's only
+           subject and 设置 is a dialog now. The .app rule is retained UNCHANGED, so the pane paints
+           exactly what it painted before, and stating the class here rather than collapsing the pair
+           into one rule is what keeps this task's fit arithmetic at zero movement: PaneBorderDip and
+           ChromeHeightDip still describe a 1 DIP top+left hairline that is still drawn. Round 8,
+           Task 3 collapses the rule and deletes both. -->
       <Border Grid.Column="1"
               x:Name="PagePane"
-              Classes="tm-page-pane"
+              Classes="tm-page-pane app"
               ClipToBounds="True">
         <ContentControl x:Name="PageHost" />
       </Border>

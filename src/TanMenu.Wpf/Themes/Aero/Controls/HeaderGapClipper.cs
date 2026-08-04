@@ -23,10 +23,11 @@
 //      PropertyChanged hook that follows HeaderElement. Upstream refreshes only on attach and on
 //      the CLIPPER's own SizeChanged, and the notch is cut to the header's rect - so a header whose
 //      text changes without the group box resizing keeps a hole of the old width. That is not
-//      hypothetical here: every group head on the 设置 page is written from code-behind
-//      (SettingsPage.ApplyStaticText) and rewritten on every 语言 change, while the group box's own
-//      width is the card column's and does not move. The hook is torn down with the element it
-//      follows, so nothing outlives the control.
+//      hypothetical here: every group head on the 设置 surface is written from code-behind (each
+//      card's own ReloadFromConfig, driven by OptionsWindow.ApplyText - it was SettingsPage's until
+//      Round 8, Task 2 replaced the page with the dialog) and rewritten on every 语言 change, while
+//      the group box's own width is the container's and does not move. The hook is torn down with
+//      the element it follows, so nothing outlives the control.
 //   6. "using System;" dropped - nothing in the file uses it once (4) removes the exception path.
 //   Everything else, including the author's own blank-line spacing, is byte for byte upstream.
 

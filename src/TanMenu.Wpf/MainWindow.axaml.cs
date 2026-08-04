@@ -22,14 +22,22 @@ namespace TanMenu.Wpf;
 /// launcher STATE lives in <see cref="AppPage"/>'s <c>LauncherViewModel</c>. This class owns what
 /// genuinely belongs to the window — the backdrop and its opaque fallback, the caption's active/inactive
 /// glass (<see cref="ApplyCaptionGlass"/>), close-to-tray, labelling the pane's five rows
-/// (<see cref="ApplyRailText"/>, ten writes — an automation name and a visible label each), swapping the
-/// page host's content between the two PAGE entries (应用/设置; see <see cref="ShowPage"/>), dispatching
-/// the three command rows the old ⋯ overflow used to hold (打开主目录/刷新/退出 — Round 3, Task 2 moved
-/// four, 关于 among them, and Round 5, item 2 took 关于 back out of the pane and into the 设置 page as a
-/// card), and kicking off the startup build + the fit-to-content resize that follows it, on EVERY summon
+/// (<see cref="ApplyRailText"/>, ten writes — an automation name and a visible label each), dispatching
+/// the four command rows the pane now holds (打开主目录/刷新/设置/退出), and kicking off the startup
+/// build + the fit-to-content resize that follows it, on EVERY summon
 /// (<see cref="InitializeAndFitAsync"/>) — the actual geometry math, and the rule for when a manual
 /// resize should win over a fresh fit, lives in <c>WindowHost</c>, which owns every other piece of
 /// window placement too.
+/// <para>
+/// <b>ROUND 8, TASK 2 TOOK THE PAGE MODEL DOWN, and this class is where most of it lived.</b> 设置 was
+/// the shell's second PAGE and is a modal dialog now (<c>Dialogs/OptionsWindow</c>), so there is nothing
+/// left to navigate between: <c>ShowPage</c>, <c>ShowPageCore</c>, the <c>_inShowPage</c> reentrancy
+/// flag and its 19-line remark, <c>OnNavSelectionChanged</c>, the <c>_navReady</c> guard, the
+/// <c>_settingsPage</c> field and its lazy construction, and the pane's second <c>ListBox</c> all went
+/// with it. <see cref="PageHost"/><c>.Content</c> is written exactly once, in this constructor, and
+/// never again — which is what <see cref="RefitToContent"/>'s retained guard now asserts rather than
+/// tests.
+/// </para>
 /// <para>
 /// Round 7, Task 1 took the search box back OUT of this class: it was a control in the window frame,
 /// which <c>win-window-frames</c> forbids in as many words, so it returned to the 应用 page. What is
@@ -41,7 +49,6 @@ public partial class MainWindow : Window
     private readonly IWindowHost _host;
     private readonly AppEvents _events;
     private readonly AppPage _appPage = new();
-    private SettingsPage? _settingsPage;
 
     /// <summary>The live subscription <see cref="ApplyBackdrop"/> creates when the backdrop was
     /// refused, kept so the repeated <c>OnOpened</c> of every summon reuses the one it already made
@@ -53,37 +60,19 @@ public partial class MainWindow : Window
     /// activation change.</summary>
     private IDisposable? _captionGlass;
 
-    // Guards OnNavSelectionChanged against the SelectionChanged events XAML's own SelectedIndex="0"
-    // (and Attach's own ShowPage call, if a navigation arrived before the window existed) raise
-    // synchronously WHILE this constructor is still running — see OnNavSelectionChanged.
-    private bool _navReady;
-
-    /// <summary>
-    /// Round 3, Task 2 review fix (Important 1). Set for the whole duration of <see cref="ShowPage"/>
-    /// and checked at the top of <see cref="OnNavSelectionChanged"/>. <c>SelectedIndex</c> assignment
-    /// fires <c>SelectionChanged</c> SYNCHRONOUSLY (confirmed by decompiling
-    /// <c>Avalonia.Controls.Primitives.SelectingItemsControl</c>), so a <see cref="ShowPage"/> call that
-    /// arrives WITHOUT a rail click having already set <c>NavRail</c>/<c>NavFooterRail</c>'s indices to
-    /// their target values — the tray/empty-state settings entry
-    /// (<c>ISettingsLauncher.Open</c> → <c>SettingsLauncher.OpenCore</c> → <c>ShellNavigator.Navigate</c>
-    /// straight into this method) and <c>WindowHost.Hide</c>'s reset to 应用 are the two real callers —
-    /// would otherwise let <see cref="OnNavSelectionChanged"/> call straight back into
-    /// <c>ShellNavigator.Navigate</c> → <see cref="ShowPage"/> BEFORE the outer call ever reaches its own
-    /// <c>PageHost.Content = …</c> line: a genuine re-entrant call performing the real page swap while
-    /// the outer one is still on the stack. Nothing broke VISIBLY before this flag existed — the outer
-    /// call's own later writes became no-ops (Avalonia does not re-raise a property-changed notification
-    /// for an unchanged value) and <see cref="RefitToContent"/>/<see cref="ConsumePendingFocus"/> both
-    /// already guard themselves idempotently — but every one of those two transitions was silently
-    /// double-posting both of them regardless, which is exactly the structural risk the review flagged.
-    /// </summary>
-    private bool _inShowPage;
-
     public MainWindow()
     {
         InitializeComponent();
 
         _host = App.Services.GetRequiredService<IWindowHost>();
-        App.Services.GetRequiredService<ShellNavigator>().Attach(this);
+
+        // THE ONE AND ONLY WRITE TO PageHost.Content, anywhere, ever. It used to be assigned by
+        // ShowPageCore on every navigation between 应用 and 设置; Round 8, Task 2 deleted that method
+        // with the rest of the page model. Eager, not lazy, and not deferred to Opened: _appPage is a
+        // field initializer (it holds the launcher's real state and is built before this constructor
+        // body runs), and hosting it here is what makes RefitToContent's attachment guard true for the
+        // whole life of the window instead of only between navigations.
+        PageHost.Content = _appPage;
 
         // AppLanguage/AppFonts have no change notification of their own, so both the navigation pane's
         // row labels (their visible text and their accessible names — see ApplyRailText; since Round 7,
@@ -135,8 +124,6 @@ public partial class MainWindow : Window
         // them — see OnLauncherContentMetricsChanged for why this, and not AppEvents.SettingsChanged, is
         // the correct seam.
         _appPage.ViewModel.ContentMetricsChanged += OnLauncherContentMetricsChanged;
-
-        _navReady = true;
     }
 
     protected override void OnOpened(EventArgs e)
@@ -241,32 +228,51 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Re-run <c>WindowHost.FitToContent</c> against the launcher's current natural size — unless the
-    /// launcher is not the page on screen, in which case this does NOTHING AT ALL.
+    /// Re-run <c>WindowHost.FitToContent</c> against the launcher's current natural size — unless
+    /// <see cref="_appPage"/> is not what <see cref="PageHost"/> is hosting, in which case this does
+    /// NOTHING AT ALL.
     /// </summary>
     /// <remarks>
     /// <para>
     /// Called after the startup build finishes (<see cref="InitializeAndFitAsync"/>, on every summon)
-    /// and again from every other event that changes what the active page measures: a docked notice
+    /// and again from every other event that changes what the page measures: a docked notice
     /// opening/closing (<see cref="OnNoticeVisibilityChanged"/>), a 每列个数 / 字体 / 语言 change
-    /// (<see cref="OnLauncherContentMetricsChanged"/>), a switch back to 应用
-    /// (<see cref="ShowPage"/>), and the Maximized→Normal transition
+    /// (<see cref="OnLauncherContentMetricsChanged"/>), and the Maximized→Normal transition
     /// (<see cref="OnPropertyChanged"/>). All of them are the exact same operation, so there is one place
-    /// that composes the shell's chrome width and calls through. (Round 4, item 1 removed a sixth
-    /// trigger — the rail's expand/collapse toggle — by removing the state it compensated for: the rail
-    /// is one fixed width now, so it can no longer change what the shell takes from the page.)
+    /// that composes the shell's chrome width and calls through. (Round 4, item 1 removed a trigger —
+    /// the rail's expand/collapse toggle — by removing the state it compensated for; Round 8, Task 2
+    /// removed another, the 设置 → 应用 switch, by removing the switch. Four remain.)
     /// </para>
     /// <para>
-    /// THE GUARD IS LOAD-BEARING, not defensive tidiness (review finding 1, CRITICAL). Measuring
-    /// <see cref="_appPage"/> while 设置 is the hosted page does REAL, REPRODUCED damage to the window's
-    /// SIZE: reproduced live by temporarily removing this guard, the window latched at a wrong
-    /// 850x568 DIP for the rest of the session — 568 being the app's own minimum height, declared on
-    /// <c>MainWindow.axaml</c> at the time and moved to <c>WindowHost.MinWindowHeightDip</c> by Round 4,
-    /// item 4, i.e. a measurement that had collapsed onto the floor. That reproduction is the
-    /// observed fact this guard rests on; see
-    /// docs/superpowers/reports/2026-08-02-win11-shell-round3-findings.md for the durable record (this
-    /// paragraph previously cited "final-fix-report.md, finding 1," a file that did not exist at the
-    /// time it was written).
+    /// <b>THE GUARD IS RETAINED VERBATIM, AND WHAT IT MEANS HAS CHANGED.</b> It was a PAGE TEST — "is
+    /// 设置 on screen" — and it is now an ATTACHMENT INVARIANT: "<see cref="_appPage"/> is hosted,
+    /// therefore styled, therefore measurable". After Round 8, Task 2 <see cref="PageHost"/><c>.Content</c>
+    /// has exactly ONE writer, this window's constructor, so the comparison is a constant true and the
+    /// defect it was added for is unreachable.
+    /// </para>
+    /// <para>
+    /// <b>It is kept anyway, and that is not defensive tidiness.</b> It costs one reference comparison,
+    /// and it is the literal line whose removal produced a REPRODUCED failure: with this guard
+    /// temporarily deleted, measuring <see cref="_appPage"/> while 设置 was the hosted page latched the
+    /// window at a wrong 850x568 DIP for the rest of the session — 568 being the app's own minimum
+    /// height, declared on <c>MainWindow.axaml</c> at the time and moved to
+    /// <c>WindowHost.MinWindowHeightDip</c> by Round 4, item 4, i.e. a measurement that had collapsed
+    /// onto the floor. Deleting the line now converts a documented, reproduced failure into a latent one
+    /// that returns the instant anything ever reassigns <c>PageHost.Content</c> — and Round 8 adds a
+    /// second window that owns page-like content (<c>Dialogs/OptionsWindow</c>), which is precisely when
+    /// that becomes plausible again. The durable record of the reproduction is
+    /// docs/superpowers/reports/2026-08-02-win11-shell-round3-findings.md (this paragraph previously
+    /// cited "final-fix-report.md, finding 1," a file that did not exist at the time it was written).
+    /// </para>
+    /// <para>
+    /// <b>Rejected alternative:</b> replacing it with <c>((Visual)_appPage).GetVisualRoot() is null</c>.
+    /// It is a truer attachment test, but it changes behaviour in a case nobody has measured — whether a
+    /// hidden Avalonia window's content still reports a visual root — and the fit is the one subsystem
+    /// in this app with a reproduced regression history. Not worth it for zero functional gain.
+    /// </para>
+    /// <para>
+    /// The mechanism paragraphs below are UNCHANGED and still apply: they are what makes a measurement
+    /// taken on a detached page wrong, and therefore what the invariant is protecting.
     /// </para>
     /// <para>
     /// The MECHANISM, restated in Round 3's residual review after the previous wording was found to
@@ -341,15 +347,16 @@ public partial class MainWindow : Window
     /// to close, not as an observed fact and not as a ruled-out one.
     /// </para>
     /// <para>
-    /// The tray's 选项 entry reaches exactly the sizing defect above: <c>SettingsLauncher.OpenCore</c>
-    /// navigates to 设置 and THEN calls <c>ShowAndActivate</c>, whose <c>Show()</c> re-raises
-    /// <c>Opened</c>, whose <see cref="InitializeAndFitAsync"/> awaits an already-completed memoized Task
-    /// and continues synchronously into this method with the launcher detached.
+    /// A paragraph is DELETED here rather than left standing, because Round 8, Task 2 falsified it: it
+    /// said the tray's 选项 entry reached the sizing defect above, through
+    /// <c>SettingsLauncher.OpenCore</c> navigating to 设置 and THEN calling <c>ShowAndActivate</c>,
+    /// whose <c>Show()</c> re-raises <c>Opened</c> and continues into this method with the launcher
+    /// detached. <c>OpenCore</c> no longer navigates — it opens a modal dialog — and a modal
+    /// <c>ShowDialog</c> does not reparent its owner's content, so that route to the defect does not
+    /// exist any more.
     /// </para>
     /// <para>
-    /// Same test, and for the same underlying reason, as <see cref="ConsumePendingFocus"/>'s own guard;
-    /// and like that one, the deferred work is not lost — <see cref="ShowPage"/> re-invokes this the next
-    /// time the rail switches back to 应用.
+    /// Same test, and for the same underlying reason, as <see cref="ConsumePendingFocus"/>'s own guard.
     /// </para>
     /// </remarks>
     private void RefitToContent()
@@ -372,9 +379,12 @@ public partial class MainWindow : Window
     /// Round 7, Task 8 moved it from 48 to 160: the icon-only rail became a wide labelled Windows 7
     /// pane. It is still ONE width — Task 8 restored the row labels and none of the other three things
     /// Round 4 deleted with them (the 200 DIP second width, the <c>DoubleTransition</c>, the
-    /// <c>ClipToBounds</c>) — so this stays a constant and the fit keeps its five triggers.
+    /// <c>ClipToBounds</c>) — so this stays a constant.
     /// <c>ShellConstantTests.RailWidth_MatchesTheRailPaneWidth</c> is what catches a drift between the
-    /// two copies; nothing else in the tree can see one.
+    /// two copies; nothing else in the tree can see one. Round 8, Task 2 left both the pane and this
+    /// term alone — it changed what the pane's 设置 ROW is (a Button that opens a dialog, not a
+    /// ListBoxItem the shell navigates to), not how wide the pane is — so no fit arithmetic moves in
+    /// that task. Round 8, Task 3 deletes the pane and this constant with it.
     /// </para>
     /// <para>
     /// An earlier draft of this remark justified the literal by claiming a fit can run before the pane
@@ -396,12 +406,16 @@ public partial class MainWindow : Window
     /// bounds and arranges its child inside that, so a left border takes exactly that much away from
     /// the page and the fit has to hand it back or <c>AppPage</c>'s horizontal scrollbar returns.
     /// <para>
-    /// Round 4, item 5 landed the border this term was reserved for: <c>Border.tm-page-pane</c>
+    /// Round 4, item 5 landed the border this term was reserved for: <c>Border.tm-page-pane.app</c>
     /// (Launcher.axaml) gives the 应用 pane <c>BorderThickness="1,1,0,0"</c>, so the 1 DIP here is now
     /// live rather than provisional. Its vertical twin is <c>WindowHost.ChromeHeightDip</c>, which adds
-    /// the same 1 DIP for the pane's TOP border. The 设置 pane's border is 0 and the fit never runs on
-    /// 设置 anyway (see the guard at the top of <see cref="RefitToContent"/>), so one constant covers
-    /// every case the fit can actually see.
+    /// the same 1 DIP for the pane's TOP border.
+    /// </para>
+    /// <para>
+    /// Round 8, Task 2 deleted the <c>:not(.app)</c> branch this remark used to have to reason about —
+    /// 设置 was its only subject and 设置 is a dialog now — and pinned the <c>app</c> class in the
+    /// markup, so the pane has exactly one look and this term describes it unconditionally. Round 8,
+    /// Task 3 deletes both the class and this constant, when the pane itself goes.
     /// </para>
     /// </summary>
     private const double PaneBorderDip = 1;
@@ -450,11 +464,11 @@ public partial class MainWindow : Window
 
         // AppPage's view model is disposed here, not on the page's own Unloaded: OnClosed only fires
         // at real application exit (OnClosing below cancels every other close), while the app page
-        // itself is a field kept alive and reattached every time the rail switches back to 应用.
+        // itself is a field hosted for the window's whole life.
+        //
+        // Round 8, Task 2 deleted the line that used to follow — _settingsPage?.Dispose(). 设置 is a
+        // modal dialog now and it unsubscribes itself in its own OnClosed, per open.
         _appPage.Dispose();
-        // _settingsPage may be null: it is built lazily, the first time 设置 is shown, so a session
-        // that never visited it has nothing to unsubscribe.
-        _settingsPage?.Dispose();
         base.OnClosed(e);
     }
 
@@ -463,19 +477,23 @@ public partial class MainWindow : Window
     /// Escape.
     /// <para>
     /// Escape reaches here only when focus was NOT inside the search box or <see cref="AppPage"/>'s own
-    /// tile grid — e.g. a nav-rail row, or anywhere at all on 设置. Both of those already handle Escape
-    /// (and mark it handled) themselves, matching the clear-then-hide behaviour the launcher always had.
-    /// Before the rail existed, this window's own OnKeyDown handled Escape identically regardless of
-    /// where focus was — calling the SAME view-model method here (rather than an unconditional Hide)
-    /// keeps that behaviour rather than merely approximating it, ON 应用.
+    /// tile grid — e.g. a navigation-pane row. Both of those already handle Escape (and mark it handled)
+    /// themselves, matching the clear-then-hide behaviour the launcher always had. Before the rail
+    /// existed, this window's own OnKeyDown handled Escape identically regardless of where focus was —
+    /// calling the SAME view-model method here (rather than an unconditional Hide) keeps that behaviour
+    /// rather than merely approximating it.
     /// </para>
     /// </summary>
     /// <remarks>
-    /// On 设置 it dismisses outright instead. <c>HandleSearchEscape</c> is two-stage — a non-empty filter
-    /// is cleared and the window stays up — and on 设置 the filter belongs to a page the user cannot see
-    /// (review finding 4: it can no longer be TYPED there, since <see cref="ShowPage"/> hides the box,
-    /// but a filter carried over from 应用 is still non-empty), so routing through it would spend the
-    /// user's first Escape clearing something invisible and only dismiss on the second.
+    /// <b>ROUND 8, TASK 2 COLLAPSED BOTH BRANCHES TO THE SINGLE-PAGE CASE.</b> Escape had an
+    /// <c>else _host.Hide()</c> for 设置, on the ground that <c>HandleSearchEscape</c> is two-stage (a
+    /// non-empty filter is cleared and the window stays up) and on 设置 the filter belonged to a page the
+    /// user could not see, so the first Escape would have been spent clearing something invisible.
+    /// Ctrl+E had a matching page guard, for the mirror-image reason. There is one page now, so
+    /// <b>Escape always routes to <c>HandleSearchEscape</c></b> — which is what the launcher did before
+    /// the rail existed — and Ctrl+E always focuses the search box. Escape inside the Options DIALOG is
+    /// not this window's business at all: that dialog is modal and its own 取消 button carries
+    /// <c>IsCancel</c>.
     /// </remarks>
     protected override void OnKeyDown(KeyEventArgs e)
     {
@@ -489,16 +507,10 @@ public partial class MainWindow : Window
         //
         // It lives HERE rather than in AppPage.OnKeyDown because an accelerator that only works when
         // focus is already inside the page it belongs to is not an accelerator: a key pressed on a
-        // navigation-pane row bubbles to this window, never to AppPage. It is guarded to 应用 because
-        // that is the only page that CONTAINS a search box (Round 6 item 1, made structural by Task
-        // 1) — on 设置 there is nothing to focus and the key is left unhandled rather than made to
-        // navigate, which would be a second behaviour nothing published asks for. The request goes
-        // through PendingFocus like every other one, so ConsumePendingFocus keeps owning the timing.
+        // navigation-pane row bubbles to this window, never to AppPage. The request goes through
+        // PendingFocus like every other one, so ConsumePendingFocus keeps owning the timing.
         if (e.Key == Key.E && e.KeyModifiers == KeyModifiers.Control)
         {
-            if (!ReferenceEquals(PageHost.Content, _appPage))
-                return;
-
             _appPage.ViewModel.PendingFocus = true;
             e.Handled = true;
             return;
@@ -507,11 +519,7 @@ public partial class MainWindow : Window
         if (e.Key != Key.Escape)
             return;
 
-        if (ReferenceEquals(PageHost.Content, _appPage))
-            _appPage.ViewModel.HandleSearchEscape();
-        else
-            _host.Hide();
-
+        _appPage.ViewModel.HandleSearchEscape();
         e.Handled = true;
     }
 
@@ -676,173 +684,29 @@ public partial class MainWindow : Window
         base.OnClosing(e);
     }
 
-    /// <summary>Swap the page host's content. <see cref="_appPage"/> is built eagerly (a field
-    /// initializer, before this constructor even runs) since it holds the launcher's real state;
-    /// <see cref="_settingsPage"/> is built lazily, the first time 设置 is shown. Both are then kept
-    /// alive rather than rebuilt on every rail click, since each card group owns its own live control
-    /// state (e.g. the font combo's selection guard).</summary>
-    /// <remarks>
-    /// Round 3, Task 2: 应用 and 设置 now live in TWO separate single-item ListBoxes (<c>NavRail</c>,
-    /// the page list; <c>NavFooterRail</c>, the bottom-pinned footer — see MainWindow.axaml's rail
-    /// comment for why) rather than one two-item list, so keeping them mutually exclusive needs an
-    /// explicit SelectedIndex write on BOTH lists here — a plain ListBox only enforces "at most one
-    /// selected item" WITHIN itself, not across a second, unrelated ListBox instance. Setting the
-    /// inactive list's index to -1 rather than leaving it alone is what actually clears a stale
-    /// selected look on the page just navigated away from; setting it to 0 rather than leaving it
-    /// unchanged is what makes returning to a page re-select its row even if <c>OnNavSelectionChanged</c>
-    /// never ran for it (e.g. the tray's settings entry, which calls this through <c>ShellNavigator</c>
-    /// without any rail click at all).
-    /// </remarks>
-    /// <remarks>
-    /// Round 3, Task 2 review fix (Important 1): <see cref="_inShowPage"/> is set for this whole method
-    /// (not only around the two <c>SelectedIndex</c> writes below) — see that field's own remarks for
-    /// the full reentrancy this closes: the writes are where the synchronous <c>SelectionChanged</c> can
-    /// actually fire, but wrapping the whole method costs nothing extra, since nothing later in this
-    /// method can itself trigger another synchronous call back into <see cref="OnNavSelectionChanged"/>.
-    /// </remarks>
-    public void ShowPage(ShellPage page)
-    {
-        _inShowPage = true;
-        try
-        {
-            ShowPageCore(page);
-        }
-        finally
-        {
-            _inShowPage = false;
-        }
-    }
-
-    private void ShowPageCore(ShellPage page)
-    {
-        // Read BEFORE the swap: "was 设置 the page being replaced" is what distinguishes a real
-        // 设置 → 应用 switch (which owes the launcher a re-fit, since nothing measured it while it was
-        // detached) from the shell's very first ShowPage, where PageHost.Content is still null and
-        // InitializeAndFitAsync owns the first fit. _settingsPage is null until 设置 is first visited,
-        // so this is false for the whole of a session that never goes there.
-        var wasSettings = _settingsPage is not null && ReferenceEquals(PageHost.Content, _settingsPage);
-
-        NavRail.SelectedIndex = page == ShellPage.App ? 0 : -1;
-        NavFooterRail.SelectedIndex = page == ShellPage.Settings ? 0 : -1;
-        PageHost.Content = page == ShellPage.Settings
-            ? _settingsPage ??= new SettingsPage()
-            : _appPage;
-
-        // Round 4, item 5: the two pages get two different content-pane looks and this method is
-        // already the single authority for which page is on screen, so the class toggle belongs here
-        // rather than in either page. Both looks are styles in Launcher.axaml ("Border.tm-page-pane"),
-        // which is also where the reason they cannot be local attributes on the Border is written down.
-        // The class lands on PagePane, the always-attached host, never on anything inside _appPage — so
-        // RefitToContent's detach guard and the measurement it protects are untouched by it.
-        //
-        // Round 6, item 2: the class is "app", NOT "settings", and the flip is the point rather than a
-        // rename. 应用 keeps an opaque pane with a 1 DIP hairline on its top and left edges; every
-        // OTHER page paints nothing and lets the window's own surface run straight through, the way
-        // Windows' own Settings page does — measured: it has no content pane at all. Encoding it as
-        // "app" makes "on the window material" the DEFAULT, so a third ShellPage member would come up on
-        // the material instead of silently coming up in the 应用 pane's fill, which is the opposite of
-        // what was asked.
-        //
-        // Round 7, Task 7 RETIRED the argument this comment used to carry, and did not merely defer it.
-        // Round 4 §5.1(d) had kept 设置 on SurfaceBaseBrush because a settings card composited to the
-        // exact colour of a white page, and the Mica backdrop measured 238..247 Light / 30..34 Dark —
-        // straddling SurfaceBaseBrush — so a card still separated from a transparent pane. Every premise
-        // of that is now gone: Task 1 moved the window to AcrylicBlur, so there is no Mica to straddle;
-        // Task 7 deleted the card fill, the card border and the card radius outright, so there is no Δ
-        // left to preserve; and Task 7 made the window's CLIENT AREA opaque (MainWindow.axaml's content
-        // Grid paints SurfaceBaseBrush = AeroWindowBackground, Aero's own structure, where the glass was
-        // the frame), so what shows through a transparent pane is no longer a live blur of the desktop.
-        // Nothing about this is outstanding and nothing here is waiting on a re-measurement. The current
-        // reasoning, with the colours, lives in Launcher.axaml's "Border.tm-page-pane" block; the
-        // superseded Windows 11 measurements are archived in
-        // docs/superpowers/archive/2026-08-04-windows11-measurement-record.md. Do not "restore" the grey.
-        //
-        // The corner is square in both states now — RadiusPaneTopLeft and its 8 DIP arc were deleted in
-        // the same task, so do not read a rounded top-left corner into any of the above.
-        PagePane.Classes.Set("app", page == ShellPage.App);
-
-        // Round 6, item 1 hid the title strip's search box on 设置 — a page with nothing to search —
-        // with a "SearchField.IsVisible = page == ShellPage.App" write here. Round 7, Task 1 DELETED
-        // that write rather than porting it: the field is IN the 应用 page now (Views/AppPage.axaml),
-        // so it is detached along with the rest of that page whenever 设置 is on screen and there is
-        // nothing left to hide. The behaviour item 1 asked for is unchanged; the mechanism is
-        // structural instead of imperative.
-
-        if (page != ShellPage.App)
-            return;
-
-        // Retry a focus request ConsumePendingFocus deferred because 设置 was showing when it arrived
-        // (see that method's remarks) — the same "re-check what needs the visual tree on re-attach"
-        // rule AppPage's pre-move version of this mechanism followed, just relocated to the one place
-        // that now knows which page is active.
-        Dispatcher.UIThread.Post(ConsumePendingFocus, DispatcherPriority.Loaded);
-
-        // …and the re-fit that was skipped for the same reason, on the same deferred slot: the launcher
-        // has just been re-attached to the logical tree, so its styles are re-applied and it can be
-        // measured meaningfully again. See RefitToContent's own remarks for what happens if it is
-        // measured any earlier than this.
-        if (wasSettings)
-            Dispatcher.UIThread.Post(RefitToContent, DispatcherPriority.Loaded);
-    }
-
-    /// <summary>
-    /// Round 3, Task 2: 应用 and 设置 moved into two SEPARATE single-item ListBoxes (<c>NavRail</c>,
-    /// <c>NavFooterRail</c> — see MainWindow.axaml's rail comment for why), so this handler now fires
-    /// for either one and has to keep them acting like one logical selection group itself; a plain
-    /// ListBox only ever enforces "at most one selected item" within its OWN items.
-    /// </summary>
-    /// <remarks>
-    /// Two separate guards, for two separate kinds of call this same handler receives that must NOT
-    /// navigate: <see cref="_inShowPage"/> (Round 3, Task 2 review fix, Important 1) discards a
-    /// SelectionChanged raised by <see cref="ShowPageCore"/>'s OWN <c>SelectedIndex</c> writes — see
-    /// that field's own remarks for why reacting to those used to make <see cref="ShowPage"/>
-    /// re-entrant. <c>rail.SelectedIndex &lt; 0</c> discards the re-entrant-LOOKING but harmless
-    /// SelectionChanged this method's OWN <c>otherRail.SelectedIndex = -1</c> line below raises on the
-    /// OTHER list (its <c>AddedItems</c> is empty and its own <c>SelectedIndex</c> reads -1 by the time
-    /// this runs) — that one is not <see cref="_inShowPage"/>'s concern, since it happens BEFORE
-    /// <see cref="ShowPage"/> is ever called for this navigation. Only a real "the user (or UI
-    /// Automation) picked a row" call ever reaches the bottom of this method with SelectedIndex at 0
-    /// and <see cref="_inShowPage"/> false.
-    /// </remarks>
-    private void OnNavSelectionChanged(object? sender, SelectionChangedEventArgs e)
-    {
-        // Ignored until the constructor finishes (_navReady): XAML's SelectedIndex="0" — and,
-        // once a real navigation can arrive before the window exists (Task 13's tray path),
-        // Attach's own ShowPage call — both raise this event synchronously during construction.
-        // ShowPage already applies NavRail.SelectedIndex/NavFooterRail.SelectedIndex and
-        // PageHost.Content directly, so nothing is lost by discarding a SelectionChanged that fires
-        // before the shell is ready; letting it through would instead let Navigate(App) (this event's
-        // own read of a freshly-defaulted SelectedIndex="0") clobber a Current a pre-construction
-        // Navigate(Settings) had already set.
-        //
-        // MUST read SelectedIndex off the sender, not a NavRail/NavFooterRail field: this event can
-        // fire before the generated populate code has assigned those fields — reading a field there
-        // null-refs.
-        if (!_navReady || sender is not ListBox rail)
-            return;
-
-        if (_inShowPage)
-        {
-            // Round 3, Task 2 review fix (Important 1): logged at Debug, not silently discarded, so the
-            // two real callers that can reach ShowPage WITHOUT a preceding rail click — the settings
-            // entry (ISettingsLauncher.Open -> SettingsLauncher.OpenCore) and WindowHost.Hide's reset to
-            // 应用 — can be confirmed LIVE to actually hit this suppression instead of re-entering
-            // ShellNavigator.Navigate.
-            Serilog.Log.Debug(
-                "OnNavSelectionChanged suppressed a write from ShowPage itself ({Rail}, SelectedIndex={Index})",
-                rail.Name, rail.SelectedIndex);
-            return;
-        }
-
-        if (rail.SelectedIndex < 0)
-            return;
-
-        var otherRail = ReferenceEquals(rail, NavRail) ? NavFooterRail : NavRail;
-        otherRail.SelectedIndex = -1;
-
-        App.Services.GetRequiredService<ShellNavigator>()
-            .Navigate(ReferenceEquals(rail, NavFooterRail) ? ShellPage.Settings : ShellPage.App);
-    }
+    // ══════════════════════════════════════════════════════════════════════════════════════════
+    // ROUND 8, TASK 2 DELETED THE PAGE MODEL HERE — 167 lines: ShowPage, ShowPageCore,
+    // OnNavSelectionChanged, and the _inShowPage / _navReady flags with their remarks.
+    //
+    // The shell had two PAGES, 应用 and 设置, and every one of those members existed to swap between
+    // them and to keep the pane's two ListBoxes acting like one selection group. 设置 is a modal
+    // dialog now (Dialogs/OptionsWindow, opened by ISettingsLauncher), so there is nothing to swap:
+    // PageHost.Content is assigned once, in the constructor, and the pane's second ListBox
+    // (NavFooterRail) is gone with the 设置 row's promotion to a plain command Button.
+    //
+    // Three facts those deleted members recorded are kept here rather than lost with them, because
+    // each is a reason a future edit must not re-introduce the shape:
+    //   · SelectedIndex assignment raises SelectionChanged SYNCHRONOUSLY (decompiled
+    //     Avalonia.Controls.Primitives.SelectingItemsControl), which is why a navigation that arrived
+    //     without a preceding rail click used to re-enter the swap while the outer call was still on
+    //     the stack — the defect _inShowPage existed to close.
+    //   · A plain ListBox enforces "at most one selected item" only WITHIN itself, never across a
+    //     second ListBox instance, which is why keeping 应用 and 设置 mutually exclusive took an
+    //     explicit write to both.
+    //   · The "app" class on PagePane was flipped from ShowPageCore. It is a STATIC class in the
+    //     markup now (MainWindow.axaml), and Launcher.axaml's :not(.app) branch — whose only subject
+    //     was 设置 — is deleted. Task 3 collapses the remaining pair into one rule when the pane goes.
+    // ══════════════════════════════════════════════════════════════════════════════════════════
 
     /// <summary>AppLanguage has no change notification, so the navigation pane is labelled imperatively
     /// — the same approach the settings UI uses. Round 3, Task 2: also labels the command rows that used
@@ -908,7 +772,7 @@ public partial class MainWindow : Window
     //
     // What stays HERE is only the PendingFocus contract: the view model raises "please focus the search
     // box" from a fresh summon, from 清除筛选 and from Up off the top of the tile grid, and this class
-    // is the one place that knows which page is on screen. The focus call itself is forwarded to
+    // is the one place that owns the timing. The focus call itself is forwarded to
     // AppPage.FocusSearchBox().
     // ══════════════════════════════════════════════════════════════════════════════════════════
 
@@ -925,24 +789,27 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Fix (Task 1 review, Important 3): a focus request that arrives while 设置 is the active page
-    /// must NOT steal focus into a search box that filters a page the user cannot see —
-    /// <c>ISettingsLauncher.OpenCore</c> navigates to 设置 and THEN calls
-    /// <c>WindowHost.ShowAndActivate()</c>, which unconditionally raises <c>LauncherShown</c> and sets
-    /// <c>PendingFocus</c> regardless of which page is showing (the tray's 选项 entry hits this path).
-    /// The guard asks the one thing that actually determines whether the user can see the box: whether
-    /// <see cref="_appPage"/> is the page <see cref="PageHost"/> is currently showing. Left SET
-    /// otherwise; <see cref="ShowPage"/> retries this the next time the rail switches back to 应用,
-    /// exactly the "re-check what needs the visual tree on re-attach" rule AppPage's own pre-move
-    /// mechanism followed.
-    /// <para>
-    /// Round 7, Task 1 put the search box back inside <see cref="AppPage"/>, so the guard is now also
-    /// literally an attachment test — a detached page's TextBox cannot take focus at all
-    /// (<c>FocusManager.CanFocus</c> is <c>Focusable &amp;&amp; IsEffectivelyEnabled &amp;&amp;
-    /// IsEffectivelyVisible</c>, decompiled). It is kept as an explicit page test rather than reduced
-    /// to that, because it is also what keeps the deferred request alive for the next switch back.
-    /// </para>
+    /// Consume a deferred focus request, if the page that owns the search box is actually hosted.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The guard was added as a PAGE test (Task 1 review, Important 3): a focus request arriving while
+    /// 设置 was the active page must not steal focus into a search box filtering a page the user cannot
+    /// see — the tray's 选项 entry navigated to 设置 and then called <c>WindowHost.ShowAndActivate()</c>,
+    /// which raises <c>LauncherShown</c> and sets <c>PendingFocus</c> unconditionally.
+    /// </para>
+    /// <para>
+    /// <b>Round 8, Task 2 leaves the line alone and changes what it means</b>, exactly as it does for
+    /// <see cref="RefitToContent"/>'s twin: there is one page, so this is an ATTACHMENT test now.
+    /// Round 7, Task 1 had already made it literally one — a detached page's TextBox cannot take focus
+    /// at all (<c>FocusManager.CanFocus</c> is <c>Focusable &amp;&amp; IsEffectivelyEnabled &amp;&amp;
+    /// IsEffectivelyVisible</c>, decompiled) — and it is kept for the same reason as the other: one
+    /// reference comparison against a reproduced defect class. What is NO LONGER true, and is corrected
+    /// rather than left standing, is the sentence that said a deferred request would be retried "the
+    /// next time the rail switches back to 应用". There is no switch, so nothing retries it; the request
+    /// simply stays set until the next Loaded pass posts this again, which every summon does.
+    /// </para>
+    /// </remarks>
     private void ConsumePendingFocus()
     {
         if (!_appPage.ViewModel.PendingFocus)
@@ -956,18 +823,30 @@ public partial class MainWindow : Window
     }
 
     // ══════════════════════════════════════════════════════════════════════════════════════════
-    // Navigation rail: the three relocated commands (Round 3, Task 2 — used to be the title strip's
-    // ⋯ overflow MenuFlyout; MainWindow.axaml's rail comment explains why they are Buttons, not
-    // ListBoxItems, and why each is its own row rather than one row that opens a flyout).
-    // There were four until Round 5, item 2 moved 关于 into the 设置 page as a card and deleted the
-    // overlay it raised; OnAboutClick — the one body Round 4 had touched, to navigate to 应用 before
-    // raising a panel that lived on that page — went with it. The three below are still unchanged from
-    // the overflow-menu era.
+    // Navigation pane: FOUR commands. Three were relocated in Round 3, Task 2 — they used to be the
+    // title strip's ⋯ overflow MenuFlyout; MainWindow.axaml's pane comment explains why they are
+    // Buttons, not ListBoxItems, and why each is its own row rather than one row that opens a flyout.
+    // There were four then too until Round 5, item 2 moved 关于 into the 设置 page as a card and
+    // deleted the overlay it raised.
+    //
+    // ROUND 8, TASK 2 MADE 设置 THE FOURTH. It was a PAGE — a ListBoxItem in a second ListBox that the
+    // shell navigated to — and it is a modal dialog now, i.e. exactly what the other three already
+    // were: a one-shot action that leaves the page on screen alone. That is what the pane's own
+    // comment says a command row is, and a Button has no :selected pseudo-class, so "设置 must never
+    // look selected" holds by construction rather than by a rule a later edit could defeat.
     // ══════════════════════════════════════════════════════════════════════════════════════════
 
     private void OnOpenRootClick(object? sender, RoutedEventArgs e) => _appPage.ViewModel.OpenRoot();
 
     private void OnRefreshClick(object? sender, RoutedEventArgs e) => _ = _appPage.ViewModel.RefreshAsync();
+
+    /// <summary>设置. Goes through <see cref="ISettingsLauncher"/> like the tray menu's own entry and
+    /// the 应用 page's empty-state 打开设置… button, rather than constructing the dialog here: that
+    /// service owns the single-instance guard, the SuppressHide bracket and the hidden-owner
+    /// fallback, and having three call sites reproduce them would be three chances to get one
+    /// wrong.</summary>
+    private void OnOptionsClick(object? sender, RoutedEventArgs e) =>
+        App.Services.GetRequiredService<ISettingsLauncher>().Open();
 
     private void OnExitClick(object? sender, RoutedEventArgs e) => _appPage.ViewModel.ExitApp();
 

@@ -74,12 +74,14 @@ public partial class BehaviorCard : UserControl, ISettingsCard
     /// <summary>Re-read the two rows whose real state lives in the OS, not in <c>AppConfig</c>: the
     /// taskbar pin and 开机自启. Both can be changed from entirely outside this app — right-click the
     /// taskbar icon / Start-menu 固定到任务栏 for the pin, Task Manager → 启动应用 → 禁用 for autostart —
-    /// so both are only trustworthy at the moment they were queried. <c>SettingsWindow</c> re-queried on
-    /// every <c>Opened</c>; this card is constructed once and kept alive for the app's whole life
-    /// (<c>SettingsPage</c> is cached — see <c>MainWindow.ShowPage</c>), so there is no per-visit
-    /// "window opened" moment to hook. Navigating between 应用 and 设置 swaps <c>PageHost.Content</c>,
-    /// detaching and re-attaching this control each time, so re-query here instead — on every
-    /// re-attach, including the first.</summary>
+    /// so both are only trustworthy at the moment they were queried. Hooking the ATTACH rather than a
+    /// window's <c>Opened</c> is what has survived three different containers unchanged, and that is the
+    /// point of it: <c>SettingsWindow</c> re-queried on every <c>Opened</c>; the cached
+    /// <c>SettingsPage</c> had no per-visit "window opened" moment at all, and navigating between 应用
+    /// and 设置 swapped <c>PageHost.Content</c>, detaching and re-attaching this control each time;
+    /// Round 8, Task 2's <c>OptionsWindow</c> is constructed fresh on every open, and its
+    /// <c>TabControl</c> realises this card's tab the first time it is selected. All three produce the
+    /// same signal here. Re-query on every re-attach, including the first.</summary>
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
@@ -354,9 +356,11 @@ public partial class BehaviorCard : UserControl, ISettingsCard
 
         // No Theme is assigned here any more; BehaviorCard.axaml's static TmButton is the only one this
         // button ever has. That also retires a hazard this call site used to carry: ReloadFromConfig
-        // reaches here while SettingsPage's constructor is still running — BEFORE MainWindow.ShowPageCore
-        // assigns the freshly built page to PageHost.Content — with the whole card tree detached from
-        // the logical tree, and a detached control's StylingParent chain terminates before ever reaching
+        // reaches here while the containing window's constructor is still running — SettingsPage's,
+        // before MainWindow.ShowPageCore assigned the freshly built page to PageHost.Content, and since
+        // Round 8 Task 2 OptionsWindow's, before its TabControl has realised this card's tab — with the
+        // whole card tree detached from the logical tree, and a detached control's StylingParent chain
+        // terminates before ever reaching
         // Application.Styles (decompiled Avalonia 12.1.0), so FindResource returned UnsetValue and the
         // `as ControlTheme` yielded a hard null that would have clobbered a theme applied on a previous
         // visit. Full writeup of that episode:
