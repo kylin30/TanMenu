@@ -3,6 +3,16 @@
 > **Status: DECISION DOCUMENT.** No source file was edited, no package was added, no build was run and
 > nothing was committed while this was written. The tree was clean at `e6d031b` throughout. This is
 > not an implementation plan; it answers one question — *can it be done* — and prices the answer.
+>
+> **Read-me added by Round 7, Task 10.** This document gets no deprecation header, because it does not
+> describe the Windows 11 shell — it is the decision record the Aero conversion executes against, and
+> its verdict, its licence analysis and its Option B are what shipped. But every sentence in it written
+> in the present tense about *"today"* describes the build at `e6d031b`, i.e. the Windows 11 shell,
+> and none of those sentences is true of the tree now. Two of its own counts were also corrected by
+> the design that executes it (`2026-08-04-aero-conversion-design.md` §0): "of 46 keys, 6 survive
+> unchanged" is wrong — zero survive — and "~14 style rules target Fluent's part names" is wrong — the
+> live census was 24. The conversion design is the authority wherever the two differ, and the code is
+> the authority over both.
 
 Investigated 2026-08-04 against `https://github.com/Splitwirez/aero-theme-for-avalonia`, upstream
 `main` at `a705b7c0` (2026-01-26).

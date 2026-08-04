@@ -27,7 +27,7 @@
     (Theme="{StaticResource TmNavRowButton}"), not ListBoxItems: a Button has no :selected pseudoclass
     at all, which is what makes "a command row must never look selected" true by construction rather
     than by a style rule a future edit could defeat. That split got MORE load-bearing in Round 7,
-    Task 8, not less — see TmNavRowButton's own remark in Themes/Fluent2/Launcher.axaml.
+    Task 8, not less — see TmNavRowButton's own remark in Themes/Shell/Launcher.axaml.
 
     ROUND 7, TASK 8 TURNED THE 48 DIP ICON RAIL INTO A 160 DIP LABELLED PANE, and it is ONE width, not
     two. Round 4, item 1 had deleted the rail's expand capability in five pieces — the label
@@ -82,7 +82,7 @@
     <!-- ══ The Aero caption buttons ═══════════════════════════════════════════════════════════════
          One ControlTheme for all three, differing only by width and by the ".close" class. It carries
          the app's own "Tm" prefix like every other ControlTheme this app writes, but it lives HERE
-         rather than in Themes/Fluent2/Launcher.axaml because it is window chrome, not launcher dialect,
+         rather than in Themes/Shell/Launcher.axaml because it is window chrome, not launcher dialect,
          and because the decorations template below resolves it by {StaticResource} out of this same
          file's scope.
 
@@ -96,8 +96,10 @@
 
          The FACE is AUTHORED (Tokens.axaml carries the alphas and says so). The glyphs are vector
          geometry rather than Segoe Fluent Icons code points, because the icon font is the one
-         deliberate Windows 11 anachronism this conversion keeps and there is no reason to spend it
-         on three shapes that are four line segments each. -->
+         deliberate Windows 11 anachronism this conversion keeps and there is no reason to spend it on
+         three shapes this simple: read off the Data strings below, minimize is ONE line, maximize is a
+         closed four-sided square and close is TWO crossed lines. (This sentence said "three shapes
+         that are four line segments each" until Round 7, Task 10; only maximize was ever four.) -->
     <ControlTheme x:Key="TmCaptionButton" TargetType="Button">
       <Setter Property="Height" Value="19" />
       <Setter Property="VerticalAlignment" Value="Top" />
@@ -384,7 +386,7 @@
          the same two elements measure 10.59:1 and 20.47:1 in Light and 4.29:1 and 11.90:1 in Dark,
          read off PrintWindow captures rather than computed.
 
-         Border.tm-page-pane:not(.app) in Themes/Fluent2/Launcher.axaml is UNCHANGED by this: it still
+         Border.tm-page-pane:not(.app) in Themes/Shell/Launcher.axaml is UNCHANGED by this: it still
          paints nothing, which is still Round 6 item 2's decision that every non-应用 page shows the
          window's own material. What changed is what the window's own material IS. -->
     <Grid Grid.Row="1" ColumnDefinitions="Auto,*"
@@ -433,7 +435,7 @@
                itself in English — see the bullet above, which is the honest reading; the design's own
                "≥ 114" is superseded, because 114 came from its 88 DIP estimate for a string the app
                does not use. The margin, the padding and the gap are TmNavRowItem's and tm-nav-label's
-               (Themes/Fluent2/Launcher.axaml); the 16 is each glyph's own local Width below.
+               (Themes/Shell/Launcher.axaml); the 16 is each glyph's own local Width below.
                MEASURED on the shipped build at 150 %, all five rows identical and IDENTICAL IN ALL
                FOUR CONFIGURATIONS TABULATED BELOW — stated as offsets from the row box, because the
                absolute screen coordinates move with the window's fitted width and the offsets do not:
@@ -475,7 +477,7 @@
                THE 22 IS NOT REACHABLE — it would need a 25 px line box, and the smallest measured here
                is 26 — and it is not chased. Pinning the label's LineHeight is the only thing that would
                collapse the row box to one number, and Round 7, Task 7 deleted every LineHeight token in
-               Themes/Fluent2 on the ground that GDI text takes its natural line height; re-introducing
+               Themes/Shell on the ground that GDI text takes its natural line height; re-introducing
                one here would contradict that decision and risk clipping CJK descenders. The measured
                values ship, and they ship as a range rather than as a constant.
                This does cost the evenness citation, so it is recorded as forgone rather than claimed:
@@ -570,6 +572,10 @@
                edge without this row needing an explicit height of its own — the identical mechanism
                Task Manager's own FooterMenuItemsHost relies on (measured: its MenuItemsScrollViewer
                fills a "*"-sized 1390 physical px even though its 7 items only occupy 414 of them).
+               Task Manager stopped being this app's reference at Round 7 — every measurement of it
+               that this file still cites is a record of WHY a structure was chosen, and the survey
+               those numbers come from is filed in
+               docs/superpowers/archive/2026-08-04-windows11-measurement-record.md.
 
                The command rows — three of them below, since Round 5, item 2 took 关于 out of this
                footer (see that item's own note further down) — are Buttons (Theme="{StaticResource
@@ -714,18 +720,25 @@
       </Border>
 
       <!-- ══ Content pane: an opaque surface on 应用, the window's own material everywhere else ══════
-           Task Manager's shape: the backdrop shows through the caption and the nav rail, and on the
-           应用 page it is covered by an opaque layer. Neither page paints a surface of its own —
-           SettingsPage's root ScrollViewer sets no Background at all and AppPage's root Panel sets only
-           Transparent — which is what lets this single Border decide the surface under EITHER page
-           instead of each page having to paint it separately. (An earlier revision of this comment said
-           both were "left with no background of their own"; AppPage's root does carry
-           Background="Transparent", so that was half wrong.)
+           The acrylic reaches ONE band and one only — row 0, the caption. Everything from the
+           navigation pane down is the opaque SurfaceBaseBrush the content Grid above paints, so
+           "the window's own material" below this point means AeroWindowBackground, not a backdrop.
+           (This sentence read "the backdrop shows through the caption and the nav rail" until Round 7,
+           Task 10; Task 7 made the client opaque and the claim stopped being true then. The two
+           paragraphs below already described the change and this one had not been rewritten with
+           them.) On the 应用 page that surface is covered again, by this Border. Neither page paints
+           a surface of its own — SettingsPage's root ScrollViewer sets no Background at all and
+           AppPage's root Panel sets only Transparent — which is what lets this single Border decide
+           the surface under EITHER page instead of each page having to paint it separately. (An
+           earlier revision of this comment said both were "left with no background of their own";
+           AppPage's root does carry Background="Transparent", so that was half wrong.)
 
            Round 4, item 5 gave the two pages two DIFFERENT looks on this one Border, and Round 6,
            item 2 flipped which of them is the exception. 应用 gets an opaque pane with a 1 DIP
            top+left hairline; every other page paints NOTHING — Transparent, no border, no corner — so
-           the window's own surface runs unbroken from the rail and the caption through the content.
+           the window's own surface runs unbroken from the navigation pane through the content. (Not
+           "from the caption": the caption is glass over the acrylic and the client below it is opaque,
+           so the two are different surfaces and always have been since Task 7.)
            ShowPageCore (code-behind) toggles the "app" class, and it is "app" rather than "settings"
            on purpose: "on the window material" is the default, so a third page cannot silently come
            up white.

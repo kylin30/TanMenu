@@ -9,7 +9,7 @@
         Background="{DynamicResource SurfaceBaseBrush}">
 
   <!--
-    Deliberately styled by the app-wide DEFAULT control set, not by Themes/Fluent2/Launcher.axaml,
+    Deliberately styled by the app-wide DEFAULT control set, not by Themes/Shell/Launcher.axaml,
     which is the launcher's identity. An alert is a platform surface and should look like one; the
     launcher's acrylic flyout chrome around a two-line question would read as decoration. Nothing
     here carries a tm- class, so Launcher.axaml cannot reach it, and it still picks up the UI font

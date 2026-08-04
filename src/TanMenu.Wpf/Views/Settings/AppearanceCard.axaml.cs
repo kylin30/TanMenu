@@ -40,7 +40,7 @@ public partial class AppearanceCard : UserControl, ISettingsCard
     /// the disabled colour, and these rows ARE disabled (that is how they are made unpickable), so
     /// naming the disabled token says what the row is instead of restating what it looked like; and
     /// a literal in code is a colour the theme layer cannot follow, which is the whole point of
-    /// <c>Fluent2TokenTests.LauncherStyles_ContainNoColourLiterals</c> being a test at all.
+    /// <c>ShellTokenTests.LauncherStyles_ContainNoColourLiterals</c> being a test at all.
     /// <c>AeroDisabledForeground</c> is <c>#FF7F7F7F</c> in BOTH variants (VENDORED,
     /// <c>Themes/Aero/Variant/Light.axaml</c> and <c>Dark.axaml</c>), so light and dark agree here
     /// by construction rather than by coincidence.

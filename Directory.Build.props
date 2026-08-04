@@ -2,8 +2,15 @@
   <PropertyGroup>
     <!-- One source of truth for the product version (Core + Wpf stay in lockstep). Bump this for
          each release so update-diffing / crash correlation / Store submissions have a real version
-         instead of the default 1.0.0.0. -->
-    <Version>0.12.0</Version>
+         instead of the default 1.0.0.0.
+
+         0.12.0 -> 0.13.0 (Round 7, Task 10). 0.13.0 is the Windows 7 Aero conversion. The six
+         Windows 11 rounds that produced 0.10.0, 0.11.0 and 0.12.0 were never RELEASED: the newest tag
+         in this repository is v0.9.6, and the release workflow runs on a tag. Their notes described a
+         look this round replaces, so tagging one of them now would publish a build nobody would keep.
+         The conversion design's §9 put both options to the human and its own Task 10 assumed this
+         one. Nothing was packaged, tagged or pushed by the task that made this edit. -->
+    <Version>0.13.0</Version>
     <!-- Keep the application SDK and vpk CLI on the same release. -->
     <VelopackVersion>1.2.0</VelopackVersion>
 

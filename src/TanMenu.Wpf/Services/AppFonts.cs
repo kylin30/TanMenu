@@ -31,7 +31,7 @@ public static class AppFonts
     /// <c>https://learn.microsoft.com/en-us/windows/win32/uxguide/vis-fonts</c> gives as the Windows 7
     /// system font ("Segoe UI 9 pt is the system font"); Microsoft YaHei UI is appended so a CJK item
     /// name never renders as tofu. Kept byte-identical to <c>AppFontFamily</c> in
-    /// Themes/Fluent2/Tokens.axaml — the XAML value styles the standard controls, this one is what the
+    /// Themes/Shell/Tokens.axaml — the XAML value styles the standard controls, this one is what the
     /// launcher's font setting falls back to.
     /// </summary>
     /// <remarks>

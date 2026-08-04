@@ -14,7 +14,7 @@ namespace TanMenu.Core.Tests.Themes;
 /// </summary>
 /// <remarks>
 /// <para>
-/// These are SOURCE tests, exactly like <see cref="Fluent2TokenTests"/>, and for the same reason: the
+/// These are SOURCE tests, exactly like <see cref="ShellTokenTests"/>, and for the same reason: the
 /// three failures below all render rather than throw. A caption height that disagrees with
 /// <c>ExtendClientAreaTitleBarHeightHint</c> produces a drag band that does not line up with the caption
 /// you can see (Win32's <c>HitTestNCA</c> derives the band from the hint, not from what is drawn); a

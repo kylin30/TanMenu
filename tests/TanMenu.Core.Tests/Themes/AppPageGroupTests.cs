@@ -22,7 +22,7 @@ namespace TanMenu.Core.Tests.Themes;
 /// filtered-out category would render as an empty bordered box 22 DIP wide.
 /// </para>
 /// <para>
-/// A source test, for the same reason <see cref="Fluent2TokenTests"/> and <see cref="SettingsRowTests"/>
+/// A source test, for the same reason <see cref="ShellTokenTests"/> and <see cref="SettingsRowTests"/>
 /// are: the failure is invisible until somebody types in the search box, no capture taken on a resting
 /// page would show it, and nothing under <c>tests/</c> can drive Avalonia layout (every test here runs
 /// off the UI thread). Item 4 is the only one of Round 6's four items that adds a test, and this is why.

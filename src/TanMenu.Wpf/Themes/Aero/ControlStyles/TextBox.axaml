@@ -45,7 +45,7 @@
     Border#BgElement - none was deleted:
 
       - the hotkey box's four state rules (TextBox.tm-keycap, :pointerover, :focus, :disabled in
-        Themes/Fluent2/Launcher.axaml) simply changed part name;
+        Themes/Shell/Launcher.axaml) simply changed part name;
       - the search field's focus suppression (TextBox.tm-search:focus) changed part name AND gained
         a :pointerover twin, so Launcher.axaml now carries two TextBox.tm-search rules where it
         carried one.

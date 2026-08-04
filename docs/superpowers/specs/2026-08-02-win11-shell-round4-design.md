@@ -1,5 +1,14 @@
 # TanMenu — Windows 11 shell, Round 4 design
 
+> **DEPRECATED — Round 7, Task 10.** Describes the Windows 11 shell, shipped in 0.11.0–0.12.0 and
+> replaced by the Aero conversion (`2026-08-04-aero-conversion-design.md`). Kept as the record of that
+> work; its measurements were true of the code at the time and are not true of the code now. Nothing
+> below was edited to add this header. Item 1's five deletions are the one part Round 7 partly
+> reversed: Task 8 restored the rail's labels and the StackPanels that paired them with icons, and
+> deliberately did **not** restore the second width, the transition or the animation clip. Item 5's
+> white-band investigation and both of item 5's 8 DIP corners are archived in
+> `../archive/2026-08-04-windows11-measurement-record.md`.
+
 > **Status: IMPLEMENTED, and PARTLY SUPERSEDED BY ROUND 5. The shipped build is the authority, not
 > this document.** All five items below shipped in `e1546ec..908967e` (the document itself was first
 > tracked mid-round by `0b327f3` and corrected twice afterwards, by `961a78b` and `d493e18`). Where an

@@ -1,5 +1,12 @@
 # Win11 shell Round 3 — final-fix-wave findings
 
+> **DEPRECATED — Round 7, Task 10.** Describes the Windows 11 shell, shipped in 0.11.0-0.12.0 and
+> replaced by the Aero conversion (`../specs/2026-08-04-aero-conversion-design.md`). Kept as the
+> record of that work; its measurements were true of the code at the time and are not true of the code
+> now. Nothing below was edited to add this header. `src/TanMenu.Wpf/Themes/Fluent2/` is named
+> `Themes/Shell/` from Task 10 on, and the Windows 11 measurements several of these sections rest on
+> are collected in `../archive/2026-08-04-windows11-measurement-record.md`.
+
 Condensed from `.superpowers/sdd/2026-08-01-win11-shell-round3/final-fix-report.md` and
 `progress.md` (and, for the height-floor measurement, `task-4-report.md`), a git-ignored scratch
 workspace that was deleted after Round 3 closed. This is the durable record several source

@@ -9,7 +9,7 @@ using TanMenu.Core.Services;
 namespace TanMenu.Wpf.Services;
 
 /// <summary>
-/// Owns the two things Themes/Fluent2/Tokens.axaml cannot express statically: which
+/// Owns the two things Themes/Shell/Tokens.axaml cannot express statically: which
 /// <see cref="ThemeVariant"/> is active, and the user's real Windows accent palette.
 /// </summary>
 /// <remarks>

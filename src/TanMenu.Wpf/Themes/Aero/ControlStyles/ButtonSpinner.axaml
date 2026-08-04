@@ -40,7 +40,7 @@
     RepeatButton#PART_IncreaseButton and RepeatButton#PART_DecreaseButton, all four declared in the
     template above them; two more rules target an unnamed RepeatButton, which is both of them.
     Border#BgElement is the same part name ControlStyles/TextBox.axaml uses, and it is the name
-    Themes/Fluent2/Launcher.axaml's four hotkey-box rules were re-targeted onto.
+    Themes/Shell/Launcher.axaml's four hotkey-box rules were re-targeted onto.
 
     AeroButtonSpinnerRepeatButton is BasedOn {x:Type RepeatButton}, which
     ControlStyles/Button_RepeatButton_ToggleButton.axaml declares - the same cross-file

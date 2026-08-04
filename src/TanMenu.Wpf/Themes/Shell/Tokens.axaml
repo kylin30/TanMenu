@@ -3,21 +3,26 @@
 
   <!--
     TanMenu's design tokens — the ONE place a colour, radius, spacing step or type size is named.
-    Themes/Fluent2/Launcher.axaml consumes these and defines no literal of its own (Fluent2TokenTests
+    Themes/Shell/Launcher.axaml consumes these and defines no literal of its own (ShellTokenTests
     enforces that).
 
-    ── What this file became in Round 7, Task 7 ─────────────────────────────────────────────────
+    ── What this file became in Round 7, Tasks 7 and 9 ──────────────────────────────────────────
     It was the Fluent 2 palette: 46 keys of alpha-over-Mica neutrals and a Windows 11 type ramp.
     Task 7 executed the conversion design's §3.2 over all 46 — 9 became aliases onto the vendored
     Aero layer, 11 were re-valued, 23 were deleted and 3 kept — and added the 6 keys that section
-    lists as new. Together with the 7 caption keys Task 1 added ahead of it, this file now declares
-    36 keys: 22 themed and 14 variant-independent.
+    lists as new. Together with the 7 caption keys Task 1 added ahead of it that left Task 7 at
+    36 keys, 22 themed and 14 variant-independent.
+
+    TASK 9 THEN CUT ONE MORE and the census has to move with it: AccentDefaultBrush lost its last
+    reader when the search field's accent underline went (the accent block below carries the full
+    account), so this file declares 35 keys today — 21 themed and 14 variant-independent. Counted
+    with comments stripped, the two ThemeDictionaries' own "Light"/"Dark" keys excluded.
 
     The values are Aero's; the NAMES are still ours, and that is the whole point of the seam. Aero's
     fills are two- and four-stop vertical gradients (Themes/Aero/AVMAP/Brushes.axaml); a token layer
     of flat SolidColorBrushes has no gradient to give, so anything that needs a STATEFUL Aero fill —
     a button's four states, a list row's hover — names the Aero brush directly from Launcher.axaml
-    instead of going through a token here. Fluent2TokenTests' defined set unions the vendored files
+    instead of going through a token here. ShellTokenTests' defined set unions the vendored files
     for exactly that reason.
 
     ── HOW AN ALIAS IS WRITTEN, AND WHY IT IS NOT <StaticResource> ──────────────────────────────

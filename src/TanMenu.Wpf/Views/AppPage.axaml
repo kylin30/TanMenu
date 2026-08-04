@@ -25,7 +25,7 @@
        IsLargeButtons — bindings and properties alike since deleted) went with it. Task 4 left every
        tile at the single fixed width that setting had called "小" (a 168 DIP Width Setter on
        TmTileButton); Round 4, item 3 deleted that Setter in turn, so TmTileButton
-       (Themes/Fluent2/Launcher.axaml) now sets no Width at all and a tile is as wide as its own
+       (Themes/Shell/Launcher.axaml) now sets no Width at all and a tile is as wide as its own
        icon-plus-label content. Its header comment has the chrome arithmetic (43 DIP since Round 7,
        Task 9 re-derived the tile's padding and this file's icon margin onto Aero's published ladder;
        it was 48) and the reason columns still come out uniform — the ABSENCE of a HorizontalAlignment
@@ -215,8 +215,11 @@
                       Margin="{DynamicResource SurfacePadding}">
 
             <!-- 1. The categories, running left to right. Each is a PANEL (Border.tm-group-panel,
-                 Round 6, item 4 — that style carries the fill/radius/padding measurements and why the
-                 page departs from Windows 11 here) wrapping a heading plus columns of tiles that fill
+                 Round 6, item 4 — that style carries the outline, the radius and the padding
+                 derivation, and why the page draws a container around a labelled group where the old
+                 reference drew none. It said "fill/radius/padding measurements" until Round 7,
+                 Task 10; there has been no fill since Task 7 made the panel an Aero group box, and the
+                 measurement that picked the old one is archived) wrapping a heading plus columns of tiles that fill
                  top-to-bottom, wrapping into a new column once a column reaches ColButtonCount items
                  (设置 → 外观 → 每列个数, default 10); a category with no visible items after filtering
                  removes itself.

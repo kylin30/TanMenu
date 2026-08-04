@@ -3,7 +3,7 @@
              x:Class="TanMenu.Wpf.Views.Settings.ToolsCard">
   <!-- One settings row — icon, title + secondary line, master ToggleSwitch — with a bordered, scrolling
        list of per-tool CheckBoxes on its expansion row, inside the same tm-card Border. See the "row
-       spec's shared classes" block in Themes/Fluent2/Launcher.axaml for the anatomy, and
+       spec's shared classes" block in Themes/Shell/Launcher.axaml for the anatomy, and
        AppearanceCard's code-behind for the full ReloadFromConfig contract every settings card group
        follows.
 

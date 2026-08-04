@@ -7,17 +7,17 @@
     the app-wide control themes by design.
 
     There is deliberately NOT a single colour literal in this file — every brush is a resource key,
-    and Fluent2TokenTests.LauncherStyles_ContainNoColourLiterals fails the build if a hex value
+    and ShellTokenTests.LauncherStyles_ContainNoColourLiterals fails the build if a hex value
     appears anywhere, PROSE INCLUDED. Any Aero colour quoted in a comment below is therefore a
     decimal RGB triple.
 
     TWO LAYERS SUPPLY THOSE KEYS SINCE ROUND 7, TASK 7, and which one a rule names is not a style
-    choice. Themes/Fluent2/Tokens.axaml owns the app's semantic names — surfaces, ink, hairlines,
+    choice. Themes/Shell/Tokens.axaml owns the app's semantic names — surfaces, ink, hairlines,
     the shape scale, the spacing ladder and the type sizes — and since Task 7 its values are Aero's.
     Themes/Aero/AVMAP/Brushes.axaml owns the STATEFUL fills: Aero paints a button, a list row and a
     text field as two- and four-stop vertical gradients that differ per state, and a token layer of
     flat SolidColorBrushes has no gradient to give. So a rest surface, an ink colour or a hairline
-    names a token; a hover, pressed or selected FILL names the Aero brush directly. Fluent2TokenTests
+    names a token; a hover, pressed or selected FILL names the Aero brush directly. ShellTokenTests
     unions the vendored files into its defined set for exactly that reason, and it does NOT filter on
     the "Aero" prefix, so a typo in one of those names still fails the build.
 
@@ -396,7 +396,7 @@
           <!-- Transparent rather than unset: a null Background is not hit-testable, so the strip of
                row between the borders and the glyph would swallow the pointer. The vendored row states
                the same fact as a nearly-transparent alpha; this file may not write a colour literal at
-               all (Fluent2TokenTests.LauncherStyles_ContainNoColourLiterals greps the prose too), and
+               all (ShellTokenTests.LauncherStyles_ContainNoColourLiterals greps the prose too), and
                Transparent IS hit-testable in Avalonia, so it is the same guarantee spelled without a
                number. -->
           <Panel Background="Transparent">
@@ -1058,7 +1058,10 @@
 
        ── every other page (the :not(.app) rule) ─────────────────────────────────────────────────────
        Paints NOTHING: Transparent, no border, no corner, so the window's own surface runs unbroken
-       from the rail and the caption straight through the content. That is Round 6 item 2's decision
+       from the navigation pane straight through the content. (Not from the CAPTION: that band is
+       glass over the acrylic and the client below it is opaque, so the two never meet in one
+       surface — the phrase said "from the rail and the caption" until Round 7, Task 10.) That is
+       Round 6 item 2's decision
        (除了应用页，其他页面使用和窗口相同的材质面板) and Task 7 keeps it to the letter — these three
        setters are byte-identical to the ones that shipped.
 

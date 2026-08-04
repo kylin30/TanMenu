@@ -5,7 +5,7 @@
   <!-- An informational bar: leading glyph, message, then whatever actions the host puts in
        ActionContent, then a close glyph. Avalonia has no InfoBar of its own. It was Fluent 2's
        accent-tinted surface until Round 7, Task 7 re-derived Border.tm-infobar
-       (Themes/Fluent2/Launcher.axaml) to Aero's group-box vocabulary — an unfilled hairline outline,
+       (Themes/Shell/Launcher.axaml) to Aero's group-box vocabulary — an unfilled hairline outline,
        which is what Windows 7 drew around a labelled region. The three gaps below moved onto the
        published 7 / 11 ladder in the same task.
 

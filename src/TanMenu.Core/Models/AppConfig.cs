@@ -8,7 +8,7 @@ public class AppConfig
     /// The only theme id the app recognizes. The CSS theme packs (WinXP / Win7 / Windows11 / Pixel,
     /// plus user-authored <c>user:&lt;name&gt;</c> stylesheets) went away with the WebView, the
     /// Windows 2000 theme that briefly replaced them went away with the Fluent 2 rebuild, and what
-    /// remains is one look drawn from Themes/Fluent2.
+    /// remains is one look drawn from Themes/Shell.
     /// <para>
     /// The field is kept rather than deleted so an old config still round-trips, and every legacy
     /// value — including the outgoing "Classic" — is coerced to this one on load
@@ -183,7 +183,7 @@ public class GeneralConfig
     /// <see cref="ColButtonCount"/> itself got for a while. Round 3, Task 4 removed the 按钮大小
     /// (小/中/大) setting entirely, leaving every tile at the fixed width that setting used to call
     /// "小" (168 DIP), and Round 4, item 3 removed that fixed width too: a launcher tile is now as wide
-    /// as its own icon-plus-label content — see <c>Themes/Fluent2/Launcher.axaml</c>'s
+    /// as its own icon-plus-label content — see <c>Themes/Shell/Launcher.axaml</c>'s
     /// <c>TmTileButton</c>. Nothing reads this field any more; it is kept only so a config.json written
     /// before Round 3 — which can carry "Medium" or "Large" — still deserializes without error.</summary>
     public string ButtonSize { get; set; } = "Small";

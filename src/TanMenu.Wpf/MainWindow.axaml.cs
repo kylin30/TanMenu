@@ -289,7 +289,7 @@ public partial class MainWindow : Window
     /// </para>
     /// <para>
     /// So the previous wording here was wrong in both halves and is corrected. What survives a detach
-    /// is the tile's ControlTheme: <c>TmTileButton</c> (<c>Themes/Fluent2/Launcher.axaml</c>) is applied
+    /// is the tile's ControlTheme: <c>TmTileButton</c> (<c>Themes/Shell/Launcher.axaml</c>) is applied
     /// element-locally as <c>Theme="{StaticResource TmTileButton}"</c> in <c>Views/AppPage.axaml</c>, so
     /// its Setters are a theme frame and the detach does not touch them. What IS lost is every
     /// APP-LEVEL, class-scoped style frame the page depends on, which is plenty to corrupt a

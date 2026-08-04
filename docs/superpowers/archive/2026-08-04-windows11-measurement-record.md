@@ -11,6 +11,20 @@
 > blocks. The Aero conversion design (`../specs/2026-08-04-aero-conversion-design.md`, §4 bucket C)
 > lists the other blocks that land here as their own tasks reach them. **Sections are added by the task
 > that deletes the code the section describes; nothing is moved ahead of that.**
+>
+> **Round 7, Task 10 closed the file** by adding the one bucket-C item its own task had not filed —
+> the caption-button cluster measurement and the two Fluent-template precedence findings around it,
+> below. With that section in, every item §4 bucket C names is here: the Task Manager rail survey, the
+> Mica straddle, the radius arc scans and their four-criterion table, the Windows 11 Settings
+> derivation of the category panel, the caption-button UI Automation cluster, and the `PART_TitleBar`
+> white-band investigation with its `GetVisualDescendants()` dump. Two further sections (the
+> line-height pinning, the category panel's fill) were filed by Task 7 beyond that list, and are kept.
+>
+> **A path note.** Every "Deleted from" line below names `src/TanMenu.Wpf/Themes/Fluent2/…`, which is
+> where those files were when the prose was deleted from them. Task 10 renamed that directory to
+> `src/TanMenu.Wpf/Themes/Shell/` — the name `Fluent2` had become a lie once the values came from Aero
+> — and the old paths are left standing here because this file records what was true then, not where
+> the file lives now. `Launcher.axaml` and `Tokens.axaml` are the same two files under the new name.
 
 ---
 
@@ -365,3 +379,88 @@ application, and the reference itself is what Round 7 retired. The two things th
 16 DIP glyph width and the full-ink rail glyph — survived because each had a second, non-comparative
 justification available; the pill, the pane width, the row box, the pitch and the alpha solve had only
 the comparison, and went with it.
+
+---
+
+## Round 3, Task 1 / Round 4, item 5 — Avalonia's Fluent caption, measured part by part
+
+**Deleted from** `src/TanMenu.Wpf/MainWindow.axaml`, where 66 lines of prose justified five
+`/template/` rules against Avalonia's `WindowDrawnDecorations` template plus a 140 DIP spacer, and
+from `src/TanMenu.Wpf/MainWindow.axaml.cs`, where a five-width table justified the title strip's
+search field being sized as a ratio of the client.
+**Stopped being true of the code at** Round 7, Task 1, which replaced the decorations `Template`
+wholesale and deleted the client-side title strip: the five parts those rules named belong to
+Fluent's template and are not in ours, the spacer has nothing to reserve room for because the caption
+buttons are drawn by us in the decorations Overlay, and the search field moved into the 应用 page at a
+fixed width.
+**Instrument:** UI Automation `BoundingRectangle` on the live process; a temporary
+`GetVisualDescendants()` dump reached through `TopLevelHost`; `SetWindowPos` to drive a second
+application to chosen client widths; `ilspycmd` on `Avalonia.Themes.Fluent` 12.1.0 and on
+`Avalonia.Base` 12.1.0.
+**Machine:** this repository's development machine, Windows 11 Pro 10.0.28000, primary monitor at
+150 %.
+
+### The three-button cluster — 140 DIP, and why it was not 135
+
+`Border x:Name="CaptionSpacer" Width="140"` reserved the room the caption buttons occupied, because
+nothing in `Window`'s own API reports that width on Win32. 140 was the cluster's own measured
+on-screen width, read with UI Automation and confirmed identically at two different window sizes
+after `PART_FullScreenButton` had been suppressed. It was deliberately **not** 3 × 45 = 135: each
+button's own `ControlTheme` (`FluentDrawnCaptionButton`) fixes `Width="45" Height="30"` in Avalonia's
+LOGICAL space — a DIP figure exact at every scale, not a Win32 metric — and the cluster carried a few
+extra DIP of edge padding on top of the per-button figure.
+
+The same 45 × 30 fixed size is what produced Round 3, Task 1's own defect. `PART_OverlayPanel` binds
+its `Height` to `TitleBarHeight` (48 in the app at the time) while each button sets a fixed 30 with
+`VerticalAlignment="Stretch"`; Stretch cannot stretch past an explicit `Height`, and Avalonia's
+layout falls back to centring. Measured before the fix, Minimize's `BoundingRectangle` sat inset
+**~14 physical px (~9.3 DIP)** from the panel's top and **~13 px (~8.7 DIP)** from its bottom at
+150 %. Overriding `VerticalAlignment` to `Top` on the three real buttons moved them flush to y = 0
+and left the 45 × 30 hit target untouched.
+
+### Two precedence findings, and the correction that got one of them right
+
+Both outlive their subject, and both are about which value wins in Avalonia, not about Fluent:
+
+1. **A local `TemplateBinding` on a part beats a `Style` setter for the same property.**
+   `PART_TitleTextPanel` declares `IsVisible` as a local `TemplateBinding` to `HasTitleBar`, so an
+   `IsVisible="False"` setter did nothing; `Opacity`, which has no competing local value, suppressed
+   it. `PART_FullScreenButton` has no such binding, so `IsVisible="False"` worked there — and
+   Avalonia, unlike WPF's `Hidden`, drops an invisible element from layout entirely, so the button
+   strip closed the gap by itself.
+2. **A control's own `Theme` override is applied at a higher-priority FRAME than the `ControlTheme` a
+   nested template part resolves for itself.** That, and not "the same technique as the two rules
+   above", is what let a rule declared inside `Window.WindowDecorationsTheme` beat
+   `FluentDrawnCaptionButton`'s own `VerticalAlignment="Stretch"` setter for the same property on the
+   same part. The first revision of the prose claimed the former; a Task 1 review decompiled the
+   precedence ranking and corrected it, and the correction shipped in the same block. It is recorded
+   here because it is the reason the caption override worked at all, and because the erratum is the
+   more useful half.
+
+### The search field as a ratio of the client — Task Manager, seven widths
+
+`SearchFieldWidthRatio = 0.34`, `SearchFieldMaxWidth = 600`. Both were read off Task Manager rather
+than chosen: `SetWindowPos` drove it to seven client widths from 828 to 3378 physical px at 150 % and
+its search box (`AutomationId="TextBox"`) was re-measured each time.
+
+| client px | box px | ratio |
+|---|---|---|
+| 828 | 284 | 34.3 % |
+| 1078 | 366 | 34.0 % |
+| 1478 | 500 | 33.8 % |
+| 1920 | 647 | 33.7 % |
+| 2378 | 800 | 33.6 % |
+| 2878 | 900 | clamped |
+| 3378 | 899 | clamped |
+
+0.34 is the average of the five unclamped ratios, not any single one of them, and the ceiling of
+899-900 px is 600 DIP. `SearchFieldMinWidth = 200` was **not** an observed value and said so: Task
+Manager's window could not be shrunk far enough on this machine to exercise a floor, so the 200 was
+this app's own guard, chosen near the 280 DIP fixed width it replaced.
+
+**The finding that outlives its subject:** the ratio existed because the field lived in the window's
+own title strip and had a client width to track. Round 7, Task 1 put the field back inside the 应用
+page — Microsoft's `win-window-frames` is verbatim *"Don't add controls to a window frame. Put the
+controls within the window instead."* — and a field inside a page has no client width to be a
+fraction of. The 320 DIP it takes now is AUTHORED, and the `ClientSizeProperty` subscription, the
+three constants and `ApplySearchFieldWidth` went with the ratio.

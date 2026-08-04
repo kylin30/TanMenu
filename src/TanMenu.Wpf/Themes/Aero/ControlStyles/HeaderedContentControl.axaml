@@ -40,7 +40,7 @@
     rect and clips Bd to everything outside it, which is what cuts the notch. Nothing else in the
     template does that, so removing the clipper would draw the label on top of an unbroken line.
 
-    THE THREE METRICS BELOW ARE OVERRIDDEN BY US, in Themes/Fluent2/Launcher.axaml's
+    THE THREE METRICS BELOW ARE OVERRIDDEN BY US, in Themes/Shell/Launcher.axaml's
     HeaderedContentControl.tm-group-box rule, and this file is left stating upstream's: a Style in
     Application.Styles outranks a ControlTheme's own Setter in Avalonia, so the override is the
     documented mechanism rather than a fight. See that rule for the numbers and their citations.

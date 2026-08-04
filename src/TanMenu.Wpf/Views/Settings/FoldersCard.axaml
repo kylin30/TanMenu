@@ -3,7 +3,7 @@
              x:Class="TanMenu.Wpf.Views.Settings.FoldersCard">
   <!-- Three settings rows: an icon, a title + secondary line, the controls trailing, and — on the two
        folder rows — a live path (and, for 数据文件夹, its kind and size) on the expansion row below. See
-       the "row spec's shared classes" block in Themes/Fluent2/Launcher.axaml for the anatomy, and
+       the "row spec's shared classes" block in Themes/Shell/Launcher.axaml for the anatomy, and
        AppearanceCard's code-behind for the full ReloadFromConfig contract every settings card group
        follows (and for why every row here is a Grid and never a DockPanel).
 

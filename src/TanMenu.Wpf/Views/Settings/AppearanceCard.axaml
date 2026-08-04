@@ -1,9 +1,12 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="TanMenu.Wpf.Views.Settings.AppearanceCard">
-  <!-- Four Windows 11 Settings-style rows: an icon, a title + secondary line, and the control
-       trailing. Populated by ReloadFromConfig — see the code-behind for the ReloadFromConfig
-       contract every settings card group follows.
+  <!-- Four rows inside one Aero group box: an icon, a title + secondary line, and the control
+       trailing. The row SHAPE is Round 5, item 3's spec and is unchanged; the CONTAINER stopped
+       being a Windows 11 setting card at Round 7, Task 7 (which deleted the card's fill and
+       hairline) and became a Windows 7 property-page group at Task 9. This comment said "Four
+       Windows 11 Settings-style rows" until Round 7, Task 10. Populated by ReloadFromConfig — see
+       the code-behind for the ReloadFromConfig contract every settings card group follows.
 
        Each row is a Grid (Auto,*,Auto), not a DockPanel. Built first with a DockPanel per row (icon
        docked left, control docked right, a plain StackPanel as the fill child), the longest subtitle
@@ -21,7 +24,7 @@
 
        Round 5, item 3: these four rows were already the shape the row spec generalised, so all that
        changed here is that the icon's and the header stack's literal attributes became the shared
-       classes tm-card-icon / tm-card-text (Themes/Fluent2/Launcher.axaml). No pixel moves. -->
+       classes tm-card-icon / tm-card-text (Themes/Shell/Launcher.axaml). No pixel moves. -->
   <HeaderedContentControl Classes="tm-group-box" Theme="{StaticResource GroupBox}">
     <HeaderedContentControl.Header>
       <TextBlock x:Name="GroupHead" Classes="tm-group-head" />
@@ -73,7 +76,7 @@
            tile width any more — Task 4 fixed every tile at the width that row had called "小" (168 DIP),
            and Round 4, item 3 removed that fixed width too, so a tile is as wide as its own
            icon-plus-label content (see GeneralConfig.ButtonSize's remarks, and TmTileButton in
-           Themes/Fluent2/Launcher.axaml, which carries no Width Setter). This row governs how many
+           Themes/Shell/Launcher.axaml, which carries no Width Setter). This row governs how many
            shortcuts a column holds before wrapping, not how big a tile is. A
            NumericUpDown, not a ComboBox like the other rows here: the value is an integer the user
            picks from a small range, not one of a short list of named choices, and Avalonia ships

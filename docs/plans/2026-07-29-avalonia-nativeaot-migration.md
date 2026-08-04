@@ -9,6 +9,13 @@
 > describes was itself replaced by the Fluent 2 design language in 0.11.0, which also deleted the
 > bundled fonts and added light/dark. See
 > [`docs/superpowers/specs/2026-07-30-fluent2-redesign-design.md`](../superpowers/specs/2026-07-30-fluent2-redesign-design.md).
+>
+> **Superseded twice over now (0.13.0), Round 7 Task 10.** Fluent 2 in turn was replaced by the
+> Windows 7 Aero conversion; `Themes/Retro.axaml` and `Themes/Fluent2/` are both gone, and the shell's
+> own token file is `src/TanMenu.Wpf/Themes/Shell/Tokens.axaml` over a vendored
+> `src/TanMenu.Wpf/Themes/Aero/` layer. See
+> [`docs/superpowers/specs/2026-08-04-aero-conversion-design.md`](../superpowers/specs/2026-08-04-aero-conversion-design.md).
+> The engine half of this document is still current and is why it is not deprecated outright.
 
 ## Why
 

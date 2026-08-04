@@ -13,7 +13,7 @@ namespace TanMenu.Core.Services;
 /// sum of however many children it was actually given, regardless of the available-size budget it is
 /// handed, unlike a height-driven WrapPanel whose wrap point depends entirely on that budget (see
 /// <c>WindowHost.FitToContent</c>'s own remarks). That is why this lives in the data layer rather
-/// than as a panel property in <c>Themes/Fluent2/Launcher.axaml</c>.
+/// than as a panel property in <c>Themes/Shell/Launcher.axaml</c>.
 /// </para>
 /// <para>
 /// Pulled out as a free function in Core — rather than left inline in

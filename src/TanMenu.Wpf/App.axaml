@@ -5,7 +5,7 @@
   <!--
     Four style layers, in this order:
 
-      1. FluentTheme        — whatever layer 2 has NOT templated, which since Round 7 Task 6 means:
+      1. FluentTheme        — whatever layer 2 has NOT templated, which since Round 7 Task 9 means:
                               the PathIcon this app's spinner and combo chevrons are drawn with, the
                               MenuFlyout presenter every text box's context menu is drawn in,
                               MessageBoxWindow's own Window chrome (MainWindow's caption is
@@ -16,21 +16,23 @@
                               lists and buttons left this list in Task 3; the two text boxes, the
                               每列个数 NumericUpDown and the ButtonSpinner inside it left it in Task 4;
                               the two progress bars in Task 5; the three 外观 ComboBoxes and their
-                              drop-down rows in Task 6. Avalonia's own theme is Fluent 1 vocabulary,
-                              which layers 2 and 3 re-proportion.
+                              drop-down rows in Task 6; the 设置 page's six group boxes in Task 9.
+                              Avalonia's own theme is Fluent 1 vocabulary, which layers 2 and 3
+                              re-proportion.
       2. Aero/AeroResources — the vendored Windows 7 Aero layer. Task 2 put in the colours: 168
                               <Color> keys per variant and the 110-key brush dictionary built from
                               them, plus the metrics, referenced by nothing, so that a mistake in it
                               would surface as a build error rather than as a silently odd-looking
-                              app. Tasks 3 to 6 spent them: thirteen control-theme dictionaries are
-                              merged in now, plus one StyleInclude for the AVMAP style sheet. 63
-                              keys, of which 32 are not Aero-prefixed — fifteen {x:Type X}
-                              ControlTheme keys, which is how a ControlTheme auto-applies at all,
-                              eleven spinner-geometry converters, and six Fluent key names
-                              redefined. That file is the authority on its own contents, on exactly
-                              which controls those fifteen keys reach, and on why it sits at this
-                              position in the list.
-      3. Fluent2/Tokens     — TanMenu's design tokens, Light + Dark, plus the Aero caption brushes
+                              app. Tasks 3 to 6 and Task 9 spent them: fourteen control-theme
+                              dictionaries are merged in now, plus one StyleInclude for the AVMAP
+                              style sheet. 64 keys, of which 33 are not Aero-prefixed — fifteen
+                              {x:Type X} ControlTheme keys, which is how a ControlTheme auto-applies
+                              at all, the one opt-in "GroupBox" key Task 9's group boxes name
+                              explicitly, eleven ButtonSpinner geometry-and-converter keys, and six
+                              Fluent key names redefined. That file is the authority on its own
+                              contents, on exactly which controls those fifteen keys reach, and on
+                              why it sits at this position in the list.
+      3. Shell/Tokens       — TanMenu's design tokens, Light + Dark, plus the Aero caption brushes
                               MainWindow's replaced WindowDrawnDecorations template reads. Also
                               overrides the three FluentTheme keys this app redefines for Avalonia's
                               own templates: ControlCornerRadius, OverlayCornerRadius and
@@ -39,7 +41,7 @@
                               file is listed AFTER FluentTheme below and Application.Styles is
                               searched last-first — Tokens.axaml is the authority on it and carries
                               the measurements; do not re-derive it here.
-      4. Fluent2/Launcher   — the launcher's own dialect. Every rule is an x:Key'd ControlTheme or a
+      4. Shell/Launcher     — the launcher's own dialect. Every rule is an x:Key'd ControlTheme or a
                               .tm-* class selector, so it is opt-in: the shell's own pages ask for it
                               by class, and the message box, which asks for nothing, cannot be
                               reached by it. (There is no separate settings WINDOW to keep it out of
@@ -61,8 +63,8 @@
   <Application.Styles>
     <FluentTheme />
     <StyleInclude Source="avares://TanMenu.Wpf/Themes/Aero/AeroResources.axaml" />
-    <StyleInclude Source="avares://TanMenu.Wpf/Themes/Fluent2/Tokens.axaml" />
-    <StyleInclude Source="avares://TanMenu.Wpf/Themes/Fluent2/Launcher.axaml" />
+    <StyleInclude Source="avares://TanMenu.Wpf/Themes/Shell/Tokens.axaml" />
+    <StyleInclude Source="avares://TanMenu.Wpf/Themes/Shell/Launcher.axaml" />
   </Application.Styles>
 
 </Application>

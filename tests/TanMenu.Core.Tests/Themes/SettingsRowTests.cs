@@ -10,7 +10,7 @@ using Xunit;
 namespace TanMenu.Core.Tests.Themes;
 
 /// <summary>
-/// Guards the parts of the 设置 row spec that <c>Themes/Fluent2/Launcher.axaml</c> cannot carry.
+/// Guards the parts of the 设置 row spec that <c>Themes/Shell/Launcher.axaml</c> cannot carry.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -39,7 +39,7 @@ namespace TanMenu.Core.Tests.Themes;
 ///   <c>PinToTaskbarFailed</c> doing exactly that.</item>
 /// </list>
 /// <para>
-/// Like <see cref="Fluent2TokenTests"/> these are source tests, and for the same reason: every
+/// Like <see cref="ShellTokenTests"/> these are source tests, and for the same reason: every
 /// failure they catch is silent at run time. A card that wraps its Grid in a StackPanel still
 /// renders; it just stops being able to put an expansion row at column 1's origin. A third line in
 /// the header still renders; it just moves that row's icon and control off the y every other row
@@ -175,7 +175,7 @@ public class SettingsRowTests
             "published ladder — 5 / 7 / 11, plus 0 and the stated 2 x 11 = 22 — and a card may not " +
             "state a rung outside it; the two retired constants (Margin=\"30,…\", MaxWidth=\"260\") may " +
             "not come back at all. Delete the attribute and add the class (tm-card-expander / " +
-            "tm-card-value), or move the number into Themes/Fluent2/Launcher.axaml where the ladder is.");
+            "tm-card-value), or move the number into Themes/Shell/Launcher.axaml where the ladder is.");
     }
 
     [Fact]

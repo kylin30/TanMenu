@@ -1,5 +1,12 @@
 # Windows 11 Shell — Round 2 (Task Manager fidelity)
 
+> **DEPRECATED — Round 7, Task 10.** Describes the Windows 11 shell, shipped in 0.11.0-0.12.0 and
+> replaced by the Aero conversion (`../specs/2026-08-04-aero-conversion-design.md`). Kept as the
+> record of that work; its measurements were true of the code at the time and are not true of the code
+> now. Nothing below was edited to add this header. `src/TanMenu.Wpf/Themes/Fluent2/` is named
+> `Themes/Shell/` from Task 10 on, and the Windows 11 measurements several of these sections rest on
+> are collected in `../archive/2026-08-04-windows11-measurement-record.md`.
+
 > Follow-up to `2026-07-31-win11-shell-redesign.md`, from the user's review of the shipped build on
 > 2026-08-01. Seven items, all about matching Task Manager more closely — plus one real defect the
 > first round's review wrongly dismissed as a screenshot artifact.

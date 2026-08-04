@@ -1,5 +1,21 @@
 # TanMenu — the 设置 row spec, and the rail/关于 move (Round 5 design)
 
+> **DEPRECATED IN PART — Round 7, Task 10.** Describes the Windows 11 shell, shipped in 0.11.0–0.12.0
+> and replaced by the Aero conversion (`2026-08-04-aero-conversion-design.md`). Kept as the record of
+> that work; its measurements were true of the code at the time and are not true of the code now.
+> Nothing below was edited to add this header.
+>
+> **This one document is more than a record, and saying so is the point.** The ROW SPEC itself is
+> information architecture rather than paint, and Round 7 kept it deliberately: a 16 DIP leading mark,
+> a header of exactly one title line and one subtitle line, the control trailing with its right edge on
+> one shared line, extra content on a row of its own starting at the title's left edge. All sixteen
+> rows still obey it and `tests/TanMenu.Core.Tests/Themes/SettingsRowTests.cs` still guards it. What is
+> deprecated is everything that describes the CONTAINER and the metrics: the Windows 11 row card's
+> fill, hairline and 4 DIP radius (deleted at Round 7, Task 7, the rows now sitting in Aero group
+> boxes), the Windows 11 type ramp the pinned line heights came from (deleted with
+> `LineHeightBody`/`LineHeightCaption`/`LineHeightSubtitle`, and archived), and every DIP figure taken
+> off the 4/8/12/16/20 ladder, which Task 7 re-pointed onto Aero's published 5/7/11/22.
+
 > **Status.** **Parts A, B and C are all implemented.** Task A shipped the style classes and the source
 > guard (`64fc424`, `4427589`), task B migrated all sixteen rows (`0dcd1fb`, `5cb9984`), task C moved 退出
 > to the bottom of the rail and turned 关于 into a settings card. Where an implementation measured

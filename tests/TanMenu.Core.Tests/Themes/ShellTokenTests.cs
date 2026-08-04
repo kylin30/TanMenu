@@ -10,7 +10,7 @@ namespace TanMenu.Core.Tests.Themes;
 /// <summary>
 /// Guards the invariant that keeps light/dark a property of the theme layer rather than of whichever
 /// file happened to need a colour: <c>Launcher.axaml</c> hardcodes no colour at all, and every key it
-/// or <c>MainWindow.axaml</c> names is defined either in <c>Themes/Fluent2/Tokens.axaml</c> or in the
+/// or <c>MainWindow.axaml</c> names is defined either in <c>Themes/Shell/Tokens.axaml</c> or in the
 /// vendored Aero resource layer that <c>Tokens.axaml</c> aliases onto.
 /// </summary>
 /// <remarks>
@@ -19,10 +19,10 @@ namespace TanMenu.Core.Tests.Themes;
 /// a misspelled <c>{DynamicResource}</c> key resolves to nothing at all, leaving a control with a
 /// null brush — Avalonia logs neither as an error.
 /// </remarks>
-public class Fluent2TokenTests
+public class ShellTokenTests
 {
     private static string ThemesDir =>
-        Path.Combine(RepoRoot(), "src", "TanMenu.Wpf", "Themes", "Fluent2");
+        Path.Combine(RepoRoot(), "src", "TanMenu.Wpf", "Themes", "Shell");
 
     private static string LauncherXaml => File.ReadAllText(Path.Combine(ThemesDir, "Launcher.axaml"));
     private static string TokensXaml => File.ReadAllText(Path.Combine(ThemesDir, "Tokens.axaml"));

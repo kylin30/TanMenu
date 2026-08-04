@@ -1,11 +1,14 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="TanMenu.Wpf.Views.Settings.BehaviorCard">
-  <!-- Six Windows 11 Settings-style rows: an icon, a title + secondary line, and the control trailing —
-       the row spec's base variant, six times (see the "row spec's shared classes" block in
-       Themes/Fluent2/Launcher.axaml for the anatomy and for what each class carries, and
+  <!-- Six rows inside one Aero group box: an icon, a title + secondary line, and the control trailing —
+       the row spec's base variant, six times. The row shape is Round 5, item 3's and is unchanged;
+       the container was a Windows 11 setting card until Round 7, Task 7 deleted its fill and
+       hairline and Task 9 made it a Windows 7 property-page group. This comment opened "Six
+       Windows 11 Settings-style rows" until Round 7, Task 10. See the "row spec's shared classes"
+       block in Themes/Shell/Launcher.axaml for the anatomy and for what each class carries, and
        AppearanceCard's code-behind for the full ReloadFromConfig contract every settings card group
-       follows).
+       follows.
 
        Round 5, item 3 rebuilt two of these six. 固定到任务栏 and 热键 used to wrap their Grid in a
        StackPanel and hang their status/help line BELOW it, indented by a hand-written Margin="30,8,0,0",
@@ -138,7 +141,7 @@
                  once the ONE control on the whole 设置 page with no Classes and no Theme, so in every state
                  it fell through to the stock text box — Fluent's then — whose disabled fill was a different
                  grey from the one every disabled button beside it used, i.e. two disabled vocabularies on
-                 one page. Four TextBox.tm-keycap /template/ rules in Themes/Fluent2/Launcher.axaml existed
+                 one page. Four TextBox.tm-keycap /template/ rules in Themes/Shell/Launcher.axaml existed
                  to fix exactly that, and Round 7 Task 7 DELETED all four: every control on this page is a
                  vendored Aero theme now — this box, the 每列个数 NumericUpDown beside it, the three
                  ComboBoxes and the buttons — so "one disabled vocabulary" is true by construction, and

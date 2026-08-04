@@ -21,10 +21,13 @@ public static class AppLanguage
             ["Behavior"] = ("行为", "Behavior"),
             ["Folders"] = ("文件夹", "Folders"),
             ["CommonTools"] = ("常用工具", "Common Tools"),
-            // No trailing colon: these are Windows 11 settings-card titles (an icon + title/subtitle
-            // stack, with the control on its own trailing edge), not the fixed-width "label: control"
-            // rows the pre-Fluent-2 dialog used. Only SettingsWindow (deleted in Task 13) ever paired
-            // these with an adjacent control on the SAME line, which is the one layout a colon suited.
+            // No trailing colon: these are settings-ROW titles — an icon, then a title over a
+            // subtitle, with the control on its own trailing edge — not the fixed-width
+            // "label: control" pairs the pre-Fluent-2 dialog used. Only SettingsWindow (deleted in
+            // Task 13) ever paired these with an adjacent control on the SAME line, which is the one
+            // layout a colon suited. The row shape is Round 5, item 3's spec and survived Round 7's
+            // Aero conversion intact; the sentence used to call it "Windows 11 settings-card titles",
+            // which stopped describing the container at Round 7, Task 7.
             ["Language"] = ("语言", "Language"),
             // "Theme" / "ThemeFolder" / "ThemeFolderTooltip" all went with the theme system. The
             // Fluent 2 rebuild has one look rendered in two variants, so the row offers light/dark.

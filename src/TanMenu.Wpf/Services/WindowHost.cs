@@ -64,7 +64,7 @@ public sealed partial class WindowHost : IWindowHost
     /// <c>chromeWidth</c> term the caller composes as <c>MainWindow.RailWidthDip + PaneBorderDip</c> —
     /// a <c>Border</c> draws its <c>BorderThickness</c> inside its own bounds and arranges its child
     /// inside that, so the 应用 pane's <c>BorderThickness="1,1,0,0"</c>
-    /// (<c>Border.tm-page-pane</c>, Themes/Fluent2/Launcher.axaml, Round 4 item 5) takes 1 DIP off the
+    /// (<c>Border.tm-page-pane</c>, Themes/Shell/Launcher.axaml, Round 4 item 5) takes 1 DIP off the
     /// page on each of those two axes and the fit has to hand both back. Change that thickness and this
     /// constant and <c>MainWindow.PaneBorderDip</c> both have to change with it.
     /// </summary>

@@ -1,5 +1,12 @@
 # Windows 11 App Shell Redesign — Implementation Plan
 
+> **DEPRECATED — Round 7, Task 10.** Describes the Windows 11 shell, shipped in 0.11.0-0.12.0 and
+> replaced by the Aero conversion (`../specs/2026-08-04-aero-conversion-design.md`). Kept as the
+> record of that work; its measurements were true of the code at the time and are not true of the code
+> now. Nothing below was edited to add this header. `src/TanMenu.Wpf/Themes/Fluent2/` is named
+> `Themes/Shell/` from Task 10 on, and the Windows 11 measurements several of these sections rest on
+> are collected in `../archive/2026-08-04-windows11-measurement-record.md`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Turn TanMenu's light-dismiss acrylic flyout into an ordinary Windows 11 application window — a Mica window with a system title bar, a two-entry navigation rail (应用 / 设置), horizontally arranged categories, an in-page taskbar-pin notice, and the former settings window absorbed as a page of immediately-applying setting cards.

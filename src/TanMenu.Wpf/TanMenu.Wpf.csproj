@@ -63,9 +63,14 @@
     <ProjectReference Include="..\TanMenu.Core\TanMenu.Core.csproj" />
   </ItemGroup>
 
-  <!-- No fonts are embedded. The Fluent 2 rebuild uses the system UI face (Segoe UI Variable Text →
-       Segoe UI, with Microsoft YaHei UI for CJK), which removed the four bundled TTFs and the 22.7 MB
-       they cost — a third of the shipped payload. -->
+  <!-- No fonts are embedded, and nothing below adds one: the two AvaloniaResource entries are an icon
+       and a tile image. The Fluent 2 rebuild removed the four bundled TTFs and the 22.7 MB they cost —
+       a third of the shipped payload — by taking the system UI face instead. It named that face
+       "Segoe UI Variable Text → Segoe UI" until Round 7, Task 7, which dropped the Variable optical
+       sizes (a Windows 11 mechanism; Windows 7 had one face) and left plain
+       "Segoe UI, Microsoft YaHei UI" — Services/AppFonts.UiStack, and Themes/Shell/Tokens.axaml's
+       AppFontFamily. Round 7 Task 2 also declined to vendor the Aero theme's own seven bundled TTFs,
+       for the same payload reason plus two more: no font licence upstream and no CJK coverage. -->
   <ItemGroup>
     <AvaloniaResource Include="wwwroot\app.ico" />
     <AvaloniaResource Include="wwwroot\app-tile.png" />

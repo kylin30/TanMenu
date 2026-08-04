@@ -2,7 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="TanMenu.Wpf.Views.Settings.AboutCard">
   <!-- One settings row: 关于. See the "row spec's shared classes" block in
-       Themes/Fluent2/Launcher.axaml for the anatomy, and AppearanceCard's code-behind for the full
+       Themes/Shell/Launcher.axaml for the anatomy, and AppearanceCard's code-behind for the full
        ReloadFromConfig contract every settings card group follows.
 
        Round 5, item 2 ("关于集成到设置页中"). 关于 used to be a rail row that raised a full-page overlay
@@ -11,9 +11,13 @@
        shows the version or the copyright to the user any more except the startup splash's own footer,
        which is the same two strings from the same place (Services/AppIdentity.cs).
 
-       WHY IT IS ITS OWN GROUP, LAST ON THE PAGE. Windows 11 puts identity at the end of a settings page,
-       and this is the only group here with no interactive control at all — so the page ends on
-       information rather than on a half-disabled action, while 更新 keeps the page's last real action.
+       WHY IT IS ITS OWN GROUP, LAST ON THE PAGE. This is the only group here with no interactive
+       control at all, so the page ends on information rather than on a half-disabled action, while
+       更新 keeps the page's last real action. That reason is self-standing and is what the placement
+       rests on now. Round 5, item 2 originally justified it by pointing at Windows 11's own settings
+       pages, which put identity at the end; Round 7 retired that reference along with the rest of the
+       Windows 11 shell, and no Windows 7 UX Guide page states an equivalent rule — so the citation is
+       recorded as provenance, not re-asserted.
 
        THE ONLY VARIANT-6 ROW ON THE PAGE: column 2 has no child. The Grid is the standard
        Auto,*,Auto anyway, because the header, the icon box and the expansion row are the same

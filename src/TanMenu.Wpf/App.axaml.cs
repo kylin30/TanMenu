@@ -138,7 +138,7 @@ public partial class App : Application
                     ? new VelopackAppUpdateService()
                     : new FixedAppUpdateService(AppUpdateStatus.Disabled));
         // NOTE: ThemeService and the BlazorWebView registrations are gone with the CSS theme system
-        // and the WebView. There is exactly one look now (Themes/Fluent2, applied in App.axaml),
+        // and the WebView. There is exactly one look now (Themes/Shell, applied in App.axaml),
         // rendered in a light or dark variant chosen by AppTheme.
 
         Services = services.BuildServiceProvider();

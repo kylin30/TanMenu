@@ -17,14 +17,14 @@
 
     ── Why the variant keys are named here and not upstream ─────────────────────────────────────
     Upstream keys its light dictionary "Default". This app keys its own "Light" (see
-    Themes/Fluent2/Tokens.axaml), and Fluent2TokenTests.EveryThemedTokenIsDefinedInBothVariants
+    Themes/Shell/Tokens.axaml), and ShellTokenTests.EveryThemedTokenIsDefinedInBothVariants
     reads that literal name out of Tokens.axaml. Merging the vendored files inside a wrapper WE
     write is what lets the outer key names stay ours while the values stay theirs — zero test change
     and no parser error standing in for a parity failure. The two vendored variant files declare the
     identical 168 x:Key names, so the "Light"/"Dark" pair below has no hole in it on day one.
 
     ── Load order, which is load-bearing ────────────────────────────────────────────────────────
-    App.axaml lists this file AFTER <FluentTheme /> and BEFORE Themes/Fluent2/Tokens.axaml.
+    App.axaml lists this file AFTER <FluentTheme /> and BEFORE Themes/Shell/Tokens.axaml.
     Avalonia.Styling.Styles.TryGetResource counts DOWN from Count-1, so Application.Styles is
     searched last-first: Launcher, then Tokens, then this, then FluentTheme. Aero therefore wins
     over Fluent, and our own overrides still win over Aero. That ordering is the whole reason
@@ -93,7 +93,11 @@
         one is opt-in: the six group boxes on the 设置 page, one per file in Views/Settings. Task 9.
 
     Everything else is untouched BY CONSTRUCTION rather than by luck: the other 25 <Button> elements
-    and both <ListBoxItem>s carry an explicit Theme= from Themes/Fluent2/Launcher.axaml, and the app's
+    and both <ListBoxItem>s carry an explicit Theme=. Twenty-two of those Theme= values resolve to
+    Themes/Shell/Launcher.axaml; the remaining three are MainWindow.axaml's own caption buttons on
+    TmCaptionButton, which that file declares in its own Window.Resources because it is window
+    chrome rather than launcher dialect. (This paragraph named Launcher.axaml as the source of all
+    25 until Round 7, Task 10.) The app's
     own markup contains no <RepeatButton> and no <ToggleButton> at all - the eight RepeatButtons in
     the tree are inside this layer's ScrollBar template, which themes them itself, and two more are
     inside the ButtonSpinner template, which gives them a theme of its own.
@@ -101,7 +105,7 @@
     ── The one thing Task 4 broke on purpose ─────────────────────────────────────────────────────
     ControlStyles/TextBox.axaml replaces Fluent's TextBox template wholesale, and Aero's names its
     background border BgElement where Fluent's named it PART_BorderElement. Five rules in
-    Themes/Fluent2/Launcher.axaml reached for the Fluent name and would have gone silently dead;
+    Themes/Shell/Launcher.axaml reached for the Fluent name and would have gone silently dead;
     all five were fixed in the same commit as the merge below - all five re-targeted onto
     Border#BgElement, none deleted, and the search field's one gained a :pointerover twin because
     Aero repaints the background on hover as well - and

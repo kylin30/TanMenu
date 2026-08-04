@@ -11,7 +11,7 @@
          family has no CJK coverage, so honouring the line would render this Chinese-facing app's
          item names as tofu. That line was the ONLY reference to those fonts in the whole upstream
          tree, which is what makes not taking them coherent rather than merely convenient.
-         Themes/Fluent2/Tokens.axaml keeps its own override of the same key regardless - belt and
+         Themes/Shell/Tokens.axaml keeps its own override of the same key regardless - belt and
          braces, plus AeroAttributionTests.NoVendoredFile_ReferencesTheInterFontFamily.
       2. DELETED <StaticResource x:Key="ControlContentThemeFontSize" ResourceKey="AeroFontSizeNormal" />
          (upstream line 11; the design document cites it as line 9, which is the corner radius).

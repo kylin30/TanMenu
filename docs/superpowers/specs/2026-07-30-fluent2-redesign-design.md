@@ -1,5 +1,12 @@
 # TanMenu — Fluent 2 redesign (replaces the Windows 2000 theme)
 
+> **DEPRECATED — Round 7, Task 10.** Describes the Windows 11 shell, shipped in 0.11.0–0.12.0 and
+> replaced by the Aero conversion (`2026-08-04-aero-conversion-design.md`). Kept as the record of that
+> work; its measurements were true of the code at the time and are not true of the code now. Nothing
+> below was edited to add this header. Note in particular that `src/TanMenu.Wpf/Themes/Fluent2/` is
+> named `Themes/Shell/` from Task 10 on, and that every one of the 46 tokens this document introduced
+> was aliased, re-valued or deleted by Round 7, Task 7.
+
 > Design spec. Every claim about Avalonia below was measured with a throwaway probe against
 > Avalonia 12.1 on 2026-07-30, not recalled — the measurements are quoted where they change a
 > decision. Where this file and the code disagree, the code wins and this file is the bug.

@@ -33,7 +33,7 @@ namespace TanMenu.Core.Tests.Themes;
 /// line is deleted on vendoring; this test is what keeps it deleted.
 /// </para>
 /// <para>
-/// Both are SOURCE tests, like <see cref="Fluent2TokenTests"/> and
+/// Both are SOURCE tests, like <see cref="ShellTokenTests"/> and
 /// <see cref="ShellConstantTests"/>, and for the usual reason: neither failure throws at run time.
 /// </para>
 /// </remarks>

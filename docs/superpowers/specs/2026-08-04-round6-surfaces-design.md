@@ -1,5 +1,16 @@
 # TanMenu — Windows 11 shell, Round 6 design: surfaces, the rail's selection, and category panels
 
+> **DEPRECATED — Round 7, Task 10.** Describes the Windows 11 shell, shipped in 0.11.0–0.12.0 and
+> replaced by the Aero conversion (`2026-08-04-aero-conversion-design.md`). Kept as the record of that
+> work; its measurements were true of the code at the time and are not true of the code now. Nothing
+> below was edited to add this header. Three of its four items lost their subject outright: item 2's
+> Mica-straddle argument (there is no Mica — the caption band is AcrylicBlur and the client below it is
+> opaque), item 3's accent selection pill (deleted with the icon rail at Task 8), and item 4's category
+> panel fill (the panel is an unfilled Aero group box since Task 9). Item 1 — the search field shown
+> only on 应用 — survives in a stronger form: the field lives *inside* the 应用 page now, so there is
+> no visibility rule left to get wrong. All the measurements are in
+> `../archive/2026-08-04-windows11-measurement-record.md`.
+
 > **Status when written: DESIGN ONLY.** No source file was edited and nothing was committed while
 > this document was written; the repository was clean at `ef79481` throughout.
 >

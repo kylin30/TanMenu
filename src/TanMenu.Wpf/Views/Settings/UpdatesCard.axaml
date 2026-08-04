@@ -2,7 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="TanMenu.Wpf.Views.Settings.UpdatesCard">
   <!-- One settings row: 更新状态. See the "row spec's shared classes" block in
-       Themes/Fluent2/Launcher.axaml for the anatomy, and AppearanceCard's code-behind for the full
+       Themes/Shell/Launcher.axaml for the anatomy, and AppearanceCard's code-behind for the full
        ReloadFromConfig contract every settings card group follows.
 
        Round 5 rebuilt this group from two cards to one, for the two defects the user screenshotted.

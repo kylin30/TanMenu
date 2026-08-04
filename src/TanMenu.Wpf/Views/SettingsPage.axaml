@@ -7,7 +7,7 @@
        and no OK/Cancel/Apply. Each of the six below is a HeaderedContentControl on the vendored Aero
        theme (Themes/Aero/ControlStyles/HeaderedContentControl.axaml, opt-in under its "GroupBox" key)
        with its 外观 / 行为 / 文件夹 / 常用工具 / 更新 / 关于 label notched into the top of its outline;
-       Themes/Fluent2/Launcher.axaml's HeaderedContentControl.tm-group-box rule carries the three
+       Themes/Shell/Launcher.axaml's HeaderedContentControl.tm-group-box rule carries the three
        metrics we override and their citations. The INFORMATION ARCHITECTURE inside each box is Round 5
        item 3's row spec and is untouched — what changed is that a row now sits inside a container
        instead of under a bare heading. The immediate-apply behaviour is unchanged too: every control
@@ -48,7 +48,12 @@
        HorizontalAlignment="Left" — a shrink-wrapped column parked against the left edge no matter how
        wide the window got. Task Manager's own settings cards (measured live) stretch
        to fill the content area with a ~24-25 DIP gutter on both sides up to a measured ~1250 DIP cap,
-       then centre once that cap is hit. StackPanel's default HorizontalAlignment is already Stretch
+       then centre once that cap is hit. TASK MANAGER STOPPED BEING THIS APP'S REFERENCE AT ROUND 7 —
+       the gutter it set is already re-derived below and the archive
+       (docs/superpowers/archive/2026-08-04-windows11-measurement-record.md) holds the rail survey
+       that went with it. The 1250 CAP is the one number of that survey still live in this file, and
+       it stays for a reason that outlives the reference: a settings row's text column has to stop
+       growing somewhere or a 2560 DIP window stretches every subtitle into one unreadable line. StackPanel's default HorizontalAlignment is already Stretch
        (only the explicit "Left" above was overriding it), and this ScrollViewer never turns on
        HorizontalScrollBarVisibility (it only sets Vertical), so ScrollContentPresenter's own
        MeasureOverride gives CardStack the real, bounded viewport width rather than
@@ -68,7 +73,7 @@
        at the 872 DIP floor the group boxes' outline measures 1000 px = 666.67 DIP against a 711 DIP
        content pane (PrintWindow flag 2, 150 %), which is 711 − 2×22. The gap BETWEEN two groups moved
        though — it used to be tm-group-head's own 22 DIP top margin and it is now the group box's
-       11 DIP bottom margin (Themes/Fluent2/Launcher.axaml's tm-group-box rule says why). -->
+       11 DIP bottom margin (Themes/Shell/Launcher.axaml's tm-group-box rule says why). -->
 
   <ScrollViewer x:Name="SettingsScroll" VerticalScrollBarVisibility="Auto">
     <StackPanel x:Name="CardStack" MaxWidth="1250" Margin="22,11,22,22">

@@ -1,5 +1,13 @@
 # TanMenu — Windows 11 app shell (nav + pages, replaces the flyout launcher)
 
+> **DEPRECATED — Round 7, Task 10.** Describes the Windows 11 shell, shipped in 0.11.0–0.12.0 and
+> replaced by the Aero conversion (`2026-08-04-aero-conversion-design.md`). Kept as the record of that
+> work; its measurements were true of the code at the time and are not true of the code now. Nothing
+> below was edited to add this header. The shell's SHAPE survives — a window, a navigation pane on the
+> left, 应用 and 设置 as pages, settings applied immediately — and its PAINT does not: the system title
+> bar became a hand-drawn Aero caption, Mica became AcrylicBlur on the caption band over an opaque
+> client, and the icon rail became a 160 DIP labelled pane.
+
 > **Status: implemented in `28158a8`..`e7f4797`, corrected by `41c6529`** (Task 13 of 13 deletes
 > `SettingsWindow` and finishes the wiring this spec describes; `e7f4797` is a `MenuService`
 > null-safety fix found while verifying it; `41c6529` is the single fix wave clearing the
