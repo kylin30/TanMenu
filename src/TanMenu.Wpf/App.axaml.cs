@@ -133,8 +133,9 @@ public partial class App : Application
         // constructed by the page because all six card groups and the commit row have to share ONE
         // draft and none of them can be handed it — Avalonia's XAML loader owns the cards' construction
         // and ISettingsCard has no member to push it through. Resolved lazily, so it is seeded from the
-        // config as it stands when 设置 is first opened; re-seeded in place afterwards (Reseed), never
-        // replaced, so the commit row's DirtyChanged subscription survives every 取消.
+        // config as it stands when 设置 is first opened; re-seeded in place afterwards (Reseed) on every
+        // close AND on every successful commit, never replaced, so the commit row's DirtyChanged
+        // subscription survives all of them.
         services.AddSingleton(sp => SettingsDraft.From(
             sp.GetRequiredService<ConfigService>(),
             sp.GetRequiredService<IAutoStartService>()));

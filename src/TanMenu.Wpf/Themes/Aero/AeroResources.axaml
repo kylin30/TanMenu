@@ -58,8 +58,11 @@
     things nobody asked for. Its consumers name it with Theme="{StaticResource GroupBox}".
     THAT CHOICE STOPPED BEING HYPOTHETICAL IN ROUND 8, TASK 2, which added a real
     {x:Type TabItem} theme: the two coexist precisely because GroupBox is not keyed by type, so the
-    Options dialog's five tabs take TabItem.axaml and the six group boxes inside them keep taking
-    HeaderedContentControl.axaml, with no rule reaching the other's subject.
+    Options dialog's SIX tabs take TabItem.axaml and the six group boxes inside them - one per tab -
+    keep taking HeaderedContentControl.axaml, with no rule reaching the other's subject. (Six is
+    counted off Dialogs/OptionsWindow.axaml:129-137 and asserted by
+    OptionsWindowTests.EveryTabHeaderComesFromAppLanguage. Round 8, Task 4 moves 关于 into an About box
+    and leaves five; this count moves in THAT commit, not before it.)
 
     Counted against the tree - MARKUP AND CODE-BEHIND BOTH, because a control built in code has no
     Theme= to grep for - that reach is:
@@ -88,8 +91,11 @@
         Task 2 deleted Views/SettingsPage.axaml: a property page does not scroll (PUBLISHED,
         win-property-win, "Don't scroll property pages"), so the Options dialog has no scroller of
         its own and the settings surface's scrolling ScrollViewer went with the page.
-      - TabControl, ONE, and TabItem, FIVE - Dialogs/OptionsWindow.axaml, the whole of Round 8
-        Task 2's reason for vendoring them. Neither carries a Theme=.
+      - TabControl, ONE, and TabItem, SIX - Dialogs/OptionsWindow.axaml:129-137, the whole of Round 8
+        Task 2's reason for vendoring them. Neither carries a Theme=. SIX, not the FIVE this block
+        said when Task 2 wrote it: five was the design's forward-looking count for after Round 8,
+        Task 4 moves 关于 into an About box, and it was the one number in this block that was copied
+        rather than re-derived against the tree.
       - ListBox, ONE navigation rail in MainWindow.axaml. It was both until Round 8, Task 2 deleted
         NavFooterRail: 设置 is a command that opens a dialog now, not a page the shell navigates to,
         so its row is a Button like the three commands above it.

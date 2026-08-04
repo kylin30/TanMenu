@@ -88,10 +88,15 @@ public sealed class SettingsLauncher : ISettingsLauncher
     /// centred window.
     /// </para>
     /// <para>
-    /// <b>Single instance is <c>OptionsWindow.Current</c></b> — a static field the window sets in its
-    /// constructor and clears in <c>OnClosed</c>. A second call while one is up activates the one that
-    /// exists instead of stacking a second modal on the same owner. That same field is what
-    /// <c>App.WarnHotkeyRegistrationFailedAsync</c> re-owners its warning to.
+    /// <b>Single instance is <c>OptionsWindow.Current</c></b> — a static field the window sets as the
+    /// LAST statement of its constructor and clears in <c>OnClosed</c>. A second call while one is up
+    /// activates the one that exists instead of stacking a second modal on the same owner. That same
+    /// field is what <c>App.WarnHotkeyRegistrationFailedAsync</c> re-owners its warning to. The
+    /// ordering inside that constructor is this branch's business: if the field were claimed before the
+    /// XAML load and the six <c>ReloadFromConfig</c>s — the very code the <see cref="Open"/> remark
+    /// above records throwing once — a constructor that faulted would leave <c>Current</c> pointing at
+    /// a window that never opens and therefore never reaches <c>OnClosed</c>, and this branch would
+    /// then <c>Activate()</c> that dead window, silently, for the rest of the session.
     /// </para>
     /// </remarks>
     private async Task OpenCoreAsync()

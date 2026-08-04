@@ -95,10 +95,18 @@ internal sealed class SettingsDraft
 
     /// <summary>
     /// Re-clone the live config, re-read the OS autostart state, drop any pending desire, and leave
-    /// <see cref="IsDirty"/> false. Used by 取消 and by the three commands that rewrite <c>config.json</c>
-    /// underneath the surface — 更改数据文件夹, 重置为默认, 恢复 — where a later 确定 would otherwise copy a
-    /// stale draft over the file those commands just wrote.
+    /// <see cref="IsDirty"/> false.
     /// </summary>
+    /// <remarks>
+    /// Four callers, and they are two different jobs. <b>Discard:</b> <c>OptionsWindow.OnClosed</c> —
+    /// every close of the dialog, whichever button or × got there — and the three commands that rewrite
+    /// <c>config.json</c> underneath the surface (更改数据文件夹, 重置为默认, 恢复), where a later 确定 would
+    /// otherwise copy a stale draft over the file those commands just wrote. <b>Re-baseline:</b>
+    /// <see cref="SettingsCommit.ApplyAsync"/>, after a successful save — a committed draft's seed has
+    /// moved, and <see cref="AutoStartAtSeed"/> in particular must describe the OS state the commit just
+    /// wrote, or the next toggle of 开机自启 in a dialog that stayed open compares against a value that
+    /// is one commit out of date and never reads as dirty.
+    /// </remarks>
     public void Reseed()
     {
         Working = Clone(_live.Config);

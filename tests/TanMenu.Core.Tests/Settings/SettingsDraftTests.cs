@@ -51,14 +51,18 @@ public class SettingsDraftTests
         }
     }
 
-    /// <summary>A ConfigService over a throwaway data root, never loaded and never saved — the draft
-    /// only ever reads <c>Config</c>, which the constructor already populates with defaults.</summary>
-    private static ConfigService NewConfig()
+    /// <summary>A ConfigService over a throwaway data root, never loaded — the draft only ever reads
+    /// <c>Config</c>, which the constructor already populates with defaults. Nothing here is created on
+    /// disk until something calls <c>SaveAsync</c>, which one test below does; that one takes the
+    /// <paramref name="dataRoot"/> overload and deletes the tree afterwards.</summary>
+    private static ConfigService NewConfig(out string dataRoot)
     {
-        var root = Path.Combine(Path.GetTempPath(), "TanMenuDraft_" + Path.GetRandomFileName());
-        var paths = new AppDataPaths(Path.Combine(root, "Local"), Path.Combine(root, "Cache"));
+        dataRoot = Path.Combine(Path.GetTempPath(), "TanMenuDraft_" + Path.GetRandomFileName());
+        var paths = new AppDataPaths(Path.Combine(dataRoot, "Local"), Path.Combine(dataRoot, "Cache"));
         return new ConfigService(paths, NullLogger<ConfigService>.Instance);
     }
+
+    private static ConfigService NewConfig() => NewConfig(out _);
 
     // ── the clone ────────────────────────────────────────────────────────────────────────────────
 
@@ -352,6 +356,46 @@ public class SettingsDraftTests
         Assert.Equal(0, autoStart.Writes); // 取消 has nothing to undo, because nothing was written
     }
 
+    [Fact]
+    public void Reseed_IsWhatMakesTheAutoStartSeedSurviveACommit()
+    {
+        // Round 8, Task 2's fix round. AutoStartAtSeed is the ONLY piece of the draft a commit moves
+        // without touching the config: SettingsCommit.ApplyAutoStart writes the OS and clears the
+        // desire, and nothing in the draft learns that the OS is now somewhere else. Left that way, the
+        // NEXT toggle of 开机自启 compares against a seed one commit out of date and reads as clean —
+        // 应用 disabled over a real pending edit, and 取消 discarding it without a prompt.
+        var config = NewConfig();
+        var autoStart = new FakeAutoStart { State = false };
+        var draft = SettingsDraft.From(config, autoStart);
+        Assert.False(draft.AutoStartAtSeed);
+
+        draft.AutoStartDesired = true;
+        draft.Revalidate();
+        Assert.True(draft.IsDirty);
+
+        SettingsCommit.ApplyAutoStart(draft, autoStart);
+        Assert.True(autoStart.State); // the OS moved…
+        Assert.False(draft.AutoStartAtSeed); // …and the seed did not
+
+        // The defect, stated rather than implied: with the seed stale, turning the row back off is
+        // invisible to IsDirty.
+        draft.AutoStartDesired = false;
+        draft.Revalidate();
+        Assert.False(draft.IsDirty);
+
+        // Re-seeding is the whole fix, and it is what SettingsCommit.ApplyAsync does after a successful
+        // save (covering 应用, which leaves the dialog open) and what OptionsWindow.OnClosed does on
+        // every close (covering 确定, 取消 and the title-bar ×).
+        draft.Reseed();
+        Assert.True(draft.AutoStartAtSeed);
+        Assert.Null(draft.AutoStartDesired);
+        Assert.False(draft.IsDirty);
+
+        draft.AutoStartDesired = false;
+        draft.Revalidate();
+        Assert.True(draft.IsDirty);
+    }
+
     // ── the one non-config field ─────────────────────────────────────────────────────────────────
 
     [Fact]
@@ -411,6 +455,71 @@ public class SettingsDraftTests
         Assert.Equal(0, autoStart.Writes);
         Assert.True(autoStart.State);
         Assert.Null(draft.AutoStartDesired);
+    }
+
+    /// <summary>
+    /// The whole of <see cref="SettingsCommit.ApplyAsync"/>'s success path, driven for real, because the
+    /// re-seed it grew in Round 8, Task 2's fix round is not observable from any of the pieces on their
+    /// own.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <c>host</c> and <c>owner</c> are passed null DELIBERATELY: both are touched only inside the
+    /// <c>catch</c> around <c>SaveAsync</c> — <c>host.SuppressHide</c> and
+    /// <c>TopLevel.GetTopLevel(owner)</c> bracket the failure message box — and the save here cannot
+    /// fail. A null reaching either of them would therefore be a real regression in the failure path's
+    /// bracketing, which is worth catching. <c>Application.Current</c> is null in a test process, so
+    /// step 4's <c>AppTheme.Apply</c> is skipped by its own guard.
+    /// </para>
+    /// <para>
+    /// This is the ONE test in this file that writes to disk. It writes only inside its own randomly
+    /// named directory under the temp path and deletes the tree in a finally.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public async Task ApplyAsync_ReseedsTheDraftOntoWhatItJustCommitted()
+    {
+        var config = NewConfig(out var dataRoot);
+        try
+        {
+            config.Config.General.ColButtonCount = 10;
+            var autoStart = new FakeAutoStart { State = false };
+            var draft = SettingsDraft.From(config, autoStart);
+            var events = new AppEvents();
+            var raised = 0;
+            events.SettingsChanged += () => raised++;
+
+            draft.Working.General.ColButtonCount = 4;
+            draft.AutoStartDesired = true;
+            draft.Revalidate();
+            Assert.True(draft.IsDirty);
+
+            var committed = await SettingsCommit.ApplyAsync(draft, config, events, autoStart, null!, null!);
+
+            Assert.True(committed);
+            Assert.Equal(1, raised);
+            Assert.Equal(4, config.Config.General.ColButtonCount);
+            Assert.True(File.Exists(Path.Combine(dataRoot, "Local", "config.json")));
+
+            // The draft is re-seeded, not merely re-validated: Working is a NEW clone of what landed…
+            Assert.Equal(4, draft.Working.General.ColButtonCount);
+            Assert.NotSame(config.Config, draft.Working);
+            Assert.False(draft.IsDirty);
+
+            // …and the autostart seed describes the OS the commit just wrote, which is the half that was
+            // wrong. Toggling the row back must now read as a change — before the re-seed the seed still
+            // said false, so this comparison said "no change" and 应用 stayed disabled.
+            Assert.True(draft.AutoStartAtSeed);
+            Assert.Null(draft.AutoStartDesired);
+            draft.AutoStartDesired = false;
+            draft.Revalidate();
+            Assert.True(draft.IsDirty);
+        }
+        finally
+        {
+            if (Directory.Exists(dataRoot))
+                Directory.Delete(dataRoot, recursive: true);
+        }
     }
 
     [Fact]

@@ -9,8 +9,9 @@
     for byte upstream, line endings included. cmp against the raw file at that revision passes.
 
     Round 8, Task 2 vendored this file and ControlStyles/TabItem.axaml together: the Options dialog
-    (Dialogs/OptionsWindow.axaml) is a Windows 7 property sheet and its five tabs are the first and
-    only TabControl in this app. NO COLOUR WORK WAS NEEDED. Every key the two files name already
+    (Dialogs/OptionsWindow.axaml) is a Windows 7 property sheet and its six tabs are the first and
+    only TabControl in this app - five once Round 8, Task 4 moves 关于 into an About box.
+    NO COLOUR WORK WAS NEEDED. Every key the two files name already
     exists in the vendored layer - AeroTabControlBackground / OuterBorderBrush / InnerBorderBrush at
     AVMAP/Brushes.axaml:184-186 over Variant/Light.axaml:151-155 and its Dark twin, and the whole
     AeroButton* family the tab item borrows for its idle, hover and disabled states.

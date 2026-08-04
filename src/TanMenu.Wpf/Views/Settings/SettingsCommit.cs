@@ -34,7 +34,7 @@ internal static class SettingsCommit
 {
     /// <summary>
     /// Commit the draft: copy the eleven named properties onto the live config, save once, apply the
-    /// OS-side effects, then re-verify the whole surface against what actually landed.
+    /// OS-side effects, re-seed the draft onto what landed, then re-verify the whole surface against it.
     /// </summary>
     /// <returns>true if the config write succeeded (the OS effects may still have failed, and did not
     /// roll it back — see the class remarks).</returns>
@@ -91,10 +91,24 @@ internal static class SettingsCommit
         if (Application.Current is { } app)
             AppTheme.Apply(app, draft.Working.General.Appearance);
 
-        // 5. One SettingsChanged for the whole commit instead of one per control. The settings surface
+        // 5. RE-SEED THE DRAFT, because a committed draft is a draft whose seed has moved. Working is
+        //    re-cloned from the config that was just written and AutoStartAtSeed is re-read from the OS
+        //    step 3 just wrote. Without this the seed kept describing the state BEFORE the commit for as
+        //    long as the dialog stayed open, which is exactly the 应用 case: commit 开机自启 with 应用,
+        //    toggle the row back, and Revalidate compared the new desire against the pre-commit seed,
+        //    found them equal, and left 应用 disabled over a real pending edit. OptionsWindow.OnClosed
+        //    re-seeds on the close paths for the same reason; this is the one that stays open.
+        //    It runs BEFORE the raise so the cards below repopulate from the new clone rather than from
+        //    the one this line replaces — ToolsCard's per-tool check boxes hold DefaultTool references
+        //    out of Working in their Tag, and ReloadFromConfig is what rebuilds them.
+        draft.Reseed();
+
+        // 6. One SettingsChanged for the whole commit instead of one per control. The settings surface
         //    subscribes to it and re-populates every ISettingsCard from the draft — which now equals
         //    what is on disk — and, because step 3 cleared AutoStartDesired, 开机自启 re-reads the OS
-        //    rather than re-displaying the click. Revalidate then takes 应用 to disabled.
+        //    rather than re-displaying the click. Revalidate then takes 应用 to disabled; it is kept
+        //    after the repopulation rather than folded into step 5's own Revalidate, so the surface is
+        //    re-verified as it stands on screen and not only as it stood a moment before.
         events.RaiseSettingsChanged();
         draft.Revalidate();
         return true;
@@ -109,8 +123,8 @@ internal static class SettingsCommit
     /// The reason this is a try/catch that LOGS and never dialogues is inherited verbatim from the
     /// handler it moved out of: a failed Run-key write is not a settings-save failure and must not be
     /// reported as one. Clearing <see cref="SettingsDraft.AutoStartDesired"/> back to null on BOTH paths
-    /// is what makes the caller's step 5 an unconditional re-verification against the OS instead of a
-    /// re-display of the click — which is the only way to catch the packaged
+    /// is what makes the caller's steps 5 and 6 an unconditional re-verification against the OS instead
+    /// of a re-display of the click — which is the only way to catch the packaged
     /// <c>StartupTaskAutoStartService</c> silently no-op-ing, since it swallows every exception
     /// internally and never inspects the <c>StartupTaskState</c> its own WinRT call returns, so a silent
     /// policy refusal looks exactly like success.

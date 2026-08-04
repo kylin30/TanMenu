@@ -10,16 +10,20 @@ using Xunit;
 namespace TanMenu.Core.Tests.Themes;
 
 /// <summary>
-/// Guards the three things <c>Dialogs/OptionsWindow.axaml</c> has to be that nothing at run time
-/// checks: a Windows property sheet's commit row, a property window that does not scroll, and a tab
-/// strip whose labels come from <c>AppLanguage</c> rather than from literals in the markup.
+/// Guards the five things the Options dialog has to be that nothing at run time checks. Three are
+/// about the markup — a Windows property sheet's commit row, a property window that does not scroll,
+/// and a tab strip whose labels come from <c>AppLanguage</c> rather than from literals — and two are
+/// about the code-behind: where the draft's re-seed hangs, and when the single-instance field is
+/// claimed. Both of those were added in Round 8, Task 2's fix round, each with a defect behind it.
 /// </summary>
 /// <remarks>
 /// <para>
 /// SOURCE tests, like <see cref="ShellConstantTests"/> and <see cref="SettingsRowTests"/>, and for the
-/// same reason those are: every failure below RENDERS. A commit row in the wrong order renders. A
-/// <c>ScrollViewer</c> inside a tab renders, and looks fine until the page is one row taller than the
-/// window. A <c>TabItem</c> with a literal <c>Header</c> renders — in one language.
+/// same reason those are: every failure below RENDERS, or worse, does nothing at all. A commit row in
+/// the wrong order renders. A <c>ScrollViewer</c> inside a tab renders, and looks fine until the page
+/// is one row taller than the window. A <c>TabItem</c> with a literal <c>Header</c> renders — in one
+/// language. A re-seed on the wrong method and a single-instance field claimed too early both throw
+/// nothing and both surface a whole dialog session later.
 /// </para>
 /// <para>
 /// The third is the one with a date on it. Round 8, Task 6 deletes five of the six settings group
@@ -188,5 +192,75 @@ public class OptionsWindowTests
 
         // The window's own title comes from the same place, for the same reason.
         Assert.Matches(@"Title\s*=\s*AppLanguage\.Text\(\s*""Options""", code);
+    }
+
+    /// <summary>The code-behind with every <c>//</c> comment replaced by a space, so these two tests
+    /// read the CODE and not the prose that describes it — both of the invariants below are discussed at
+    /// length in remarks that name the very identifiers being matched.</summary>
+    private static string CodeWithoutComments() =>
+        Regex.Replace(File.ReadAllText(CodeBehindPath), @"//[^\r\n]*", " ");
+
+    /// <summary>
+    /// The draft is re-seeded on EVERY close of the dialog, which means the re-seed belongs to
+    /// <c>OnClosed</c> and to nothing else.
+    /// </summary>
+    /// <remarks>
+    /// Round 8, Task 2 shipped two <c>Reseed()</c> calls in <c>OnClosing</c>, one per discard branch,
+    /// under a comment claiming every close was covered. It was not: 确定 sets <c>_closeApproved</c>
+    /// before calling <c>Close()</c>, so the close it triggers returns from <c>OnClosing</c>'s first
+    /// branch above both of them and the DI-singleton draft kept a seed one commit out of date into the
+    /// next open — <c>AutoStartAtSeed</c> in particular, which no config comparison can catch. This is a
+    /// SOURCE test for the usual reason: nothing throws, and the symptom is a disabled 应用 button two
+    /// dialog sessions later. <c>SettingsDraftTests</c> owns the behaviour of the re-seed itself; this
+    /// owns which method it hangs off.
+    /// </remarks>
+    [Fact]
+    public void TheDraftIsReseededFromOnClosedAndFromNowhereElse()
+    {
+        var code = CodeWithoutComments();
+
+        var seeds = Regex.Matches(code, @"_draft\.Reseed\(\)");
+        Assert.True(seeds.Count == 1,
+            $"OptionsWindow.axaml.cs calls _draft.Reseed() {seeds.Count} times. Exactly one is right, " +
+            "in OnClosed: it is the one method every close reaches — 确定, 取消, the title-bar ×, the " +
+            "discard prompt's second pass and the application exit OnClosing deliberately does not " +
+            "prompt. A second copy in OnClosing is how the 确定 path came to be skipped.");
+
+        var onClosed = code.IndexOf("protected override void OnClosed(", StringComparison.Ordinal);
+        Assert.True(onClosed >= 0, "OptionsWindow.axaml.cs no longer overrides OnClosed.");
+        Assert.True(seeds[0].Index > onClosed,
+            "The one _draft.Reseed() call is not inside OnClosed. OnClosing cannot hold it: 确定 " +
+            "approves the close before OnClosing runs, so both of its discard branches are skipped.");
+    }
+
+    /// <summary>
+    /// <c>OptionsWindow.Current</c> is claimed only once the constructor has survived everything that
+    /// can throw.
+    /// </summary>
+    /// <remarks>
+    /// The field is the single-instance guard, and it is cleared in <c>OnClosed</c> — which a window
+    /// whose constructor threw never reaches. Claimed early, one fault out of the XAML load or the six
+    /// <c>ReloadFromConfig</c>s inside <c>ApplyText</c> would latch it at a dead window and
+    /// <c>SettingsLauncher.OpenCoreAsync</c> would <c>Activate()</c> that window — silently, doing
+    /// nothing — for every 设置 click, tray entry and empty-state button for the rest of the session.
+    /// </remarks>
+    [Fact]
+    public void CurrentIsClaimedAfterTheConstructorsThrowProneWork()
+    {
+        var code = CodeWithoutComments();
+
+        var claims = Regex.Matches(code, @"Current\s*=\s*this\s*;");
+        Assert.True(claims.Count == 1,
+            $"OptionsWindow.axaml.cs assigns Current = this {claims.Count} times; it must be exactly " +
+            "once, as the constructor's last statement.");
+
+        var applyText = code.IndexOf("ApplyText();", StringComparison.Ordinal);
+        Assert.True(applyText >= 0,
+            "The constructor no longer calls ApplyText(), so this test cannot locate the throw-prone " +
+            "work it is guarding.");
+        Assert.True(claims[0].Index > applyText,
+            "Current = this is assigned BEFORE ApplyText(), which is the throw-prone part of the " +
+            "constructor. A constructor that faults after claiming the field leaves it pointing at a " +
+            "window that never opens and never reaches OnClosed, latching 设置 shut for the session.");
     }
 }

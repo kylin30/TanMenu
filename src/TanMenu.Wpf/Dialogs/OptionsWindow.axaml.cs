@@ -48,8 +48,9 @@ namespace TanMenu.Wpf.Dialogs;
 /// </remarks>
 public partial class OptionsWindow : Window
 {
-    /// <summary>The one open dialog, or null. Written by the constructor and cleared by
-    /// <see cref="OnClosed"/> — see the class remarks for both of its two jobs.</summary>
+    /// <summary>The one open dialog, or null. Written by the constructor — <b>as its LAST statement,
+    /// which is load-bearing rather than tidy</b>, see the constructor — and cleared by
+    /// <see cref="OnClosed"/>. See the class remarks for both of its two jobs.</summary>
     public static OptionsWindow? Current { get; private set; }
 
     private readonly AppEvents _events;
@@ -68,6 +69,20 @@ public partial class OptionsWindow : Window
     /// asking a second time. See <see cref="OnClosing"/> for why a close cannot simply be awaited.</summary>
     private bool _closeApproved;
 
+    /// <remarks>
+    /// <b><see cref="Current"/> IS CLAIMED LAST, AND A FAULT UNSUBSCRIBES BOTH SINGLETONS ON THE WAY
+    /// OUT.</b> It used to be claimed before the two subscriptions and <see cref="ApplyText"/>, which
+    /// is the throw-prone part of this constructor — a XAML load plus six card constructors plus six
+    /// <c>ReloadFromConfig</c>s, and exactly the code <c>SettingsLauncher.Open</c>'s own remark records
+    /// throwing once already while this window was being built. A throw there left <see cref="Current"/>
+    /// pointing at a window that never opened and therefore never reaches <see cref="OnClosed"/>, so
+    /// <c>SettingsLauncher.OpenCoreAsync</c>'s single-instance branch would take
+    /// <c>existing.Activate()</c> — a no-op on a never-shown window — for the rest of the session, and
+    /// 设置, the tray entry and the empty-state button would all silently do nothing. The two leaked
+    /// handlers made it worse: <see cref="ApplyText"/> would then re-throw into every later
+    /// <c>RaiseSettingsChanged</c>. Claiming the field only once everything it stands for exists is what
+    /// makes "<see cref="Current"/> is non-null ⇒ a usable dialog" true rather than hoped for.
+    /// </remarks>
     public OptionsWindow()
     {
         InitializeComponent();
@@ -77,8 +92,6 @@ public partial class OptionsWindow : Window
         _draft = App.Services.GetRequiredService<SettingsDraft>();
         _autoStart = App.Services.GetRequiredService<IAutoStartService>();
         _host = App.Services.GetRequiredService<IWindowHost>();
-
-        Current = this;
 
         // AppLanguage has no change notification, and a card's own change handler has no reference back
         // to this window (each card only knows the draft), so re-labelling after a 语言 commit goes
@@ -92,8 +105,22 @@ public partial class OptionsWindow : Window
         // 应用 lives outside the cards' visual tree, so it cannot watch them; it watches the draft.
         _draft.DirtyChanged += ApplyDirtyState;
 
-        ApplyText();
-        ApplyDirtyState();
+        try
+        {
+            ApplyText();
+            ApplyDirtyState();
+        }
+        catch
+        {
+            // OnClosed is the only other place these come off, and a window whose constructor threw
+            // never gets one. Two singletons outlive this object, so leaving them subscribed to a
+            // half-built window would keep re-entering it on every later commit.
+            _events.SettingsChanged -= ApplyText;
+            _draft.DirtyChanged -= ApplyDirtyState;
+            throw;
+        }
+
+        Current = this;
     }
 
     /// <summary>
@@ -261,11 +288,16 @@ public partial class OptionsWindow : Window
     /// draft has nothing left to discard.
     /// </para>
     /// <para>
-    /// The draft is re-seeded on EVERY close, not only a dirty one. It is a DI singleton that outlives
-    /// this window, so anything left in it — including an <c>AutoStartDesired</c> that happens to equal
-    /// the OS state and therefore never made <c>IsDirty</c> true — would still be there the next time
-    /// the dialog opens. Re-seeding is one JSON round trip and makes "every open starts from what is on
-    /// disk" true by construction rather than by case analysis.
+    /// <b>The re-seed is NOT here — it is in <see cref="OnClosed"/>, and that is a correction.</b> This
+    /// method used to hold two <c>Reseed()</c> calls, one per discard branch, under a comment claiming
+    /// the draft was re-seeded on every close. It was not: 确定 sets <see cref="_closeApproved"/> before
+    /// calling <c>Close()</c>, so the close it triggers takes the first branch below and returned above
+    /// both of those calls. The draft is a DI singleton that outlives this window, so the stale seed survived
+    /// into the next open — concretely, committing 开机自启 with 确定 left <c>AutoStartAtSeed</c> holding
+    /// the PRE-commit OS state, and re-opening the dialog and toggling the row back compared the new
+    /// desire against that stale seed, left <c>IsDirty</c> false, and left 应用 disabled over a real
+    /// pending edit. <see cref="OnClosed"/> runs once on every close however the window went away, which
+    /// is the only place that claim can be made by construction instead of by case analysis.
     /// </para>
     /// </remarks>
     protected override void OnClosing(WindowClosingEventArgs e)
@@ -292,7 +324,6 @@ public partial class OptionsWindow : Window
         if (!_draft.IsDirty)
         {
             _closeApproved = true;
-            _draft.Reseed();
             return;
         }
 
@@ -303,7 +334,6 @@ public partial class OptionsWindow : Window
                 return;
 
             _closeApproved = true;
-            _draft.Reseed();
             Close();
         });
     }
@@ -360,14 +390,39 @@ public partial class OptionsWindow : Window
         }
     }
 
-    /// <summary>Unsubscribe from the two singletons that outlive this window. Both would otherwise
-    /// accumulate one handler per open, because the dialog is constructed fresh every time.</summary>
+    /// <summary>
+    /// Let go of everything that outlives this window: the two singleton subscriptions, the
+    /// single-instance field, and the draft's contents.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The two handlers would otherwise accumulate one per open, because the dialog is constructed
+    /// fresh every time.
+    /// </para>
+    /// <para>
+    /// <b>THE RE-SEED IS HERE BECAUSE THIS IS THE ONE METHOD EVERY CLOSE REACHES</b> — 确定, 取消, the
+    /// title-bar ×, the discard prompt's second pass, and the application exit that
+    /// <see cref="OnClosing"/> deliberately does not prompt. <see cref="OnClosing"/> cannot make that
+    /// claim: 确定 approves the close before it runs, so both of its discard branches are skipped. The
+    /// draft is a DI singleton, so anything left in it survives into the next open — including an
+    /// <c>AutoStartAtSeed</c> that a commit has just made stale and an <c>AutoStartDesired</c> that
+    /// happens to equal the OS state and therefore never made <c>IsDirty</c> true. Re-seeding is one
+    /// JSON round trip plus one OS read.
+    /// </para>
+    /// <para>
+    /// It runs AFTER the unsubscribes on purpose: <c>Reseed</c> ends in <c>Revalidate</c>, which can
+    /// raise <c>DirtyChanged</c>, and there is no reason to drive this closed window's commit row from
+    /// it. A successful commit re-seeds too, in <see cref="SettingsCommit.ApplyAsync"/>, which is what
+    /// covers 应用 — that path leaves the dialog OPEN and so never reaches here.
+    /// </para>
+    /// </remarks>
     protected override void OnClosed(EventArgs e)
     {
         _events.SettingsChanged -= ApplyText;
         _draft.DirtyChanged -= ApplyDirtyState;
         if (ReferenceEquals(Current, this))
             Current = null;
+        _draft.Reseed();
         base.OnClosed(e);
     }
 
