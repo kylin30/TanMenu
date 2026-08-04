@@ -40,7 +40,10 @@
     measured on the shipped build, Light, PrintWindow flag 2 at 150 %: a synthetic VK_TAB moved
     keyboard focus onto the rail's 退出 row (a TmNavRowButton; UIA reported HasKeyboardFocus and a
     60x54 px rect — that row was 40x36 DIP on the icon-only rail; Round 7, Task 8 widened the pane and
-    the same row is 156x22 DIP now) and the whole-window capture came back byte-identical to the
+    the same row is 156 DIP wide now, at a HEIGHT THAT FOLLOWS THE CONFIGURED FONT AND THE UI LANGUAGE —
+    MEASURED 22.67 to 24.67 DIP across the four configurations tabulated in MainWindow.axaml's
+    NavRailPane block, and the 22 the design predicted is reached in none of them; see TmNavRowItem
+    below) and the whole-window capture came back byte-identical to the
     resting one, ZERO
     differing pixels. The same probe with the stroke swapped for a plain red FILL at Margin="-8"
     showed why: instead of the 84x78 px block that margin asks for, it painted 48x42 px anchored at
@@ -424,12 +427,18 @@
            · HorizontalContentAlignment Left — a labelled row is read from its leading edge. The
              vendored theme states no alignment at all, so this adds rather than overrides.
            · Padding "8,3" — AUTHORED. The 3 is the row box's vertical inset and the 8 is its leading
-             text inset. The row box it produces is MEASURED 23.33 DIP, not the 22 the design predicted:
-             the tallest child is not the 16 DIP glyph but the 17.33 DIP label line box beside it. See
-             MainWindow.axaml's NavRailPane block for the measurement and for why the 22 is not chased.
-           · Margin "2,1" — AUTHORED. The 1 makes the row pitch MEASURED 25.33 DIP; the 2 leaves the
-             item column 156 DIP inside the 160 DIP pane, which is the span Border.tm-nav-separator
-             further down is derived from.
+             text inset. The row box it produces is NOT the 22 DIP the design predicted, and it is not
+             ONE number: the tallest child is the label's line box, not the 16 DIP glyph, so the row
+             follows the configured font and the UI language. MEASURED 24.67 DIP at the app's DEFAULT
+             font in Chinese, 24.00 at the default font in English, 23.33 with 字体 = Verdana in
+             Chinese, 22.67 with Verdana in English. See MainWindow.axaml's NavRailPane block for the
+             four measurements and for why the 22 is not chased.
+           · Margin "2,1" — AUTHORED. The 1 is what turns the row box into the row pitch, so the pitch
+             tracks the row box and is no more constant than it is: MEASURED 26.67 DIP at the app's
+             DEFAULT font in either language, 25.33 with 字体 = Verdana in either. The 2 leaves the item
+             column 156 DIP inside the 160 DIP pane, which is the span Border.tm-nav-separator further
+             down is derived from — and unlike the vertical numbers, that one IS constant, because it is
+             a margin rather than a line box; 156 DIP came back in all four configurations.
            · FocusAdorner — the dotted rectangle this file gives all five of its focusable themes. The
              vendored theme declares none, so WITHOUT this setter a Tab onto 应用 would draw Fluent's
              two-ring rectangle over an Aero row. It is not decoration: it is the only thing that keeps
@@ -832,9 +841,11 @@
        sets to TextPrimaryBrush, at full strength — see the pane-ink rule directly above for why the
        glyph beside it is lifted to match rather than the other way round. NoWrap + CharacterEllipsis
        because the label column is a fixed 118 DIP and the strings are user-selectable language data:
-       a longer translation must trim on one line, never reflow the row and break the 24 DIP pitch. The
-       row's AutomationProperties.Name (ApplyRailText, MainWindow.axaml.cs) carries the untrimmed text
-       for a screen reader either way. -->
+       a longer translation must trim on ONE LINE, never reflow into two and push every row below it
+       down. No pitch figure is quoted here on purpose — the pitch follows the configured font (see
+       TmNavRowItem above), and this rule holds whatever it currently measures. The row's
+       AutomationProperties.Name (ApplyRailText, MainWindow.axaml.cs) carries the untrimmed text for a
+       screen reader either way. -->
   <Style Selector="TextBlock.tm-nav-label">
     <Setter Property="Margin" Value="6,0,0,0" />
     <Setter Property="VerticalAlignment" Value="Center" />
@@ -858,14 +869,18 @@
        is 5 DIP between the line and each adjacent row box, against the 2 DIP that separates two
        ordinary rows — enough to read as a boundary, not so much that it reads as a missing row.
 
-       The block is 9 DIP tall (1 + 2×4). The footer it sits in MEASURES 117.33 DIP — 176 px at 150 %,
-       from NavRail's own bottom edge (screen y 1900) to the client's (2076), read with UI Automation on
-       the shipped build. The design predicted 109 from "four rows at a 24 DIP pitch + 9 + 4"; the pitch
-       is really 25.33 (see TmNavRowItem above), which puts the components at 101.33 + 9 + 4 = 114.33,
-       and NavFooterRail's own wrapper plus 150 % layout rounding account for the remaining 3 DIP —
-       measured, that ListBox is 39 px tall around a 38 px row pitch. 117.33 is the number that was
-       measured; 114.33 is what its parts add up to; neither is 109. It was 173 DIP on the 48 DIP icon
-       rail's 40 DIP pitch, and 213 before Round 5, item 2 took the 关于 row out of the footer.
+       The block is 9 DIP tall (1 + 2×4), and THAT number is constant — it is margins and a hairline.
+       THE FOOTER IT SITS IN IS NOT, because four of its terms are row pitches and a row pitch follows
+       the configured font and the UI language (TmNavRowItem above). MEASURED with UI Automation on the
+       shipped build, from NavRail's own bottom edge to the client's: 184 px = 122.67 DIP at the app's
+       DEFAULT font in Chinese, 180 px = 120.00 DIP at the default font in English, 176 px = 117.33 DIP
+       with 字体 = Verdana in Chinese, and 172 px = 114.67 DIP with Verdana in English. The design
+       predicted 109 from "four rows at a 24 DIP pitch + 9 + 4"; run that same sum at the default font's
+       real 26.67 pitch in Chinese and it gives 106.67 + 9 + 4 = 119.67 against the measured 122.67,
+       with NavFooterRail's own wrapper plus 150 % layout rounding accounting for the remaining 3 DIP —
+       measured in that configuration, the ListBox is 41 px tall around a 37 px row. NO configuration
+       measured here comes near 109. It was 173 DIP on the 48 DIP icon rail's 40 DIP pitch, and 213
+       before Round 5, item 2 took the 关于 row out of the footer.
 
        StrokeDividerBrush is the right token and always was: a divider is exactly what this is, and being
        a DynamicResource it follows the light/dark swap for free. Round 7, Task 7 re-pointed it onto the

@@ -419,41 +419,73 @@
                whose own relative-pixels cell is blank would move four measurement records elsewhere in
                the tree for no legibility gain.
              · A USER-CHOSEN FONT CAN STILL OVERFLOW THE COLUMN, and tm-nav-label's
-               NoWrap + CharacterEllipsis is what handles it. MEASURED with 字体 = Verdana, the 应用
-               page's own font setting: "Open Main Folder" trims to "Open Main Fol…". The row's
+               NoWrap + CharacterEllipsis is what handles it. MEASURED with 字体 = Verdana — that is
+               general.fontFamily in config.json, which the 设置 page's 外观 card writes
+               (Views/Settings/AppearanceCard.axaml.cs): "Open Main Folder" trims to "Open Main Fol…"
+               where the default font renders it whole. The row's
                AutomationProperties.Name still carries the untrimmed string, so nothing is lost to a
                screen reader; a sighted user of a wide font at that one row loses the last word. The
                alternative — sizing the pane for the widest installed face — is not sizeable at all.
              · This row's own structure: Margin 2 + Padding 8 + icon 16 + gap 6 = 32 DIP ahead of the
-               label, and Padding 8 + Margin 2 = 10 DIP after it. Label column = 160 − 32 − 10 = 118 DIP,
-               which clears the 114. The margin, the padding and the gap are TmNavRowItem's and
-               tm-nav-label's (Themes/Fluent2/Launcher.axaml); the 16 is each glyph's own local Width
-               below. MEASURED on the shipped build at 150 %, all five rows identical: row box x = 2488,
-               glyph x = 2500 (12 px = 8 DIP of padding), glyph 24 px wide, label x = 2533 (9 px = 6 DIP
-               of gap), row right edge 2722 less 12 px of padding = 2710 — a 177 px = 118 DIP label
-               column, exactly the arithmetic above.
+               label, and Padding 8 + Margin 2 = 10 DIP after it. Label column = 160 − 32 − 10 = 118 DIP.
+               That is the number the two measured labels above are checked against, and both FIT: 70
+               fits with room, 112 fits with 6 DIP of clearance. What 118 does NOT clear is the +30 %
+               itself in English — see the bullet above, which is the honest reading; the design's own
+               "≥ 114" is superseded, because 114 came from its 88 DIP estimate for a string the app
+               does not use. The margin, the padding and the gap are TmNavRowItem's and tm-nav-label's
+               (Themes/Fluent2/Launcher.axaml); the 16 is each glyph's own local Width below.
+               MEASURED on the shipped build at 150 %, all five rows identical and IDENTICAL IN ALL
+               FOUR CONFIGURATIONS TABULATED BELOW — stated as offsets from the row box, because the
+               absolute screen coordinates move with the window's fitted width and the offsets do not:
+               the glyph starts 12 px (8 DIP of Padding) inside the row box and is 24 px (16 DIP) wide,
+               the label starts 9 px (6 DIP of gap) after the glyph, and the row's trailing 12 px of
+               Padding closes it — leaving 234 − 12 − 24 − 9 − 12 = 177 px = 118 DIP of label column,
+               exactly the arithmetic above.
              · NO INDENT, and that is published too:
                https://learn.microsoft.com/en-us/windows/win32/controls/tree-view-control-window-extended-styles
                — "TVS_EX_NOINDENTSTATE — [Windows Vista]. Do not indent the tree view for the expando
                buttons." The indent exists to make room for an expando; no row here has children, so
                this is exactly that case. vis-layout's one published indent figure ("dependent controls
                are indented 12 DLUs or 18 relative pixels") is quoted only to say why it is not used.
-             · Row box MEASURED 23.33 DIP (35 px at this machine's 150 %), pitch MEASURED 25.33 DIP
-               (38 px) with Margin="2,1". The design predicted 22 and 24 from "16 DIP glyph + 2×3 DIP
-               Padding", and THAT ARITHMETIC IS WRONG ABOUT WHICH CHILD IS TALLEST. UI Automation on
-               every one of the five rows: the glyph is 16x16 DIP, and the LABEL beside it is 17.33 DIP
-               tall — a 12 DIP Segoe UI / Microsoft YaHei UI line box, not a 12 DIP glyph — so the
-               DockPanel measures 17.33 and 17.33 + 2×3 = 23.33. The 22 is not recoverable without
-               pinning the label's LineHeight, and Round 7, Task 7 deleted every LineHeight token in the
-               file on the ground that GDI text takes its natural line height; re-introducing one here
-               for two DIP would contradict that decision and risk clipping CJK descenders. The measured
-               value ships.
+             · THE ROW BOX AND THE PITCH ARE NOT CONSTANTS OF THIS DESIGN, and writing either as one
+               number is the mistake this bullet exists to prevent. A row box is the LABEL'S LINE BOX
+               plus this row's Padding, and a line box follows the CONFIGURED FONT (general.fontFamily,
+               AppConfig.cs — "" means AppFonts.UiStack, "Segoe UI, Microsoft YaHei UI") and the UI
+               LANGUAGE, both of which the user owns. The design predicted a 22 DIP row box and a 24 DIP
+               pitch from "16 DIP glyph + 2×3 DIP Padding", and THAT ARITHMETIC IS WRONG ABOUT WHICH
+               CHILD IS TALLEST: UI Automation on every one of the five rows puts the glyph box at 24 px
+               wide and 23-24 px tall in every configuration below — the 16 DIP icon column, give or
+               take a pixel of layout rounding — and the label beside it at 26 px at the very least, so
+               the DockPanel always measures the label, never the glyph.
+               MEASURED at this machine's 150 %, four configurations, all five rows alike within each:
+
+                 general.fontFamily        语言    label line box   row box            row pitch
+                 "" (the shipping default) zh-CN   29 px            37 px = 24.67 DIP  40 px = 26.67 DIP
+                 "" (the shipping default) en-US   28 px            36 px = 24.00 DIP  40 px = 26.67 DIP
+                 "Verdana"                 zh-CN   27 px            35 px = 23.33 DIP  38 px = 25.33 DIP
+                 "Verdana"                 en-US   26 px            34 px = 22.67 DIP  38 px = 25.33 DIP
+
+               The two Verdana rows are here because the portable config this pane was first measured
+               against carries "fontFamily":"Verdana" — Verdana is a real user choice, it is not in
+               AppAppearance.RetiredFontNames, and the numbers it produces are NOT the numbers a
+               maintainer re-measuring the app as shipped will see. In all four, row box = label line
+               box + 8 physical px: the authored 3 DIP of Padding lands on 4 px per side at 150 %. The
+               pitch adds the two neighbours' 1 DIP vertical Margins, which land on 3 or 4 px depending
+               on where the row boundary falls.
+               THE 22 IS NOT REACHABLE — it would need a 25 px line box, and the smallest measured here
+               is 26 — and it is not chased. Pinning the label's LineHeight is the only thing that would
+               collapse the row box to one number, and Round 7, Task 7 deleted every LineHeight token in
+               Themes/Fluent2 on the ground that GDI text takes its natural line height; re-introducing
+               one here would contradict that decision and risk clipping CJK descenders. The measured
+               values ship, and they ship as a range rather than as a constant.
                This does cost the evenness citation, so it is recorded as forgone rather than claimed:
                https://learn.microsoft.com/en-us/windows/win32/controls/tvm-setitemheight — "If this
                argument is not even and the tree-view control does not have the TVS_NONEVENHEIGHT style,
                this value will be rounded down to the nearest even value" — argues for an even item
-               height, and 23.33 DIP is 35 physical px here, which is odd at this scale and would be odd
-               at 100 % too. Win32 rounds; Avalonia does not, and nothing in this app is a tree view.
+               height, and the four measured row boxes are 37, 36, 35 and 34 physical px — two odd, two
+               even — so evenness is not a property this pane has, or could be given, while the row
+               height is a line box. Win32 rounds; Avalonia does not, and nothing in this app is a tree
+               view.
 
            ONE WIDTH, NOT TWO, and re-reading this as "expandable" is the mistake to avoid. Round 4,
            item 1 deleted the second 200 DIP width, the DoubleTransition and the ClipToBounds along with
@@ -475,9 +507,11 @@
              item 1 removed the third (Auto) row this Grid used to open with, which held nothing but the
              hamburger toggle; nothing replaces it, so 应用 rises by that row's whole height.
              Classes="tm-nav-rail" is this element's own name for anything that needs to scope a rule to
-             the pane root, and two rules do: Launcher.axaml's "Grid.tm-nav-rail TextBlock.tm-icon",
-             which lifts every pane glyph to full ink so it matches the label beside it, and nothing
-             else — tm-nav-label needs no scoping because no other part of the app uses that class. -->
+             the pane root, and EXACTLY ONE rule does: Launcher.axaml's "Grid.tm-nav-rail
+             TextBlock.tm-icon", which lifts every pane glyph to full ink so it matches the label beside
+             it. There is no second reader — grepping src for the class name finds that one selector and
+             nothing else. tm-nav-label needs no scoping because no other part of the app uses that
+             class. -->
         <Grid x:Name="NavRailContent" Classes="tm-nav-rail" RowDefinitions="*,Auto">
 
           <!-- Page list: 应用 only. 设置 is a real page too (PageHost.Content still swaps between the

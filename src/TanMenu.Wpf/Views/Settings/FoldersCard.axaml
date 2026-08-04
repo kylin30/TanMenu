@@ -39,11 +39,18 @@
        no "three or more go below" exception: controls trail, full-width content goes below, and 主文件夹
        and 数据文件夹 are finally the same shape.
 
-       What the floor does cost is wrapping: at that width 数据文件夹's subtitle takes two lines in Chinese
-       and three in English. That is not the buttons' doing and moving them would not fix the page — at
-       the same width 每列个数's English subtitle wraps with nothing but a 220 DIP ComboBox beside it, and
-       主文件夹's wraps with only two buttons. tm-card-sub wraps on purpose; a header of exactly two
-       RENDERED lines is a property of the width the app actually opens at, not of any button placement. -->
+       What the floor does cost is wrapping, and HOW MUCH IS A FUNCTION OF THE CONFIGURED FONT, not a
+       constant of the page. MEASURED at 150 % on the shipped build, UIA on DataFolderSub at the 872 DIP
+       floor, WITH THE APP'S DEFAULT FONT (general.fontFamily = "", i.e. AppFonts.UiStack): 数据文件夹's
+       subtitle takes TWO rendered lines in Chinese (410 DIP wide, 32.67 tall against a 25 px single-line
+       box) and TWO in English (364.67 wide, 32 tall against a 24 px line). With 字体 = Verdana the same
+       English line takes THREE (339.33 wide, 44 tall, 66 px against a 22 px line) — so no single count
+       belongs in this comment without the font it was taken at. That is not the buttons' doing and
+       moving them would not fix the page — at the same width, default font, English, 每列个数's subtitle
+       wraps to two lines with nothing but a 220 DIP ComboBox beside it (ColCountSub 393.33 DIP wide,
+       31.33 tall), and 主文件夹's wraps to two with only two buttons (MainFolderSub 480.67 wide, 32
+       tall). tm-card-sub wraps on purpose; a wrapped header is a property of the width the app actually
+       opens at and of the face it is set in, not of any button placement. -->
   <StackPanel>
     <TextBlock x:Name="GroupHead" Classes="tm-group-head" />
 
