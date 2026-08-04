@@ -13,17 +13,21 @@ namespace TanMenu.Wpf.Views.Settings;
 
 /// <summary>
 /// 行为 card group: hide-on-blur, always-on-top, start with Windows, pin to taskbar, and the global
-/// hotkey. Ported from <c>SettingsWindow</c>'s 行为 tab, minus the staging: every handler here writes
-/// straight to <see cref="ConfigService.Config"/> (or, for autostart, straight to the registry /
-/// StartupTask — that setting has no field in <c>AppConfig</c> at all; <see cref="IAutoStartService"/>
-/// reads the OS state live), then hands config changes off to <see cref="SettingsWrite.CommitAsync"/>,
-/// which raises <see cref="AppEvents.SettingsChanged"/> on success or rolls the field back and reports
-/// the error on failure — instead of mutating a working clone for a later Apply.
+/// hotkey. Every property handler here writes the shared <see cref="SettingsDraft"/>'s working clone and
+/// calls <see cref="SettingsDraft.Revalidate"/>; nothing reaches disk until 确定 / 应用 runs
+/// <see cref="SettingsCommit.ApplyAsync"/> (Round 8, Task 1).
+/// <para>
+/// 开机自启 is the one row with no <c>AppConfig</c> field at all — the OS (Run key, or the MSIX
+/// StartupTask) IS the state — so it is buffered by hand in <see cref="SettingsDraft.AutoStartDesired"/>
+/// instead of riding the clone. Until Round 8 it was the odd one out in the other direction: it wrote
+/// the registry on the click while the four rows around it waited for nothing at all, which is exactly
+/// the incoherence delayed commit exists to remove. 固定到任务栏 stays immediate — it is a command, not a
+/// property.
+/// </para>
 /// </summary>
 public partial class BehaviorCard : UserControl, ISettingsCard
 {
-    private readonly ConfigService _config;
-    private readonly AppEvents _events;
+    private readonly SettingsDraft _draft;
     private readonly IWindowHost _host;
     private readonly IAutoStartService _autoStart;
     private readonly TaskbarPinService _taskbarPin;
@@ -37,8 +41,8 @@ public partial class BehaviorCard : UserControl, ISettingsCard
     /// <summary>The last taskbar-pin state this card knows about, re-queried on every
     /// <see cref="OnAttachedToVisualTree"/> (see its remarks) and otherwise only ever re-labelled —
     /// never re-queried — by <see cref="ReloadFromConfig"/>, which the shared SettingsChanged event can
-    /// trigger far more often than a real pin-state change (any card's commit, anywhere on the page,
-    /// re-fires it).</summary>
+    /// trigger more often than a real pin-state change (every 确定/应用 re-fires it, and so does a
+    /// data-folder change or a 恢复).</summary>
     private TaskbarPinState _taskbarPinState = new(TaskbarPinStatus.Available);
 
     /// <summary>Guards <see cref="RefreshTaskbarPinStateAsync"/> against stacking: a fast detach/
@@ -46,14 +50,13 @@ public partial class BehaviorCard : UserControl, ISettingsCard
     /// <c>GetStateAsync</c> COM call returns.</summary>
     private bool _taskbarPinRefreshing;
 
-    private string UiLanguage => _config.Config.General.Language;
+    private string UiLanguage => _draft.Working.General.Language;
     private string L(string key, params object?[] args) => AppLanguage.Format(key, UiLanguage, args);
 
     public BehaviorCard()
     {
         InitializeComponent();
-        _config = App.Services.GetRequiredService<ConfigService>();
-        _events = App.Services.GetRequiredService<AppEvents>();
+        _draft = App.Services.GetRequiredService<SettingsDraft>();
         _host = App.Services.GetRequiredService<IWindowHost>();
         _autoStart = App.Services.GetRequiredService<IAutoStartService>();
         _taskbarPin = App.Services.GetRequiredService<TaskbarPinService>();
@@ -80,27 +83,38 @@ public partial class BehaviorCard : UserControl, ISettingsCard
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
-        RefreshAutoStartState();
+        ApplyAutoStartRow();
         RunSafely(RefreshTaskbarPinStateAsync);
     }
 
-    /// <summary>Push the LIVE OS autostart state onto the toggle. Synchronous because
-    /// <see cref="IAutoStartService.IsEnabled"/> is (a registry read, or a blocking WinRT call on the
-    /// packaged build), unlike the pin's async COM query.</summary>
+    /// <summary>Push the 开机自启 row's state onto the check box: the PENDING desire if there is one,
+    /// and otherwise the LIVE OS state. Synchronous because <see cref="IAutoStartService.IsEnabled"/> is
+    /// (a registry read, or a blocking WinRT call on the packaged build), unlike the pin's async COM
+    /// query.</summary>
     /// <remarks>
+    /// <para>
+    /// This is the ONLY reader of <see cref="SettingsDraft.AutoStartDesired"/>, and the null-coalesce is
+    /// what makes delayed commit work for a row whose state lives in the OS: until Round 8, Task 1 this
+    /// method read <c>_autoStart.IsEnabled()</c> unconditionally, so a buffered desire would have been
+    /// clobbered the next time anything called it — and both <see cref="OnAttachedToVisualTree"/> and
+    /// <see cref="ReloadFromConfig"/> do, the latter after every commit. The OS is now read only when
+    /// nothing is pending, which is what leaves both of those call sites correct untouched.
+    /// </para>
+    /// <para>
     /// The <c>_loading</c> guard is saved and RESTORED rather than simply cleared, because
     /// <see cref="ReloadFromConfig"/> calls this from inside its own guarded block — clearing it would
     /// un-guard the rest of that repopulation and let it write the values it is loading straight back
-    /// to config.
+    /// to the draft.
+    /// </para>
     /// </remarks>
-    private void RefreshAutoStartState()
+    private void ApplyAutoStartRow()
     {
         var wasLoading = _loading;
         _loading = true;
         try
         {
             AutoStartToggle.IsEnabled = !_isPortable;
-            AutoStartToggle.IsChecked = !_isPortable && _autoStart.IsEnabled();
+            AutoStartToggle.IsChecked = !_isPortable && (_draft.AutoStartDesired ?? _autoStart.IsEnabled());
         }
         catch (Exception ex)
         {
@@ -114,14 +128,14 @@ public partial class BehaviorCard : UserControl, ISettingsCard
         }
     }
 
-    /// <summary>Populate every control from the live config. Sets a guard so the change handlers do not
-    /// write back the values they are being given.</summary>
+    /// <summary>Populate every control from the draft's working clone. Sets a guard so the change
+    /// handlers do not write back the values they are being given.</summary>
     public void ReloadFromConfig()
     {
         _loading = true;
         try
         {
-            var g = _config.Config.General;
+            var g = _draft.Working.General;
             var lang = g.Language;
 
             GroupHead.Text = AppLanguage.Text("Behavior", lang);
@@ -138,7 +152,7 @@ public partial class BehaviorCard : UserControl, ISettingsCard
             AutoStartSub.Text = _isPortable
                 ? AppLanguage.Text("AutoStartPortableHelp", lang)
                 : AppLanguage.Text("AutoStartCardSub", lang);
-            RefreshAutoStartState();
+            ApplyAutoStartRow();
 
             PinTaskbarTitle.Text = AppLanguage.Text("PinToTaskbar", lang);
             ApplyTaskbarPinState(_taskbarPinState); // re-label the button/status text; never re-query here
@@ -160,67 +174,68 @@ public partial class BehaviorCard : UserControl, ISettingsCard
         }
     }
 
-    private void OnAutoCloseChanged(object? sender, RoutedEventArgs e) => RunSafely(async () =>
+    private void OnAutoCloseChanged(object? sender, RoutedEventArgs e)
     {
         if (_loading)
             return;
 
         // WindowHost reads General.AutoClose LIVE on every Deactivated (see WindowHost.Attach), so
-        // writing the field is the whole job — no separate "apply" call needed.
-        var previous = _config.Config.General.AutoClose;
-        _config.Config.General.AutoClose = AutoCloseToggle.IsChecked == true;
-        await SettingsWrite.CommitAsync(_config, _events, _host, this,
-            rollback: () => _config.Config.General.AutoClose = previous,
-            reload: ReloadFromConfig);
-    });
+        // committing the field is the whole job — no separate "apply" call needed.
+        _draft.Working.General.AutoClose = AutoCloseToggle.IsChecked == true;
+        _draft.Revalidate();
+    }
 
-    /// <summary>窗口置顶 must apply live. It does, for free: WindowHost.Attach subscribes
-    /// <c>ApplyTopmost</c> to <see cref="AppEvents.SettingsChanged"/>, which
-    /// <see cref="SettingsWrite.CommitAsync"/> raises on a successful save — so this handler must NOT
-    /// also poke <c>IWindowHost.Window.Topmost</c> directly, or a failed save's rollback would leave the
-    /// live window topmost with no config value to justify it.</summary>
-    private void OnTopMostChanged(object? sender, RoutedEventArgs e) => RunSafely(async () =>
+    /// <summary>窗口置顶 applies on commit, for free: WindowHost.Attach subscribes <c>ApplyTopmost</c>
+    /// to <see cref="AppEvents.SettingsChanged"/>, which <see cref="SettingsCommit.ApplyAsync"/> raises
+    /// once the save has landed — so this handler must NOT also poke <c>IWindowHost.Window.Topmost</c>
+    /// directly, or the live window would float above everything while the draft was still pending and
+    /// 取消 would leave it there with no config value to justify it.</summary>
+    private void OnTopMostChanged(object? sender, RoutedEventArgs e)
     {
         if (_loading)
             return;
 
-        var previous = _config.Config.General.TopMost;
-        _config.Config.General.TopMost = TopMostToggle.IsChecked == true;
-        await SettingsWrite.CommitAsync(_config, _events, _host, this,
-            rollback: () => _config.Config.General.TopMost = previous,
-            reload: ReloadFromConfig);
-    });
+        _draft.Working.General.TopMost = TopMostToggle.IsChecked == true;
+        _draft.Revalidate();
+    }
 
-    /// <summary>开机自启 has no field in <c>AppConfig</c> — the OS (Run key or MSIX StartupTask)
-    /// IS the state, so there is no config to save and no <see cref="SettingsWrite.CommitAsync"/> call
-    /// here. A failed registry write throws and is logged rather than shown as a save-failed dialog —
-    /// the same contract <c>SettingsWindow.CommitAsync</c> had: there, <c>_autoStart.SetEnabled</c> ran
-    /// OUTSIDE the try/catch that wrapped <c>_config.SaveAsync</c>, so a thrown exception only ever hit
-    /// the window's top-level <c>RunSafely</c> log-and-swallow, never a dialog. The packaged/MSIX
-    /// <c>StartupTaskAutoStartService</c> never throws at all — it swallows every exception internally
-    /// and never inspects the <c>StartupTaskState</c> its own WinRT call returns, so a silent Windows/
-    /// policy refusal leaves <c>SetEnabled</c> looking like it succeeded. Either way, the toggle must
-    /// never be left showing the click rather than the truth: re-verify unconditionally, on both the
-    /// success and failure paths, against what <see cref="IAutoStartService.IsEnabled"/> actually
-    /// reports — not just flipped back on a caught exception.</summary>
+    /// <summary>
+    /// The ONLY writer of <see cref="SettingsDraft.AutoStartDesired"/>. 开机自启 has no field in
+    /// <c>AppConfig</c> — the OS (Run key or MSIX StartupTask) IS the state — so it cannot ride the
+    /// draft's config clone and is buffered by hand here instead; the write itself happens in
+    /// <see cref="SettingsCommit.ApplyAutoStart"/>, on 确定 / 应用.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Until Round 8, Task 1 this handler called <c>_autoStart.SetEnabled</c> on the click — the one
+    /// control on the surface that wrote anything immediately, and the one that "delete the twelve
+    /// CommitAsync call sites" would never have reached, because it never had one. 取消 needs no undo
+    /// now, because nothing is written until the commit.
+    /// </para>
+    /// <para>
+    /// The reason that write is worth re-verifying afterwards has NOT gone away, and moved with it: the
+    /// packaged <c>StartupTaskAutoStartService</c> swallows every exception internally and never
+    /// inspects the <c>StartupTaskState</c> its own WinRT call returns, so a silent Windows/policy
+    /// refusal leaves <c>SetEnabled</c> looking like it succeeded. <see cref="SettingsCommit"/> clears
+    /// the desire back to null before re-populating the cards, so <see cref="ApplyAutoStartRow"/> falls
+    /// through to the live OS truth on both the success and the failure path — the same unconditional
+    /// re-verification this method used to do, relocated to where the write now lives.
+    /// </para>
+    /// <para>
+    /// Still a plain <c>void</c> handler with no <see cref="RunSafely"/> wrapper, unlike the five around
+    /// it: it never awaited anything, and now it cannot throw either. The <c>_loading</c> and
+    /// <c>_isPortable</c> guards are kept verbatim — a portable build never records a desire, which is
+    /// what keeps <see cref="SettingsDraft.AutoStartDesired"/> null there and out of
+    /// <see cref="SettingsDraft.IsDirty"/>.
+    /// </para>
+    /// </remarks>
     private void OnAutoStartChanged(object? sender, RoutedEventArgs e)
     {
         if (_loading || _isPortable)
             return;
 
-        var desired = AutoStartToggle.IsChecked == true;
-        try
-        {
-            _autoStart.SetEnabled(desired);
-        }
-        catch (Exception ex)
-        {
-            Serilog.Log.Error(ex, "开机自启注册表/计划任务写入失败");
-        }
-
-        // Unconditional re-verification (success or failure): this is the only way to catch
-        // StartupTaskAutoStartService silently no-op-ing on the packaged build (see above).
-        RefreshAutoStartState();
+        _draft.AutoStartDesired = AutoStartToggle.IsChecked == true;
+        _draft.Revalidate();
     }
 
     // No _loading check here (unlike every other handler in this file) — that is deliberate, not an
@@ -365,20 +380,17 @@ public partial class BehaviorCard : UserControl, ISettingsCard
     // SettingsWindow: clearing a hotkey while the toggle is off is still a meaningful action).
     private void UpdateHotkeyEnabledState() => HotkeyBox.IsEnabled = HotkeyEnabledToggle.IsChecked == true;
 
-    private void OnHotkeyEnabledChanged(object? sender, RoutedEventArgs e) => RunSafely(async () =>
+    private void OnHotkeyEnabledChanged(object? sender, RoutedEventArgs e)
     {
         if (_loading)
             return;
 
-        var previous = _config.Config.General.GlobalHotkeyEnabled;
-        _config.Config.General.GlobalHotkeyEnabled = HotkeyEnabledToggle.IsChecked == true;
+        _draft.Working.General.GlobalHotkeyEnabled = HotkeyEnabledToggle.IsChecked == true;
         UpdateHotkeyEnabledState(); // immediate UX feedback; ReloadFromConfig repeats this either way
-        await SettingsWrite.CommitAsync(_config, _events, _host, this,
-            rollback: () => _config.Config.General.GlobalHotkeyEnabled = previous,
-            reload: ReloadFromConfig);
-    });
+        _draft.Revalidate();
+    }
 
-    private void OnHotkeyKeyDown(object? sender, KeyEventArgs e) => RunSafely(async () =>
+    private void OnHotkeyKeyDown(object? sender, KeyEventArgs e)
     {
         if (_loading)
             return;
@@ -388,34 +400,28 @@ public partial class BehaviorCard : UserControl, ISettingsCard
         if (combo == null)
             return; // still composing (modifier-only) or no modifier held — keep waiting
 
-        var previous = _config.Config.General.GlobalHotkey;
-        if (combo == previous)
-            return; // no actual change — nothing to save
+        if (combo == _draft.Working.General.GlobalHotkey)
+            return; // no actual change — nothing to buffer
 
-        _config.Config.General.GlobalHotkey = combo;
-        HotkeyBox.Text = combo; // immediate feedback before the save round-trip
-        await SettingsWrite.CommitAsync(_config, _events, _host, this,
-            rollback: () => _config.Config.General.GlobalHotkey = previous,
-            reload: ReloadFromConfig);
-    });
+        _draft.Working.General.GlobalHotkey = combo;
+        HotkeyBox.Text = combo; // the box is read-only, so this is the only thing that shows the capture
+        _draft.Revalidate();
+    }
 
-    private void OnHotkeyClearClick(object? sender, RoutedEventArgs e) => RunSafely(async () =>
+    private void OnHotkeyClearClick(object? sender, RoutedEventArgs e)
     {
         if (_loading)
             return;
 
-        var previous = _config.Config.General.GlobalHotkey;
-        if (string.IsNullOrEmpty(previous))
-            return; // already clear — nothing to save
+        if (string.IsNullOrEmpty(_draft.Working.General.GlobalHotkey))
+            return; // already clear — nothing to buffer
 
-        _config.Config.General.GlobalHotkey = "";
-        HotkeyBox.Text = AppLanguage.Text("None", UiLanguage); // immediate feedback
-        await SettingsWrite.CommitAsync(_config, _events, _host, this,
-            rollback: () => _config.Config.General.GlobalHotkey = previous,
-            reload: ReloadFromConfig);
-    });
+        _draft.Working.General.GlobalHotkey = "";
+        HotkeyBox.Text = AppLanguage.Text("None", UiLanguage);
+        _draft.Revalidate();
+    }
 
-    /// <summary>Same shape as <see cref="SettingsWrite.CommitAsync"/>'s own error dialog: suppress
+    /// <summary>Same shape as <see cref="SettingsCommit.ApplyAsync"/>'s own error dialog: suppress
     /// hide-on-blur while the modal has focus, so a user with 失焦自动隐藏 on does not lose the window
     /// out from under the dialog.</summary>
     private async Task ShowErrorAsync(string message)

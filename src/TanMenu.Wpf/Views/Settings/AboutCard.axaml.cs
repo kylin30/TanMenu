@@ -18,20 +18,20 @@ namespace TanMenu.Wpf.Views.Settings;
 /// precedents for (<c>FoldersCard</c>, <c>UpdatesCard</c>): that guard exists to stop a
 /// <c>SelectionChanged</c>/<c>IsCheckedChanged</c> handler writing back the value
 /// <see cref="ReloadFromConfig"/> just assigned to it. Every control here is display text; there is no
-/// handler to re-enter and nothing on this card writes config at all — no
-/// <see cref="SettingsWrite.CommitAsync"/> call appears in this file.
+/// handler to re-enter and nothing on this card writes config at all — it never touches
+/// <see cref="SettingsDraft.Working"/>, so 确定 / 取消 / 应用 have nothing here to commit or discard.
 /// </para>
 /// </summary>
 public partial class AboutCard : UserControl, ISettingsCard
 {
-    private readonly ConfigService _config;
+    private readonly SettingsDraft _draft;
 
-    private string UiLanguage => _config.Config.General.Language;
+    private string UiLanguage => _draft.Working.General.Language;
 
     public AboutCard()
     {
         InitializeComponent();
-        _config = App.Services.GetRequiredService<ConfigService>();
+        _draft = App.Services.GetRequiredService<SettingsDraft>();
     }
 
     /// <summary>Populate every line. Nothing here is OS-backed or time-critical, so unlike

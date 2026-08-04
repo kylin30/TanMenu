@@ -187,11 +187,13 @@ public partial class AppPage : UserControl, IDisposable
 
     private void OnPinNoticeDismissed(object? sender, EventArgs e) => PinNotice.IsOpen = false;
 
-    /// <summary>不再提示 is a config write like any other, so it goes through the same
-    /// <see cref="SettingsWrite.CommitAsync"/> contract the five settings card groups use: a failed
-    /// save rolls the flag back, re-evaluates the notice from the restored config, and reports the
-    /// error. A bare <c>SaveAsync()</c> here would dismiss the bar on screen while the flag never
-    /// reached disk, and the InfoBar would silently return on the next launch.</summary>
+    /// <summary>不再提示 is an immediate config write, and since Round 8, Task 1 it is the ONLY caller
+    /// of <see cref="SettingsWrite.CommitAsync"/> left — the settings card groups moved to a delayed
+    /// commit and this did not, because dismissing a notice is a launcher-page ACTION with no 确定 to
+    /// wait for and no 取消 to take it back. The contract is unchanged: a failed save rolls the flag
+    /// back, re-evaluates the notice from the restored config, and reports the error. A bare
+    /// <c>SaveAsync()</c> here would dismiss the bar on screen while the flag never reached disk, and
+    /// the InfoBar would silently return on the next launch.</summary>
     private async void OnPinNeverClick(object? sender, RoutedEventArgs e)
     {
         try

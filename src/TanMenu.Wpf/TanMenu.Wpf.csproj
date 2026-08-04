@@ -63,6 +63,14 @@
     <ProjectReference Include="..\TanMenu.Core\TanMenu.Core.csproj" />
   </ItemGroup>
 
+  <!-- Round 8, Task 1: SettingsDraft and SettingsCommit are internal (nothing outside the settings
+       surface may construct or commit a draft), and they are also the one piece of that surface that is
+       testable without a window. The test project already references this assembly for the source tests
+       under tests/…/Themes; this lets SettingsDraftTests exercise the real types instead of a copy. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="TanMenu.Core.Tests" />
+  </ItemGroup>
+
   <!-- No fonts are embedded, and nothing below adds one: the two AvaloniaResource entries are an icon
        and a tile image. The Fluent 2 rebuild removed the four bundled TTFs and the 22.7 MB they cost —
        a third of the shipped payload — by taking the system UI face instead. It named that face

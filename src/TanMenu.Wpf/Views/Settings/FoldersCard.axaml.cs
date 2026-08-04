@@ -15,12 +15,20 @@ namespace TanMenu.Wpf.Views.Settings;
 
 /// <summary>
 /// 文件夹 card group: the main folder (whose subfolders become launcher groups), the data folder
-/// (config + caches + logs), and a maintenance row (清理缓存 / 备份… / 恢复…). Ported from
-/// <c>SettingsWindow</c>'s 文件夹 tab, minus the staging — every handler here writes straight to
-/// <see cref="ConfigService.Config"/> or the data-folder pointer, instead of a working clone applied
-/// later on 应用/确定. 更改数据文件夹, 重置为默认 and 恢复 keep their confirm-before-acting dialogs even
-/// though every other control on this page applies immediately: they move or overwrite the user's real
-/// data, not just a setting.
+/// (config + caches + logs), and a maintenance row (清理缓存 / 备份… / 恢复…).
+/// <para>
+/// 主文件夹 is the group's one PROPERTY, and since Round 8, Task 1 it is buffered like every other:
+/// picking a folder writes the draft and 确定 / 应用 commits it. Everything else here is a COMMAND —
+/// 打开, 更改数据文件夹, 重置为默认, 清理缓存, 备份, 恢复 — and commands stay immediate, because
+/// <c>win-property-win</c>'s delayed-commit rule is about property CHANGES. They keep their
+/// confirm-before-acting dialogs for the same reason they always had them: they move or overwrite the
+/// user's real data, not just a setting.
+/// </para>
+/// <para>
+/// The three that rewrite <c>config.json</c> underneath the surface — 更改数据文件夹, 重置为默认, 恢复 —
+/// RE-SEED the draft when they complete (<see cref="SettingsDraft.Reseed"/>), or a later 确定 would copy
+/// a clone taken before the relocation straight back over the file they just wrote.
+/// </para>
 /// </summary>
 /// <remarks>
 /// No <c>_loading</c> guard, unlike every other card group: every control here is either read-only
@@ -30,6 +38,7 @@ namespace TanMenu.Wpf.Views.Settings;
 /// </remarks>
 public partial class FoldersCard : UserControl, ISettingsCard
 {
+    private readonly SettingsDraft _draft;
     private readonly ConfigService _config;
     private readonly AppEvents _events;
     private readonly IWindowHost _host;
@@ -43,7 +52,7 @@ public partial class FoldersCard : UserControl, ISettingsCard
     /// <summary>The data folder's on-disk size as of the last <see cref="RefreshDataInfoAsync"/> run;
     /// -1 until the first measurement completes. <see cref="ReloadFromConfig"/> only ever re-labels this
     /// cached value (see <see cref="ApplyDataInfoLabel"/>) — re-measuring on every SettingsChanged (which
-    /// any card's commit, anywhere on the page, can re-fire) would walk the data folder far more often
+    /// every 确定/应用 re-fires) would walk the data folder far more often
     /// than its size could plausibly change.</summary>
     private long _dataSizeBytes = -1;
 
@@ -51,12 +60,13 @@ public partial class FoldersCard : UserControl, ISettingsCard
     /// (e.g. quick nav-rail clicks) could start a second walk before an in-flight one returns.</summary>
     private bool _dataInfoRefreshing;
 
-    private string UiLanguage => _config.Config.General.Language;
+    private string UiLanguage => _draft.Working.General.Language;
     private string L(string key, params object?[] args) => AppLanguage.Format(key, UiLanguage, args);
 
     public FoldersCard()
     {
         InitializeComponent();
+        _draft = App.Services.GetRequiredService<SettingsDraft>();
         _config = App.Services.GetRequiredService<ConfigService>();
         _events = App.Services.GetRequiredService<AppEvents>();
         _host = App.Services.GetRequiredService<IWindowHost>();
@@ -85,9 +95,9 @@ public partial class FoldersCard : UserControl, ISettingsCard
         RunSafely(RefreshDataInfoAsync);
     }
 
-    /// <summary>Populate every control from the live config. Cheap and side-effect-free: it never walks
-    /// the data folder (see <see cref="ApplyDataInfoLabel"/>) and never shows a dialog, so it is always
-    /// safe to call from <c>SettingsPage.ApplyStaticText</c>'s SettingsChanged handler.</summary>
+    /// <summary>Populate every control from the draft's working clone. Cheap and side-effect-free: it
+    /// never walks the data folder (see <see cref="ApplyDataInfoLabel"/>) and never shows a dialog, so it
+    /// is always safe to call from <c>SettingsPage.ApplyStaticText</c>'s SettingsChanged handler.</summary>
     public void ReloadFromConfig()
     {
         var lang = UiLanguage;
@@ -98,8 +108,8 @@ public partial class FoldersCard : UserControl, ISettingsCard
         MainFolderSub.Text = AppLanguage.Text("MainFolderHelp", lang);
         OpenRootBtn.Content = AppLanguage.Text("Open", lang);
         PickRootBtn.Content = AppLanguage.Text("Choose", lang);
-        RootPathText.Text = _config.Config.RootFolder;
-        ToolTip.SetTip(RootPathText, _config.Config.RootFolder); // full path on hover; the label itself ellipsizes
+        RootPathText.Text = _draft.Working.RootFolder;
+        ToolTip.SetTip(RootPathText, _draft.Working.RootFolder); // full path on hover; the label itself ellipsizes
 
         DataFolderTitle.Text = AppLanguage.Text("DataFolder", lang);
         DataFolderSub.Text = _isPortable
@@ -186,9 +196,12 @@ public partial class FoldersCard : UserControl, ISettingsCard
 
     // ---- 主文件夹 ----
 
+    // Opens what the ROW SHOWS, which under delayed commit is the draft's folder rather than the
+    // committed one — 打开 is a command against the value in front of the user, and a folder that has
+    // been picked but not yet applied is still the one they just chose.
     private void OnOpenRootClick(object? sender, RoutedEventArgs e) => RunSafely(async () =>
     {
-        var folder = _config.Config.RootFolder;
+        var folder = _draft.Working.RootFolder;
         if (string.IsNullOrWhiteSpace(folder) || !Directory.Exists(folder))
         {
             await ShowInfoAsync(L("RootNotSet"));
@@ -200,7 +213,7 @@ public partial class FoldersCard : UserControl, ISettingsCard
     private void OnPickRootClick(object? sender, RoutedEventArgs e) => RunSafely(async () =>
     {
         var options = new FolderPickerOpenOptions { Title = L("SelectRootFolder"), AllowMultiple = false };
-        var current = _config.Config.RootFolder;
+        var current = _draft.Working.RootFolder;
         if (!string.IsNullOrEmpty(current) && Directory.Exists(current))
         {
             var topLevel = TopLevel.GetTopLevel(this);
@@ -212,15 +225,12 @@ public partial class FoldersCard : UserControl, ISettingsCard
         if (picked is null)
             return;
 
-        // Applies immediately, like every other control on this page — AppPage rebuilds its categories
-        // the moment SettingsChanged fires below.
-        var previous = _config.Config.RootFolder;
-        _config.Config.RootFolder = picked;
-        RootPathText.Text = picked; // immediate feedback before the save round-trip
+        // Buffered like every other property on this surface: AppPage rebuilds its categories when
+        // SettingsChanged fires, and that is now 确定 / 应用, not this click.
+        _draft.Working.RootFolder = picked;
+        RootPathText.Text = picked; // the picker has closed; show the pending choice straight away
         ToolTip.SetTip(RootPathText, picked);
-        await SettingsWrite.CommitAsync(_config, _events, _host, this,
-            rollback: () => _config.Config.RootFolder = previous,
-            reload: ReloadFromConfig);
+        _draft.Revalidate();
     });
 
     // ---- 数据文件夹 ----
@@ -330,7 +340,12 @@ public partial class FoldersCard : UserControl, ISettingsCard
             mutablePaths.SetRoot(folder);
         DataLocation.InvalidateFolderSizeCache(); // data root changed → drop the cached size for the old root
         await _config.LoadAsync();
-        _events.RaiseSettingsChanged(); // reload every card, incl. this one, from the newly loaded config
+
+        // The config that was just loaded is a DIFFERENT file from the one the draft cloned, so the
+        // draft has to be re-taken before anything reads it again — otherwise a later 确定 would copy
+        // the pre-relocation clone straight back over the config in the new location.
+        _draft.Reseed();
+        _events.RaiseSettingsChanged(); // reload every card, incl. this one, from the re-seeded draft
 
         await RefreshDataInfoAsync(); // measure the NEW root's actual size now, not just re-label the old one
 
@@ -356,9 +371,12 @@ public partial class FoldersCard : UserControl, ISettingsCard
 
     private void OnBackupConfigClick(object? sender, RoutedEventArgs e) => RunSafely(async () =>
     {
-        // No "unapplied changes" warning here (unlike SettingsWindow's BackupConfig_Click): every
-        // control on this page writes straight to the live config, so the saved config IS what is on
-        // screen — there is no staged/unsaved gap for the backup to miss.
+        // 备份 writes ConfigService.Config — what is COMMITTED, not what the draft is holding. Round 8,
+        // Task 1 re-opened the staged/unsaved gap this comment used to say did not exist (it was
+        // accurate for the immediate-apply page it was written for, and is not any more), so a backup
+        // taken with 应用 still enabled will not contain the pending edits. Stated rather than guarded:
+        // the design's command list keeps 备份 immediate and specifies no warning for it, and inventing
+        // a dialog here is not this task's to invent.
         var path = await PickSaveFileAsync(new FilePickerSaveOptions
         {
             Title = L("BackupConfig"),
@@ -398,6 +416,7 @@ public partial class FoldersCard : UserControl, ISettingsCard
 
         if (await _config.RestoreFromAsync(path))
         {
+            _draft.Reseed(); // the live config was replaced wholesale; the pre-restore clone is stale
             _events.RaiseSettingsChanged(); // reload every card, incl. this one, from the restored config
             await ShowInfoAsync(L("RestoreSucceeded"));
         }

@@ -11,6 +11,7 @@ using TanMenu.Core.Infrastructure;
 using TanMenu.Core.Services;
 using TanMenu.Wpf.Dialogs;
 using TanMenu.Wpf.Services;
+using TanMenu.Wpf.Views.Settings;
 using Velopack.Locators;
 
 namespace TanMenu.Wpf;
@@ -129,6 +130,15 @@ public partial class App : Application
         // everything else (the tray menu, Task 8's settings entry points) only ever sees the interface.
         services.AddSingleton<IShellNavigator>(sp => sp.GetRequiredService<ShellNavigator>());
         services.AddSingleton<ISettingsLauncher, SettingsLauncher>();
+        // The settings surface's pending-changes buffer (Round 8, Task 1). Registered rather than
+        // constructed by the page because all six card groups and the commit row have to share ONE
+        // draft and none of them can be handed it — Avalonia's XAML loader owns the cards' construction
+        // and ISettingsCard has no member to push it through. Resolved lazily, so it is seeded from the
+        // config as it stands when 设置 is first opened; re-seeded in place afterwards (Reseed), never
+        // replaced, so the commit row's DirtyChanged subscription survives every 取消.
+        services.AddSingleton(sp => SettingsDraft.From(
+            sp.GetRequiredService<ConfigService>(),
+            sp.GetRequiredService<IAutoStartService>()));
         services.AddSingleton<IShellCommands, ShellCommands>();
         services.AddSingleton<IUpdatePromptService, UpdatePromptService>();
         services.AddSingleton<IAppUpdateService>(_ =>

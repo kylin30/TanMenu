@@ -13,18 +13,15 @@ namespace TanMenu.Wpf.Views.Settings;
 /// <summary>
 /// 常用工具 card group: the master toggle for the built-in "常用工具" launcher category
 /// (<see cref="GeneralConfig.ShowDefaultTools"/>), and which of its tools are included
-/// (<see cref="GeneralConfig.DefaultTools"/>). Ported from <c>SettingsWindow</c>'s 常用工具 tab, minus
-/// the staging: every handler here writes straight to <see cref="ConfigService.Config"/>, then hands
-/// the save off to <see cref="SettingsWrite.CommitAsync"/>, which raises
-/// <see cref="AppEvents.SettingsChanged"/> on success — <c>MenuService.BuildMenuAsync</c> rebuilds the
-/// launcher's tools category from the newly-saved config — or rolls the field back and reports the
-/// error on failure, instead of mutating a working clone for a later Apply.
+/// (<see cref="GeneralConfig.DefaultTools"/>). Both handlers write the shared
+/// <see cref="SettingsDraft"/>'s working clone and call <see cref="SettingsDraft.Revalidate"/>; nothing
+/// reaches disk until 确定 / 应用 runs <see cref="SettingsCommit.ApplyAsync"/> (Round 8, Task 1), which
+/// raises <see cref="AppEvents.SettingsChanged"/> once — and <c>MenuService.BuildMenuAsync</c> rebuilds
+/// the launcher's tools category from the newly-saved config.
 /// </summary>
 public partial class ToolsCard : UserControl, ISettingsCard
 {
-    private readonly ConfigService _config;
-    private readonly AppEvents _events;
-    private readonly IWindowHost _host;
+    private readonly SettingsDraft _draft;
 
     /// <summary>Guards <see cref="OnShowToolsChanged"/> against the value <see cref="ReloadFromConfig"/>
     /// assigns while it repopulates the toggle. Per-tool CheckBoxes need no such guard against
@@ -36,18 +33,16 @@ public partial class ToolsCard : UserControl, ISettingsCard
     /// initial IsChecked is set.</summary>
     private bool _loading;
 
-    private string UiLanguage => _config.Config.General.Language;
+    private string UiLanguage => _draft.Working.General.Language;
     private string L(string key, params object?[] args) => AppLanguage.Format(key, UiLanguage, args);
 
     public ToolsCard()
     {
         InitializeComponent();
-        _config = App.Services.GetRequiredService<ConfigService>();
-        _events = App.Services.GetRequiredService<AppEvents>();
-        _host = App.Services.GetRequiredService<IWindowHost>();
+        _draft = App.Services.GetRequiredService<SettingsDraft>();
     }
 
-    /// <summary>Populate every control from the live config. Sets a guard so
+    /// <summary>Populate every control from the draft's working clone. Sets a guard so
     /// <see cref="OnShowToolsChanged"/> does not write back the value it is being given, then rebuilds
     /// the per-tool checkbox list wholesale from <see cref="GeneralConfig.DefaultTools"/>.</summary>
     public void ReloadFromConfig()
@@ -55,7 +50,7 @@ public partial class ToolsCard : UserControl, ISettingsCard
         _loading = true;
         try
         {
-            var g = _config.Config.General;
+            var g = _draft.Working.General;
             var lang = g.Language;
 
             GroupHead.Text = AppLanguage.Text("CommonTools", lang);
@@ -106,7 +101,7 @@ public partial class ToolsCard : UserControl, ISettingsCard
                 Content = L("ToolCheckbox", displayName, tool.Command),
                 IsChecked = tool.Show,
                 Margin = new Thickness(0, 3, 0, 3),
-                Tag = tool, // the LIVE DefaultTool instance this checkbox commits back to
+                Tag = tool, // the DRAFT's DefaultTool instance this checkbox writes; never the live one
             };
             ToolTip.SetTip(cb, L("ToolCommand", tool.Command));
             cb.Click += OnToolChanged;
@@ -118,45 +113,30 @@ public partial class ToolsCard : UserControl, ISettingsCard
                 "常用工具配置中有 {Count} 个条目缺少必要字段（null 元素或 command 为空），已跳过", skipped);
     }
 
-    private void OnShowToolsChanged(object? sender, RoutedEventArgs e) => RunSafely(async () =>
+    private void OnShowToolsChanged(object? sender, RoutedEventArgs e)
     {
         if (_loading)
             return;
 
-        var previous = _config.Config.General.ShowDefaultTools;
         var next = ShowToolsToggle.IsChecked == true;
-        _config.Config.General.ShowDefaultTools = next;
+        _draft.Working.General.ShowDefaultTools = next;
         ToolsPanel.IsEnabled = next; // immediate UX feedback; ReloadFromConfig repeats this either way
-        await SettingsWrite.CommitAsync(_config, _events, _host, this,
-            rollback: () => _config.Config.General.ShowDefaultTools = previous,
-            reload: ReloadFromConfig);
-    });
+        _draft.Revalidate();
+    }
 
-    /// <summary>One tool's Show flag, committed on its own — never rebuilding or re-saving the whole
-    /// DefaultTools list from a snapshot, so a concurrent edit to another entry (or to config.json
-    /// itself, between saves) is never clobbered. The rollback below restores THIS tool's own previous
-    /// value, captured in the closure, not a copy of the list taken at some earlier point.</summary>
-    private void OnToolChanged(object? sender, RoutedEventArgs e) => RunSafely(async () =>
+    /// <summary>One tool's Show flag, buffered on its own. The whole DefaultTools list is never rebuilt
+    /// or re-saved from a snapshot, so a concurrent edit to another entry (or to config.json itself,
+    /// between saves) is never clobbered: this writes ONE flag on ONE draft entry, and
+    /// <see cref="SettingsDraft.CopyOnto"/> commits it onto the live entry that carries the same
+    /// <see cref="DefaultTool.Command"/> — per entry, never positionally and never wholesale.</summary>
+    private void OnToolChanged(object? sender, RoutedEventArgs e)
     {
         if (_loading)
             return;
         if (sender is not CheckBox { Tag: DefaultTool tool } cb)
             return;
 
-        var previous = tool.Show;
         tool.Show = cb.IsChecked == true;
-        await SettingsWrite.CommitAsync(_config, _events, _host, this,
-            rollback: () => tool.Show = previous,
-            reload: ReloadFromConfig);
-    });
-
-    /// <summary>Run an async change handler without letting a fault escape the Click/IsCheckedChanged
-    /// event — same rationale as <c>SettingsWindow.RunSafely</c> / <c>BehaviorCard.RunSafely</c>:
-    /// Avalonia has no WPF-style global DispatcherUnhandledException hook, so an escaping async-void
-    /// fault would tear the process down, and logging is the floor.</summary>
-    private static async void RunSafely(Func<Task> action)
-    {
-        try { await action(); }
-        catch (Exception ex) { Serilog.Log.Error(ex, "常用工具设置写入失败"); }
+        _draft.Revalidate();
     }
 }

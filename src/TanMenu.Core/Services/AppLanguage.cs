@@ -17,6 +17,13 @@ public static class AppLanguage
 
             ["Ok"] = ("确定", "OK"),
             ["Cancel"] = ("取消", "Cancel"),
+            // The settings surface's third commit button, added by Round 8, Task 1's delayed commit.
+            // The English word is Apply, not Save: PUBLISHED, win-property-win — "Right-align the
+            // buttons and use this order (from left to right): OK, Cancel, and Apply." The Chinese 应用
+            // is the same word the launcher's 应用 PAGE uses ("NavApps" below) and that collision is
+            // Windows' own — Apply and Apps are both 应用 in the Chinese Windows UI — so the two keys
+            // stay separate rather than being folded together.
+            ["Apply"] = ("应用", "Apply"),
             ["Appearance"] = ("外观", "Appearance"),
             ["Behavior"] = ("行为", "Behavior"),
             ["Folders"] = ("文件夹", "Folders"),
@@ -197,11 +204,13 @@ public static class AppLanguage
             ["BackupSaved"] = ("配置已备份到：\n{0}", "Config backed up to:\n{0}"),
             ["BackupFailed"] = ("备份失败：{0}", "Backup failed: {0}"),
             ["RestoreConfig"] = ("从备份恢复配置", "Restore Config from Backup"),
-            // Every control on the 设置 page applies immediately, so there is no staged/unsaved edit for
-            // a restore to discard — unlike the old TabItem-based dialog's edit-then-apply model, which
-            // is why this key's wording no longer warns about "unapplied changes". What IS still true,
-            // and what this warns about instead, is that restoring replaces the ENTIRE current config
-            // (RootFolder, all of General) with the backup's contents and cannot be undone.
+            // This key's wording warns that restoring replaces the ENTIRE current config (RootFolder,
+            // all of General) with the backup's contents and cannot be undone. It deliberately does NOT
+            // warn about "unapplied changes" the way the pre-0.12 dialog's did, even though Round 8,
+            // Task 1 brought staged edits back: 恢复 RE-SEEDS the draft when it completes
+            // (FoldersCard.OnRestoreConfigClick), so a pending edit is dropped rather than silently
+            // written over the restored file — which is a consequence of the restore the sentence above
+            // already covers, not a separate hazard needing its own sentence.
             ["RestoreConfirm"] = ("将用所选备份覆盖当前的全部配置，此操作无法撤销。\n确定？", "The selected backup will overwrite your entire current config. This cannot be undone.\nContinue?"),
             ["RestoreSucceeded"] = ("配置已恢复并生效。", "Config restored and applied."),
             ["RestoreInvalid"] = ("恢复失败：所选文件不是有效的 TanMenu 配置。", "Restore failed: the selected file is not a valid TanMenu config."),

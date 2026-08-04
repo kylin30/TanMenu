@@ -7,9 +7,9 @@ namespace TanMenu.Wpf.Services;
 /// <remarks>
 /// This existed to bridge two separate top-level windows. There is one window now (设置 became a page
 /// inside it in 0.12), but the events are not redundant: the publishers and subscribers are still
-/// unrelated — a settings card commits, and the shell, the tray, the launcher view model, the window
-/// host's 窗口置顶 and the taskbar-pin notice all have to react without any of them knowing about
-/// each other.
+/// unrelated — the settings surface commits (once per 确定/应用 since Round 8, Task 1, rather than once
+/// per control change), and the shell, the tray, the launcher view model, the window host's 窗口置顶 and
+/// the taskbar-pin notice all have to react without any of them knowing about each other.
 /// </remarks>
 /// <remarks>
 /// THREAD-AFFINITY CONTRACT: both events are raised SYNCHRONOUSLY on the caller's thread, and every

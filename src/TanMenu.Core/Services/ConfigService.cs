@@ -37,9 +37,16 @@ public class ConfigService
 
     // NOTE: CloneConfig() lived here until 0.12. Its only consumer was SettingsWindow's staged-edit
     // model (mutate a clone, apply it on 确定/应用), and the settings PAGE that replaced that window
-    // writes through to Config immediately — so the clone had no caller left. Deleted rather than
-    // kept "in case": a deep-clone helper on the live config service invites exactly the staged-edit
-    // workflow the redesign removed.
+    // wrote through to Config immediately — so the clone had no caller left. It was deleted rather
+    // than kept "in case", on the grounds that a deep-clone helper on the live config service invites
+    // exactly the staged-edit workflow the redesign removed.
+    //
+    // ROUND 8, TASK 1 RESTORED THAT WORKFLOW — the settings surface is a delayed commit again — and
+    // this helper still does not come back. The clone belongs to the surface that stages the edit
+    // (TanMenu.Wpf.Views.Settings.SettingsDraft, a JSON round-trip through the same source-generated
+    // JsonTypeInfo SaveAsync uses) rather than to the live config service, and the commit writes a
+    // NAMED LIST of properties rather than swapping the object — which is what keeps a concurrent
+    // WindowHost.SavePlacement write to General.WindowMaximized from being reverted.
 
     public async Task LoadAsync()
     {
@@ -129,8 +136,8 @@ public class ConfigService
     /// If the continuations resumed on the captured UI context they would be queued behind that block
     /// and <c>_saveLock</c> would never be released — a deadlock on exit. Nothing in here touches the
     /// UI, so there is no context worth capturing; the caller's own await still resumes on its own
-    /// context, which is why <c>SettingsWrite.CommitAsync</c> can still raise SettingsChanged on the
-    /// UI thread afterwards.
+    /// context, which is why <c>SettingsCommit.ApplyAsync</c> (and <c>SettingsWrite.CommitAsync</c>,
+    /// still live for the taskbar-pin notice) can raise SettingsChanged on the UI thread afterwards.
     /// </remarks>
     public async Task SaveAsync()
     {

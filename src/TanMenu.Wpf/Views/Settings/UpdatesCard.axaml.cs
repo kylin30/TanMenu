@@ -21,8 +21,9 @@ namespace TanMenu.Wpf.Views.Settings;
 /// </para>
 /// Unlike every other card group, this one writes no config at all —
 /// <see cref="IAppUpdateService"/> IS the state, the same way <see cref="IAutoStartService"/> is for
-/// 开机自启 in <see cref="BehaviorCard"/> — so there is no <see cref="SettingsWrite.CommitAsync"/> call
-/// anywhere in this file.
+/// 开机自启 in <see cref="BehaviorCard"/> — so it neither writes <see cref="SettingsDraft.Working"/> nor
+/// calls <see cref="SettingsDraft.Revalidate"/> anywhere in this file, and 确定 / 取消 / 应用 have nothing
+/// on this card to commit or discard.
 ///
 /// The 应用 page (<c>AppPage</c> / <c>LauncherViewModel</c>) shows its own update notice driven by the
 /// SAME <see cref="IAppUpdateService"/> singleton, subscribing to the same <c>StateChanged</c> event and
@@ -36,16 +37,19 @@ namespace TanMenu.Wpf.Views.Settings;
 /// </summary>
 public partial class UpdatesCard : UserControl, ISettingsCard
 {
-    private readonly ConfigService _config;
+    private readonly SettingsDraft _draft;
     private readonly IAppUpdateService _updates;
 
-    private string UiLanguage => _config.Config.General.Language;
+    /// <summary>Read off the draft rather than the live config, like every other card since Round 8,
+    /// Task 1 — this group writes nothing, but a pending 语言 change has to re-label it too when the
+    /// commit's SettingsChanged comes round.</summary>
+    private string UiLanguage => _draft.Working.General.Language;
     private string L(string key, params object?[] args) => AppLanguage.Format(key, UiLanguage, args);
 
     public UpdatesCard()
     {
         InitializeComponent();
-        _config = App.Services.GetRequiredService<ConfigService>();
+        _draft = App.Services.GetRequiredService<SettingsDraft>();
         _updates = App.Services.GetRequiredService<IAppUpdateService>();
 
         // The StateChanged subscription itself is set up in OnAttachedToVisualTree, not here — see its

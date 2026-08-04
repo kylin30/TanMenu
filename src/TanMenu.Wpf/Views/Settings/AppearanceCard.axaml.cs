@@ -11,12 +11,10 @@ namespace TanMenu.Wpf.Views.Settings;
 
 /// <summary>
 /// 外观 card group: language, light/dark appearance, UI font, and (since Round 3, Task 4) items per
-/// column. Ported from <c>SettingsWindow</c>'s 外观 tab, minus the staging: every handler here writes
-/// straight to <see cref="ConfigService.Config"/>, then hands the save off to
-/// <see cref="SettingsWrite.CommitAsync"/>, which raises <see cref="AppEvents.SettingsChanged"/> on
-/// success or rolls the field (and, for Appearance, the live repaint) back and reports the error on
-/// failure — instead of mutating a working clone for a later Apply. (The 按钮大小 row this group used to
-/// carry — 小/中/大 button size — was removed in that same task; see
+/// column. Every handler here writes the shared <see cref="SettingsDraft"/>'s working clone and calls
+/// <see cref="SettingsDraft.Revalidate"/>; nothing reaches disk until 确定 / 应用 runs
+/// <see cref="SettingsCommit.ApplyAsync"/> (Round 8, Task 1). (The 按钮大小 row this group used to
+/// carry — 小/中/大 button size — was removed in Round 3, Task 4; see
 /// <see cref="TanMenu.Core.Models.GeneralConfig.ButtonSize"/>'s own remarks for what replaced it.)
 /// </summary>
 public partial class AppearanceCard : UserControl, ISettingsCard
@@ -73,9 +71,7 @@ public partial class AppearanceCard : UserControl, ISettingsCard
         return items;
     }
 
-    private readonly ConfigService _config;
-    private readonly AppEvents _events;
-    private readonly IWindowHost _host;
+    private readonly SettingsDraft _draft;
 
     /// <summary>Guards every SelectionChanged handler against the selections ReloadFromConfig makes
     /// while it repopulates the combos — without it, populating the Language combo would write the
@@ -89,19 +85,17 @@ public partial class AppearanceCard : UserControl, ISettingsCard
     public AppearanceCard()
     {
         InitializeComponent();
-        _config = App.Services.GetRequiredService<ConfigService>();
-        _events = App.Services.GetRequiredService<AppEvents>();
-        _host = App.Services.GetRequiredService<IWindowHost>();
+        _draft = App.Services.GetRequiredService<SettingsDraft>();
     }
 
-    /// <summary>Populate every control from the live config. Sets a guard so the SelectionChanged
-    /// handlers do not write back the values they are being given.</summary>
+    /// <summary>Populate every control from the draft's working clone. Sets a guard so the
+    /// SelectionChanged handlers do not write back the values they are being given.</summary>
     public void ReloadFromConfig()
     {
         _loading = true;
         try
         {
-            var g = _config.Config.General;
+            var g = _draft.Working.General;
             var lang = g.Language;
 
             GroupHead.Text = AppLanguage.Text("Appearance", lang);
@@ -180,44 +174,33 @@ public partial class AppearanceCard : UserControl, ISettingsCard
         _selectedFontRow = match;
     }
 
-    private void OnLanguageChanged(object? sender, SelectionChangedEventArgs e) => RunSafely(async () =>
+    private void OnLanguageChanged(object? sender, SelectionChangedEventArgs e)
     {
         if (_loading || LanguageCombo.SelectedIndex < 0)
             return;
 
-        var previous = _config.Config.General.Language;
-        _config.Config.General.Language = LanguageSettings[LanguageCombo.SelectedIndex];
-        await SettingsWrite.CommitAsync(_config, _events, _host, this,
-            rollback: () => _config.Config.General.Language = previous,
-            reload: ReloadFromConfig);
-    });
+        _draft.Working.General.Language = LanguageSettings[LanguageCombo.SelectedIndex];
+        _draft.Revalidate();
+    }
 
-    /// <summary>The whole app repaints live, before the write even reaches disk: the dropdown is a
-    /// preview of a whole-app appearance, and waiting for the save to finish would leave the user
-    /// choosing 深色 while still looking at a light window.</summary>
-    private void OnAppearanceChanged(object? sender, SelectionChangedEventArgs e) => RunSafely(async () =>
+    /// <summary>
+    /// 外观 no longer previews live. Until Round 8, Task 1 this handler called <c>AppTheme.Apply</c> on
+    /// the spot, on the argument that "waiting for the save to finish would leave the user choosing 深色
+    /// while still looking at a light window" — which delayed commit forbids outright (PUBLISHED,
+    /// <c>win-property-win</c>: "changes take effect only when users click OK or Apply"). The repaint
+    /// moved to <see cref="SettingsCommit.ApplyAsync"/>, and 应用 is precisely the affordance that gives
+    /// the preview back on demand, without closing the window.
+    /// </summary>
+    private void OnAppearanceChanged(object? sender, SelectionChangedEventArgs e)
     {
         if (_loading || AppearanceCombo.SelectedIndex < 0)
             return;
 
-        var previous = _config.Config.General.Appearance;
-        var chosen = AppearanceSettings[AppearanceCombo.SelectedIndex];
-        _config.Config.General.Appearance = chosen;
-        if (Application.Current is { } app)
-            AppTheme.Apply(app, chosen);
-        await SettingsWrite.CommitAsync(_config, _events, _host, this,
-            rollback: () =>
-            {
-                _config.Config.General.Appearance = previous;
-                // The theme was already repainted live above; a failed save must repaint it back,
-                // not just revert the field, or the app is left showing a theme it never kept.
-                if (Application.Current is { } rollbackApp)
-                    AppTheme.Apply(rollbackApp, previous);
-            },
-            reload: ReloadFromConfig);
-    });
+        _draft.Working.General.Appearance = AppearanceSettings[AppearanceCombo.SelectedIndex];
+        _draft.Revalidate();
+    }
 
-    private void OnFontChanged(object? sender, SelectionChangedEventArgs e) => RunSafely(async () =>
+    private void OnFontChanged(object? sender, SelectionChangedEventArgs e)
     {
         if (_fontSelectionGuard)
             return;
@@ -237,45 +220,30 @@ public partial class AppearanceCard : UserControl, ISettingsCard
             return;
 
         var fam = FontUtil.Sanitize(item.Family); // "" for the default-font entry
-        if (fam == _config.Config.General.FontFamily)
+        if (fam == _draft.Working.General.FontFamily)
             return;
 
-        var previous = _config.Config.General.FontFamily;
-        _config.Config.General.FontFamily = fam;
-        await SettingsWrite.CommitAsync(_config, _events, _host, this,
-            rollback: () => _config.Config.General.FontFamily = previous,
-            reload: ReloadFromConfig);
-    });
+        _draft.Working.General.FontFamily = fam;
+        _draft.Revalidate();
+    }
 
     /// <summary>每列个数 (GeneralConfig.ColButtonCount). Re-fitting the window is not this handler's
-    /// job: <see cref="SettingsWrite.CommitAsync"/> raises <see cref="AppEvents.SettingsChanged"/> on a
-    /// successful save, which <c>LauncherViewModel.OnSettingsChanged</c> turns into a rebuild
-    /// (re-chunking every group's columns — see <c>LauncherViewModel.ApplyGroupSettings</c>) that ends
-    /// by raising <c>ContentMetricsChanged</c>, which <c>MainWindow</c> turns into a re-fit — the same
-    /// chain every other 外观 setting here already rides.</summary>
-    private void OnColCountChanged(object? sender, NumericUpDownValueChangedEventArgs e) => RunSafely(async () =>
+    /// job: <see cref="SettingsCommit.ApplyAsync"/> raises <see cref="AppEvents.SettingsChanged"/> once
+    /// per commit, which <c>LauncherViewModel.OnSettingsChanged</c> turns into a rebuild (re-chunking
+    /// every group's columns — see <c>LauncherViewModel.ApplyGroupSettings</c>) that ends by raising
+    /// <c>ContentMetricsChanged</c>, which <c>MainWindow</c> turns into a re-fit — the same chain every
+    /// other 外观 setting here already rides, now fired on 确定/应用 rather than on every keystroke of
+    /// the spinner.</summary>
+    private void OnColCountChanged(object? sender, NumericUpDownValueChangedEventArgs e)
     {
         if (_loading || e.NewValue is not { } value)
             return; // an emptied/unparsable box reports null; leave the stored setting alone
 
         var next = (int)Math.Clamp(value, 1, 30);
-        var previous = _config.Config.General.ColButtonCount;
-        if (next == previous)
+        if (next == _draft.Working.General.ColButtonCount)
             return;
 
-        _config.Config.General.ColButtonCount = next;
-        await SettingsWrite.CommitAsync(_config, _events, _host, this,
-            rollback: () => _config.Config.General.ColButtonCount = previous,
-            reload: ReloadFromConfig);
-    });
-
-    /// <summary>Run an async change handler without letting a fault escape the SelectionChanged event —
-    /// same rationale as <c>SettingsWindow.RunSafely</c>: Avalonia has no WPF-style global
-    /// DispatcherUnhandledException hook, so an escaping async-void fault would tear the process down,
-    /// and logging is the floor.</summary>
-    private static async void RunSafely(Func<Task> action)
-    {
-        try { await action(); }
-        catch (Exception ex) { Serilog.Log.Error(ex, "外观设置写入失败"); }
+        _draft.Working.General.ColButtonCount = next;
+        _draft.Revalidate();
     }
 }
