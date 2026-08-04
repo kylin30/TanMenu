@@ -95,7 +95,13 @@
     WindowHost.PlaceholderWidthDip mirrors the 1000 and its own remark says why the two must agree.
     THE 711 HAS ONE NEW FLOOR TO CLEAR that the old one did not: the band is five menu items, then the
     separator's whole 23 DIP footprint, then a 320 DIP field, then 11 DIP of trailing margin, laid end
-    to end. Task 3 MEASURED that run rather than estimating it — see this task's report.
+    to end. Task 3 MEASURED that run rather than estimating it, and Round 8, Task 9 re-measured it and
+    wrote the numbers down here, because the citation this sentence used to carry — "see this task's
+    report" — pointed at a scratch file that is not in this repository. MEASURED through UIA at 150 %
+    on the published build, both languages: the menu run's right edge (MenuAbout.Bounds.Right, the same
+    value MenuRunSpacer binds to) is 316 DIP in Chinese and 309.33 in English, so the band wants
+    316 + 23 + 320 + 11 = 670 DIP, and 663.33 in English. Both clear 711 with room; the design's own
+    estimate for this was ≈686. The full record is in the round's design document, section 10.2.
   -->
 
   <Window.Resources>

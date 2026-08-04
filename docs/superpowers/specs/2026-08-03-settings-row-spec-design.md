@@ -5,16 +5,31 @@
 > that work; its measurements were true of the code at the time and are not true of the code now.
 > Nothing below was edited to add this header.
 >
-> **This one document is more than a record, and saying so is the point.** The ROW SPEC itself is
-> information architecture rather than paint, and Round 7 kept it deliberately: a 16 DIP leading mark,
-> a header of exactly one title line and one subtitle line, the control trailing with its right edge on
-> one shared line, extra content on a row of its own starting at the title's left edge. All sixteen
-> rows still obey it and `tests/TanMenu.Core.Tests/Themes/SettingsRowTests.cs` still guards it. What is
-> deprecated is everything that describes the CONTAINER and the metrics: the Windows 11 row card's
-> fill, hairline and 4 DIP radius (deleted at Round 7, Task 7, the rows now sitting in Aero group
-> boxes), the Windows 11 type ramp the pinned line heights came from (deleted with
-> `LineHeightBody`/`LineHeightCaption`/`LineHeightSubtitle`, and archived), and every DIP figure taken
-> off the 4/8/12/16/20 ladder, which Task 7 re-pointed onto Aero's published 5/7/11/22.
+> **DEPRECATED IN FULL — Round 8, Task 9, and the paragraph this replaces is why the header is being
+> rewritten rather than extended.** Until Round 8 this header said: *"This one document is more than a
+> record… The ROW SPEC itself is information architecture rather than paint, and Round 7 kept it
+> deliberately: a 16 DIP leading mark, a header of exactly one title line and one subtitle line, the
+> control trailing with its right edge on one shared line, extra content on a row of its own starting
+> at the title's left edge. All sixteen rows still obey it and
+> `tests/TanMenu.Core.Tests/Themes/SettingsRowTests.cs` still guards it."*
+>
+> **No row obeys it now.** Round 8, Task 6 (`7e9bee6`) deleted the twelve `tm-card*` style rules and
+> rewrote all six card files: a settings row is a label in column 0 and its control in column 1 of a
+> two-column `Auto,*` grid on `vis-layout`'s published ladder. The 16 DIP mark, the subtitle line and
+> the row card are all gone — a Windows 7 property page has no such objects — and Task 5 (`e52144e`)
+> had already turned the five toggle switches into check boxes, which carry their own labels. The rows
+> are not on a page at all any more: 设置 is a modal Options dialog with five tabs and a delayed commit
+> (Tasks 1, 2 and 4), and item 2 of this document — 关于 folded into the 设置 page as a card — was
+> reversed by Task 4, which gave 关于 an About box of its own. `SettingsRowTests` survives with **three**
+> facts, none of them this spec's: no settings file restates a constant the theme owns, no row label
+> carries a hard line break, and every settings `Grid` is either the two-column template or declares no
+> columns. Its two spec-shaped facts were deleted with their subject.
+>
+> Everything about the CONTAINER and the metrics was already deprecated by Round 7: the Windows 11 row
+> card's fill, hairline and 4 DIP radius (deleted at Task 7), the Windows 11 type ramp the pinned line
+> heights came from (deleted with `LineHeightBody`/`LineHeightCaption`/`LineHeightSubtitle`, and
+> archived), and every DIP figure taken off the 4/8/12/16/20 ladder. The published ladder the tree uses
+> today is 3/5/7/9/11/16 (+22 as 2 × 11) — see `2026-08-05-classic-menu-shell-design.md` §2.
 
 > **Status.** **Parts A, B and C are all implemented.** Task A shipped the style classes and the source
 > guard (`64fc424`, `4427589`), task B migrated all sixteen rows (`0dcd1fb`, `5cb9984`), task C moved 退出

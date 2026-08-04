@@ -3,10 +3,16 @@
 > **DEPRECATED — Round 7, Task 10.** Describes the Windows 11 shell, shipped in 0.11.0–0.12.0 and
 > replaced by the Aero conversion (`2026-08-04-aero-conversion-design.md`). Kept as the record of that
 > work; its measurements were true of the code at the time and are not true of the code now. Nothing
-> below was edited to add this header. The shell's SHAPE survives — a window, a navigation pane on the
-> left, 应用 and 设置 as pages, settings applied immediately — and its PAINT does not: the system title
-> bar became a hand-drawn Aero caption, Mica became AcrylicBlur on the caption band over an opaque
-> client, and the icon rail became a 160 DIP labelled pane.
+> below was edited to add this header. Round 7 replaced its PAINT — the system title bar became a
+> hand-drawn Aero caption, Mica became AcrylicBlur on the caption band over an opaque client, and the
+> icon rail became a 160 DIP labelled pane.
+>
+> **ROUND 8 THEN REPLACED THE SHAPE, and the sentence this paragraph used to carry — "the shell's
+> SHAPE survives: a window, a navigation pane on the left, 应用 and 设置 as pages, settings applied
+> immediately" — is false in three of its four clauses.** There is no navigation pane (a classic menu
+> band of five direct commands took its place), there are no pages to navigate between (设置 is a modal
+> Options dialog and 关于 an About box), and nothing applies immediately (确定 / 应用 commit, 取消
+> discards). Only "a window" survives. See `2026-08-05-classic-menu-shell-design.md`.
 
 > **Status: implemented in `28158a8`..`e7f4797`, corrected by `41c6529`** (Task 13 of 13 deletes
 > `SettingsWindow` and finishes the wiring this spec describes; `e7f4797` is a `MenuService`

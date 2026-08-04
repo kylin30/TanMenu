@@ -8,6 +8,15 @@
 > deliberately did **not** restore the second width, the transition or the animation clip. Item 5's
 > white-band investigation and both of item 5's 8 DIP corners are archived in
 > `../archive/2026-08-04-windows11-measurement-record.md`.
+>
+> **ROUND 8, TASK 3 ENDED THAT ARGUMENT BY DELETING THE RAIL.** There is no navigation rail and no
+> navigation pane in the app at all — a horizontal menu band of five direct commands sits above the one
+> remaining page — so item 1's subject, `RailWidthDip`, `PaneBorderDip` and the pane's fit terms are
+> gone, and item 4's window arithmetic reverted with them (`MinWindowWidthDip` 872 → 711, the
+> placeholder 1112×688 → 1000×688; the centred-low placement rule itself is untouched and still
+> current). `GeneralConfig.NavRailExpanded`, which this document's §6.4 table retires with the remark
+> *"legacy; the rail is permanently icon-only"*, is still retired and now names nothing whatever; its
+> `AppConfig.cs` remark was rewritten by Round 8, Task 9.
 
 > **Status: IMPLEMENTED, and PARTLY SUPERSEDED BY ROUND 5. The shipped build is the authority, not
 > this document.** All five items below shipped in `e1546ec..908967e` (the document itself was first

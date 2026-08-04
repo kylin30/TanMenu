@@ -82,22 +82,38 @@ public class GeneralConfig
     /// <c>WindowHost.RestorePlacement</c>). The two rules are mutually exclusive, and the code cannot
     /// tell a cold start from a summon: the same method serves both. Nothing reads or writes these
     /// properties any more; they are kept only so a config.json that carries a <c>windowLeft</c>/
-    /// <c>windowTop</c> key (every file saved by 0.12.0 and earlier has one) still loads without error.
-    /// A value in such a file has no effect on anything.</summary>
+    /// <c>windowTop</c> key still loads without error. <b>Which files carry one is not what this remark
+    /// used to say</b> — it claimed "every file saved by 0.12.0 and earlier has one", and that is wrong
+    /// in both directions for a reason the retirement itself created: these two are the only retired
+    /// fields that are NULLABLE, and <c>ConfigJsonContext</c> is declared
+    /// <c>DefaultIgnoreCondition = WhenWritingNull</c>, so once Round 4 stopped writing them they are
+    /// null on every save and the serializer OMITS them. A file written by a pre-Round-4 build that had
+    /// actually placed the window carries them; one written since does not. Both load, which is the
+    /// whole point of keeping the properties. A value in such a file has no effect on
+    /// anything.</summary>
     public double? WindowLeft { get; set; }
     public double? WindowTop { get; set; }
 
     public bool WindowMaximized { get; set; } = false;
 
-    /// <summary>Legacy setting retained only so config files written between Round 2 and Round 4
-    /// deserialize cleanly — the same treatment <see cref="WindowWidth"/>/<see cref="WindowHeight"/>
-    /// above and <see cref="ButtonSize"/> below get. Round 2 gave the navigation rail a hamburger
+    /// <summary>Legacy setting retained only so config files that carry the key deserialize cleanly —
+    /// the same treatment <see cref="WindowWidth"/>/<see cref="WindowHeight"/> above and
+    /// <see cref="ButtonSize"/> below get. <b>There is no navigation rail and no navigation pane in
+    /// this app at all any more, so this flag names nothing.</b> Round 2 gave the rail a hamburger
     /// toggle and two widths (48 px icon-only, 200 px icon+label) and persisted the choice here; Round
-    /// 4, item 1 deleted the toggle, the second width and the row labels outright, so the rail is
-    /// permanently 48 px icon-only and each row's tooltip/accessible name is its only label. Nothing
-    /// reads or writes this field any more; it is kept only so a config.json that carries a
-    /// <c>navRailExpanded</c> key (every file saved by 0.12.0 has one) still loads without error.
-    /// A <c>true</c> in such a file has no effect on anything.</summary>
+    /// 4, item 1 deleted the toggle, the second width and the row labels; Round 7, Task 8 widened the
+    /// one surviving width to 160 and gave the labels back; and Round 8, Task 3 deleted the pane
+    /// outright — the shell's five commands are a horizontal menu band across the top of the client
+    /// area now (<c>MainWindow.axaml</c>'s <c>MainMenu</c>), and <c>RailWidthDip</c>/<c>PaneBorderDip</c>
+    /// went with it. This remark is rewritten rather than trimmed because the sentence it replaces
+    /// ("the rail is permanently 48 px icon-only") had been false since Round 7 and false twice over
+    /// since Round 8. Nothing reads or writes this field; every save this app makes still WRITES the
+    /// key, because the property is public and the serializer only omits nulls
+    /// (<c>ConfigJsonContext</c>), and a file written before the property existed simply loads the
+    /// <c>false</c> below. Both halves are held by
+    /// <c>ConfigServiceTests.SaveThenLoad_RoundTripsNavRailExpanded</c> and
+    /// <c>.LoadAsync_ConfigWithNoNavRailExpandedKey_DefaultsToCollapsed</c>. A <c>true</c> in such a
+    /// file has no effect on anything.</summary>
     public bool NavRailExpanded { get; set; } = false;
 
     /// <summary>The user chose 不再提示 on the in-app taskbar-pin notice. The 行为 settings card keeps an

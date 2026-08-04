@@ -6,6 +6,14 @@
 > below was edited to add this header. Note in particular that `src/TanMenu.Wpf/Themes/Fluent2/` is
 > named `Themes/Shell/` from Task 10 on, and that every one of the 46 tokens this document introduced
 > was aliased, re-valued or deleted by Round 7, Task 7.
+>
+> **Round 8 reversed one of this document's own goals by name.** Its opening lists "an overflow menu
+> instead of a text menu bar" among the Fluent 2 moves; the shell has a **text menu bar** again — five
+> direct commands across the top of the client area — because the user asked for one in as many words.
+> The separate **settings window** this document still assumes came back too, after two rounds as a
+> page of the shell: it is `Dialogs/OptionsWindow`, a modal Windows 7 property sheet with five tabs and
+> 确定 / 取消 / 应用, and it is Aero rather than "Avalonia's own control colours". See
+> `2026-08-05-classic-menu-shell-design.md`.
 
 > Design spec. Every claim about Avalonia below was measured with a throwaway probe against
 > Avalonia 12.1 on 2026-07-30, not recalled — the measurements are quoted where they change a

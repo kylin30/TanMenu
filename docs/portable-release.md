@@ -12,7 +12,8 @@ retains a Store submission package as an Actions artifact. Store submission rema
 - Velopack may replace the application content directory during updates, but never the stable Data folder.
 - The normal `Documents\TanMenu` migration and data-location registry pointer are not used.
 - Windows autostart is disabled so the portable edition never creates a Run-key value.
-- Taskbar integration is opt-in. **Settings > Behavior > Pin to taskbar** creates the Start-menu
+- Taskbar integration is opt-in. **Options > Behavior > Pin to taskbar** (the English menu item is
+  *Options*, published as the label a settings command takes; the Chinese one is 设置) creates the Start-menu
   shortcut required by Windows. TanMenu uses the user-approved Windows pin prompt where available;
   on Windows 10 systems that do not expose that API, it opens the shortcut in Explorer so the user
   can right-click **Pin to taskbar**. The next launcher reveal also checks Windows 10's traditional

@@ -32,7 +32,7 @@ English
    notice and confirm before TanMenu downloads or installs an update.
 5. portable.flag enables portable mode. Do not remove it.
 6. The portable edition does not write a Windows startup registry entry, so autostart is unavailable.
-7. For one-click taskbar recall, open Settings > Behavior > Pin to taskbar. Approve the Windows prompt
+7. For one-click taskbar recall, open Options > Behavior > Pin to taskbar. Approve the Windows prompt
    when available; if Windows 10 opens the shortcut location, right-click TanMenu and choose Pin to taskbar.
 8. Keep the portable folder in place while pinned. To uninstall, unpin TanMenu, remove its Start-menu
    shortcut, exit the app, and delete the extracted folder.

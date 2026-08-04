@@ -6,10 +6,15 @@
 > below was edited to add this header. Three of its four items lost their subject outright: item 2's
 > Mica-straddle argument (there is no Mica — the caption band is AcrylicBlur and the client below it is
 > opaque), item 3's accent selection pill (deleted with the icon rail at Task 8), and item 4's category
-> panel fill (the panel is an unfilled Aero group box since Task 9). Item 1 — the search field shown
-> only on 应用 — survives in a stronger form: the field lives *inside* the 应用 page now, so there is
-> no visibility rule left to get wrong. All the measurements are in
+> panel fill (the panel is an unfilled Aero group box since Task 9). All the measurements are in
 > `../archive/2026-08-04-windows11-measurement-record.md`.
+>
+> **ROUND 8 TOOK ITEM 1's SUBJECT TOO, and the sentence this replaces — "the field lives *inside* the
+> 应用 page now, so there is no visibility rule left to get wrong" — was true for exactly one round.**
+> Round 8, Task 3 moved the search field a third time, into the classic menu band immediately after
+> 关于. The conclusion survives in an even stronger form: there is only one page, so a field that is
+> shown on some pages and not others is not a thing this shell can express. Item 4's remaining half is
+> untouched — the 应用 page's categories are still one Aero group box each.
 
 > **Status when written: DESIGN ONLY.** No source file was edited and nothing was committed while
 > this document was written; the repository was clean at `ef79481` throughout.

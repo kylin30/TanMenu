@@ -604,8 +604,9 @@ public class ConfigServiceTests
             var svc1 = new ConfigService(paths, NullLogger<ConfigService>.Instance);
             await svc1.LoadAsync();
 
-            // NavRailExpanded is a RETIRED field as of Round 4, item 1 — the navigation rail is
-            // permanently icon-only and nothing reads or writes this any more. What these two cases
+            // NavRailExpanded is a RETIRED field as of Round 4, item 1, and since Round 8, Task 3
+            // there is no navigation rail or pane in the app at all — the shell's commands are a
+            // horizontal menu band. Nothing reads or writes this any more. What these two cases
             // guard is the retirement contract itself (AppConfig's own remarks, and the same contract
             // ShowInTaskbar/WindowWidth/WindowHeight/ButtonSize have): the property still round-trips
             // through the serializer and still defaults to false, so neither an old config.json that

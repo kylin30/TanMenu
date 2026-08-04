@@ -353,11 +353,17 @@ public static class AppLanguage
             ["MenuRefreshWithAccessKey"] = ("刷新(_R)", "_Refresh"),
             ["MenuExitWithAccessKey"] = ("退出(_X)", "E_xit"),
             ["MenuAboutWithAccessKey"] = ("关于(_A)", "_About"),
-            // The 设置 page's last group and its one card (Views/Settings/AboutCard.axaml). "About" is
-            // the group head; AboutPublisher is the card's subtitle. The overlay this replaced showed an
-            // untranslated English "by TanSoft" (Controls/SplashPanel.axaml still does, inside a branded
-            // splash card where that is fine) — a settings-row subtitle is not the place for one, so the
-            // line is localized here.
+            // "About" HAS TWO READERS AND NEITHER IS A SETTINGS GROUP ANY MORE. It was the 设置 page's
+            // last group head plus its one card until Round 8: Task 4 moved Views/Settings/AboutCard
+            // into a window of its own (Dialogs/AboutWindow, which titles itself from this key) and
+            // Task 6 deleted the card's GroupHead outright, because the window's own caption and a
+            // group head one line below it read as 关于 twice. The second reader is the menu band's
+            // 关于 item, whose AutomationProperties.Name is this string (MainWindow.ApplyMenuText);
+            // its Header is the *WithAccessKey twin above. AboutPublisher is the line under the product
+            // name inside the card — the row grammar that called it a "subtitle" was deleted in Task 6.
+            // The overlay this replaced showed an untranslated English "by TanSoft"
+            // (Controls/SplashPanel.axaml still does, inside a branded splash card where that is fine);
+            // a line in the About box is not the place for one, so it is localized here.
             ["About"] = ("关于", "About"),
             ["AboutPublisher"] = ("由 TanSoft 出品", "by TanSoft"),
             // "NavApps" ("应用"/"Apps") and "NavSettings" ("设置"/"Settings") were here until Round 8,

@@ -1,5 +1,12 @@
 # Round 8 — the classic main-menu shell, the Options dialog, and the strip
 
+> **Status: IMPLEMENTED.** All nine tasks shipped, `bf770d7`..`7b655c9` plus this document's own commit.
+> **222 tests pass, version 0.14.0.** §10 is the record: what shipped, every number this design got
+> wrong, the two environment facts the round established, and what is knowingly left open. Where §10
+> and §§0-9 disagree, §10 is the later reading — and the **code is the authority over both**. Nothing
+> in §§0-9 was rewritten to match the build; a design is a record of what was decided, and correcting
+> it in place would erase the decisions the tasks actually departed from.
+
 Design for the user's five items. Written against the tree at `38589ed` (main, clean, 194 tests passing,
 version 0.13.0).
 
@@ -1652,3 +1659,113 @@ not unsettled choices, and every one has a verification step assigned:
 - The exact wording of `win-property-win`'s unsaved-changes exception (§7).
 - The band's minimum width, ESTIMATED at ≈686 DIP (§5; measured in T3's verification).
 - Upstream's own dark-mode `AeroMenuBarItem*` defect, inherited and not fixed (§8.6).
+
+---
+
+## 10. The record — Round 8 as shipped
+
+Written by **Task 9** against the tree at `7b655c9` plus this task's own edits. Everything below was
+read out of the code, the commits or an instrument this session; nothing is inferred from §§0-9.
+
+### 10.1 The nine tasks
+
+| Task | Commits | Tests | What shipped, and where it left the design |
+|---|---|---|---|
+| T1 delayed commit | `bf770d7` | 194 → 206 | `SettingsDraft` + `SettingsCommit` as specified. 开机自启 buffered by hand, as §T1 said it must be. |
+| T2 the Options dialog | `d5b72c8` + `22f450b` | → 213 | Dialog **MEASURED at 711 × 452**, not the provisional 540 × 540. Page model deleted whole. `TabControl.axaml`, `TabItem.axaml` and `Converters/AdjustThicknessForTabsConverter.cs` vendored. Three caption facts (minimize box, maximize box, icon) had to be fixed in Win32 rather than in markup. |
+| T3 the menu band | `b354c79` + `92082ef` | → 218 | As designed, 25 DIP band and left-aligned group included. `ControlStyles/Menu.axaml` vendored with three one-line changes. Every fit term moved and the §8.2 prediction held (see 10.2). |
+| T4 the About box | `c4442ca` + `bec7ae1` | → 221 | Six tabs → **five**. `Dialogs/AboutWindow` + `Dialogs/DialogCaption`. |
+| T5 check boxes | `e52144e` | 221 | Five `ToggleSwitch`es → `CheckBox`es; `ToggleSwitch.tm-card-toggle` deleted; the vendored theme stays on disk, recorded consumerless. |
+| T6 the DLU grid | `7e9bee6` + `d2267b4` | → 220 | Went past its stated blast radius, with reasons: the dialog's height **re-measured 452 → 479**, 维护 split into 缓存 + 备份, four button strips re-docked, the draft-language `MessageBox` defect fixed, `AboutCard`'s doubled 关于 head deleted. Its review then found the whole surface had lost its body size and gave every card root `FontSizeBody`. |
+| T7 the strip | `87ac2ea` | → 221 | Two rules and three keys deleted, `FontSizeBody`/`FontSizeSubtitle` re-declared as aliases, `TmButton` to the published 75 × 23. |
+| T8 radii and weights | `e2c5b72` + `7b655c9` | → 222 | Extended row 3 to all three `SemiBold` setters, with the published table quoted for the extension, and added `ShellTypographyTests` — which §T8 had said a `dotnet test` could not do, true of a rendered assertion and not of a source one. |
+| T9 the record | this commit | 222 | Below. |
+
+### 10.2 Where this design's own numbers were wrong, provisional or beaten
+
+| §  | The design said | The build says |
+|---|---|---|
+| §0 r8, §7 | dialog **provisional 540 × 540**, T2 to measure | **711 × 479** client (725.33 × 516 DIP outer at 150 %, MEASURED again by T9 through `GetClientRect`/`GetWindowRect`). Clears the published 800 × 600 floor. |
+| §0 r8 | if it does not fit, **split 文件夹** → six tabs | not needed. T6's re-layout took 108.67 DIP off the tab; the strip holds **five** tabs, MEASURED live by T9 in the UIA tree: 外观 \| 行为 \| 文件夹 \| 常用工具 \| 更新. |
+| §8.3 | *"Net: ≈194 → ≈205"* | **222**. The estimate missed by 17: `SettingsDraftTests` alone shipped 14 attributes against the six §T1 named, `MenuBarTests` 5 against 4, `OptionsWindowTests` 5 against 3, and `AboutWindowTests` + `ShellTypographyTests` were not forecast at all. |
+| §8.2 | the PREDICTED log line | matched, to every field: `1486.6666666666667x568 DIP (page 1486.6666666666667x470.6666666666667 + chrome 0x55)`, re-read by T9 off a fresh sandbox log. **One digit differs**: the x is `1816.6666666666665`, not the design's `…667` — the design did the arithmetic, the code prints the double. |
+| §5 | band minimum width **ESTIMATED ≈686 DIP** | **MEASURED 670 DIP** in Chinese and **663.33 DIP** in English, by T9 through UIA at 150 %: the menu run's right edge is 316 / 309.33 DIP, plus the separator's whole 23 DIP footprint (`Width` 1 + `Margin` 11,3), plus the 320 DIP field, plus the 11 DIP trailing margin. Both are under `MinWindowWidthDip` 711, so the estimate's *conclusion* — that the band does not set the window's floor — holds with more room than it claimed. |
+| §1, §8.3 | `AeroResources.axaml` merges **fourteen** `ControlStyles` dictionaries; **21** vendored files | **17** and **25**. `Menu`, `TabControl`, `TabItem` and one converter were vendored by this round's own tasks. The half of §1 that matters is untouched: every `TargetType` under `Themes/Aero/` is still a *control*, so a rule that gives a `Border`/`TextBlock`/`StackPanel`/`Image`/`Panel` its geometry still has no theme value under it. |
+| §3 T9 | *"update `MainWindow.axaml.cs`'s class summary (it still describes the pane and the two pages)"* | **already done, by T3 and its review.** T9 read it and changed nothing: the summary describes the band, the single page and the two moves, and names the pane only as what was deleted. Recorded here because "the task did nothing" is a result worth being able to check. |
+| §T3 | the vendored `Menu.axaml` left inset — COULD NOT VERIFY | resolved in T3: `PART_ItemsPresenter` is a *sibling* of the bordered `Border`, so there is no inset to correct, and the gap was measured to confirm it. |
+| §7 | whether Win32 draws a greyed minimize box — COULD NOT VERIFY | resolved in T2: the first build drew an **enabled** minimize box, a greyed maximize box and the app icon. `Dialogs/DialogCaption` fixes all three in Win32; both dialogs read style `0x16C80000`, exstyle `0x00200101`. |
+
+### 10.3 Two environment facts this round established, recorded because no spec held them
+
+**1. `dotnet publish` needs `vswhere.exe` on `PATH`, and it is not there by default.** ILC shells out to
+it to locate the MSVC linker and the Windows SDK libraries for the native link step. On this machine
+`Get-Command vswhere.exe` finds nothing while
+`C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe` exists, so every publish in this
+round ran after:
+
+```powershell
+$env:PATH = 'C:\Program Files (x86)\Microsoft Visual Studio\Installer;' + $env:PATH
+```
+
+The failure lands *after* several minutes of compiling, which is why it is worth knowing in advance.
+The two GitHub workflows already do the same thing in a step named *Ensure vswhere is on PATH*, and
+`README.md`'s Publish section now carries the one-liner for a local run.
+
+**2. Synthetic `Ctrl`+*key* cannot be tested in this app, at all.** `PostMessage` is the only key
+instrument available here (there is no real keyboard, and `SendInput`/`SetForegroundWindow` no-op), and
+it **cannot express a modifier**: Avalonia's Win32 backend derives `KeyModifiers` from the live keyboard
+state, which `PostMessage` never updates, so a posted `WM_KEYDOWN` for `E` arrives as plain `E` no
+matter what is posted around it. Task 3's review established this with a control experiment — synthetic
+`Ctrl+E` moved focus neither from a band item nor from inside the page, where the code path is not in
+dispute — so a negative result measures the instrument, not the code. **A test that posts a modifier
+proves nothing; do not write one, and do not read an old one as evidence.** Plain keys work (Alt, the
+arrows, Enter, Escape) and UIA patterns work, which is how every keyboard verification in this round was
+actually driven. The finding also lives in `MainWindow.axaml.cs`'s `Ctrl+E` branch, where someone
+changing that accelerator would meet it.
+
+### 10.4 What Task 9 itself changed
+
+- `Directory.Build.props` **0.13.0 → 0.14.0**, with the reason and the "still nothing tagged since
+  v0.9.6" fact in the comment.
+- `README.md` rewritten for the shipped shell: the menu band, the Options dialog and its delayed
+  commit, the row grammar, the About box, `MinWidth` 711 and the 1000 × 688 placeholder, the test
+  inventory, the vendoring counts (fifteen control themes, three converters, 25 vendored files) — and
+  the glyph census, which was **26 instances over 21 code points** and is **7 over 6**.
+- `packaging/portable/RELEASE-NOTES.md` rewritten for 0.14.0 in both languages, still addressed to a
+  user coming from 0.9.x because nothing between has ever been packaged.
+- `AppConfig.cs`'s `NavRailExpanded` remark, which claimed *"the rail is permanently 48 px icon-only"*
+  — false since Round 7, Task 8 and false twice over since Round 8, Task 3. Its two test comments
+  carried the same sentence and were corrected with it.
+- Supersession headers on the five Windows 11 specs and the two Aero ones, each naming what Round 8
+  falsified rather than repeating "deprecated": the row spec's *"all sixteen rows still obey it"*, the
+  shell redesign's *"the shell's SHAPE survives"*, Round 6's *"the field lives inside the 应用 page
+  now"*, Round 4's rail argument, and the Aero conversion's whole navigation-pane task.
+- `docs/portable-release.md` and `packaging/portable/README-PORTABLE.txt`: the English pin path is
+  **Options > Behavior**, because the English menu label is Options (the Chinese one is still 设置).
+- `MainWindow.axaml`'s band-width paragraph, which cited *"this task's report"* — a scratch file that
+  is not in this repository. It carries the measured number now and points here.
+
+### 10.5 Carried forward, knowingly
+
+- **Posting `Esc` to the Options dialog closes it *and* opens a second one.** Reported by T5, which
+  reproduced it on a **pre-T5 build** — so it predates this round and no task here owns it. **T9 did
+  not re-test it**; every dialog this task drove was closed through 取消's `InvokePattern` instead.
+- **Dark-mode check-box contrast measures 2.35:1** (light 6.25:1). Those are the **vendored Aero
+  brushes, unmodified**; no threshold is claimed here and nothing in this round changed them.
+- **Upstream's own dark `AeroMenuBarItem*` defect** (§8.6) — four item-state colours byte-identical in
+  both variants, carrying upstream's own `[TODO: Dark-ify …]`. Inherited, not fixed, because a hover
+  state cannot be produced on this machine and authoring a colour blind is what the accuracy rule
+  forbids.
+- **`ControlContentThemeFontSize` = 14** reaches every Fluent-templated surface this app has not
+  overridden — the message box among them. T6's review found it, fixed the settings surface at the
+  card roots and deliberately did not re-point the key, because that moves type on surfaces nobody has
+  measured. Recorded in `AppearanceCard.axaml`'s header.
+- **Four modern idioms T8 declared and did not sweep**: `SplashPanel.axaml`'s two `FontWeight="Light"`
+  lines, its `BoxShadow` and its accent gradient, and `MessageBoxWindow.axaml`'s icon-glyph `Bold`.
+  The splash is a branded surface this round never touched otherwise, and the Bold is the guide's own
+  sanctioned case. `ShellTypographyTests` names both files as **scope with a reason**, not as an
+  exemption list.
+- **Two COULD NOT VERIFYs stand**: no Microsoft-shipped Windows 7 application with a text field in its
+  menu bar (§0 ruling 6), and the exact wording of `win-property-win`'s unsaved-changes exception —
+  which is why the discard prompt is booked as a **named deviation** in `OptionsWindow.axaml.cs`
+  rather than dressed up as compliance.

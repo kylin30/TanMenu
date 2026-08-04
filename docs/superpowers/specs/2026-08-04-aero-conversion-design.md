@@ -1,10 +1,27 @@
 # TanMenu — the Aero conversion, design
 
-> **Status: DESIGN.** No source file was edited, no package added, no build run and nothing committed
-> while this was written. Tree at `e6d031b` with the feasibility document untracked. This document is
-> the plan; `docs/superpowers/specs/2026-08-04-aero-feasibility.md` is the decision record it executes
-> against, and it is Option B of that document's §4, extended by the six decisions the user settled
-> afterwards.
+> **PARTLY SUPERSEDED — Round 8, Task 9.** The Aero *paint* this document specifies is the paint the
+> app ships. Its **shell shape is not**: Round 8 replaced the navigation pane with a classic menu
+> band, moved 设置 into a modal Options dialog with a delayed commit, moved 关于 into an About box,
+> turned the settings toggles into check boxes and rewrote the settings rows onto the published DLU
+> grid. Nothing below was edited to add this header; the four sections it falsifies carry their own
+> **SUPERSEDED BY ROUND 8** box, and `2026-08-05-classic-menu-shell-design.md` is the authority on the
+> shell — over the code, which is the authority over both. In one line, what changed under each of
+> this document's own numbers:
+>
+> | This document says | Round 8 |
+> |---|---|
+> | §1.3 / Task 8: a 160 DIP labelled navigation pane; `RailWidthDip`, `PaneBorderDip`, `MinWindowWidthDip` 872, placeholder 1112×688 | pane **deleted** (T3). A 25 DIP horizontal `Menu` above the page; both rail constants deleted, `chromeWidth` 0, `MinWindowWidthDip` and `MinWidth` back to 711, placeholder back to 1000×688 |
+> | §1.2 / Task 1: the search field returns to the 应用 page | it moved again, into the menu band immediately after 关于 (T3) — still "within the window instead", which is all the published sentence asks |
+> | 设置 is a page of the shell, applied immediately | a modal Options dialog, five tabs, 确定/取消/应用, delayed commit (T1, T2, T4) |
+> | the settings row spec, `tm-card*`, `ToggleSwitch.tm-card-toggle` | all deleted (T5, T6). Rows are a two-column label-and-control grid; the five toggle switches are check boxes |
+> | `ControlStyles/` holds 14 merged dictionaries; 21 vendored files | 17 merged, 25 vendored: `Menu` (T3), `TabControl`, `TabItem` and `Converters/AdjustThicknessForTabsConverter.cs` (T2) were vendored after this document was written |
+
+> **Status when written: DESIGN.** No source file was edited, no package added, no build run and
+> nothing committed while this was written. Tree at `e6d031b` with the feasibility document untracked.
+> This document is the plan; `docs/superpowers/specs/2026-08-04-aero-feasibility.md` is the decision
+> record it executes against, and it is Option B of that document's §4, extended by the six decisions
+> the user settled afterwards.
 
 ## 0. How to read this
 
@@ -53,6 +70,8 @@ These six are the user's, are not re-opened, and the design executes them litera
    that paired them with icons) and **not** of the other three (the 200 DIP second width, the
    `DoubleTransition`, the `ClipToBounds`). Keeping one width is what keeps `RailWidthDip` a constant
    rather than a config read, and it keeps the sixth re-fit trigger deleted.
+   **(SUPERSEDED BY ROUND 8, TASK 3: the pane is deleted outright and a classic menu band takes its
+   place — see Task 8's own box below, and `2026-08-05-classic-menu-shell-design.md` §3 T3.)**
 4. **Dark mode is kept**, as a documented anachronism. Windows 7 shipped High Contrast, an
    accessibility mode, not a design variant; the library's Dark palette is its author's invention. It
    costs nothing mechanically — `Variant/Light.axaml` and `Variant/Dark.axaml` hold **168 `<Color>`
@@ -1129,6 +1148,13 @@ white box cannot appear. Verification step 6 checks it anyway.
 `<ColumnDefinition Width="12" MaxWidth="12" />` included, identical to Fluent 12.1's
 `Controls/ToggleSwitch.xaml:64`, and the margin cancels the column, not the pill.
 
+> **SUPERSEDED BY ROUND 8, TASK 5 (`e52144e`).** There are no `ToggleSwitch` call sites left: Windows 7
+> has no toggle-switch control, so all five became `CheckBox`es and `ToggleSwitch.tm-card-toggle` was
+> deleted with them. The vendored `ControlStyles/ToggleSwitch.axaml` stays on disk and stays merged —
+> it is a vendored file — and `AeroResources.axaml` records it as consumerless. Both of the rule's jobs
+> lost their subject rather than moving: a `CheckBox` has no `OnContent`/`OffContent` to blank, and the
+> vendored Aero `CheckBox` has no fixed 12 DIP spacer column for a negative margin to cancel.
+
 #### Why
 
 These eight files touch nothing our own layer depends on, so they can land as one coherent visual step
@@ -1557,6 +1583,21 @@ prose lines), `AppPage.axaml`, `SettingsPage.axaml`, all 6 `Views/Settings/*.axa
 ---
 
 ### Task 8 — The navigation pane
+
+> **SUPERSEDED BY ROUND 8, TASK 3 (`b354c79`) — the subject of this whole section no longer exists.**
+> The pane shipped as specified below and was deleted six days later: a shell with one page does not
+> need a navigation pane, and the user asked for "windows 经典的 mainmenu" instead. What replaced it is
+> a 25 DIP horizontal `Menu` across the top of the client area holding five direct commands
+> (设置 · 打开主目录 · 刷新 · 退出 · 关于), with the search field after 关于 behind one separator.
+> **Nothing below is true of the tree**: `NavRailPane`, `NavRail`, `NavFooterRail`, `TmNavRowButton`,
+> `TmNavRowItem`, `tm-nav-label`, `tm-nav-separator`, `tm-nav-rail`, `tm-header`, `ApplyRailText`,
+> `RailWidthDip`, `PaneBorderDip` and `ShellConstantTests.RailWidth_MatchesTheRailPaneWidth` are all
+> deleted. The 160 DIP derivation, the row geometry and the four-state list-row argument are kept as
+> the record of a shipped task, not as a description. The two constants this task moved moved back:
+> `MinWindowWidthDip` 872 → 711, placeholder 1112×688 → 1000×688, `chromeWidth` → 0, and the pane's
+> height term became `WindowHost.ChromeHeightDip = TitleStripHeightDip + MenuBandHeightDip = 55`.
+> `GeneralConfig.NavRailExpanded` stays retired-in-place and now names nothing at all — its remark in
+> `AppConfig.cs` was rewritten by Round 8, Task 9 to say so.
 
 #### Decision
 

@@ -13,6 +13,16 @@
 > unchanged" is wrong — zero survive — and "~14 style rules target Fluent's part names" is wrong — the
 > live census was 24. The conversion design is the authority wherever the two differ, and the code is
 > the authority over both.
+>
+> **Read-me extended by Round 8, Task 9.** The conversion design is itself partly superseded now: its
+> shell shape — a navigation pane, 设置 as a page, immediate apply, toggle switches, the `tm-card*` row
+> grammar — was replaced by a classic menu band, a modal Options dialog with a delayed commit, an About
+> box, check boxes and a two-column DLU grid. Its survey of what the theme supplies (§2.4) understates
+> what was eventually taken: four more files were vendored after the conversion shipped
+> (`ControlStyles/Menu.axaml`, `TabControl.axaml`, `TabItem.axaml` and
+> `Converters/AdjustThicknessForTabsConverter.cs`), so `Themes/Aero/` holds 28 files of which 25 are
+> copies. `2026-08-05-classic-menu-shell-design.md` is the shell's design; the code is still the
+> authority over every document here.
 
 Investigated 2026-08-04 against `https://github.com/Splitwirez/aero-theme-for-avalonia`, upstream
 `main` at `a705b7c0` (2026-01-26).

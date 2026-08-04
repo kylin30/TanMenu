@@ -56,8 +56,12 @@ public class AppConfigTests
     [Fact]
     public void NewGeneralConfig_NavRailIsCollapsedByDefault()
     {
-        // NavRailExpanded is retired as of Round 4, item 1: the rail is permanently icon-only (48 px)
-        // and nothing reads or writes this property any more. The default still has to be false — an
+        // NavRailExpanded is retired as of Round 4, item 1, and there is no navigation rail OR pane
+        // left to describe: Round 8, Task 3 replaced the whole pane with the horizontal menu band, so
+        // this property names nothing (AppConfig's own remark carries the full history). The sentence
+        // this comment used to carry — "the rail is permanently icon-only (48 px)" — was falsified by
+        // Round 7, Task 8's 160 DIP labelled pane before that.
+        // Nothing reads or writes this property any more. The default still has to be false — an
         // absent key in an old config.json deserializes to it, and the field is kept purely so such a
         // file still loads. The test name predates the retirement and is kept so the case's history is
         // greppable.
