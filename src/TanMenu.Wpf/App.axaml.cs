@@ -130,10 +130,13 @@ public partial class App : Application
         // was deleted whole rather than left registered and unread.
         services.AddSingleton<ISettingsLauncher, SettingsLauncher>();
         // The settings surface's pending-changes buffer (Round 8, Task 1). Registered rather than
-        // constructed by the page because all six card groups and the commit row have to share ONE
-        // draft and none of them can be handed it — Avalonia's XAML loader owns the cards' construction
+        // constructed by the page because the Options dialog's five card groups and its commit row have
+        // to share ONE draft — plus AboutCard, which resolves it for the UI language alone and writes
+        // nothing (Round 8, Task 4 moved that card into Dialogs/AboutWindow) —
+        // and none of them can be handed it: Avalonia's XAML loader owns the cards' construction
         // and ISettingsCard has no member to push it through. Resolved lazily, so it is seeded from the
-        // config as it stands when 设置 is first opened; re-seeded in place afterwards (Reseed) on every
+        // config as it stands when 设置 — or 关于, whose card resolves it too — is first opened; the seed
+        // is a config clone plus one registry read either way. Re-seeded in place afterwards (Reseed) on every
         // close AND on every successful commit, never replaced, so the commit row's DirtyChanged
         // subscription survives all of them.
         services.AddSingleton(sp => SettingsDraft.From(

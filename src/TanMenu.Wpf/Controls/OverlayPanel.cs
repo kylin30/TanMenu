@@ -12,9 +12,11 @@ namespace TanMenu.Wpf.Controls;
 /// <see cref="Panel"/> would take the MAX of all children, so opening About or showing a toast would
 /// resize and re-place the popup). The old WebView build got this for free — both were
 /// <c>position:fixed</c>, which contributes no layout size (launcher spec §7 and §9). Round 5, item 2
-/// deleted the About panel — 关于 is a settings card now — so the overlays this holds today are the
-/// startup splash, the two empty states and the toast. That removes the panel's original occasion, not
-/// its job: every one of those four is still a child that must not feed the window's measure.
+/// deleted the About panel — 关于 became a card on the settings surface, and Round 8, Task 4 moved that
+/// card again, into a window of its own (<c>Dialogs/AboutWindow</c>); either way nothing overlays the
+/// launcher for it any more — so the overlays this holds today are the startup splash, the two empty
+/// states and the toast. That removes the panel's original occasion, not its job: every one of those
+/// four is still a child that must not feed the window's measure.
 /// </para>
 /// <para>
 /// Between 0.12 and Round 2's Task 4 the window was a fixed, user-resized application window that never

@@ -950,8 +950,9 @@ public partial class MainWindow : Window
     //
     // Every one is a direct command with no submenu. Three of them (主目录/刷新/退出) have been the
     // same three handlers since Round 3, Task 2 moved them out of the title strip's ⋯ overflow
-    // MenuFlyout; 设置 joined them in Round 8, Task 2 when it stopped being a page; 关于 comes back in
-    // Round 8, Task 3 after Round 5, item 2 had folded it into the settings surface as a card.
+    // MenuFlyout; 设置 joined them in Round 8, Task 2 when it stopped being a page; 关于 came back in
+    // Round 8, Task 3 after Round 5, item 2 had folded it into the settings surface as a card, and
+    // Round 8, Task 4 gave it a window of its own again (Dialogs/AboutWindow).
     // MainWindow.axaml's band block carries the published sentences for and against a menu bar of
     // direct commands, and the ruling.
     // ══════════════════════════════════════════════════════════════════════════════════════════
@@ -960,39 +961,43 @@ public partial class MainWindow : Window
 
     private void OnRefreshClick(object? sender, RoutedEventArgs e) => _ = _appPage.ViewModel.RefreshAsync();
 
-    /// <summary>设置. Goes through <see cref="ISettingsLauncher"/> like the tray menu's own entry, the
-    /// 应用 page's empty-state 打开设置… button and <see cref="OnAboutClick"/> below, rather than
-    /// constructing the dialog here: that
+    /// <summary>设置. Goes through <see cref="ISettingsLauncher"/> like the tray menu's own entry and the
+    /// 应用 page's empty-state 打开设置… button, rather than constructing the dialog here: that
     /// service owns the single-instance guard, the SuppressHide bracket and the hidden-owner
-    /// fallback, and having four call sites reproduce them would be four chances to get one
-    /// wrong.</summary>
+    /// fallback, and having three call sites reproduce them would be three chances to get one
+    /// wrong. (There were four until Round 8, Task 4 sent 关于 to its own window — see
+    /// <see cref="OnAboutClick"/> for why that one does not want this service.)</summary>
     private void OnOptionsClick(object? sender, RoutedEventArgs e) =>
         App.Services.GetRequiredService<ISettingsLauncher>().Open();
 
     private void OnExitClick(object? sender, RoutedEventArgs e) => _appPage.ViewModel.ExitApp();
 
     /// <summary>
-    /// 关于. <b>PROVISIONAL, AND IT SAYS SO: this opens the Options dialog on its 关于 tab, because that
-    /// is where 关于 lives today.</b> Round 8, Task 4 gives it a real About box
-    /// (<c>Dialogs/AboutWindow</c>) and re-points this handler at it — PUBLISHED,
-    /// <c>win-property-win</c>: "Is the content solely an application's attributes? If so, use an About
-    /// box." Until then, sending 关于 to the same dialog as 设置 but on a DIFFERENT tab is the only
-    /// behaviour available that is not simply 设置 twice.
+    /// 关于 — the About box, <c>Dialogs/AboutWindow</c>. PUBLISHED, <c>win-property-win</c>: "Is the
+    /// content solely an application's attributes? If so, use an About box." Round 8, Task 4 built it;
+    /// between Task 3 and Task 4 this handler opened the Options dialog and selected its 关于 tab, which
+    /// that task's own remark called provisional.
     /// </summary>
     /// <remarks>
-    /// The tab is selected AFTER <c>Open()</c> returns, and that ordering is sound rather than lucky:
-    /// <c>SettingsLauncher.OpenCoreAsync</c> is an async method whose first await is
-    /// <c>ShowDialog(owner)</c>, so <c>new OptionsWindow()</c> — which claims
-    /// <c>OptionsWindow.Current</c> as its constructor's last statement — has already run by the time
-    /// control comes back here. If the constructor threw, <c>Current</c> is null (that field is claimed
-    /// last precisely so a fault cannot leave it set) and this is a no-op over a failure the launcher
-    /// has already logged.
+    /// <b>Not through <see cref="ISettingsLauncher"/>, and the asymmetry with
+    /// <see cref="OnOptionsClick"/> is the point.</b> That service exists for a dialog with three call
+    /// sites, one of them the tray menu, which is reachable while the launcher is hidden — hence its
+    /// single-instance guard and its <c>ShowAndActivate</c>. The About box has one call site, this one,
+    /// on a band that belongs to the window <c>ShowDialog</c> is about to disable.
+    /// <c>AboutWindow.ShowAsync</c> keeps the two brackets that are not optional — <c>SuppressHide</c>
+    /// and the hidden-owner fallback — and its remarks say why each.
+    /// <para>
+    /// Fire-and-forget but NOT fault-and-forget, exactly as <c>SettingsLauncher.Open</c> is: a bare
+    /// <c>_ = ShowAsync(…)</c> drops a XAML-load or DI fault into an unobserved Task and leaves a menu
+    /// item that silently does nothing.
+    /// </para>
     /// </remarks>
-    private void OnAboutClick(object? sender, RoutedEventArgs e)
-    {
-        App.Services.GetRequiredService<ISettingsLauncher>().Open();
-        OptionsWindow.Current?.ShowAboutTab();
-    }
+    private void OnAboutClick(object? sender, RoutedEventArgs e) =>
+        _ = AboutWindow.ShowAsync(_host).ContinueWith(
+            t => Serilog.Log.Error(t.Exception, "打开关于对话框失败"),
+            CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted,
+            TaskScheduler.Default);
 
     // ══════════════════════════════════════════════════════════════════════════════════════════
     // Alt+F4 (the system menu's Close command)

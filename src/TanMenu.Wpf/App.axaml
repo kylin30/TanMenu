@@ -42,10 +42,12 @@
                               searched last-first — Tokens.axaml is the authority on it and carries
                               the measurements; do not re-derive it here.
       4. Shell/Launcher     — the launcher's own dialect. Every rule is an x:Key'd ControlTheme or a
-                              .tm-* class selector, so it is opt-in: the shell's own pages ask for it
-                              by class, and the message box, which asks for nothing, cannot be
-                              reached by it. (There is no separate settings WINDOW to keep it out of
-                              — 设置 is a page inside MainWindow and does carry tm- classes.)
+                              .tm-* class selector, so it is opt-in: what asks for it by class gets
+                              it and nothing else does. Application.Styles reaches every window, so
+                              "opt-in" is the whole mechanism rather than a scoping one — the
+                              Options dialog and the About box (Round 8, Tasks 2 and 4) host the
+                              settings cards and DO carry tm- classes, while Dialogs/MessageBoxWindow
+                              asks for nothing and is therefore untouched by this entry.
 
     THE ORDER OF 2 AND 3 IS THE POINT, not incidental. Application.Styles is searched last-first
     (Avalonia.Styling.Styles.TryGetResource counts DOWN from Count-1), so a key defined in a LATER

@@ -9,8 +9,9 @@
     for byte upstream, line endings included. cmp against the raw file at that revision passes.
 
     Round 8, Task 2 vendored this file and ControlStyles/TabItem.axaml together: the Options dialog
-    (Dialogs/OptionsWindow.axaml) is a Windows 7 property sheet and its six tabs are the first and
-    only TabControl in this app - five once Round 8, Task 4 moves 关于 into an About box.
+    (Dialogs/OptionsWindow.axaml) is a Windows 7 property sheet and its tabs are the first and only
+    TabControl in this app. Six of them then, FIVE since Round 8, Task 4 moved 关于 into an About box
+    of its own (Dialogs/AboutWindow.axaml), which has no tab strip at all.
     NO COLOUR WORK WAS NEEDED. Every key the two files name already
     exists in the vendored layer - AeroTabControlBackground / OuterBorderBrush / InnerBorderBrush at
     AVMAP/Brushes.axaml:184-186 over Variant/Light.axaml:151-155 and its Dark twin, and the whole

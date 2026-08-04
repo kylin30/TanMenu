@@ -12,9 +12,9 @@ namespace TanMenu.Core.Tests.Themes;
 /// <summary>
 /// Guards the five things the Options dialog has to be that nothing at run time checks. Three are
 /// about the markup — a Windows property sheet's commit row, a property window that does not scroll,
-/// and a tab strip whose labels come from <c>AppLanguage</c> rather than from literals — and two are
-/// about the code-behind: where the draft's re-seed hangs, and when the single-instance field is
-/// claimed. Both of those were added in Round 8, Task 2's fix round, each with a defect behind it.
+/// and a tab strip of five whose labels come from <c>AppLanguage</c> rather than from literals — and
+/// two are about the code-behind: where the draft's re-seed hangs, and when the single-instance field
+/// is claimed. Both of those were added in Round 8, Task 2's fix round, each with a defect behind it.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -26,9 +26,10 @@ namespace TanMenu.Core.Tests.Themes;
 /// nothing and both surface a whole dialog session later.
 /// </para>
 /// <para>
-/// The third is the one with a date on it. Round 8, Task 6 deletes five of the six settings group
-/// boxes, which deletes the five <c>x:Name="GroupHead"</c> <c>TextBlock</c>s and the five
-/// <c>GroupHead.Text = AppLanguage.Text(…)</c> lines behind them. After that the <c>TabItem</c> header
+/// The third is the one with a date on it. Round 8, Task 6 takes the group box off every tab whose
+/// controls are one homogeneous set, and each one it takes deletes that card's
+/// <c>x:Name="GroupHead"</c> <c>TextBlock</c> and the
+/// <c>GroupHead.Text = AppLanguage.Text(…)</c> line behind it. After that the <c>TabItem</c> header
 /// is the ONLY statement of a group's name, so a header that had quietly been given a literal — or
 /// dropped from <c>ApplyText</c> — would leave a tab unnamed in the other language with nothing else
 /// left to notice it.
@@ -143,9 +144,12 @@ public class OptionsWindowTests
             .Where(e => e.Name.LocalName == "TabItem")
             .ToList();
 
-        Assert.True(tabs.Count == 6,
-            $"Expected six TabItems in the Options dialog, found {tabs.Count}. Round 8, Task 4 takes " +
-            "关于 out into an About box and this becomes five — update the count here in that commit.");
+        Assert.True(tabs.Count == 5,
+            $"Expected five TabItems in the Options dialog, found {tabs.Count}. It was six until Round " +
+            "8, Task 4 took 关于 out into Dialogs/AboutWindow — PUBLISHED, win-property-win: \"Is the " +
+            "content solely an application's attributes? If so, use an About box.\" Five is also what " +
+            "keeps the strip inside \"Use horizontal tabs if the property window has seven or fewer " +
+            "tabs\" with room to spare, and AboutWindowTests holds the other half of that move.");
 
         var literals = tabs
             .Where(t => t.Attribute("Header") is not null
@@ -179,8 +183,8 @@ public class OptionsWindowTests
 
             // AppLanguage.Text returns the KEY ITSELF when the key is unknown, so "did it resolve" is
             // "is the answer something other than the key". THE CHINESE HALF IS THE ONE THAT CAN ASK
-            // THAT and the English half is not: five of these six keys are named after their own
-            // English string ("Appearance", "Behavior", "Folders", "Updates", "About"), so an English
+            // THAT and the English half is not: four of these five keys are named after their own
+            // English string ("Appearance", "Behavior", "Folders", "Updates"), so an English
             // answer equal to the key is the CORRECT answer and testing it fails a passing build.
             // No Chinese label in this table is an ASCII key name.
             Assert.True(zh != key,

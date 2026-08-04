@@ -47,32 +47,36 @@
     control's own scroller, not a property page's — and it is Auto, so it shows no bar at the tool
     counts this app ships. OptionsWindowTests.NoTabHostsAScrollViewer holds the rule on this file.
 
-    SIZE — 711 x 452, MEASURED, not the design's provisional 540 x 540. The full method and every
-    number are in the code-behind's ApplyText remarks. In short: with the window temporarily switched
-    to SizeToContent, each of the six tabs was selected through UIA and the window's own client
+    SIZE — 711 x 452, MEASURED in Task 2, not the design's provisional 540 x 540. The full method and
+    every number are in the code-behind's ApplyText remarks. In short: with the window temporarily
+    switched to SizeToContent, each tab was selected through UIA and the window's own client
     rectangle read, twice — once with the width free, once pinned to 711. 452 is the tallest tab
     (行为) at 711 wide. The PUBLISHED floor it clears is win-property-win's "Support the minimum
     Windows Vista screen resolution of 800 x 600 pixels": the OUTER window is 725.67 x 489.33 DIP,
     measured as client + a 22 x 56 physical px frame at this machine's 150 %.
     Explicit Width/Height rather than SizeToContent, because a tabbed dialog that resized per tab
     would break PUBLISHED, win-property-win: "Don't assign effects to changing tabs." The measurement
-    proves that is not hypothetical here — free, the six tabs wanted 646, 584, 784, 305, 582 and 283
-    DIP of width and 345, 452, 357, 320, 213 and 230 of height.
+    proves that is not hypothetical here — free, the tabs wanted 646, 584, 784, 305 and 582 DIP of
+    width and 345, 452, 357, 320 and 213 of height. NEITHER NUMBER MOVES IN TASK 4: the tab that left
+    was the smallest on both axes (关于, 283 x 230 free), so it was never the maximum on either.
 
-    TABS: horizontal, top, six of them, in the page's own order. PUBLISHED, win-property-win: "Use
+    TABS: horizontal, top, FIVE of them, in the page's own order — Round 8, Task 4 took 关于 out into
+    Dialogs/AboutWindow.axaml and this strip has held five since. PUBLISHED, win-property-win: "Use
     horizontal tabs if the property window has seven or fewer tabs"; "Use concise tab labels. Use one
     or two words"; "Don't put icons on tabs"; "Don't assign a unique access key" (they cycle with
     Ctrl+Tab); "Otherwise, select the first page by default." The tab index is deliberately NOT
     persisted — "If users are likely to start with the last page displayed, make the page tab
-    persist" is conditional and there is no evidence for its antecedent here. Round 8, Task 4 takes
-    关于 out into an About box, leaving five.
+    persist" is conditional and there is no evidence for its antecedent here.
 
-    NOT ONE TabItem CARRIES A LITERAL Header. All six are written by ApplyText() from the same six
+    NOT ONE TabItem CARRIES A LITERAL Header. All five are written by ApplyText() from the same five
     AppLanguage keys each card's own GroupHead already uses, and that is structural rather than
-    tidy: Round 8, Task 6 deletes five of the six group boxes, which deletes those five GroupHead
-    TextBlocks and the five assignments behind them, so the header text has to have moved off the
-    cards BEFORE then. OptionsWindowTests.EveryTabHeaderComesFromAppLanguage is what keeps a literal
-    from creeping back in and leaving a tab unnamed after that task.
+    tidy: Round 8, Task 6 takes the group box off every tab whose controls are one homogeneous set
+    (文件夹 is the exception — its four INNER boxes stay and each grows a head of its own), and each
+    one it takes deletes that card's
+    GroupHead TextBlock and the assignment behind it — so the header text has to have moved off the
+    cards BEFORE then.
+    OptionsWindowTests.EveryTabHeaderComesFromAppLanguage is what keeps a literal from creeping back
+    in and leaving a tab unnamed after that task.
   -->
   <DockPanel Margin="11">
 
@@ -131,10 +135,11 @@
       <TabItem x:Name="FoldersTab"><cards:FoldersCard x:Name="Folders" /></TabItem>
       <TabItem x:Name="ToolsTab"><cards:ToolsCard x:Name="Tools" /></TabItem>
       <TabItem x:Name="UpdatesTab"><cards:UpdatesCard x:Name="Updates" /></TabItem>
-      <!-- 关于 is last and is the only tab with no interactive control. Round 8, Task 4 moves it out
-           into a real About box — PUBLISHED, win-property-win: "Is the content solely an
-           application's attributes? If so, use an About box." — leaving five tabs here. -->
-      <TabItem x:Name="AboutTab"><cards:AboutCard x:Name="About" /></TabItem>
+      <!-- THERE WAS A SIXTH, 关于, AND ROUND 8, TASK 4 TOOK IT OUT. It was the only tab with no
+           interactive control on it, which is the published test for the surface it belongs on —
+           win-property-win: "Is the content solely an application's attributes? If so, use an About
+           box." It is Dialogs/AboutWindow.axaml now, opened from the menu band's 关于 item, hosting
+           the very same Views/Settings/AboutCard this line used to. -->
     </TabControl>
 
   </DockPanel>

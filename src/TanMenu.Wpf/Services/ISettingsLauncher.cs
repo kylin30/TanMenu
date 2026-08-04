@@ -17,13 +17,13 @@ public interface ISettingsLauncher
     Task OpenAsync();
 
     /// <summary>Fire-and-forget form for the call sites that only want the dialog on screen and have no
-    /// result to wait for. FOUR of them, grepped rather than remembered: the tray menu
+    /// result to wait for. THREE of them, grepped rather than remembered: the tray menu
     /// (<c>App.OnLauncherOpened</c>), the 应用 page's empty-state 打开设置… button
-    /// (<c>LauncherViewModel.OpenSettings</c>), and the menu band's 设置 and 关于 items
-    /// (<c>MainWindow.OnOptionsClick</c> and <c>OnAboutClick</c>). The band replaced the navigation pane
-    /// this list used to name, in Round 8, Task 3, which is also what added the fourth caller: 关于 opens
-    /// the same dialog and then selects its 关于 tab, so it goes through the single-instance guard below
-    /// exactly like the other three rather than around it.</summary>
+    /// (<c>LauncherViewModel.OpenSettings</c>), and the menu band's 设置 item
+    /// (<c>MainWindow.OnOptionsClick</c>). The band replaced the navigation pane this list used to name,
+    /// in Round 8, Task 3, which briefly added a fourth — 关于, which opened this dialog and then
+    /// selected its 关于 tab. Round 8, Task 4 gave 关于 a window of its own (<c>Dialogs/AboutWindow</c>)
+    /// and took that caller away again.</summary>
     void Open();
 }
 
@@ -37,7 +37,7 @@ public sealed class SettingsLauncher : ISettingsLauncher
     }
 
     /// <summary>Fire-and-forget, but NOT fault-and-forget. <c>_ = OpenAsync()</c> on its own drops any
-    /// exception into an unobserved Task, and the whole of this path — a XAML load, six card
+    /// exception into an unobserved Task, and the whole of this path — a XAML load, five card
     /// constructors, a DI resolve, <c>ShowDialog</c> — is code that can throw at run time and produce
     /// nothing but a dialog that silently does not appear. Round 8, Task 2 hit exactly that while
     /// building this method and added the continuation rather than the log line it needed once.</summary>
@@ -98,7 +98,7 @@ public sealed class SettingsLauncher : ISettingsLauncher
     /// activates the one that exists instead of stacking a second modal on the same owner. That same
     /// field is what <c>App.WarnHotkeyRegistrationFailedAsync</c> re-owners its warning to. The
     /// ordering inside that constructor is this branch's business: if the field were claimed before the
-    /// XAML load and the six <c>ReloadFromConfig</c>s — the very code the <see cref="Open"/> remark
+    /// XAML load and the five <c>ReloadFromConfig</c>s — the very code the <see cref="Open"/> remark
     /// above records throwing once — a constructor that faulted would leave <c>Current</c> pointing at
     /// a window that never opens and therefore never reaches <c>OnClosed</c>, and this branch would
     /// then <c>Activate()</c> that dead window, silently, for the rest of the session.

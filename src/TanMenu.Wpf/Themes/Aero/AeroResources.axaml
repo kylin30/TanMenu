@@ -62,20 +62,24 @@
     and nothing else, and no MenuFlyout anywhere can pick it up by type.
     THAT CHOICE STOPPED BEING HYPOTHETICAL IN ROUND 8, TASK 2, which added a real
     {x:Type TabItem} theme: the two coexist precisely because GroupBox is not keyed by type, so the
-    Options dialog's SIX tabs take TabItem.axaml and the six group boxes inside them - one per tab -
-    keep taking HeaderedContentControl.axaml, with no rule reaching the other's subject. (Six is
-    counted off Dialogs/OptionsWindow.axaml:129-137 and asserted by
-    OptionsWindowTests.EveryTabHeaderComesFromAppLanguage. Round 8, Task 4 moves 关于 into an About box
-    and leaves five; this count moves in THAT commit, not before it.)
+    Options dialog's FIVE tabs take TabItem.axaml and the group boxes inside them - one per tab -
+    keep taking HeaderedContentControl.axaml, with no rule reaching the other's subject. (Five is
+    counted off Dialogs/OptionsWindow.axaml:132-136 and asserted by
+    OptionsWindowTests.EveryTabHeaderComesFromAppLanguage. It was six until Round 8, Task 4 moved 关于
+    into an About box - Dialogs/AboutWindow.axaml - which is where the SIXTH group box lives now: that
+    window hosts the same Views/Settings/AboutCard, so the GroupBox key still has six consumers while
+    the TabItem theme has five.)
 
     Counted against the tree - MARKUP AND CODE-BEHIND BOTH, because a control built in code has no
     Theme= to grep for - that reach is:
 
-      - Button, THREE sites - it was TWO until Round 8, Task 2, and this bullet is re-counted here
-        rather than carried. FOUR of the 26 <Button> elements in .axaml outside this folder set no
-        Theme=: AppPage.axaml's tm-update banner, and Dialogs/OptionsWindow.axaml's OkBtn / CancelBtn
+      - Button, FOUR sites - it was TWO until Round 8, Task 2 and THREE until Round 8, Task 4, and
+        this bullet is re-counted here rather than carried. FIVE of the 27 <Button> elements in
+        .axaml outside this folder set no
+        Theme=: AppPage.axaml's tm-update banner, Dialogs/OptionsWindow.axaml's OkBtn / CancelBtn
         / ApplyBtn, which Task 2 added and which ride this layer deliberately (that file's own tab-
-        strip remark says so in as many words). The third site is Dialogs/MessageBoxWindow.axaml.cs,
+        strip remark says so in as many words), and Dialogs/AboutWindow.axaml's OkBtn, which Task 4
+        added on the same terms. The fourth site is Dialogs/MessageBoxWindow.axaml.cs,
         which builds the message box's one-to-three buttons in
         code and sets no Theme either. The first count of this file named only the banner and was
         wrong - the same class of miss the design had already flagged for CheckBox - so the message
@@ -101,11 +105,12 @@
         named the ListBox template's scroller instead until Round 8, Task 3 deleted the app's last
         ListBox with the navigation pane - a template that is never instantiated instantiates
         nothing.)
-      - TabControl, ONE, and TabItem, SIX - Dialogs/OptionsWindow.axaml:129-137, the whole of Round 8
-        Task 2's reason for vendoring them. Neither carries a Theme=. SIX, not the FIVE this block
-        said when Task 2 wrote it: five was the design's forward-looking count for after Round 8,
-        Task 4 moves 关于 into an About box, and it was the one number in this block that was copied
-        rather than re-derived against the tree.
+      - TabControl, ONE, and TabItem, FIVE - Dialogs/OptionsWindow.axaml:132-136, the whole of Round 8
+        Task 2's reason for vendoring them. Neither carries a Theme=. It was SIX from Task 2 until
+        Round 8, Task 4 moved 关于 out into Dialogs/AboutWindow.axaml. (This bullet said FIVE when Task
+        2 wrote it, which was wrong THEN - five was the design's forward-looking count for after Task
+        4, copied rather than re-derived against the tree, and the fix round put SIX back. It is five
+        again now because the tree finally says so.)
       - ListBox, NONE, and ListBoxItem, NONE. Both had exactly one consumer - MainWindow.axaml's
         navigation rail and the TmNavRowItem theme BasedOn {x:Type ListBoxItem} - until ROUND 8,
         TASK 3 deleted the pane and replaced it with the classic menu band. Grepped rather than
@@ -133,9 +138,12 @@
         hand-drawn Border-in-Border into a real ProgressBar. Both had Height="4" and both are 15
         now, for the reason each one's own remark states. Task 5.
       - HeaderedContentControl, SIX, and every one of them names the theme explicitly because this
-        one is opt-in: the six group boxes, one per file in Views/Settings and so one per TAB of the
-        Options dialog - which is what the {x:Type TabItem} paragraph above already says, while this
-        bullet went on saying "on the 设置 page" for a round after Task 2 deleted that page. Task 9.
+        one is opt-in: the six group boxes, one per file in Views/Settings. FIVE of the six are one
+        per TAB of the Options dialog - which is what the {x:Type TabItem} paragraph above already
+        says - and the sixth is AboutCard's, which Round 8, Task 4 carried out of that dialog and
+        into Dialogs/AboutWindow.axaml along with the card. Six either way: the card moved surface,
+        it was not copied or deleted. (This bullet went on saying "on the 设置 page" for a round
+        after Task 2 deleted that page.) Task 9.
 
     Everything else is untouched BY CONSTRUCTION rather than by luck: the other 22 <Button> elements
     carry an explicit Theme=. Nineteen of those Theme= values resolve to Themes/Shell/Launcher.axaml

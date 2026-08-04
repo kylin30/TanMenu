@@ -1,8 +1,7 @@
 using System.Linq;
-using System.Runtime.InteropServices;
 using Avalonia.Automation;
 using Avalonia.Controls;
-using Avalonia.Controls.Primitives;
+using Avalonia.Controls.Primitives; // AccessText, on 应用's label
 using Avalonia.Interactivity;
 using Microsoft.Extensions.DependencyInjection;
 using TanMenu.Core.Services;
@@ -32,7 +31,7 @@ namespace TanMenu.Wpf.Dialogs;
 /// A TabControl realises only the SELECTED tab's content, so each card's attach hook fires the first
 /// time its tab is chosen rather than on open. That is a refinement of the old behaviour, not a
 /// regression: the cards' own remarks ask to re-read the OS "on every re-attach including the first",
-/// and this still is every re-attach. Their CONSTRUCTORS all run at parse time regardless — the six
+/// and this still is every re-attach. Their CONSTRUCTORS all run at parse time regardless — the five
 /// <c>UserControl</c>s are declared in this window's XAML — so <see cref="ApplyText"/> can populate a
 /// card that has never been shown.
 /// </para>
@@ -72,7 +71,7 @@ public partial class OptionsWindow : Window
     /// <remarks>
     /// <b><see cref="Current"/> IS CLAIMED LAST, AND A FAULT UNSUBSCRIBES BOTH SINGLETONS ON THE WAY
     /// OUT.</b> It used to be claimed before the two subscriptions and <see cref="ApplyText"/>, which
-    /// is the throw-prone part of this constructor — a XAML load plus six card constructors plus six
+    /// is the throw-prone part of this constructor — a XAML load plus five card constructors plus five
     /// <c>ReloadFromConfig</c>s, and exactly the code <c>SettingsLauncher.Open</c>'s own remark records
     /// throwing once already while this window was being built. A throw there left <see cref="Current"/>
     /// pointing at a window that never opened and therefore never reaches <see cref="OnClosed"/>, so
@@ -124,29 +123,32 @@ public partial class OptionsWindow : Window
     }
 
     /// <summary>
-    /// Every string this window owns: its title, its six tab headers and its three button labels — plus
+    /// Every string this window owns: its title, its five tab headers and its three button labels — plus
     /// a <c>ReloadFromConfig</c> for every card, found structurally among the tabs rather than through
     /// one hardcoded call per group, so a tab added to the XAML without wiring it in here (there is
     /// nothing to wire) can never be left stale.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b>The six tab headers take the six keys the cards' own group heads take, and this method owns
+    /// <b>The five tab headers take the five keys the cards' own group heads take, and this method owns
     /// the writes.</b> No <c>Binding</c>: <c>AppLanguage</c> has no change notification, which is the
     /// same reason <c>MainWindow.ApplyMenuText</c> exists (it was <c>ApplyRailText</c> until Round 8,
-    /// Task 3 replaced the navigation pane with the menu band). Round 8, Task 6 deletes five of the six
-    /// group boxes and with them five <c>GroupHead</c> <c>TextBlock</c>s and the five
-    /// <c>GroupHead.Text</c> assignments behind them, at which point the <c>TabItem</c> header is the
-    /// only remaining statement of a group's name — so the text had to move here first.
+    /// Task 3 replaced the navigation pane with the menu band). Round 8, Task 6 takes the group box off
+    /// every tab whose controls are one homogeneous set, and each one it takes deletes that card's
+    /// <c>GroupHead</c> <c>TextBlock</c> and the <c>GroupHead.Text</c> assignment behind it, at which
+    /// point the <c>TabItem</c> header is the only remaining statement of a group's name — so the text
+    /// had to move here first.
     /// </para>
     /// <para>
-    /// <b>THE DIALOG'S SIZE WAS MEASURED IN THIS TASK</b>, rather than inherited from the design's
+    /// <b>THE DIALOG'S SIZE WAS MEASURED IN ROUND 8, TASK 2</b>, rather than inherited from the design's
     /// provisional 540 x 540 (the pre-<c>28158a8</c> <c>SettingsWindow</c>'s own figures). The build
     /// was launched with the window temporarily switched to <c>SizeToContent</c>, every tab was
     /// selected in turn through UI Automation's <c>SelectionItemPattern</c>, and the window's UIA
     /// <c>BoundingRectangle</c> — which for an Avalonia window is the CLIENT rectangle, confirmed
     /// against <c>GetWindowRect</c>/<c>GetClientRect</c> on the same HWND — was read after each. At
-    /// 150 % scale, in Chinese, with the app's default font:
+    /// 150 % scale, in Chinese, with the app's default font, with the 关于 tab Task 4 has since removed
+    /// still in the strip (it is listed because it is what shows that removing it moved neither number
+    /// — it was the smallest tab on both axes):
     /// </para>
     /// <list type="table">
     ///   <item><description>free width: 外观 646x345, 行为 584x452, 文件夹 784x357, 常用工具 305x320,
@@ -190,7 +192,6 @@ public partial class OptionsWindow : Window
         FoldersTab.Header = AppLanguage.Text("Folders", lang);
         ToolsTab.Header = AppLanguage.Text("CommonTools", lang);
         UpdatesTab.Header = AppLanguage.Text("Updates", lang);
-        AboutTab.Header = AppLanguage.Text("About", lang);
 
         OkBtn.Content = AppLanguage.Text("Ok", lang);
         CancelBtn.Content = AppLanguage.Text("Cancel", lang);
@@ -224,16 +225,6 @@ public partial class OptionsWindow : Window
         foreach (var card in Cards())
             card.ReloadFromConfig();
     }
-
-    /// <summary>
-    /// Select the 关于 tab. <b>Round 8, Task 3, and it is provisional in exactly the way its one caller
-    /// says it is:</b> the menu band's 关于 item has to land somewhere, 关于 is a tab of this dialog
-    /// today, and Round 8, Task 4 moves that content into a real About box
-    /// (<c>Dialogs/AboutWindow</c>) and deletes both this method and the tab it selects. PUBLISHED,
-    /// <c>win-property-win</c>: "Is the content solely an application's attributes? If so, use an About
-    /// box."
-    /// </summary>
-    public void ShowAboutTab() => Tabs.SelectedItem = AboutTab;
 
     /// <summary>Every settings card hosted by a tab, in tab order. Structural discovery, inherited from
     /// the page this window replaced: the tabs are the authority on which groups exist.</summary>
@@ -448,116 +439,15 @@ public partial class OptionsWindow : Window
         catch (Exception ex) { Serilog.Log.Error(ex, "选项对话框操作失败"); }
     }
 
-    // ══════════════════════════════════════════════════════════════════════════════════════════
-    // The caption's minimize and maximize boxes
-    // ══════════════════════════════════════════════════════════════════════════════════════════
-
-    private const int GWL_STYLE = -16;
-    private const int GWL_EXSTYLE = -20;
-    private const int WS_MINIMIZEBOX = 0x00020000;
-    private const int WS_MAXIMIZEBOX = 0x00010000;
-    private const int WS_EX_DLGMODALFRAME = 0x00000001;
-    private const uint WM_SETICON = 0x0080;
-    private const uint SWP_NOSIZE = 0x0001;
-    private const uint SWP_NOMOVE = 0x0002;
-    private const uint SWP_NOZORDER = 0x0004;
-    private const uint SWP_FRAMECHANGED = 0x0020;
-
-    /// <summary>
-    /// Make Windows draw a DIALOG caption: the Close button alone, and no title-bar icon.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// PUBLISHED, <c>win-dialog-box</c>: "Resizable dialogs can have a Maximize button", i.e. a fixed
-    /// one has none; and a modal dialog with a live Minimize box is a window the user can send to the
-    /// taskbar while its owner is disabled. The design flagged this as COULD NOT VERIFY without a
-    /// build and told this task to check it. <b>MEASURED, and it was real:</b> on the first build of
-    /// this dialog, <c>GetWindowLong(GWL_STYLE)</c> read <c>0x16CA0000</c> — <c>WS_MINIMIZEBOX</c> SET,
-    /// <c>WS_MAXIMIZEBOX</c> clear, <c>WS_THICKFRAME</c> clear — and UIA reported a caption with an
-    /// ENABLED "最小化" button and a greyed "最大化" beside it. Windows draws both boxes when either
-    /// style bit is present and greys the absent one, so clearing <c>CanResize</c> alone gets you a
-    /// dead maximize box and a live minimize box.
-    /// </para>
-    /// <para>
-    /// <b>The design's own stated remedy — narrowing <c>SystemDecorations</c> — is NOT used, and this
-    /// is the one place this task departs from it.</b> Avalonia's <c>SystemDecorations</c> has three
-    /// values (<c>None</c>, <c>BorderOnly</c>, <c>Full</c>); anything below <c>Full</c> removes the
-    /// whole title bar, which would take the Close button and the 选项 title with it and break two
-    /// PUBLISHED rules (<c>win-dialog-box</c>: "Don't disable the Close button"; <c>win-property-win</c>:
-    /// "Options dialog box titles — Use 'Options.'") to fix one. Clearing the two style bits is what a
-    /// real Win32 dialog does, and this app already reaches for the same class of tool one window over
-    /// — <c>MainWindow.RestoreSystemCloseCommand</c> re-enables <c>SC_CLOSE</c> through
-    /// <c>GetSystemMenu</c>/<c>EnableMenuItem</c> for a defect Avalonia's own client-area extension
-    /// creates.
-    /// </para>
-    /// <para>
-    /// <b>THE TITLE-BAR ICON IS THE SAME KIND OF FINDING AND IS REMOVED IN THE SAME BLOCK.</b>
-    /// PUBLISHED, <c>win-dialog-box</c>: "Dialog boxes don't have title bar icons." This window sets no
-    /// <c>Icon</c>, which is not enough — MEASURED on a <c>PrintWindow</c> capture of the first build,
-    /// Windows drew the app's own icon left of 选项 regardless, because an owned window with no icon of
-    /// its own falls back to its owner's. The Win32 answer is the classic pair: add
-    /// <c>WS_EX_DLGMODALFRAME</c>, which tells Windows this is a modal dialog frame and suppresses the
-    /// icon slot, and blank both icon slots with <c>WM_SETICON</c> so nothing can be drawn into them.
-    /// One <c>SWP_FRAMECHANGED</c> below commits all three writes at once.
-    /// </para>
-    /// <para>
-    /// Runs from <see cref="OnOpened"/>, because the HWND does not exist before that.
-    /// <c>SWP_FRAMECHANGED</c> with no move, no size and no z-order change is what makes Windows
-    /// recompute and repaint the non-client area after the style writes; without it the old caption
-    /// stays on screen until something else invalidates it. Failure is logged and ignored: a dialog
-    /// with a spare minimize box is worse-looking, not broken.
-    /// </para>
-    /// </remarks>
+    /// <summary>The plain dialog caption: no minimize box, no maximize box, no title-bar icon. Round 8,
+    /// Task 2 measured all three defects on this very window and wrote the Win32 correction inline here;
+    /// Task 4 moved it to <see cref="DialogCaption"/> unchanged when the About box turned out to need
+    /// exactly the same three writes. That file carries the measurement, and the reason Avalonia's
+    /// <c>SystemDecorations</c> — the design's own suggested remedy — is the wrong tool for it.
+    /// <c>OnOpened</c> is the earliest point at which the HWND exists.</summary>
     protected override void OnOpened(EventArgs e)
     {
         base.OnOpened(e);
-
-        try
-        {
-            var hwnd = TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
-            if (hwnd == IntPtr.Zero)
-                return;
-
-            var style = GetWindowLongW(hwnd, GWL_STYLE);
-            var exStyle = GetWindowLongW(hwnd, GWL_EXSTYLE);
-            var wantedStyle = style & ~(WS_MINIMIZEBOX | WS_MAXIMIZEBOX);
-            var wantedExStyle = exStyle | WS_EX_DLGMODALFRAME;
-
-            if (wantedStyle != style)
-                SetWindowLongW(hwnd, GWL_STYLE, wantedStyle);
-            if (wantedExStyle != exStyle)
-                SetWindowLongW(hwnd, GWL_EXSTYLE, wantedExStyle);
-
-            // ICON_SMALL = 0, ICON_BIG = 1. Blanking both is what leaves the caption with nothing to
-            // draw once WS_EX_DLGMODALFRAME has removed the slot.
-            SendMessageW(hwnd, WM_SETICON, IntPtr.Zero, IntPtr.Zero);
-            SendMessageW(hwnd, WM_SETICON, new IntPtr(1), IntPtr.Zero);
-
-            SetWindowPos(hwnd, IntPtr.Zero, 0, 0, 0, 0,
-                SWP_NOSIZE | SWP_NOMOVE | SWP_NOZORDER | SWP_FRAMECHANGED);
-
-            Serilog.Log.Debug(
-                "Options dialog caption: style 0x{Before:X8} -> 0x{After:X8}, exstyle 0x{ExBefore:X8} -> " +
-                "0x{ExAfter:X8} (minimize/maximize boxes and the title-bar icon removed)",
-                style, GetWindowLongW(hwnd, GWL_STYLE), exStyle, GetWindowLongW(hwnd, GWL_EXSTYLE));
-        }
-        catch (Exception ex)
-        {
-            Serilog.Log.Warning(ex, "Failed to give the Options dialog a plain dialog caption");
-        }
+        DialogCaption.ApplyTo(this);
     }
-
-    [LibraryImport("user32.dll")]
-    private static partial int GetWindowLongW(IntPtr hWnd, int nIndex);
-
-    [LibraryImport("user32.dll")]
-    private static partial int SetWindowLongW(IntPtr hWnd, int nIndex, int dwNewLong);
-
-    [LibraryImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static partial bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter,
-        int X, int Y, int cx, int cy, uint uFlags);
-
-    [LibraryImport("user32.dll")]
-    private static partial IntPtr SendMessageW(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
 }
