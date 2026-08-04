@@ -270,9 +270,16 @@ public partial class AppPage : UserControl, IDisposable
     // Search box
     //
     // Round 7, Task 1 brought the control back into this page from MainWindow's title strip, which
-    // the Aero caption deletes (win-window-frames forbids controls in a window frame). The three
-    // members below are the ones that moved with it, unchanged in behaviour: OnSearchFocusChanged,
-    // OnSearchKeyDown and the focus entry point MainWindow's PendingFocus consumer now calls.
+    // the Aero caption deletes (win-window-frames forbids controls in a window frame). Three members
+    // moved with it and moved unchanged: OnSearchFocusChanged, OnSearchKeyDown and FocusSearchBox,
+    // the entry point MainWindow's PendingFocus consumer calls.
+    //
+    // ROUND 7, TASK 9 VOIDED BOTH HALVES OF "THREE, UNCHANGED", so the sentence above is history and
+    // not a description of what is here. OnSearchFocusChanged now also calls SearchBox.SelectAll()
+    // when the box TAKES focus — published behaviour for a search box, cited in that member's own
+    // remarks — and OnSearchClearPressed is a fourth member, the handler for the right-end "x" the
+    // same task added. OnClearFilterClick is a fifth and belongs to the empty state rather than to
+    // the field; it lives here because it makes the identical ClearFilter + PendingFocus pair.
     // ══════════════════════════════════════════════════════════════════════════════════════════
 
     /// <summary>Same "please focus the search box" request a fresh summon makes

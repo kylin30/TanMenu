@@ -8,8 +8,25 @@
       1. RE-POINTED the ae xmlns from "using:AeroAvalonia" to
          "using:TanMenu.Wpf.Themes.Aero.Controls", which is where HeaderGapClipper.cs was vendored.
       2. DELETED upstream's commented-out MaxWidth binding on PART_HeaderPresenter (its own lines
-         46-49). It is dead prose about a binding the author disabled, and this project deletes
+         45-47). It is dead prose about a binding the author disabled, and this project deletes
          markup that does nothing rather than carrying it.
+      3. DELETED the <Control x:Name="HeaderPresenterSizeHelper" /> that shared the header Panel with
+         PART_HeaderPresenter (upstream's lines 30-34), for the SAME reason as change 2 and in the
+         same act: the binding deleted there —
+         MaxWidth="{Binding #HeaderPresenterSizeHelper.Bounds.Width, Mode=OneWay}" — was the helper's
+         only reader anywhere. Nothing else upstream names it, nothing in this tree does (the name
+         appears in no other .axaml and in no .cs, HeaderGapClipper.cs included), and its own name
+         invites the opposite conclusion, so leaving it would have had all six settings group boxes
+         instantiating and arranging an element nothing reads. It is a bare Control, whose
+         MeasureOverride returns 0x0, and a Panel takes the largest of its children's desired sizes,
+         so the header Panel was sized by the presenter with or without it. VERIFIED RATHER THAN
+         ARGUED, on the published NativeAOT build at 150 % in both variants: every UIA rect on the
+         设置 page is unmoved (外观's head 45x31 px at 3046,1334; SettingsScroll 2232x807 px; the
+         three trailing controls 330 px wide), and the PrintWindow capture of the page — at the top
+         and scrolled to the bottom — is pixel-identical below the glass caption band. The caption
+         band itself (rows 0..44 of the capture) differs on EVERY pair of runs, the same binary
+         included, because PrintWindow composites the DWM backdrop and the backdrop samples what is
+         behind the window; that was measured too rather than assumed.
     Everything else is byte for byte upstream, line endings included.
 
     THE KEY IS "GroupBox", NOT {x:Type HeaderedContentControl}, and that is upstream's choice rather
@@ -57,11 +74,6 @@
 
                     <Panel Grid.Row="0"
                         Margin="7,0">
-                        <Control x:Name="HeaderPresenterSizeHelper"
-                                HorizontalAlignment="Stretch"
-                                IsHitTestVisible="False"
-                                IsTabStop="False"
-                                Focusable="False" />
                         <ContentPresenter x:Name="PART_HeaderPresenter"
                                         Background="Transparent"
                                         BorderBrush="Transparent"

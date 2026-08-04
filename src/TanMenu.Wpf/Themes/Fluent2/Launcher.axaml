@@ -101,10 +101,14 @@
          is recorded so nobody re-derives it later and thinks it was missed. That rule is for a command
          button — the OK/Cancel/Apply kind, whose width is a legibility floor for a one-or-two-word
          verb. A tile is an icon-plus-label launcher, nearer a large-icon list-view item than a command
-         button, and a 75 DIP floor would widen exactly the narrowest categories (the shipped build's
-         narrowest column measured 118.67 DIP, so the floor would bind on nothing today and only ever
-         bind on a short label somebody adds later) for no published reason at all. The 23 DIP half is
-         a HEIGHT floor for a text-line control and this tile is 32 DIP tall, so it never bound.
+         button, and a 75 DIP floor would widen exactly the narrowest categories, for no published
+         reason at all. It binds on nothing today and the headroom is SMALL: the narrowest column
+         measures 102.67 DIP — the first entry in the survey below, and re-measured unchanged when
+         this paragraph was corrected — so a short label somebody adds later starts the floor binding
+         27.67 DIP from here, which is why the number is worth carrying rather than the rejection
+         alone. The 23 DIP half is a HEIGHT
+         floor for a text-line control and the 74 tiles measure 32.67 to 34 DIP tall (one content
+         line; the 1.33 DIP spread is rect quantisation at 150 %), so that half never bound at all.
 
          What keeps that from reading as a ragged right edge is the ABSENCE of a HorizontalAlignment
          on the tile Button, so do not add one: each tile stretches to the width of the column
@@ -614,9 +618,17 @@
        "In Instant search mode, a clear button appears after the user starts typing; an 'x' replaces
        the magnifying glass search symbol. On hover, the 'x' gets a button look and can be clicked",
        under a figure captioned "…at the right end of the control". All three clauses are implemented:
-       the glyph swaps on Filter going non-empty (Views/AppPage.axaml binds both IsVisible states to
-       the same view-model flag), the hover fill below is the button look, and OnSearchClearPressed
-       clears the filter and puts focus back in the box.
+       the glyph swaps on the search box's OWN TEXT going non-empty, the hover fill below is the
+       button look, and OnSearchClearPressed clears the filter and puts focus back in the box.
+
+       THE SWAP IS AN ELEMENT BINDING, NOT A VIEW-MODEL FLAG — there is no flag on LauncherViewModel
+       to go looking for. Views/AppPage.axaml gives the two faces complementary IsVisible bindings
+       onto the TextBox itself: IsVisible="{Binding #SearchBox.Text, Converter={x:Static
+       StringConverters.IsNullOrEmpty}}" on the magnifier and the IsNotNullOrEmpty twin on the clear
+       face. It still answers the view model, because SearchBox.Text is TwoWay-bound to Filter, so
+       setting Filter in code flips the pair exactly as typing does — which is how both Task 9 and
+       its fix round exercised it: UIA ValuePattern.SetValue on SearchBox, no keyboard, magnifier to
+       "x" and back. AppPage.axaml's own comment at that markup says the same thing at more length.
 
        IT IS A Border + TextBlock, NOT A Button, and that is a sizing decision rather than a shortcut:
        every Button theme in this app carries a MinHeight (32 on TmButton) or a fixed 32x32 box
