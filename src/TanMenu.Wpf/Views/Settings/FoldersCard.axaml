@@ -1,9 +1,18 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="TanMenu.Wpf.Views.Settings.FoldersCard">
+             x:Class="TanMenu.Wpf.Views.Settings.FoldersCard"
+             FontSize="{DynamicResource FontSizeBody}">
   <!-- ══ 文件夹 — the ONE tab that keeps group boxes ═════════════════════════════════════════
        ROUND 8, TASK 6 REPLACED THE ROW GRAMMAR everywhere (see AppearanceCard.axaml's header for
-       the argument and the published citations), and this file is the exception the rule names.
+       the argument, the published citations and why every card root states the FontSize above),
+       and this file is the exception the rule names.
+
+       THIS IS THE TAB THAT NEVER LOST ITS BODY SIZE, which is how the review found that the other
+       four had. Its content sits inside HeaderedContentControl.axaml's group box, and that
+       vendored ControlTheme sets FontSize AeroFontSizeNormal (12) on itself (:68), so everything
+       under a box inherited 12 while the four boxless tabs inherited the Window's 14. The FontSize
+       above restates on this root what the boxes were already supplying, so the tab reads the same
+       as the other four rather than the other four reading like this one.
 
        WHY THE BOXES STAY HERE AND NOWHERE ELSE. PUBLISHED, ctrl-group-boxes: "Are all the controls
        inside the group? If so, indicate the relationship on the larger surface, such as the parent

@@ -1,9 +1,10 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="TanMenu.Wpf.Views.Settings.UpdatesCard">
+             x:Class="TanMenu.Wpf.Views.Settings.UpdatesCard"
+             FontSize="{DynamicResource FontSizeBody}">
   <!-- ══ 更新 — one label, one value, and the actions under it ═══════════════════════════════
-       ROUND 8, TASK 6 REPLACED THE ROW GRAMMAR. See AppearanceCard.axaml's header for the argument
-       and the published citations for 5 / 7 / 11 / 3.
+       ROUND 8, TASK 6 REPLACED THE ROW GRAMMAR. See AppearanceCard.axaml's header for the argument,
+       the published citations for 5 / 7 / 11 / 3, and why every card root states the FontSize above.
 
        THIS TAB IS THE CLEANEST FIT THE NEW GRAMMAR HAS. 更新状态 is a label and the status sentence is
        its VALUE — a read-only value beside a label is exactly what a Windows 7 property sheet's

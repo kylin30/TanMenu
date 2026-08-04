@@ -26,6 +26,15 @@ namespace TanMenu.Wpf.Views.Settings;
 /// 开机自启 in <see cref="BehaviorCard"/> — so it neither writes <see cref="SettingsDraft.Working"/> nor
 /// calls <see cref="SettingsDraft.Revalidate"/> anywhere in this file, and 确定 / 取消 / 应用 have nothing
 /// on this card to commit or discard.
+/// <para>
+/// <b>IT THEREFORE HOLDS NO <see cref="SettingsDraft"/> AT ALL</b>, and that is a correction the
+/// review of Round 8, Task 6 made rather than a property it always had. The field existed for one
+/// reader — <c>UiLanguage</c>, which read <c>_draft.Working.General.Language</c> — and Task 6
+/// re-pointed that at <see cref="ConfigService"/> without taking the field with it, leaving an
+/// unread field and an unnecessary DI resolve behind. The same commit removed the same dependency
+/// from <c>AboutCard</c> for the same reason and missed this one; no compiler warning fires on
+/// either, which is why it is written down here.
+/// </para>
 ///
 /// The 应用 page (<c>AppPage</c> / <c>LauncherViewModel</c>) shows its own update notice driven by the
 /// SAME <see cref="IAppUpdateService"/> singleton, subscribing to the same <c>StateChanged</c> event and
@@ -39,7 +48,6 @@ namespace TanMenu.Wpf.Views.Settings;
 /// </summary>
 public partial class UpdatesCard : UserControl, ISettingsCard
 {
-    private readonly SettingsDraft _draft;
     private readonly ConfigService _config;
     private readonly IAppUpdateService _updates;
 
@@ -58,7 +66,6 @@ public partial class UpdatesCard : UserControl, ISettingsCard
     public UpdatesCard()
     {
         InitializeComponent();
-        _draft = App.Services.GetRequiredService<SettingsDraft>();
         _config = App.Services.GetRequiredService<ConfigService>();
         _updates = App.Services.GetRequiredService<IAppUpdateService>();
 

@@ -1,10 +1,15 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="TanMenu.Wpf.Views.Settings.BehaviorCard">
+             x:Class="TanMenu.Wpf.Views.Settings.BehaviorCard"
+             FontSize="{DynamicResource FontSizeBody}">
   <!-- ══ 行为 — four check boxes and two label-and-control rows on the DLU grid ═══════════════
        ROUND 8, TASK 6 REPLACED THE ROW GRAMMAR. See AppearanceCard.axaml's header for the whole
-       argument, the published citations for 5 / 7 / 11 / 3, and why the rhythm is a per-row Margin
-       rather than Grid.RowSpacing. This file is where two consequences of it land.
+       argument, the published citations for 5 / 7 / 11 / 3, why the rhythm is a per-row Margin
+       rather than Grid.RowSpacing, and why every card root states the FontSize above. This file is
+       where two consequences of the grammar land, and it is also where the missing body size was
+       most visible: the vendored CheckBox theme sets no FontSize, so the four boxes below and the
+       固定到任务栏 label all drew at 14 while the button beside that label drew at the Aero Button
+       theme's 12.
 
        ── THE CHECK BOXES CARRY THEIR OWN LABELS NOW ────────────────────────────────────────────
        Round 8, Task 5 turned four ToggleSwitches into CheckBoxes and said, in this very comment

@@ -64,7 +64,7 @@
     {x:Type TabItem} theme: the two coexist precisely because GroupBox is not keyed by type, so the
     Options dialog's FIVE tabs take TabItem.axaml and the group boxes inside them - one per tab -
     keep taking HeaderedContentControl.axaml, with no rule reaching the other's subject. (Five is
-    counted off Dialogs/OptionsWindow.axaml:142-146 - FIRST TabItem TO LAST TabItem, which is the
+    counted off Dialogs/OptionsWindow.axaml:158-162 - FIRST TabItem TO LAST TabItem, which is the
     convention both citations in this file use and the one to preserve when they are re-derived; the
     line before the span is the TabControl and is not counted - and asserted by
     OptionsWindowTests.EveryTabHeaderComesFromAppLanguage. It was six until Round 8, Task 4 moved 关于
@@ -120,7 +120,7 @@
         named the ListBox template's scroller instead until Round 8, Task 3 deleted the app's last
         ListBox with the navigation pane - a template that is never instantiated instantiates
         nothing.)
-      - TabControl, ONE, and TabItem, FIVE - Dialogs/OptionsWindow.axaml:142-146 (the five TabItems
+      - TabControl, ONE, and TabItem, FIVE - Dialogs/OptionsWindow.axaml:158-162 (the five TabItems
         themselves; the TabControl is the line above the span), the whole of Round 8
         Task 2's reason for vendoring them. Neither carries a Theme=. It was SIX from Task 2 until
         Round 8, Task 4 moved 关于 out into Dialogs/AboutWindow.axaml. (This bullet said FIVE when Task

@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="TanMenu.Wpf.Views.Settings.AppearanceCard">
+             x:Class="TanMenu.Wpf.Views.Settings.AppearanceCard"
+             FontSize="{DynamicResource FontSizeBody}">
   <!-- ══ 外观 — four label-and-control rows on the DLU grid ═══════════════════════════════════
        ROUND 8, TASK 6 REPLACED THE ROW GRAMMAR. Until this task every settings row was a
        Border Classes="tm-card" wrapping an Auto,*,Auto Grid: a 16 DIP icon, a title line over a
@@ -12,6 +13,57 @@
        THE COLUMN TEMPLATE IS "Auto,*" AND IT IS WRITTEN LITERALLY IN EVERY CARD, for the reason
        SettingsRowTests has always recorded: Grid has no ColumnDefinitionsProperty, so a Setter
        cannot carry it and only a source test can. Column 0 holds the label, column 1 the control.
+
+       ── THE FontSize ON THIS ROOT IS THE SETTINGS SURFACE'S BODY SIZE, AND IT IS A FIX ─────────
+       Every one of the six cards states it, and the review of Task 6's first commit (7e9bee6) is
+       why. Deleting TextBlock.tm-card-title and TextBlock.tm-card-sub deleted the ONLY statement
+       this surface had of its own body size — both carried FontSize="{DynamicResource
+       FontSizeBody}" — and nothing replaced it, so the bare TextBlocks fell back to what they
+       inherit. MEASURED, by UIA at 150 %, on that build's captures and again on this one — same
+       method, same scale, element bounds in physical px:
+
+         每列个数 (外观)      83 x 30  ->  71 x 25       更新状态： (更新)   105 x 29  ->  89 x 25
+         固定到任务栏 (行为)  126 x 29  ->  108 x 25      位置： (文件夹)      53 x 25  ->  53 x 25
+
+       The left column is 14 DIP and the right is 12: at 150 % a CJK glyph advances one em, so six
+       characters are 6 x 12 x 1.5 = 108 exactly. 位置： did not move BECAUSE IT NEVER LEFT 12, which
+       is the whole shape of the defect — one dialog with two body sizes, and on 行为 a label one
+       step LARGER than the button beside it. Every body line box on the surface is 24-26 px now
+       (the ±1 is UIA rounding on a wrapping block) and only the four group heads on 文件夹 are 31.
+
+       THE MECHANISM, decompiled rather than assumed (ilspycmd over
+       Avalonia.Themes.Fluent 12.1.0): FluentTheme declares a ControlTheme whose TargetType is
+       Window with a Setter on TemplatedControl.FontSizeProperty bound to
+       {DynamicResource ControlContentThemeFontSize}, and its own resource dictionary adds that key
+       as 14.0. Themes/Aero/AVMAP/Metrics.axaml's change #2 DELETED upstream's re-point of that key
+       onto AeroFontSizeNormal (12) and Themes/Shell/Tokens.axaml does not redefine it, so an
+       Avalonia Window in this app is 14 unless it says otherwise — MainWindow says 14 on purpose
+       (its own type ramp), and the two dialogs said nothing. Nearly every vendored Aero ControlTheme
+       sets 12 on the control it themes, which is why the themed controls never moved, and why 文件夹
+       alone stayed at 12: its content sits inside HeaderedContentControl.axaml's group box, which
+       sets FontSize AeroFontSizeNormal (:68). What was left over is the set the design's §1 names —
+       "Nothing themes a Border, a TextBlock, a StackPanel, an Image or a Panel" — PLUS the one
+       vendored theme that is the exception to "nearly every": CheckBox.axaml sets no FontSize at
+       all (grepped — the word does not appear in the file), so the five self-labelling boxes and
+       ToolsCard's code-built
+       per-tool list drew their labels at 14 too.
+
+       THE ROOT CAUSE IS ONE KEY AND IT IS DELIBERATELY NOT TOUCHED HERE. Re-pointing
+       ControlContentThemeFontSize onto AeroFontSizeNormal in Tokens.axaml — the file that already
+       redefines three FluentTheme keys for exactly this reason — would fix this surface AND
+       Dialogs/MessageBoxWindow and every Fluent-templated popup in one line. It is not done in a
+       review round because it moves type on surfaces no task owns and nobody has measured, and
+       MessageBoxWindow's own remarks carry a size record that would go stale unread. Recorded here
+       so the next task that owns the message box has the finding rather than the symptom.
+
+       WHY THE CARD ROOT AND NOT THE TWO WINDOWS. The card is the unit that gets re-hosted — Task 4
+       moved AboutCard out of a tab and into a window of its own — so the size travels with the
+       thing that needs it. A UserControl's FontSize is TextElement.FontSize, which INHERITS, and an
+       inherited value is the lowest priority Avalonia has: a ControlTheme Setter still wins, so
+       this can never fight the vendored themes (they set the same 12 anyway) and it reaches only
+       the primitives nothing themes. TextBlock.tm-group-head's FontSizeGroupHead (15) likewise
+       still wins on 文件夹's four heads. Tokens.axaml states the rule this restores: "a Windows 7
+       property sheet uses ONE body size and gets its hierarchy from colour and weight."
 
        EVERY NUMBER BELOW IS PUBLISHED by
        https://learn.microsoft.com/en-us/windows/win32/uxguide/vis-layout (relative pixels, 9 pt

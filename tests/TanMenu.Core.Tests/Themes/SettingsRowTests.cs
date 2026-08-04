@@ -30,7 +30,8 @@ namespace TanMenu.Core.Tests.Themes;
 ///   second lines that merely restated their labels were deleted from <c>AppLanguage</c>.</item>
 /// </list>
 /// <para>
-/// The two that remain are the two whose subject survived the rewrite, each re-aimed:
+/// <b>THREE FACTS SHIP HERE, NOT TWO.</b> Two of the four survived the rewrite and were re-aimed; a
+/// third was ADDED, because the invariant it guards outlived the class the deleted test matched on.
 /// </para>
 /// <list type="number">
 ///   <item><b>Every constant the THEME owns.</b> A style cannot delete a local value, and a local
@@ -38,12 +39,26 @@ namespace TanMenu.Core.Tests.Themes;
 ///   rule that owns it. Widened from the six card files to every settings <c>*.axaml</c> AND the
 ///   Options dialog, because Task 6 moved the spacing out of the deleted classes and into the
 ///   markup, where it is now the ONLY statement of the ladder.</item>
-///   <item><b>No row LABEL's wording may contain a hard line break.</b> Re-aimed from the deleted
-///   <c>tm-card-sub</c> to the labels, which is where the constraint has teeth on a grid: a
-///   <c>TextBlock</c> renders an explicit break at every width, so a two-line label makes its own
-///   Grid row taller than the control beside it and pushes every row below it down, on a dialog
-///   whose <c>Height</c> is a literal.</item>
+///   <item><b>No string that occupies a ROW of the grid may contain a hard line break.</b> Re-aimed
+///   from the deleted <c>tm-card-sub</c> to the grid, which is where the constraint has teeth: a
+///   <c>TextBlock</c> renders an explicit break at every width, so an extra line makes its own Grid
+///   row taller and pushes every row below it down, on a dialog whose <c>Height</c> is a literal.</item>
+///   <item><b>Every Grid that declares columns declares the same two.</b> Grid has no
+///   <c>ColumnDefinitionsProperty</c>, so no <c>Setter</c> can carry the template and only a source
+///   test can. The deleted <c>EveryCardBorder_WrapsTheStandardColumnGrid</c> asserted this THROUGH
+///   <c>Classes="tm-card"</c>; the class is gone and the invariant is not, so it is asserted
+///   directly now.</item>
 /// </list>
+/// <para>
+/// Fact 2's SCOPE was widened again by the review of Task 6, and the reason is worth recording
+/// because the first cut looked complete and was not. Re-aimed at "row labels" it collected a named
+/// <c>TextBlock</c> in column 0 and every named <c>CheckBox</c> — and excluded anything carrying
+/// <c>Grid.ColumnSpan</c>, which is exactly how <c>BehaviorCard</c>'s <c>PinTaskbarStatusText</c> is
+/// written. So <c>AppLanguage.PinToTaskbarFailed</c>, the one string in the tree that has ACTUALLY
+/// shipped a hard break, ended up with no assertion on it at all while this file's own comment said
+/// it was still guarded. The full-width lines are in scope now: they own a Grid row of their own and
+/// a break in one costs the same line as a break in a label.
+/// </para>
 /// <para>
 /// Like <see cref="ShellTokenTests"/> these are source tests, and for the same reason: every failure
 /// they catch is silent at run time. A rung off the ladder still renders; it is just a number no
@@ -63,8 +78,10 @@ public class SettingsRowTests
     /// since Round 5 task B, and re-verified against the widened scope in Round 8 task 6.</summary>
     private static readonly string[] PendingLocalConstants = Array.Empty<string>();
 
-    /// <summary>Row labels whose wording still carries a hard line break. Empty since the review of
-    /// Round 5 task B, which found the shipped <c>PinToTaskbarFailed</c> doing exactly that.</summary>
+    /// <summary>Row strings whose wording still carries a hard line break. Empty since the review of
+    /// Round 5 task B, which found the shipped <c>PinToTaskbarFailed</c> doing exactly that, and
+    /// re-verified against the widened scope in the review of Round 8 task 6 — which is the run that
+    /// put <c>PinToTaskbarFailed</c> itself back inside the scan.</summary>
     private static readonly string[] PendingHardBreaks = Array.Empty<string>();
 
     /// <summary>The column template every settings row repeats because no style can carry it: Grid has
@@ -164,41 +181,54 @@ public class SettingsRowTests
     }
 
     [Fact]
-    public void NoRowLabelString_ContainsAHardLineBreak()
+    public void NoSettingsRowString_ContainsAHardLineBreak()
     {
-        // A row's LABEL is the one string on a DLU grid that must stay one line. It shares its Grid
-        // row with the control it names, so a hard "\n" makes that row taller than the control,
-        // breaks the 7-DIP rhythm below it, and pushes every later row down — at every width, wrap or
-        // no wrap — on a dialog whose Height is a literal. Long wording is fine; this test is only
-        // about breaks the STRING forces.
+        // A string that OWNS A ROW of a DLU grid must stay one line. A hard "\n" makes that row
+        // taller, breaks the 7-DIP rhythm below it, and pushes every later row down — at every
+        // width, wrap or no wrap — on a dialog whose Height is a literal. Long wording is fine; this
+        // test is only about breaks the STRING forces.
         //
-        // Two element shapes qualify, and between them they are every label on the surface:
-        //   * a named TextBlock in Grid.Column="0" — the label half of a label-and-control row;
+        // Three element shapes qualify, and between them they are every localized line that owns a
+        // row on this surface:
+        //   * a named TextBlock in Grid.Column="0" with no ColumnSpan — the label half of a
+        //     label-and-control row;
         //   * a named CheckBox — its Content IS its label (PUBLISHED, ctrl-check-boxes), which is
-        //     where Round 8, Task 6 moved the four 行为 titles and the 常用工具 master's.
+        //     where Round 8, Task 6 moved the four 行为 titles and the 常用工具 master's;
+        //   * a named TextBlock that SPANS both columns — a help line or a status line, which has no
+        //     control beside it to be measured against and instead owns the whole row.
         //
-        // Every one of them is populated from AppLanguage in its own code-behind, so the key set is
-        // recoverable from source: take the element's x:Name, collect every literal handed to
+        // THE THIRD SHAPE WAS MISSING UNTIL THE REVIEW OF TASK 6 and its absence had already cost
+        // the one string this test exists for: AppLanguage's PinToTaskbarFailed is written into
+        // BehaviorCard's PinTaskbarStatusText, which carries Grid.ColumnSpan="2", so the column-0
+        // filter excluded it — while this comment claimed it was "still guarded". It shipped a real
+        // hard break once (found by the review of Round 5 task B) and is the reason the ratchet
+        // exists at all.
+        //
+        // A VALUE line is deliberately NOT a fourth shape. RootPathText, DataPathText, DataInfoText
+        // and UpdateStatusText sit in column 1 without spanning, and the first two are USER DATA
+        // (a picked folder path) rather than an AppLanguage key — the keys-found assertion below
+        // would fail on them, and correctly: there is no string in this repository to hold to a rule.
+        //
+        // Every element in scope is populated from AppLanguage in its own code-behind, so the key
+        // set is recoverable from source: take the element's x:Name, collect every literal handed to
         // L(…) / AppLanguage.Text(…) / AppLanguage.Format(…) inside the statements that assign that
         // element's .Text or .Content, and read both languages of each key out of AppLanguage.
-        //
-        // AppLanguage's PinToTaskbarFailed shipped exactly such a break until the review that added
-        // this test — it was a subtitle then, and the string is still guarded because it still lands
-        // in a line that spans a Grid row.
         var offenders = new List<string>();
         var labelCount = 0;
 
         foreach (var (file, doc) in CardFiles())
         {
             var code = File.ReadAllText(Path.Combine(SettingsDir, file + ".cs"));
-            var labels = RowLabelNames(doc);
+            var labels = RowStringElementNames(doc);
 
-            // A settings tab with no label at all would make this test pass by checking nothing.
+            // A settings tab with no such element at all would make this test pass by checking
+            // nothing.
             Assert.True(
                 labels.Count > 0,
-                $"{file}: no row label found. A label is a named TextBlock in Grid.Column=\"0\" or a " +
-                "named CheckBox carrying its own Content. If this card really has neither, this test " +
-                "has stopped covering it and must be re-aimed rather than left silently passing.");
+                $"{file}: no row string found. One is a named TextBlock in Grid.Column=\"0\", a " +
+                "named TextBlock spanning both columns, or a named CheckBox carrying its own " +
+                "Content. If this card really has none, this test has stopped covering it and must " +
+                "be re-aimed rather than left silently passing.");
 
             foreach (var name in labels)
             {
@@ -208,7 +238,7 @@ public class SettingsRowTests
                 Assert.True(
                     keys.Count > 0,
                     $"{file}#{name}: no AppLanguage key found assigned to its .Text or .Content. " +
-                    "Either this label stopped being populated from AppLanguage, or this test's " +
+                    "Either this line stopped being populated from AppLanguage, or this test's " +
                     "source scan no longer recognises how — it must not silently check nothing.");
 
                 foreach (var key in keys)
@@ -237,17 +267,20 @@ public class SettingsRowTests
             }
         }
 
-        Assert.True(labelCount >= 10,
-            $"Found only {labelCount} row labels across the settings tabs. There were 14 when Round 8, " +
-            "Task 6 wrote this: four on 外观, six on 行为 (two labels and four check boxes), two on " +
-            "文件夹 and one each on 常用工具 and 更新. A collapse in that number means the scan has " +
-            "stopped recognising the markup, not that the surface lost its labels.");
+        Assert.True(labelCount >= 14,
+            $"Found only {labelCount} row strings across the settings tabs. There were 18 when the " +
+            "review of Round 8, Task 6 widened this scan: four on 外观, NINE on 行为 (two labels, " +
+            "four check boxes and three full-width lines — AutoStartHelp, PinTaskbarStatusText, " +
+            "HotkeyHelpText), two on 文件夹, one on 常用工具 and two on 更新 (UpdateStatusLabel and " +
+            "UpdateHelpText). It was 14 before that, which is why the floor is 14: a drop back to it " +
+            "is exactly the regression that hid PinToTaskbarFailed. A collapse in this number means " +
+            "the scan has stopped recognising the markup, not that the surface lost its lines.");
 
         AssertRatchet(
             offenders, PendingHardBreaks,
-            "A settings row's label may not contain an explicit line break — it renders as a real " +
-            "second line at every width, makes its Grid row taller than the control beside it, and " +
-            "pushes every row below it down. Reword the string (see PinToTaskbarFailed, which " +
+            "A string that owns a row of a settings grid may not contain an explicit line break — it " +
+            "renders as a real second line at every width, makes its Grid row taller, and pushes " +
+            "every row below it down. Reword the string (see PinToTaskbarFailed, which " +
             "parenthesises its {0} instead of breaking before it).");
     }
 
@@ -298,17 +331,26 @@ public class SettingsRowTests
         XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml");
 
     /// <summary>
-    /// The <c>x:Name</c> of every row LABEL in a settings file, in document order: a named
-    /// <c>TextBlock</c> sitting in column 0 of a two-column grid, and every named <c>CheckBox</c>,
-    /// whose <c>Content</c> is its own label.
+    /// The <c>x:Name</c> of every element in a settings file whose localized string owns a row, in
+    /// document order: a named <c>TextBlock</c> in column 0 of a two-column grid (a label), a named
+    /// <c>TextBlock</c> spanning both its columns (a help or status line), and every named
+    /// <c>CheckBox</c>, whose <c>Content</c> is its own label.
     /// </summary>
     /// <remarks>
-    /// The column-0 test is written against the attribute rather than against the parent Grid's
+    /// <para>
+    /// The column test is written against the attribute rather than against the parent Grid's
     /// <c>ColumnDefinitions</c> so that a label inside one of 文件夹's group boxes counts the same as
     /// one on a bare tab. <see cref="StandardColumns"/> is asserted separately below, so a file that
     /// invented a third column would not slip through both.
+    /// </para>
+    /// <para>
+    /// <b>The spanning shape is here because leaving it out silently dropped the one string this
+    /// whole test was written for</b> — see the fact list in the class remarks. A spanning line has
+    /// no control beside it, so "taller than the control it names" is not the harm; owning one more
+    /// row of a fixed-height dialog is.
+    /// </para>
     /// </remarks>
-    private static List<string> RowLabelNames(XDocument doc)
+    private static List<string> RowStringElementNames(XDocument doc)
     {
         var names = new List<string>();
 
@@ -318,12 +360,18 @@ public class SettingsRowTests
             if (string.IsNullOrEmpty(name))
                 continue;
 
+            var span = (string?)e.Attribute("Grid.ColumnSpan");
+
             var isColumnZeroLabel = e.Name.LocalName == "TextBlock"
                                     && ((string?)e.Attribute("Grid.Column") ?? "0") == "0"
-                                    && e.Attribute("Grid.ColumnSpan") is null
+                                    && span is null
                                     && InTwoColumnGrid(e);
 
-            if (isColumnZeroLabel || e.Name.LocalName == "CheckBox")
+            var isFullWidthLine = e.Name.LocalName == "TextBlock"
+                                  && span == "2"
+                                  && InTwoColumnGrid(e);
+
+            if (isColumnZeroLabel || isFullWidthLine || e.Name.LocalName == "CheckBox")
                 names.Add(name!);
         }
 

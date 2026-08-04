@@ -164,7 +164,18 @@ public partial class OptionsWindow : Window
     ///   <item><description><b>Task 6, pinned to 711, five tabs, BOTH languages:</b> Chinese 外观 246,
     ///   行为 350.67, 文件夹 468.67, 常用工具 294.67, 更新 198; English 263.33, 345.33, 478.67, 289.33,
     ///   214.67. The maximum is 文件夹's 478.67, and <c>Height="479"</c> is that rounded up to the next
-    ///   whole DIP.</description></item>
+    ///   whole DIP. <b>Four of those ten figures were wrong on the shipped build</b> — see the row
+    ///   below.</description></item>
+    ///   <item><description><b>Task 6's review round, same method, same width, both languages:</b>
+    ///   Chinese 外观 243.33, 行为 332, 文件夹 468.67, 常用工具 276, 更新 192.67; English 242, 326.67,
+    ///   478.67, 270.67, 190.67. FOUR TABS SHRANK AND ONE DID NOT MOVE AT ALL, which is the shape of
+    ///   the defect that round fixed: Task 6 deleted the last statement of this surface's body size,
+    ///   so four tabs shipped at FluentTheme's inherited 14 DIP while 文件夹 — the only tab whose
+    ///   content sits inside group boxes, and so the only one taking
+    ///   <c>HeaderedContentControl.axaml</c>'s own FontSize 12 — kept the intended size. Restoring 12
+    ///   on every card root (see <c>Views/Settings/AppearanceCard.axaml</c>) moved the other four back
+    ///   and left 文件夹 byte for byte where it was. <b>The maximum is therefore unchanged</b>: still
+    ///   文件夹's 478.67, still <c>Height="479"</c>, and the headroom below only grew.</description></item>
     /// </list>
     /// <para>
     /// <b>Task 6 moved the maximum from 行为 to 文件夹</b> — it deleted the icon column, the subtitle
@@ -179,7 +190,10 @@ public partial class OptionsWindow : Window
     /// tab re-measured in both languages: 468.67 / 478.67 DIP, IDENTICAL to the portable wording,
     /// because at 685 DIP of content width all three still render on one line. The build was restored.
     /// The plain wording (<c>DataFolderHelp</c>) is shorter than the packaged one and was not measured
-    /// separately.
+    /// separately. <b>The review round did not re-force it, and states why rather than implying it
+    /// re-measured:</b> that round's only change to type is a FontSize on each card root, and this tab
+    /// is the one where it changes nothing — its content was already inside a group box at 12 — which
+    /// its own re-run proves by landing on 468.67 / 478.67 again, to the DIP.
     /// </para>
     /// <para>
     /// <b>The first cut of Task 6's 文件夹 tab did not fit, and the fix is recorded here because the
@@ -387,14 +401,19 @@ public partial class OptionsWindow : Window
 
     private async Task<bool> ConfirmDiscardAsync()
     {
-        // THE COMMITTED LANGUAGE, NOT THE DRAFT'S, and that is a measured correction rather than a
-        // preference. Every card labels itself from the draft, which is right for a card: the draft is
-        // what a card DISPLAYS. This prompt is not — it appears over a window whose own labels were
-        // last written by ApplyText, i.e. in the COMMITTED language, and a pending 语言 change does not
-        // re-label anything until it is applied. Reading the draft here produced a genuinely mixed
-        // dialog on the first build of this window: with English staged but not applied, the title and
-        // the message came out English while MessageBox's own 是/否 buttons — which resolve the
-        // language from ConfigService, not from any draft — stayed Chinese. Captured, then fixed.
+        // THE COMMITTED LANGUAGE, NOT THE DRAFT'S — the rule the WHOLE surface follows, and this call
+        // site is where it was first measured rather than where it is the exception. Reading the draft
+        // here produced a genuinely mixed dialog on the first build of this window: with English staged
+        // but not applied, the title and the message came out English while MessageBox's own 是/否
+        // buttons — which resolve the language from ConfigService and cannot be told otherwise
+        // (MessageBox.ResolveLanguage) — stayed Chinese. Captured, then fixed.
+        //
+        // Task 2 fixed only this one call site, on the argument that a CARD may read the draft because
+        // the draft is what a card displays. Round 8, Task 6 established that the second half of that
+        // argument was false — nothing on this surface re-labels between a 语言 pick and the commit
+        // that lands it, so the draft's language is never what is on screen — and re-pointed the
+        // UiLanguage of all six cards at ConfigService too. This line is now ordinary, not special;
+        // see ApplyText's remarks and AppearanceCard.UiLanguage's.
         var language = _config.Config.General.Language;
 
         // The prompt takes focus; keep the launcher alive for users who have 失焦自动隐藏 on. The bracket

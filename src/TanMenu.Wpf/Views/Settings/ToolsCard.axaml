@@ -1,9 +1,13 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="TanMenu.Wpf.Views.Settings.ToolsCard">
+             x:Class="TanMenu.Wpf.Views.Settings.ToolsCard"
+             FontSize="{DynamicResource FontSizeBody}">
   <!-- ══ 常用工具 — a master check box and the list it governs ═══════════════════════════════
-       ROUND 8, TASK 6 REPLACED THE ROW GRAMMAR. See AppearanceCard.axaml's header for the argument
-       and the published citations for 3 / 7 / 11.
+       ROUND 8, TASK 6 REPLACED THE ROW GRAMMAR. See AppearanceCard.axaml's header for the argument,
+       the published citations for 3 / 7 / 11, and why every card root states the FontSize above.
+       That FontSize reaches the per-tool boxes below as well as the two elements in this markup:
+       BuildToolCheckboxes constructs them into ToolsPanel, which is inside this control, and an
+       inherited value follows the tree rather than the file.
 
        THIS TAB HAS NO LABEL-AND-CONTROL PAIR AT ALL, so it has no two-column Grid. It has one
        self-labelling check box, one line of instruction, and the list that line points at — which is

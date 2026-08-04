@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="TanMenu.Wpf.Views.Settings.AboutCard">
+             x:Class="TanMenu.Wpf.Views.Settings.AboutCard"
+             FontSize="{DynamicResource FontSizeBody}">
   <!-- ══ 关于 — the whole content of the About box ═══════════════════════════════════════════
        WHERE THIS CARD LIVES. It is the entire content of Dialogs/AboutWindow.axaml, a modal About
        box the menu band's 关于 item opens. PUBLISHED, win-property-win: "Is the content solely an
@@ -28,6 +29,13 @@
        size (its own prose and AboutWindowTests both record the arithmetic). Deleting the box without
        restating the 11 here would have put 确定 hard against the copyright line. 11 is PUBLISHED,
        vis-layout: "Between unrelated controls — 7 / 11".
+
+       THE FontSize ON THIS ROOT IS THE SAME ONE THE OTHER FIVE CARDS STATE, and this card needs it
+       for the same reason and one extra: deleting the group box above also deleted the last thing
+       on this window that set a FontSize at all. AboutWindow is an Avalonia Window, so FluentTheme's
+       {x:Type Window} ControlTheme gives it ControlContentThemeFontSize = 14, and every one of the
+       four lines below is a bare TextBlock. AppearanceCard.axaml's header carries the whole
+       mechanism and the measurements.
 
        THE ICON. The 16 DIP product tile rather than a Segoe glyph — this content is the app itself,
        and the image is already compiled into the assembly for SplashPanel and for the Aero caption's

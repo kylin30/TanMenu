@@ -32,8 +32,14 @@
     TWICE on a window whose whole content is four lines — once as this window's Title and once as the
     box's header, both written from AppLanguage's "About". A box round the only group on a surface
     is what PUBLISHED, ctrl-group-boxes, tells you to indicate on the larger surface instead, and
-    here that surface is a captioned window. SizeToContent absorbed the change, as predicted; the
-    measurements below were re-taken on the build that made it rather than carried forward.
+    here that surface is a captioned window. SizeToContent absorbed the change, as predicted.
+
+    THE MEASUREMENTS BELOW WERE RE-TAKEN TWICE, AND THE SECOND TIME IS WHY THIS SENTENCE IS HERE.
+    Task 6 said it had re-derived them and left Task 4's paragraph untouched under that claim, so
+    for one commit this file promised numbers it did not carry. They are re-derived here on the
+    build that ships, after the review round put the settings surface's body FontSize back (see
+    Views/Settings/AboutCard.axaml — deleting the group box also deleted the last thing on this
+    window that set a FontSize, so its four lines drew at FluentTheme's inherited 14).
 
     SizeToContent="WidthAndHeight" — the opposite choice from Dialogs/OptionsWindow.axaml, and for a
     reason that does not apply here. That window pins Width/Height because a TABBED dialog that
@@ -41,12 +47,17 @@
     tabs." This window has one page and no tabs, so there is nothing for a size to change under, and
     a fixed number would be a measurement to maintain for no gain. MEASURED on this build, at 150 %
     scale, through the window's UIA BoundingRectangle (which for an Avalonia window is the CLIENT
-    rectangle): 377 x 279 physical px = 251.33 x 186 DIP in Chinese, 377 x 276 = 251.33 x 184 in
-    English — i.e. the content really does move, and this window really does follow it. The outer
-    window is 399 x 335 physical (266 x 223.33 DIP), read off PrintWindow's GetWindowRect: a 22 x 56
-    physical px frame, the same frame Dialogs/OptionsWindow.axaml measured. Both are far inside the
-    PUBLISHED floor, win-property-win's "Support the minimum Windows Vista screen resolution of
-    800 x 600 pixels".
+    rectangle): 346 x 195 physical px = 230.67 x 130 DIP in Chinese, 346 x 193 = 230.67 x 128.67 in
+    English — i.e. the HEIGHT really does move and this window really does follow it, while the
+    width is pinned in both languages by the same line, the copyright, which is identical in both.
+    (For anyone comparing captures, the two earlier states in Chinese: 377 x 279 with Task 4's group
+    box in place, and 393 x 211 — 262 x 140.67 DIP, the figure Task 6's own report records in its
+    §3.4 — with the box gone but the body still at 14. Neither of those builds' ENGLISH width was
+    re-taken here and neither is claimed.) The outer
+    window is 368 x 251 physical (245.33 x 167.33 DIP), read off PrintWindow's GetWindowRect: a
+    22 x 56 physical px frame, the same frame Dialogs/OptionsWindow.axaml measured. Both are far
+    inside the PUBLISHED floor, win-property-win's "Support the minimum Windows Vista screen
+    resolution of 800 x 600 pixels".
 
     CanResize="False", ShowInTaskbar="False", no Icon — PUBLISHED, win-dialog-box: "Dialog boxes
     don't have title bar icons", "Resizable dialogs can have a Maximize button" (so a fixed one has
