@@ -13,10 +13,13 @@
        column's width plus its margin, and its right edge reaches the card's content edge instead of
        stopping wherever the widest tool name did.
 
-       The CheckBoxes inside the bordered list sit a further 9.33 DIP in — the list Border's own
-       Padding="8,4" and 1 px stroke, plus each CheckBox's own template padding. That is the list
-       control's business, not the row spec's: the spec constrains where a row's expansion CONTENT
-       starts, which is this Border's left edge.
+       The CheckBoxes inside the bordered list sit a little further in — the list Border's own Padding
+       and 1 px stroke, plus each CheckBox's own template padding. That padding was 8,4 and measured
+       9.33 DIP of total inset; Round 7, Task 7 re-derived it to 7,5 on vis-layout's published ladder
+       ("between related controls — 4 / 7", and 5 relative pixels as the minimum separation), which
+       moves the inset by 1 DIP and is not re-measured here. Either way it is the list control's
+       business, not the row spec's: the spec constrains where a row's expansion CONTENT starts, which
+       is this Border's left edge.
 
        Round 7, Task 3 gave the CheckBox an Aero template, and this list is where that lands hardest.
        Measured with UI Automation on the live page at 150 %, on the eight tools config.json ships with,
@@ -56,7 +59,7 @@
              states stay and are still persisted"): the per-tool Show values keep whatever the user set
              so re-enabling the category does not silently reset which tools it contains. -->
         <Border Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Classes="tm-card-expander"
-                Padding="8,4"
+                Padding="7,5"
                 BorderBrush="{DynamicResource StrokeControlBrush}" BorderThickness="1"
                 CornerRadius="{DynamicResource RadiusControl}">
           <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="240">

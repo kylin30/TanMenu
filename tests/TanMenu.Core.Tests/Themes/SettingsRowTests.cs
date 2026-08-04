@@ -24,13 +24,13 @@ namespace TanMenu.Core.Tests.Themes;
 ///   <c>ShowGridLines</c>/<c>RowSpacing</c>/<c>ColumnSpacing</c>/<c>Column</c>/<c>Row</c>/
 ///   <c>ColumnSpan</c>/<c>RowSpan</c>/<c>IsSharedSizeScope</c> and nothing else), and a
 ///   <c>Setter</c> needs one;</item>
-///   <item>the two constants the row spec retired — a style cannot delete a local value, and a local
-///   value outranks a style in Avalonia, so a card that keeps writing <c>MaxWidth="260"</c> or
-///   <c>Margin="30,…"</c> silently opts out of the class that replaced it. (<c>Margin="30,…"</c> was
-///   replaced by <c>tm-card-expander</c>; <c>MaxWidth="260"</c> briefly moved onto
-///   <c>tm-card-value</c> and was then measured inert on the spanning expansion row and deleted
-///   outright, so today the guard keeps a retired constant from coming back rather than keeping it in
-///   one place);</item>
+///   <item>every constant the THEME owns — a style cannot delete a local value, and a local value
+///   outranks a style in Avalonia, so a card that writes one of them silently opts out of the class
+///   that owns it. Two are retired outright (<c>Margin="30,…"</c>, replaced by
+///   <c>tm-card-expander</c>, and <c>MaxWidth="260"</c>, which briefly moved onto
+///   <c>tm-card-value</c> and was then measured inert on the spanning expansion row and deleted); the
+///   rest is the spacing ladder itself, which Round 7 Task 7 re-pointed from Fluent 2's unpublished
+///   4/8/12/16/20 to Aero's published 5/7/11;</item>
 ///   <item>invariant I1, "the header is exactly one title line and one subtitle line" — a count of
 ///   sibling elements is not a property of anything;</item>
 ///   <item>I1 again, at the string level — no wording a subtitle can be given may contain a hard line
@@ -102,21 +102,46 @@ public class SettingsRowTests
             "Classes=\"tm-card-expander\", never in a wrapping StackPanel.");
     }
 
+    /// <summary>Aero's PUBLISHED spacing ladder, plus 0 and the one derived rung the theme states.</summary>
+    /// <remarks>
+    /// <para>
+    /// <c>https://learn.microsoft.com/en-us/windows/win32/uxguide/vis-layout</c>, verbatim: "target
+    /// regions … should either be touching or have at least 3 DLUs (5 relative pixels) of space
+    /// between them" and "label to control 5"; "Between related controls — 4 / 7. Between buttons —
+    /// 4 / 7"; "Dialog box margins — 7 DLU / 11 relative pixels on all sides", "Between unrelated
+    /// controls — 7 / 11", "Between paragraphs — 11". 22 is the <c>2 × Space3</c> the theme states
+    /// where Fluent's unpublished 20 used to be.
+    /// </para>
+    /// <para>
+    /// 0 is on the list because "touching" is the guide's own other option, and a card file writing
+    /// <c>Margin="0"</c> is opting out of nothing.
+    /// </para>
+    /// </remarks>
+    private static readonly string[] AeroLadder = { "0", "5", "7", "11", "22" };
+
     [Fact]
     public void NoCardFile_RestatesAConstantTheThemeOwns()
     {
-        // Margin="30,…" was the hand-written indent that put below-row content under the title; it is
-        // now column 1 plus tm-card-expander's own 8. MaxWidth="260" was repeated on three value lines;
-        // it moved onto tm-card-value and was then deleted from there as well, once the value lines'
-        // move to a spanning expansion row was measured to leave it bounding nothing (see
-        // tm-card-value's remark in Launcher.axaml). So this half of the guard now keeps a retired
-        // constant from being reintroduced locally, rather than keeping it in one place.
+        // ROUND 7, TASK 7 RE-POINTED THIS LIST FROM FLUENT 2'S CONSTANTS TO AERO'S, which is what the
+        // conversion design's §2.6 assigns to that task. The guard's job has not changed: a local
+        // value outranks a style setter in Avalonia, so a card that writes a number the THEME owns
+        // opts itself out of the class that owns it, silently.
+        //
+        // What changed is which numbers those are. Until Task 7 the theme's spacing was Fluent's
+        // 4/8/12/16/20 ramp and this test guarded two RETIRED constants — the hand-written
+        // Margin="30,…" indent that Round 5 replaced with column 1 plus tm-card-expander, and the
+        // MaxWidth="260" bound that moved onto tm-card-value and was then measured inert and deleted.
+        // Both are still guarded, because both are still retired. On top of them the ladder itself is
+        // now enforced: Aero's is PUBLISHED (see AeroLadder), it is short, and a card that writes a
+        // rung that is not on it is either restating something Launcher.axaml already sets or
+        // inventing a step that no Microsoft page states — which is exactly the failure §3.2 deleted
+        // Space4 and Space5 to prevent.
         //
         // Matched over ATTRIBUTES, not over the file's text. Both retired constants are documented in
-        // the prose of the very card files that have to be rewritten to stop using them (FoldersCard's
+        // the prose of the very card files that had to be rewritten to stop using them (FoldersCard's
         // class-level remark explains the MaxWidth, and ToolsCard's and UpdatesCard's explain the 30px
-        // indent), so a text scan would fail the migration on a comment that correctly describes what
-        // was removed. XDocument hands us the markup with the comments already gone.
+        // indent), so a text scan would fail on a comment that correctly describes what was removed.
+        // XDocument hands us the markup with the comments already gone.
         var offenders = new List<string>();
 
         foreach (var (file, doc) in CardFiles())
@@ -129,13 +154,28 @@ public class SettingsRowTests
 
             if (attributes.Any(a => a.Name.LocalName == "MaxWidth" && a.Value == "260"))
                 offenders.Add($"{file}:MaxWidth=\"260\"");
+
+            foreach (var a in attributes)
+            {
+                if (a.Name.LocalName is not ("Margin" or "Padding" or "Spacing"))
+                    continue;
+
+                foreach (var rung in a.Value.Split(',', StringSplitOptions.TrimEntries))
+                {
+                    if (rung.Length > 0 && !AeroLadder.Contains(rung, StringComparer.Ordinal))
+                        offenders.Add($"{file}:{a.Name.LocalName}=\"{a.Value}\"");
+                }
+            }
         }
 
         AssertRatchet(
-            offenders, PendingLocalConstants,
-            "A local value outranks a style setter in Avalonia, so a card that restates one of these " +
-            "constants opts itself out of the class that replaced it. Delete the attribute and add the " +
-            "class (tm-card-expander / tm-card-value).");
+            offenders.Distinct(StringComparer.Ordinal), PendingLocalConstants,
+            "A local value outranks a style setter in Avalonia, so a card that restates a constant the " +
+            "theme owns opts itself out of the class that replaced it. Spacing comes from Aero's " +
+            "published ladder — 5 / 7 / 11, plus 0 and the stated 2 x 11 = 22 — and a card may not " +
+            "state a rung outside it; the two retired constants (Margin=\"30,…\", MaxWidth=\"260\") may " +
+            "not come back at all. Delete the attribute and add the class (tm-card-expander / " +
+            "tm-card-value), or move the number into Themes/Fluent2/Launcher.axaml where the ladder is.");
     }
 
     [Fact]

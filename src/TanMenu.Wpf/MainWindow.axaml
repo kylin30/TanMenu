@@ -100,8 +100,12 @@
       <Setter Property="Template">
         <ControlTemplate TargetType="Button">
           <!-- Only the BOTTOM corners are rounded: an Aero caption button is flush with the top of
-               the frame and curves away from it. AUTHORED radius, matching RadiusControl's 4 minus
-               the 1 DIP border the face carries. -->
+               the frame and curves away from it. AUTHORED radius. It was written as RadiusControl's
+               then-4 minus the 1 DIP border the face carries; Round 7, Task 7 re-valued RadiusControl
+               to Aero's own 3, so the derivation no longer produces this number and the 3 is now a
+               plain authored literal. It is deliberately NOT re-pointed at the token: the caption is
+               window chrome measured off a Windows 7 screenshot, not a step on the app's shape
+               scale, and the two happening to agree is not a reason to couple them. -->
           <Border Background="{TemplateBinding Background}"
                   BorderBrush="{DynamicResource CaptionBevelLightBrush}"
                   BorderThickness="1"
@@ -255,8 +259,10 @@
                             FontSize 12 is Segoe UI 9 pt at 96 dpi, which
                             https://learn.microsoft.com/en-us/windows/win32/uxguide/vis-fonts gives as
                             the system font AND as the title-bar face. It is a literal rather than
-                            FontSizeCaption because that token is a Windows 11 optical-size step the
-                            conversion retires; the caption's size is Aero's, not the ramp's.
+                            FontSizeCaption because that token was a Windows 11 optical-size step, and
+                            Round 7, Task 7 deleted it outright; the caption's size is Aero's, not the
+                            ramp's. It coincides with FontSizeBody, which that same task re-valued to
+                            12, and the coincidence is not made into a reference for the reason above.
 
                             The glow is Microsoft's own number — see CaptionTitleGlow in Tokens.axaml
                             for the DTTOPTS citation. Foreground follows the variant instead of
@@ -346,8 +352,35 @@
     <!-- Grid.Column="0" is "Auto", not a literal 48: NavRailPane below carries its OWN explicit Width
          and the Auto column just follows whatever that Border measures at, so the rail's width is
          stated exactly once in this file (Round 4, item 1 removed the second state that Width used to
-         animate between; a fixed column here would restore a second copy of the number instead). -->
-    <Grid Grid.Row="1" ColumnDefinitions="Auto,*">
+         animate between; a fixed column here would restore a second copy of the number instead).
+
+         ══ THE CLIENT SURFACE, ROUND 7 TASK 7 ═══════════════════════════════════════════════════
+         This Background is what makes the app legible, and it is Aero's own structure rather than a
+         compromise: in Windows 7 the GLASS was the window FRAME and the client area under it was
+         opaque #FCFCFC. Row 0 above — the caption band — deliberately keeps no Background at all, so
+         the acrylic still shows through it and the hand-drawn glass gradient still sits on a live
+         blur. Everything below the caption is SurfaceBaseBrush, which Tokens.axaml aliases onto the
+         vendored AeroWindowBackground.
+
+         MEASURED, and this is why it is not optional. Until this task the whole client was
+         Transparent over the acrylic. Avalonia's AcrylicBlur on Win32 is a plain gaussian blur of
+         what is behind the window with NO tint layer of its own, so every glyph on a page that
+         painted nothing sat on a blur of the user's desktop. On this machine the wallpaper
+         (D:\0.Documents\Pictures\壁纸, 7680x4532) averages (87,84,103) over 120,684 sampled pixels,
+         whose WCAG relative luminance is 0.093. Against that surface the 设置 page's group headings
+         (HeadingBrush's Light value, luminance 0.050) compute to 1.4:1 and its body ink (pure black)
+         to 2.9:1 — against WCAG AA's 4.5:1 for body text. PrintWindow cannot photograph the composite
+         at all (flag 2 returns (0,0,0) for a transparent client), so the failure was neither visible
+         to the instrument nor arguable away: the group headings really did sample (0,0,0) ink on a
+         (0,0,0) background, ratio 1.00, on the build this task replaced. Over AeroWindowBackground
+         the same two elements measure 10.59:1 and 20.47:1 in Light and 4.29:1 and 11.90:1 in Dark,
+         read off PrintWindow captures rather than computed.
+
+         Border.tm-page-pane:not(.app) in Themes/Fluent2/Launcher.axaml is UNCHANGED by this: it still
+         paints nothing, which is still Round 6 item 2's decision that every non-应用 page shows the
+         window's own material. What changed is what the window's own material IS. -->
+    <Grid Grid.Row="1" ColumnDefinitions="Auto,*"
+          Background="{DynamicResource SurfaceBaseBrush}">
 
       <!-- ══ Navigation rail pane: 48 DIP, icon-only, permanently ═══════════════════════════════════
            Round 4, item 1: the hamburger toggle, the 200 DIP expanded width and the DoubleTransition
@@ -574,60 +607,41 @@
            both were "left with no background of their own"; AppPage's root does carry
            Background="Transparent", so that was half wrong.)
 
-           Round 4, item 5 gave the two pages two DIFFERENT looks on this one Border. 应用 gets a pure
-           white pane with a 1 DIP top+left hairline and an 8 DIP top-left corner — all four values
-           measured off the user's Task Manager reference — and that half is unchanged.
+           Round 4, item 5 gave the two pages two DIFFERENT looks on this one Border, and Round 6,
+           item 2 flipped which of them is the exception. 应用 gets an opaque pane with a 1 DIP
+           top+left hairline; every other page paints NOTHING — Transparent, no border, no corner — so
+           the window's own surface runs unbroken from the rail and the caption through the content.
+           ShowPageCore (code-behind) toggles the "app" class, and it is "app" rather than "settings"
+           on purpose: "on the window material" is the default, so a third page cannot silently come
+           up white.
 
-           Round 6, item 2 changed the other half and OVERRULES Round 4 §5.1(d)/§7.1, which kept 设置 on
-           SurfaceBaseBrush. Every page that is not 应用 now paints NOTHING: Transparent, no border, no
-           corner, so the window's own surface runs unbroken from the rail and the caption through the
-           content, which is exactly what Windows' own Settings page does (measured: it has no content
-           pane at all — nine samples across where a pane edge would be read one value). Round 4's
-           objection was that our SurfaceLayerBrush cards composite to the exact colour of a WHITE page;
-           the Windows 11 backdrop was not white — it measured 238..247 Light / 30..34 Dark under this
-           window, straddling SurfaceBaseBrush — so the card separation survives. THAT STRADDLE
-           MEASUREMENT WAS TAKEN AGAINST MICA, which Round 7, Task 1 replaced with AcrylicBlur; the
-           conclusion has not been re-measured against acrylic and Task 7 owns re-taking it. ShowPageCore
-           (code-behind) toggles the "app" class, and it is "app" rather than "settings" on purpose: "on
-           the window material" is now the default, so a third page cannot silently come up white. Every
-           measurement, the backdrop-refused fallback (Window.Background, set by ApplyBackdrop, is the
-           single source of truth — this Border must never grow a fallback of its own) and the reason
-           both looks are STYLES rather than local attributes here all live in Launcher.axaml's
-           "Border.tm-page-pane" block.
+           ROUND 7, TASK 7 CHANGED WHAT BOTH HALVES ARE MADE OF, and the second half's colours are
+           now stated at the top of this file rather than here. 应用's fill is SurfacePageBrush aliased
+           onto the vendored AeroListBoxBackground — Explorer's own content area was a list background
+           — and its 8 DIP top-left arc is GONE: Aero's ListBox sets CornerRadius="0" and a Windows 7
+           content pane has no rounded corner, so RadiusPaneTopLeft was deleted with its measurement.
+           The other pages' Transparent is unchanged to the letter; what shows through it is the
+           opaque Aero client surface this file's own content Grid now paints (see its remark above),
+           which is what makes those pages legible and what replaces the Mica-straddle argument Round
+           6 relied on. That argument's premises are all gone — there is no Mica, no card fill and no
+           SurfaceLayerBrush — and its measurements are archived in
+           docs/superpowers/archive/2026-08-04-windows11-measurement-record.md. The
+           backdrop-refused fallback is unchanged and still the single source of truth for the
+           window's colour (Window.Background, set by ApplyBackdrop); this Border must never grow a
+           fallback of its own. Why both looks are STYLES rather than local attributes here is in
+           Launcher.axaml's "Border.tm-page-pane" block.
 
-           ClipToBounds — AND A PIECE OF EVIDENCE THAT NO LONGER EXISTS. Round 4 recorded here that a
-           Border DOES clip its child to its CORNER RADIUS rather than to its bounds rectangle. That was
-           an observation, not a proof, and its one subject was the 关于 overlay, which Round 5, item 2
-           deleted. The finding is kept, demoted to what it actually is, rather than restaged or quietly
-           dropped:
-
-             OBSERVED ONCE, ROUND 4, ON A SURFACE THIS TREE NO LONGER CONTAINS. The 关于 overlay was the
-             only thing inside AppPage that reached this pane's top-left arc — it carried no margin and
-             OverlayPanel.ArrangeOverride (Controls/OverlayPanel.cs) arranges every child over the WHOLE
-             panel rect. Its SplashPanel card was a SQUARE Border with an accent gradient and no
-             CornerRadius of its own, yet on a PrintWindow capture of the running app its first accent
-             pixel per row traced 94, 91, 90, 89, 88, 87, 86, 86, 86, 85, 85 down the top eleven rows —
-             an arc, flush with the pane's own inner edge. The capture could NOT tell apart WHICH Border
-             clipped: both candidates (the overlay's own and this pane) carried the same 8 DIP top-left
-             arc, so the conclusion holds for whichever it was and names neither. It is not
-             re-verifiable from this tree, and nothing here should be written as if it were.
-
-           WHAT IS TRUE TODAY. AppPage's OverlayPanel has exactly FIVE children (Views/AppPage.axaml,
-           counted in the markup, not sampled), and every one of them clears the arc:
-             1. the DockPanel of real content, whose own children inset themselves — the search header by
-                12,10 (Border.tm-header's Padding), the tile body by 16 DIP (SurfacePadding, the Body
-                StackPanel's Margin), PinNotice by 12,0,12,8, the update banner by 16,16,16,0;
-             2. SplashPanel — the startup splash, and the one remaining child that IS the control the
-                deleted 关于 overlay reused, so it is the obvious candidate to re-raise this question.
-                It cannot: it carries HorizontalAlignment="Center" VerticalAlignment="Center", which is
-                precisely what the 关于 Border did NOT (it set neither alignment nor margin, so
-                OverlayPanel.ArrangeOverride's Arrange(whole rect) left it full-bleed);
-             3 and 4. both tm-empty panels — centred, same as the splash;
-             5. tm-toast — Margin 16, centred, bottom-aligned (Launcher.axaml, Border.tm-toast).
-           So nothing left in the page can reproduce that capture, and ClipToBounds is once again
-           defensive rather than load-bearing. It stays for exactly that reason: it costs nothing and it
-           is what would keep a future full-bleed child inside the arc.
-           A page that is not 应用 still has no radius at all under the :not(.app) rule. -->
+           ClipToBounds — AND WHY THE EVIDENCE THAT ONCE JUSTIFIED IT IS NOW MOOT TWICE OVER. Round 4
+           recorded here that a Border clips its child to its CORNER RADIUS rather than to its bounds
+           rectangle, on one observation: the 关于 overlay's square accent card traced an arc down its
+           first eleven rows on a PrintWindow capture. Round 5, item 2 deleted that overlay, so the
+           observation lost its subject; Round 7, Task 7 deleted the arc, so it has lost its mechanism
+           as well — this pane's corners are square in both states now and a radius clip and a bounds
+           clip are the same rectangle. ClipToBounds stays because it costs nothing and because a
+           full-bleed child of AppPage's OverlayPanel (whose ArrangeOverride arranges every child over
+           the WHOLE panel rect) would otherwise be free to paint over the pane's 1 DIP hairline. None
+           of the five children it has today can: the DockPanel's own children inset themselves, and
+           SplashPanel, both tm-empty panels and tm-toast are all centred. -->
       <Border Grid.Column="1"
               x:Name="PagePane"
               Classes="tm-page-pane"

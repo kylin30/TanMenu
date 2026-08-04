@@ -24,7 +24,13 @@
         each button   84 x 33.3 DIP Fluent pill  →  84 x 22 DIP Aero double border + gradient
                       (the code-behind's MinWidth=84 governs the width in both; only height moved)
         this window   170.7 DIP tall             →  159.3 DIP tall
-        corner radius Tokens' ControlCornerRadius 4 → Aero's own 3 (outer) / 2 (inner)
+        corner radius Tokens' then-4 ControlCornerRadius → Aero's own 3 (outer) / 2 (inner)
+
+    Round 7, Task 7 then aliased ControlCornerRadius itself onto AeroControlCornerRadius, so the
+    override this window's other standard controls read is 3 as well and the last line above records a
+    difference that no longer exists. This window's own Background is SurfaceBaseBrush, which the same
+    task aliased onto AeroWindowBackground — an opaque #FCFCFC / #373737 client, which is what a
+    Windows 7 dialog was.
 
     That is the wanted answer rather than a leak: a Windows 7 message box drew exactly this button,
     so no Theme= is pinned here to hold the Fluent one back. What this file does NOT get is the
@@ -34,8 +40,12 @@
     Buttons are created in code-behind: their count, order, labels (localized) and default/cancel
     roles all depend on the MessageBoxButtons value.
   -->
-  <StackPanel Margin="22,20">
-    <StackPanel Orientation="Horizontal" Spacing="14">
+  <!-- 11 on every side is vis-layout's PUBLISHED dialog margin ("Dialog box margins — 7 DLU / 11
+       relative pixels on all sides"); 11 again between the icon and the message, which are unrelated
+       controls; 11 above the button row; and 7 between buttons ("Between buttons — 4 / 7"). Round 7,
+       Task 7 re-derived all four from the Fluent values 22,20 / 14 / 0,22,0,0 / 8. -->
+  <StackPanel Margin="11">
+    <StackPanel Orientation="Horizontal" Spacing="11">
       <Border Name="IconHost"
               Width="30" Height="30"
               CornerRadius="15"
@@ -56,8 +66,8 @@
 
     <StackPanel Name="ButtonRow"
                 Orientation="Horizontal"
-                Spacing="8"
-                Margin="0,22,0,0"
+                Spacing="7"
+                Margin="0,11,0,0"
                 HorizontalAlignment="Right" />
   </StackPanel>
 

@@ -245,7 +245,7 @@ Two of those deserve a note because a careless plan would have broken them:
 |---|---|---|
 | `Fluent2TokenTests.EveryTokenTheLauncherReferences_IsDefinedInTokens` | union the `defined` set with `Themes/Aero/Variant/Light.axaml`, `Variant/Dark.axaml`, `AVMAP/Brushes.axaml`, `AVMAP/Metrics.axaml`. **Widen the defined set, never the `"Tm"` prefix filter** — a prefix filter would let a typo'd `AeroFoo` through, unioning the real files still catches it | 2 |
 | `Fluent2TokenTests.EveryTokenTheLauncherWindowReferences_IsDefinedInTokens` | same | 2 |
-| `SettingsRowTests.NoCardFile_RestatesAConstantTheThemeOwns` | re-point its constant list from Fluent 2's to Aero's | 7 |
+| `SettingsRowTests.NoCardFile_RestatesAConstantTheThemeOwns` | re-point its constant list from Fluent 2's to Aero's. **Done in Task 7, and it grew rather than moved**: the two retired constants (`Margin="30,…"`, `MaxWidth="260"`) are still retired and still guarded, and on top of them the test now rejects any `Margin` / `Padding` / `Spacing` rung a card file states that is not on Aero's published ladder `{0, 5, 7, 11, 22}`. One card had to change — `ToolsCard`'s list `Padding="8,4"` → `"7,5"` | 7 |
 | `AppThemeTests` (no code change) | its five `ResolveAccent_*` facts stay meaningful because the accent keeps a consumer (§1) | — |
 
 **New (6), all source tests of the `Fluent2TokenTests` kind, all in
@@ -330,7 +330,7 @@ and `Themes/Shell/` (ours) is the end state.
 
 | # | key | fate | value / basis |
 |---|---|---|---|
-| 1 | `SurfaceBaseBrush` | **A→ `AeroWindowBackground`** | `#FCFCFC` / `#373737` VENDORED. Its only consumer becomes `ApplyBackdrop`'s opaque fallback |
+| 1 | `SurfaceBaseBrush` | **A→ `AeroWindowBackground`** | `#FCFCFC` / `#373737` VENDORED. “Its only consumer becomes `ApplyBackdrop`'s opaque fallback” is **wrong and Task 7 corrected it in code**: it has two, and the second is the one that makes the app legible — `MainWindow.axaml`'s content Grid, i.e. the whole client area below the caption. See the retraction under Task 7 |
 | 2 | `SurfacePageBrush` | **A→ `AeroListBoxBackground`** | `#FFFFFF` / `#4A4A4A` VENDORED. Consumer: `Border.tm-page-pane.app`. Explorer's own content area is the list background, so the 应用/其他 pane distinction survives with an Aero justification instead of a Windows 11 Settings one |
 | 3 | `SurfaceLayerBrush` | **DELETE** | the settings card's fill. Cards lose their fill; the five groups become Aero group boxes (§7.7) |
 | 4 | `SurfaceLayerActiveBrush` | **DELETE** | "focused fill lightens slightly" is Fluent's idea. Aero's TextBox focus is a `BorderBrush` change to `AeroTextBoxFocusBorderBrush` |
@@ -360,7 +360,7 @@ and `Themes/Shell/` (ours) is the end state.
 | `CaptionGlassInactiveBrush` | same gradient at roughly half the tint's alpha | same |
 | `CaptionBevelLightBrush` | `#80FFFFFF` | `#40FFFFFF` |
 | `CaptionBevelDarkBrush` | A→ `AeroGroupBoxBorderBrush` | same |
-| `HeadingBrush` | `#003399` **PUBLISHED** (`vis-fonts`: *"main instructions 12 pt blue #003399"*, *"group headers 11 pt #003399"*) | `#6699FF` **AUTHORED** — Windows 7 had no dark variant; this is `#003399` lifted to keep the same contrast ratio against `#373737` that the original has against `#FCFCFC` |
+| `HeadingBrush` | `#003399` **PUBLISHED** (`vis-fonts`: *"main instructions 12 pt blue #003399"*, *"group headers 11 pt #003399"*) | `#6699FF` **AUTHORED**. The stated derivation — *"`#003399` lifted to keep the same contrast ratio against `#373737` that the original has against `#FCFCFC`"* — **is arithmetically false and Task 7 shipped the value anyway**: `#003399` on `#FCFCFC` is 10.2:1, `#6699FF` on `#373737` measures 4.29:1, and matching 10.2:1 on `#373737` would need luminance 0.85, i.e. a near-white. No recognisably blue colour satisfies the criterion. Ships as the design's literal value, with the measured 4.29:1 recorded |
 
 **Variant-independent (25 keys).**
 
@@ -403,6 +403,24 @@ Of 46 keys: **9 become aliases** onto vendored Aero brushes, **11 are re-valued 
 of which only 3 carry a value this design invented from nothing (`HeadingBrush` Dark and the two
 caption bevels).
 
+> **What Task 7 actually shipped, counted: 36 keys — 22 themed and 14 variant-independent.** The 29
+> above is right about this section's own census and wrong as a description of the file, because
+> Task 1 had already added **7 more caption keys** than §3.2's five: `CaptionGlassBrush` (the live one
+> `MainWindow.axaml.cs` republishes on every activation change), `CaptionTitleGlow`, and the five
+> caption-button face brushes. 29 + 7 = 36. Nothing in §3.2's census was skipped.
+>
+> **Two of the nine aliases are written differently from §3.1's `<StaticResource>` form, and the
+> difference is not cosmetic.** Only the two VARIANT-INDEPENDENT aliases (`RadiusControl` and
+> `ControlCornerRadius`, both onto `AeroControlCornerRadius`) use it, because `AVMAP/Metrics.axaml` is
+> merged OUTSIDE `AeroResources.axaml`'s `ThemeDictionaries` and a plain parent-stack walk reaches it
+> with no variant to get wrong. The seven THEMED aliases cannot: every Aero brush lives inside a
+> `"Light"`/`"Dark"` block, and a `<StaticResource>` is resolved once against whichever variant is live
+> at parse time, so the resolved object would be frozen into both of `Tokens.axaml`'s variant blocks.
+> They are written as a one-line `SolidColorBrush` whose `Color` is a `{DynamicResource}` onto the Aero
+> COLOUR key — the same mechanism all 110 brushes in `AVMAP/Brushes.axaml` use, declared verbatim in
+> both variant blocks exactly as `AeroResources.axaml` merges the one `Brushes.axaml` into both. The
+> value still lives in one place, `Variant/*.axaml`.
+
 ### 3.4 The focus visual
 
 Deleting `FocusStrokeInnerBrush` deletes the two-ring rectangle, which is a Windows 11 form. Aero's is
@@ -425,8 +443,14 @@ keeps Avalonia's default adorner: Task 3 ran the check above and found it **visi
 synthetic `VK_TAB` (`SetFocus()` alone shows nothing — `Control.OnGotFocus` builds an adorner only
 for `NavigationMethod.Tab` or `Directional`), so §3.4's conditional fallback never fired. Fluent's
 two-ring ring is therefore still what an Aero button shows on Tab. Task 3 assigned the dotted
-rectangle to **Task 7**, which is where `FocusStrokeOuterBrush` becomes `AeroForeground`; until then
-this section describes an intention, not the tree.
+rectangle to **Task 7**, which is where `FocusStrokeOuterBrush` becomes `AeroForeground`. **Task 7
+shipped it.** All five `FocusAdorner`s in `Launcher.axaml` — `TmTileButton`, `TmIconButton`,
+`TmButton`, `TmNavRowButton`, `TmNavRowItem` — are now a single `Rectangle` with
+`Stroke="{DynamicResource FocusStrokeOuterBrush}" StrokeThickness="1" StrokeDashArray="1,1"
+Margin="-2"`, and `FocusStrokeInnerBrush` is deleted with the second ring. The three
+`FocusAdorner="{x:Null}"` suppressions (vendored `TextBox`, `NumericUpDown`, authored `ComboBox`)
+are unchanged and still repaint their own field instead. From this task on the section describes
+the tree.
 
 ---
 
@@ -463,8 +487,16 @@ Named, with the task that owns each:
 | `RadiusPaneTopLeft`'s arc measurement | `Tokens.axaml:144-163` | 20 | 7 |
 | `RadiusPanel`'s four-criterion panel-vs-pane comparison | `Tokens.axaml:166-198` | 33 | 7 |
 | the 147-line Mica-straddle content-pane argument | `Launcher.axaml:722-868` | 147 | 7 |
-| `Border.tm-group-panel`'s 47-line Windows 11 Settings derivation | `Launcher.axaml:908-954` | 47 | 9 |
-| the `ClipToBounds` "OBSERVED ONCE, ON A SURFACE THIS TREE NO LONGER CONTAINS" block | `MainWindow.axaml:556-588` | 33 | 9 |
+| `Border.tm-group-panel`'s 47-line Windows 11 Settings derivation | `Launcher.axaml:908-954` | 47 | 9 → **7** |
+| the `ClipToBounds` "OBSERVED ONCE, ON A SURFACE THIS TREE NO LONGER CONTAINS" block | `MainWindow.axaml:556-588` | 33 | 9 → **7** |
+
+> **The last two rows moved to Task 7, and the timing rule is why.** Both describe subjects Task 7
+> deletes rather than Task 9: the group panel's derivation is arithmetic over `SubtleFillTertiaryBrush`
+> and `RadiusPanel`, and the `ClipToBounds` block's whole mechanism is the pane's 8 DIP arc
+> (`RadiusPaneTopLeft`). A comment is rewritten in the same commit as the code it describes, so leaving
+> either for Task 9 would have shipped a paragraph that was false the moment Task 7 landed. Both were
+> rewritten rather than deleted — the panel keeps a rule, and `ClipToBounds` keeps a (smaller) job —
+> and their measurements went to bucket C. Task 9 still owns the objects themselves.
 
 **Bucket B — REWRITE, in the task that moves the number.** Prose whose subject survives but whose
 numbers change. The new text cites the new measurement, the UX Guide URL, or is labelled **AUTHORED**;
@@ -1400,7 +1432,7 @@ and the field's `TextBox` vocabulary already exist, so this task writes composit
 
 #### Verification
 
-1. Build, test (147), publish.
+1. Build, test (147 attributes = **194 cases**, unchanged — this task adds and deletes no test), publish.
 2. UIA on `LanguageCombo` / `AppearanceCombo` / `FontCombo`: `BoundingRectangle` height = 23 DIP ×
    scale on all three; width 220 × scale.
 3. Open each popup with UIA `ExpandCollapsePattern.Expand()` (no mouse). `PrintWindow` each.
@@ -1426,7 +1458,7 @@ Then re-author every `.tm-*` rule in `Launcher.axaml` whose value moved. Concret
 | rule | change |
 |---|---|
 | `Border.tm-page-pane.app` | `SurfacePageBrush` → the alias; `CornerRadius` `{RadiusPaneTopLeft}` → **`0`**; `BorderThickness` stays `1,1,0,0` — Explorer's own pane/list divider |
-| `Border.tm-page-pane:not(.app)` | unchanged in form; the Round 6 item 2 decision (every non-应用 page shows the window material) **survives**, because Explorer's property pages did the same |
+| `Border.tm-page-pane:not(.app)` | unchanged in form — and it shipped byte-identical. What changed is what shows THROUGH it: see the retraction below |
 | `Border.tm-card` | fill and radius **deleted**; a card becomes a bare row on the group box's surface |
 | `Border.tm-toast` | `StrokeSurfaceFlyoutBrush` → `AeroGroupBoxBorderBrush`; `BoxShadow` **deleted** |
 | `Border.tm-infobar` | re-derived to the group-box vocabulary |
@@ -1441,6 +1473,31 @@ The 147-line Mica-straddle argument at `Launcher.axaml:722-868` is deleted (buck
 measurements archived (bucket C). Its thesis — *"Mica measures 238..247 Light and 30..34 Dark and
 therefore straddles `SurfaceBaseBrush`, so card separation survives"* — has no subject left: there is no
 Mica and there are no card fills.
+
+> **CORRECTED after Task 7 shipped. The design left the 设置 page illegible and the task had to add a
+> surface the design does not mention.** Two of this section's own statements are the culprits: §3.2 #1
+> says `SurfaceBaseBrush`'s "only consumer becomes `ApplyBackdrop`'s opaque fallback", and the table
+> above keeps `:not(.app)` transparent. Together they put every glyph on the 设置 page directly on
+> Avalonia's `AcrylicBlur`, which on Win32 is a plain gaussian blur of the desktop with **no tint layer
+> of its own**. MEASURED on this machine: the wallpaper averages (87,84,103) over 120,684 sampled
+> pixels, against which `HeadingBrush`'s Light value computes to **1.4:1** and pure black body ink to
+> **2.9:1**; and `PrintWindow` (flag 2) photographs a transparent client as (0,0,0), so on the
+> pre-Task-7 build the 外观 and 行为 headings sampled ink (0,0,0) on background (0,0,0) — **ratio 1.00**.
+>
+> **The fix is Aero's own structure, not an invention: glass was the FRAME, the client area was
+> opaque `#FCFCFC`.** `MainWindow.axaml`'s content Grid (row 1, everything below the caption band) now
+> paints `SurfaceBaseBrush`. Row 0 keeps no background, so the caption still sits on the live acrylic
+> and the hand-drawn glass gradient is unaffected. `Border.tm-page-pane:not(.app)` is untouched to the
+> letter — Round 6 item 2's decision that a non-应用 page shows the window's own material still holds;
+> the window's own material is now `AeroWindowBackground` instead of a hole. Measured after:
+> heading **10.59:1** Light / **4.29:1** Dark, body ink **20.47:1** / **11.90:1**, subtitle
+> **5.68:1** / **5.43:1**.
+>
+> Two more of this task's statements did not survive contact, and both are recorded in the code:
+> **the hotkey box's four `/template/` rules were DELETED rather than re-pointed** (every control on
+> the page is Aero's now, so the "one disabled vocabulary" they enforced is true by construction), and
+> **`Border.tm-card`'s spacing is re-derived but its class name is kept** — four `SettingsRowTests`
+> facts and six card files are written against it.
 
 #### Why
 

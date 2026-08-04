@@ -2,32 +2,62 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
   <!--
-    The launcher's own Fluent 2 dialect. Everything here is either an x:Key'd ControlTheme or a
-    class selector (.tm-*), so it is opt-in and cannot leak into the settings window or the shared
-    message box, both of which stay on Avalonia's own control themes by design.
+    The launcher's own dialect. Everything here is either an x:Key'd ControlTheme or a class
+    selector (.tm-*), so it is opt-in and cannot leak into the shared message box, which stays on
+    the app-wide control themes by design.
 
-    There is deliberately NOT a single colour literal in this file — every brush comes from
-    Themes/Fluent2/Tokens.axaml, and Fluent2TokenTests fails the build if one appears. That is what
-    makes light/dark a property of one file instead of a hunt.
+    There is deliberately NOT a single colour literal in this file — every brush is a resource key,
+    and Fluent2TokenTests.LauncherStyles_ContainNoColourLiterals fails the build if a hex value
+    appears anywhere, PROSE INCLUDED. Any Aero colour quoted in a comment below is therefore a
+    decimal RGB triple.
+
+    TWO LAYERS SUPPLY THOSE KEYS SINCE ROUND 7, TASK 7, and which one a rule names is not a style
+    choice. Themes/Fluent2/Tokens.axaml owns the app's semantic names — surfaces, ink, hairlines,
+    the shape scale, the spacing ladder and the type sizes — and since Task 7 its values are Aero's.
+    Themes/Aero/AVMAP/Brushes.axaml owns the STATEFUL fills: Aero paints a button, a list row and a
+    text field as two- and four-stop vertical gradients that differ per state, and a token layer of
+    flat SolidColorBrushes has no gradient to give. So a rest surface, an ink colour or a hairline
+    names a token; a hover, pressed or selected FILL names the Aero brush directly. Fluent2TokenTests
+    unions the vendored files into its defined set for exactly that reason, and it does NOT filter on
+    the "Aero" prefix, so a typo in one of those names still fails the build.
 
     All brush references use {DynamicResource}, not {StaticResource}: the app switches
     ThemeVariant live when the OS theme or the appearance setting changes, and a StaticResource
     would freeze the launcher in whatever variant happened to be active at parse time.
+
+    ── The focus visual ─────────────────────────────────────────────────────────────────────────
+    Every FocusAdorner below is the CLASSIC DOTTED RECTANGLE: a Rectangle stroked in
+    FocusStrokeOuterBrush (= AeroForeground) at thickness 1 with StrokeDashArray="1,1". Windows 11's
+    two-ring rectangle — a 2 px outer ring in the ink colour plus a 1 px inner ring in the opposite
+    one — went with FocusStrokeInnerBrush, the token that made the second ring possible. Task 3
+    verified with a synthetic VK_TAB that Avalonia's default adorner does draw on the vendored Aero
+    Button (SetFocus() alone shows nothing: Control.OnGotFocus builds an adorner only for
+    NavigationMethod.Tab or Directional), so what an Aero button showed on Tab was still Fluent's
+    ring; these five adorners are what replace it on everything this file themes.
   -->
 
   <Styles.Resources>
 
     <!-- ══ Launcher item tile ═══════════════════════════════════════════════════════════════════
-         The most-repeated control in the app, and — per the round-2 visual-pass review — a real
-         Fluent 2 STANDARD BUTTON now rather than a borderless icon+text row: a subtle fill
-         (SurfaceLayerBrush, the same layered surface Border.tm-card and the search field use), a
-         hairline border (StrokeControlBrush) and the shape scale's 4 px control radius, all visible
+         The most-repeated control in the app, and a real STANDARD BUTTON rather than a borderless
+         icon+text row: a fill, a hairline border and the shape scale's control radius, all visible
          AT REST rather than appearing only on hover. TmButton below gives every other button in the
          app (the settings-card actions) that same look; this theme duplicates its template rather
          than deriving from it via BasedOn so a tile's own quirks — Stretch content alignment for the
          icon+label DockPanel, its own fixed Padding, and disabling by making the WHOLE card recede to
-         nothing rather than just dimming it — stay self-contained. Unlike the retro build, pressing
-         does NOT offset the content — Fluent 2 signals press by going a shade quieter, not by moving.
+         nothing rather than just dimming it — stay self-contained. Pressing does NOT offset the
+         content; the fill changes and the geometry does not.
+
+         ROUND 7, TASK 7 REPLACED THE PAINT AND KEPT THE ANATOMY. The fill was SurfaceLayerBrush —
+         white at alpha 179 over whatever was behind it — and the states were a second, translucent
+         "state layer" Border washing over it, because those Subtle* alphas were calibrated to sit on
+         a transparent rest state and could not stack visibly over a fill that was already there.
+         Aero has no alpha washes: it paints a button's four states as four opaque vertical gradients
+         (AeroButtonIdleBackground / Hover / Pressed / Disabled, Themes/Aero/AVMAP/Brushes.axaml,
+         each built from paired …Color0..Color3 keys). So the state rules now swap Root's OWN
+         Background and BorderBrush, and the StateLayer Border — along with the four
+         "/template/ Border#StateLayer" rules that were its only readers — is DELETED from this theme
+         and from TmButton. Nothing is left that a wash could stack on.
 
          There is deliberately NO Width Setter here any more. Round 3, Task 4 removed the 小/中/大
          button-size setting and left every tile at one fixed 168 DIP; Round 4, item 3 deleted that
@@ -51,9 +81,9 @@
          it. Both were exercised at 每列个数 = 2, where the page asked for 5644 DIP, the window was
          clamped to the 5120 DIP work area, and Body reported itself horizontally scrollable. -->
     <ControlTheme x:Key="TmTileButton" TargetType="Button">
-      <Setter Property="Background" Value="{DynamicResource SurfaceLayerBrush}" />
+      <Setter Property="Background" Value="{DynamicResource AeroButtonIdleBackground}" />
       <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource StrokeControlBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource AeroButtonIdleOuterBorderBrush}" />
       <Setter Property="BorderThickness" Value="1" />
       <Setter Property="CornerRadius" Value="{DynamicResource RadiusControl}" />
       <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
@@ -63,33 +93,15 @@
       <Setter Property="Cursor" Value="Hand" />
 
       <!-- An adorner rather than a border: it draws OUTSIDE the tile, so showing focus cannot
-           reflow the grid the way a border thickness change would. -->
+           reflow the grid the way a border thickness change would. The classic dotted rectangle —
+           see this file's header for what it replaced and why. -->
       <Setter Property="FocusAdorner">
         <Template>
-          <!-- Windows 11's two-ring focus rectangle: a 2 px outer ring in the text colour with a
-               1 px inner ring in the opposite colour, so it reads against both a light tile and a
-               dark one without knowing which it is over. -->
-          <Border BorderBrush="{DynamicResource FocusStrokeOuterBrush}"
-                  BorderThickness="2"
-                  CornerRadius="7"
-                  Margin="-3">
-            <Border BorderBrush="{DynamicResource FocusStrokeInnerBrush}"
-                    BorderThickness="1"
-                    CornerRadius="5" />
-          </Border>
+          <Rectangle Stroke="{DynamicResource FocusStrokeOuterBrush}"
+                     StrokeThickness="1" StrokeDashArray="1,1" Margin="-2" />
         </Template>
       </Setter>
 
-      <!-- Two layers: Root paints the persistent fill/border and StateLayer paints ONLY the
-           hover/pressed wash on top of it. One layer cannot do both — swapping Root's own Background
-           straight from SurfaceLayerBrush to SubtleFillSecondaryBrush on hover would make the tile
-           LESS opaque, not more, because those Subtle* alphas are calibrated to sit on a transparent
-           rest state (see TmIconButton below), not to stack visibly over a fill that is already
-           there. StateLayer's own CornerRadius is RadiusControlInner — RadiusControl minus one — so it
-           sits just inside Root's hairline border instead of its square corners poking out past Root's
-           rounded ones. It was a hardcoded 3 in this template and in TmButton's below until Tokens.axaml
-           grew that token; see its own comment there for why the derived value has to be a second
-           literal and why it is declared next to the one it derives from. -->
       <Setter Property="Template">
         <ControlTemplate>
           <Border x:Name="Root"
@@ -97,22 +109,22 @@
                   BorderBrush="{TemplateBinding BorderBrush}"
                   BorderThickness="{TemplateBinding BorderThickness}"
                   CornerRadius="{TemplateBinding CornerRadius}">
-            <Border x:Name="StateLayer" Background="Transparent" CornerRadius="{DynamicResource RadiusControlInner}">
-              <ContentPresenter Content="{TemplateBinding Content}"
-                                ContentTemplate="{TemplateBinding ContentTemplate}"
-                                Padding="{TemplateBinding Padding}"
-                                HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
-            </Border>
+            <ContentPresenter Content="{TemplateBinding Content}"
+                              ContentTemplate="{TemplateBinding ContentTemplate}"
+                              Padding="{TemplateBinding Padding}"
+                              HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                              VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
           </Border>
         </ControlTemplate>
       </Setter>
 
-      <Style Selector="^:pointerover /template/ Border#StateLayer">
-        <Setter Property="Background" Value="{DynamicResource SubtleFillSecondaryBrush}" />
+      <Style Selector="^:pointerover /template/ Border#Root">
+        <Setter Property="Background" Value="{DynamicResource AeroButtonHoverBackground}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AeroButtonHoverOuterBorderBrush}" />
       </Style>
-      <Style Selector="^:pressed /template/ Border#StateLayer">
-        <Setter Property="Background" Value="{DynamicResource SubtleFillTertiaryBrush}" />
+      <Style Selector="^:pressed /template/ Border#Root">
+        <Setter Property="Background" Value="{DynamicResource AeroButtonPressedBackground}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AeroButtonPressedOuterBorderBrush}" />
       </Style>
       <!-- A tile whose shortcut target no longer exists. It stays in place and stays readable —
            it is information, not noise — but it takes no pointer states and cannot be launched, and
@@ -137,7 +149,8 @@
          overflow button — MainWindow.axaml's rail comment explains where its functions went.) -->
     <ControlTheme x:Key="TmIconButton" TargetType="Button">
       <Setter Property="Background" Value="Transparent" />
-      <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+      <Setter Property="Opacity" Value="0.6" />
       <Setter Property="Width" Value="32" />
       <Setter Property="Height" Value="32" />
       <Setter Property="HorizontalContentAlignment" Value="Center" />
@@ -145,8 +158,8 @@
       <Setter Property="Cursor" Value="Hand" />
       <Setter Property="FocusAdorner">
         <Template>
-          <Border BorderBrush="{DynamicResource FocusStrokeOuterBrush}"
-                  BorderThickness="2" CornerRadius="6" Margin="-2" />
+          <Rectangle Stroke="{DynamicResource FocusStrokeOuterBrush}"
+                     StrokeThickness="1" StrokeDashArray="1,1" Margin="-2" />
         </Template>
       </Setter>
       <Setter Property="Template">
@@ -160,27 +173,38 @@
           </Border>
         </ControlTemplate>
       </Setter>
+      <!-- The rest state is a bare glyph at 60 % of the ink — TextSecondaryBrush's job before Task 7
+           deleted it, done by the mechanism §3.2 #8 chose instead of a third grey: one opacity that
+           follows the variant for free. Hover takes the FULL ink and the Aero list-row hover fill;
+           an icon button is a toolbar affordance, and a list row is the Aero object whose hover is a
+           soft blue capsule rather than a raised command button. -->
       <Style Selector="^:pointerover /template/ Border#Root">
-        <Setter Property="Background" Value="{DynamicResource SubtleFillSecondaryBrush}" />
+        <Setter Property="Background" Value="{DynamicResource AeroListBoxItemHoverBackground}" />
       </Style>
       <Style Selector="^:pointerover">
-        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+        <Setter Property="Opacity" Value="1" />
       </Style>
       <Style Selector="^:pressed /template/ Border#Root">
-        <Setter Property="Background" Value="{DynamicResource SubtleFillTertiaryBrush}" />
+        <Setter Property="Background" Value="{DynamicResource AeroListBoxItemSelectedBackground}" />
       </Style>
     </ControlTheme>
 
     <!-- ══ Standard button (settings-card actions) ════════════════════════════════════════════════
-         Fluent 2's control-button surface, used everywhere a settings card needs an actual button
-         (打开/更改…/重置为默认/清理缓存/备份…/恢复…/固定到任务栏/清除/检查更新/下载更新, …), replacing
-         Avalonia's own default Fluent-1 Button look those rows rendered with before. 32 px tall at
+         The command-button surface, used everywhere a settings card needs an actual button
+         (打开/更改…/重置为默认/清理缓存/备份…/恢复…/固定到任务栏/清除/检查更新/下载更新, …). 32 px tall at
          100% scaling — MinHeight rather than a fixed Height, so the actual on-screen height still
          tracks the OS text-scale setting the way every other control here does, instead of being a
-         hardcoded pixel box — with the same fill/border/radius/state-layer shape TmTileButton uses
-         above. See that theme's comment for why the hover/pressed wash is a second layer rather than
-         a straight Background swap, and why the two themes duplicate the template instead of one
-         deriving from the other via BasedOn.
+         hardcoded pixel box — with the same fill/border/radius shape TmTileButton uses above. See
+         that theme's comment for what Round 7 Task 7 changed about the state model, and why the two
+         themes duplicate the template instead of one deriving from the other via BasedOn.
+
+         WHY THIS THEME STILL EXISTS at all, now that Themes/Aero/AeroResources.axaml publishes a
+         real {x:Type Button} ControlTheme: the two are not interchangeable. The vendored theme is
+         Aero's command button complete with its double border and its own metrics, and the message
+         box already renders on it (Dialogs/MessageBoxWindow.axaml carries that measurement). This
+         one is the LAUNCHER's button — one MinHeight, one Padding and a Hand cursor, all of which a
+         settings row's action strip depends on — and it names Aero's own four background gradients
+         for its four states, so the vocabulary is shared even though the template is not.
 
          Round 7, Task 3 made this the ONLY settings-card button theme. TmAccentButton — a BasedOn
          derivative that swapped the rest-state fill and the text colour to the accent pair — was
@@ -190,24 +214,21 @@
          swap in BehaviorCard.axaml.cs's ApplyTaskbarPinState) all landed here, and each one's own
          comment records what it gave up. -->
     <ControlTheme x:Key="TmButton" TargetType="Button">
-      <Setter Property="Background" Value="{DynamicResource SurfaceLayerBrush}" />
+      <Setter Property="Background" Value="{DynamicResource AeroButtonIdleBackground}" />
       <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource StrokeControlBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource AeroButtonIdleOuterBorderBrush}" />
       <Setter Property="BorderThickness" Value="1" />
       <Setter Property="CornerRadius" Value="{DynamicResource RadiusControl}" />
       <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
-      <Setter Property="Padding" Value="16,0" />
+      <Setter Property="Padding" Value="11,0" />
       <Setter Property="MinHeight" Value="32" />
       <Setter Property="HorizontalContentAlignment" Value="Center" />
       <Setter Property="VerticalContentAlignment" Value="Center" />
       <Setter Property="Cursor" Value="Hand" />
       <Setter Property="FocusAdorner">
         <Template>
-          <Border BorderBrush="{DynamicResource FocusStrokeOuterBrush}"
-                  BorderThickness="2" CornerRadius="7" Margin="-3">
-            <Border BorderBrush="{DynamicResource FocusStrokeInnerBrush}"
-                    BorderThickness="1" CornerRadius="5" />
-          </Border>
+          <Rectangle Stroke="{DynamicResource FocusStrokeOuterBrush}"
+                     StrokeThickness="1" StrokeDashArray="1,1" Margin="-2" />
         </Template>
       </Setter>
       <Setter Property="Template">
@@ -217,28 +238,33 @@
                   BorderBrush="{TemplateBinding BorderBrush}"
                   BorderThickness="{TemplateBinding BorderThickness}"
                   CornerRadius="{TemplateBinding CornerRadius}">
-            <Border x:Name="StateLayer" Background="Transparent" CornerRadius="{DynamicResource RadiusControlInner}">
-              <ContentPresenter Content="{TemplateBinding Content}"
-                                ContentTemplate="{TemplateBinding ContentTemplate}"
-                                Padding="{TemplateBinding Padding}"
-                                HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
-            </Border>
+            <ContentPresenter Content="{TemplateBinding Content}"
+                              ContentTemplate="{TemplateBinding ContentTemplate}"
+                              Padding="{TemplateBinding Padding}"
+                              HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                              VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
           </Border>
         </ControlTemplate>
       </Setter>
-      <Style Selector="^:pointerover /template/ Border#StateLayer">
-        <Setter Property="Background" Value="{DynamicResource SubtleFillSecondaryBrush}" />
+      <Style Selector="^:pointerover /template/ Border#Root">
+        <Setter Property="Background" Value="{DynamicResource AeroButtonHoverBackground}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AeroButtonHoverOuterBorderBrush}" />
       </Style>
-      <Style Selector="^:pressed /template/ Border#StateLayer">
-        <Setter Property="Background" Value="{DynamicResource SubtleFillTertiaryBrush}" />
+      <Style Selector="^:pressed /template/ Border#Root">
+        <Setter Property="Background" Value="{DynamicResource AeroButtonPressedBackground}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AeroButtonPressedOuterBorderBrush}" />
       </Style>
+      <!-- Aero draws a disabled command button as its OWN pair of gradients rather than as a dimmed
+           enabled one, so the disabled state is a real repaint here too. The Opacity 0.6 this rule
+           used to carry is gone with it: dimming a gradient that is already the disabled gradient
+           would double the signal. -->
       <Style Selector="^:disabled">
         <Setter Property="Foreground" Value="{DynamicResource TextDisabledBrush}" />
         <Setter Property="Cursor" Value="Arrow" />
       </Style>
       <Style Selector="^:disabled /template/ Border#Root">
-        <Setter Property="Opacity" Value="0.6" />
+        <Setter Property="Background" Value="{DynamicResource AeroButtonDisabledBackground}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AeroButtonDisabledOuterBorderBrush}" />
       </Style>
     </ControlTheme>
 
@@ -268,8 +294,8 @@
       <Setter Property="Cursor" Value="Hand" />
       <Setter Property="FocusAdorner">
         <Template>
-          <Border BorderBrush="{DynamicResource FocusStrokeOuterBrush}"
-                  BorderThickness="2" CornerRadius="{DynamicResource RadiusControl}" Margin="-2" />
+          <Rectangle Stroke="{DynamicResource FocusStrokeOuterBrush}"
+                     StrokeThickness="1" StrokeDashArray="1,1" Margin="-2" />
         </Template>
       </Setter>
       <Setter Property="Template">
@@ -284,11 +310,14 @@
           </Border>
         </ControlTemplate>
       </Setter>
+      <!-- A rail row is a LIST ROW, so its two pointer states are Aero's list-row gradients rather
+           than its command-button ones — the same pair TmNavRowItem uses below, which is what keeps
+           a command row and a page row measuring AND painting alike. -->
       <Style Selector="^:pointerover /template/ Border#Root">
-        <Setter Property="Background" Value="{DynamicResource SubtleFillSecondaryBrush}" />
+        <Setter Property="Background" Value="{DynamicResource AeroListBoxItemHoverBackground}" />
       </Style>
       <Style Selector="^:pressed /template/ Border#Root">
-        <Setter Property="Background" Value="{DynamicResource SubtleFillTertiaryBrush}" />
+        <Setter Property="Background" Value="{DynamicResource AeroListBoxItemSelectedBackground}" />
       </Style>
     </ControlTheme>
 
@@ -332,22 +361,23 @@
          every other scale (the same argument Round 4 used for the 1 DIP pane border). Height 16 is
          TM's 24 px / 1.5. The radius is half the width; TM's measured cap radius is about 1.67 DIP.
 
-         The selected fill moved from SubtleFillTertiaryBrush to SubtleFillSecondaryBrush, and that is
-         a LOOKUP, not a taste call: TM's selected row solves to alpha 9.4/255 black in Light and
-         14.5/255 white in Dark against its own backdrop in the same capture, and this app's
-         SubtleFillSecondaryBrush is exactly 10/255 and 15/255 (Tokens.axaml). Ours was 6.4 and 11.3,
-         i.e. SubtleFillTertiaryBrush. A real consequence, accepted: :pointerover already uses that
-         same brush, so a hovered unselected row and a resting selected row now match, and the pill
-         alone carries selection — which is exactly what TM does, and it also fixes an inversion this
-         file used to have, where hover was STRONGER than selection.
+         ROUND 7, TASK 7 REPLACED ALL THREE STATE FILLS, AND THE LOOKUP THAT CHOSE THEM IS RETIRED.
+         They named SubtleFillSecondaryBrush (hover and selected) and SubtleFillTertiaryBrush
+         (pressed), on the finding that TM's selected row solved to alpha 9.4/255 black in Light and
+         14.5/255 white in Dark and those two tokens were exactly 10/255 and 15/255. Task 7 deleted
+         both tokens: Aero has no alpha washes, it paints a list row's hover and selected states as
+         opaque two-stop gradients — AeroListBoxItemHoverBackground and
+         AeroListBoxItemSelectedBackground, the same pair the vendored ListBoxItem theme is built
+         from — and the reference for this app stopped being Task Manager. The alpha figures above
+         are recorded as what drove the pre-conversion build and are NOT claimed of this one.
+         Everything else Round 6 item 3 measured is untouched: the pill's 3x16 geometry, the row box,
+         the 40 DIP pitch and the empty unselected row.
 
-         Hover is otherwise untouched. TM's hover and press states cannot be measured in this
-         environment at all (no pointer), and the rule is not to change a property no difference was
-         measured in. :pressed and the FocusAdorner are copied verbatim from TmNavRowButton for a
-         different reason: replacing a template replaces its focus visual and its state styles too,
-         and dropping a state silently while swapping a template is not a match-Task-Manager change,
-         it is a regression. There is no ^:selected:pointerover rule because after this change both
-         states resolve to the same brush already. -->
+         Hover and press could not be measured in this environment then and cannot be now — this
+         machine has no pointer. :pressed and the FocusAdorner still mirror TmNavRowButton's, for the
+         reason they always did: dropping a state while swapping a template is a regression, not a
+         change. There is still no ^:selected:pointerover rule, because selected and pressed resolve
+         to the same brush and hover is the only other state. -->
     <ControlTheme x:Key="TmNavRowItem" TargetType="ListBoxItem">
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="Padding" Value="12,10" />
@@ -357,8 +387,8 @@
       <Setter Property="VerticalContentAlignment" Value="Center" />
       <Setter Property="FocusAdorner">
         <Template>
-          <Border BorderBrush="{DynamicResource FocusStrokeOuterBrush}"
-                  BorderThickness="2" CornerRadius="{DynamicResource RadiusControl}" Margin="-2" />
+          <Rectangle Stroke="{DynamicResource FocusStrokeOuterBrush}"
+                     StrokeThickness="1" StrokeDashArray="1,1" Margin="-2" />
         </Template>
       </Setter>
       <Setter Property="Template">
@@ -380,13 +410,13 @@
         </ControlTemplate>
       </Setter>
       <Style Selector="^:pointerover /template/ Border#Root">
-        <Setter Property="Background" Value="{DynamicResource SubtleFillSecondaryBrush}" />
+        <Setter Property="Background" Value="{DynamicResource AeroListBoxItemHoverBackground}" />
       </Style>
       <Style Selector="^:pressed /template/ Border#Root">
-        <Setter Property="Background" Value="{DynamicResource SubtleFillTertiaryBrush}" />
+        <Setter Property="Background" Value="{DynamicResource AeroListBoxItemSelectedBackground}" />
       </Style>
       <Style Selector="^:selected /template/ Border#Root">
-        <Setter Property="Background" Value="{DynamicResource SubtleFillSecondaryBrush}" />
+        <Setter Property="Background" Value="{DynamicResource AeroListBoxItemSelectedBackground}" />
       </Style>
       <Style Selector="^:selected /template/ Border#SelectionIndicator">
         <Setter Property="Background" Value="{DynamicResource AccentDefaultBrush}" />
@@ -401,26 +431,35 @@
        (win-window-frames: "Don't add controls to a window frame. Put the controls within the window
        instead.") and the header comes back to Views/AppPage.axaml with it.
 
-       The three values are the ones the rule shipped with before 6d00060 and are unchanged by the
-       revert: a 1 DIP bottom divider and 12,10 of padding. Their Aero re-derivation — the divider
-       becomes a group-box hairline and the padding becomes the published 11 relative-pixel dialog
-       margin — belongs to Task 9, which is where the field's own Aero treatment lands. -->
+       Round 7, Task 7 re-derived the two values the revert carried over. The divider stays a 1 DIP
+       hairline and is StrokeDividerBrush, which is now the Aero group-box outline — a divider and a
+       group-box edge are one hairline in a Windows 7 dialog. The padding was 12,10 (Fluent's ramp)
+       and is 11,7: PUBLISHED, vis-layout's "Dialog box margins — 7 DLU / 11 relative pixels" for the
+       horizontal component and "Between related controls — 4 / 7" for the vertical. The field's own
+       Aero treatment is still Task 9's. -->
 
   <Style Selector="Border.tm-header">
     <Setter Property="BorderThickness" Value="0,0,0,1" />
     <Setter Property="BorderBrush" Value="{DynamicResource StrokeDividerBrush}" />
-    <Setter Property="Padding" Value="12,10" />
+    <Setter Property="Padding" Value="11,7" />
   </Style>
 
 
-  <!-- Iconography is Segoe Fluent Icons — the Windows 11 icon face — rather than hand-drawn
-       geometry, so the launcher's search, overflow and close glyphs are the same shapes the shell
-       and every other Windows 11 app draw. Segoe MDL2 Assets stands in on Windows 10 at the same
-       code points. Both are system fonts; nothing is bundled. -->
+  <!-- Iconography is Segoe Fluent Icons, and it is the ONE deliberate Windows 11 anachronism this
+       conversion keeps: Windows 7 had no icon font at all — its shell glyphs were bitmap resources —
+       so there is nothing to convert to. Segoe MDL2 Assets stands in on Windows 10 at the same code
+       points. Both are system fonts; nothing is bundled.
+
+       The rest contrast is 60 % of the ink, not a grey of its own. TextSecondaryBrush and
+       TextTertiaryBrush carried it until Round 7, Task 7 deleted both: Windows 7 published no
+       secondary body colour, and inventing a third grey beside AeroForeground and
+       AeroDisabledForeground is worse than one opacity that follows the variant for free (the
+       design's §3.2 #8, applied here as well as to a card's subtitle). -->
   <Style Selector="TextBlock.tm-icon">
     <Setter Property="FontFamily" Value="{DynamicResource IconFontFamily}" />
     <Setter Property="FontSize" Value="16" />
-    <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+    <Setter Property="Opacity" Value="0.6" />
     <Setter Property="HorizontalAlignment" Value="Center" />
     <Setter Property="VerticalAlignment" Value="Center" />
     <Setter Property="TextAlignment" Value="Center" />
@@ -428,7 +467,7 @@
 
   <!-- Quieter icons: the search affordance and the folder hint are labels, not actions. -->
   <Style Selector="TextBlock.tm-icon.subtle">
-    <Setter Property="Foreground" Value="{DynamicResource TextTertiaryBrush}" />
+    <Setter Property="Opacity" Value="0.45" />
   </Style>
 
   <Style Selector="TextBlock.tm-icon.small">
@@ -452,30 +491,36 @@
   <Style Selector="Border.tm-searchfield">
     <Setter Property="CornerRadius" Value="{DynamicResource RadiusControl}" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="BorderBrush" Value="{DynamicResource StrokeControlBrush}" />
-    <Setter Property="Background" Value="{DynamicResource SurfaceLayerBrush}" />
-    <Setter Property="Padding" Value="10,0" />
+    <Setter Property="BorderBrush" Value="{DynamicResource AeroTextBoxIdleBorderBrush}" />
+    <Setter Property="Background" Value="{DynamicResource AeroTextBoxIdleBackground}" />
+    <Setter Property="Padding" Value="7,0" />
     <Setter Property="MinHeight" Value="32" />
   </Style>
+  <!-- Round 7, Task 7: this Border draws the field, so its three states now name Aero's own text-box
+       brushes rather than the deleted SurfaceLayer*/StrokeControl/TextTertiary tokens. Aero's idle
+       border is a two-stop gradient and its hover border is the blue one — that IS Aero's hover
+       signal, and it is the same brush the vendored TextBox template would have drawn if this field
+       were painting itself (it is not: Views/AppPage.axaml gives the inner TextBox a local
+       Background="Transparent" and BorderThickness="0", and the two /template/ rules further down
+       are what stop Aero repainting the part underneath). -->
   <Style Selector="Border.tm-searchfield:pointerover">
-    <Setter Property="BorderBrush" Value="{DynamicResource TextTertiaryBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource AeroTextBoxHoverBorderBrush}" />
   </Style>
-  <!-- Round 3, Task 1 (user item 2): Windows 11's own TextBox focus is NOT a full accent ring — it
-       keeps its plain 1 px resting border on all four sides (Border.tm-searchfield's own BorderBrush/
-       BorderThickness above are left untouched by this rule, unlike the old version, which repainted
-       BorderBrush to AccentDefaultBrush and drew an accent rectangle around the whole field) and only
-       the fill lightens slightly, to SurfaceLayerActiveBrush (Tokens.axaml). The 2 px accent UNDERLINE
-       on the bottom edge only is a separate element — Border.tm-searchfield-focusbar, added inside
-       SearchField in Views/AppPage.axaml — because a Border cannot draw a differently-coloured thickness
-       on one side while keeping the other three at the ambient resting colour: BorderBrush is a single
-       brush for every side. -->
+  <!-- The focus signal is a fill change plus the accent underline below, and NOT a full ring around
+       the field: the resting border stays on all four sides (this rule leaves BorderBrush and
+       BorderThickness alone). The 2 px underline on the bottom edge only is a separate element —
+       Border.tm-searchfield-focusbar, inside SearchField in Views/AppPage.axaml — because a Border
+       cannot draw a differently-coloured thickness on one side while keeping the other three at the
+       ambient resting colour: BorderBrush is a single brush for every side. Round 3 Task 1 reached
+       that shape against Windows 11; Round 7 Task 7 kept it and swapped the fill to Aero's own focus
+       background. Task 9 owns whether the accent underline survives the conversion at all. -->
   <Style Selector="Border.tm-searchfield.focused">
-    <Setter Property="Background" Value="{DynamicResource SurfaceLayerActiveBrush}" />
+    <Setter Property="Background" Value="{DynamicResource AeroTextBoxFocusBackground}" />
   </Style>
   <!-- The bar itself: transparent at rest, so it takes no visual space and needs no separate
        Opacity/IsVisible toggle. IsHitTestVisible="False" (set in Views/AppPage.axaml, not here — a
        ControlTheme/Style cannot express it any earlier than the element's own local markup) keeps it
-       from ever intercepting a click meant for the TextBox underneath. CornerRadius "0,0,3,3" is
+       from ever intercepting a click meant for the TextBox underneath. CornerRadius "0,0,2,2" is
        RadiusControlInner (RadiusControl minus one) on the bottom corners only, and Margin "1,0,1,1"
        insets it a hairline inside SearchField's own 1 px border and radius — the same "sit just inside
        the parent's border" idea RadiusControlInner already documents in Tokens.axaml, reused here
@@ -586,29 +631,38 @@
 
   <!-- ══ Sections ═════════════════════════════════════════════════════════════════════════════ -->
 
-  <!-- Body Strong, per the Windows 11 ramp: 14/20 SemiBold. The FACE is deliberately inherited
-       rather than pinned to FontFamilyText: a user who picked a font in settings expects it here
-       too, and at 14 px the inherited default IS the Text optical size anyway. -->
+  <!-- The 应用 page's category heading. It was Body Strong on the Windows 11 ramp — 14/20 SemiBold in
+       TextSecondaryBrush. Round 7, Task 7 gives it the SAME treatment as the 设置 page's group
+       headings (TextBlock.tm-group-head at the bottom of this file): FontSizeGroupHead and
+       HeadingBrush, both PUBLISHED by
+       https://learn.microsoft.com/en-us/windows/win32/uxguide/vis-fonts, which gives group headers as
+       11 pt in a blue this file may not quote as hex — Tokens.axaml's HeadingBrush carries the value
+       and the citation. A labelled group is a labelled group whichever page it is on, and Aero got
+       its heading hierarchy from colour rather than from size or weight; the SemiBold is kept anyway
+       because 11 pt is only 3 DIP above body here. The FACE stays inherited rather than pinned: a
+       user who picked a font in settings expects it here too. Task 9 owns the 应用 page's final
+       geometry and may move this. -->
   <Style Selector="TextBlock.tm-section">
-    <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
-    <Setter Property="LineHeight" Value="{DynamicResource LineHeightBody}" />
+    <Setter Property="FontSize" Value="{DynamicResource FontSizeGroupHead}" />
     <Setter Property="FontWeight" Value="SemiBold" />
-    <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource HeadingBrush}" />
     <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
 
   <!-- A group backed by a real folder is clickable; the built-in 常用工具 group has no Directory and
-       stays inert, which is why the affordance is a class the view sets rather than a blanket rule. -->
+       stays inert, which is why the affordance is a class the view sets rather than a blanket rule.
+       Padding 4,3 became 5,5 in Round 7 Task 7: 5 is vis-layout's published minimum separation
+       ("at least 3 DLUs (5 relative pixels)"), and 3 was on no ladder at all. -->
   <Style Selector="Border.tm-section-head">
     <Setter Property="Background" Value="Transparent" />
-    <Setter Property="Padding" Value="4,3" />
+    <Setter Property="Padding" Value="5,5" />
     <Setter Property="CornerRadius" Value="{DynamicResource RadiusControl}" />
   </Style>
   <Style Selector="Border.tm-section-head.clickable">
     <Setter Property="Cursor" Value="Hand" />
   </Style>
   <Style Selector="Border.tm-section-head.clickable:pointerover">
-    <Setter Property="Background" Value="{DynamicResource SubtleFillSecondaryBrush}" />
+    <Setter Property="Background" Value="{DynamicResource AeroListBoxItemHoverBackground}" />
   </Style>
   <Style Selector="Border.tm-section-head.clickable:pointerover TextBlock.tm-folder">
     <Setter Property="Opacity" Value="1" />
@@ -620,13 +674,15 @@
   <!-- ══ Empty / no-results states ════════════════════════════════════════════════════════════ -->
 
   <Style Selector="StackPanel.tm-empty">
-    <Setter Property="Margin" Value="24,32" />
+    <Setter Property="Margin" Value="22,22" />
     <Setter Property="HorizontalAlignment" Value="Center" />
   </Style>
+  <!-- 60 % of the ink rather than a grey of its own — the mechanism that replaced
+       TextSecondaryBrush; TextBlock.tm-icon above carries the reasoning. -->
   <Style Selector="StackPanel.tm-empty > TextBlock">
-    <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+    <Setter Property="Opacity" Value="0.6" />
     <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
-    <Setter Property="LineHeight" Value="{DynamicResource LineHeightBody}" />
     <Setter Property="TextAlignment" Value="Center" />
     <Setter Property="TextWrapping" Value="Wrap" />
   </Style>
@@ -635,62 +691,77 @@
   <Style Selector="StackPanel.tm-empty Button">
     <Setter Property="HorizontalContentAlignment" Value="Center" />
   </Style>
-  <!-- Subtitle, per the Windows 11 ramp: 20/28 SemiBold. The FACE comes from the view model
-       (TitleFontFamily), which resolves to Segoe UI Variable Display — the optical size Segoe UI
-       Variable is designed for at 18 px and up — only while the user has not chosen a font of
-       their own. Pinning it here would silently override that setting. -->
+  <!-- The page's one big heading, at the same FontSizeSubtitle the 设置 page's title uses. That token
+       is 16 now, not 20: vis-fonts gives a main instruction as 12 pt = 16 DIP, and the vendored
+       AeroFontSizeLarge agrees exactly. Full ink and full opacity, against the 60 % body lines above.
+       The FACE comes from the view model (TitleFontFamily) only while the user has not chosen a font
+       of their own; pinning it here would silently override that setting. -->
   <Style Selector="StackPanel.tm-empty > TextBlock.title">
     <Setter Property="FontSize" Value="{DynamicResource FontSizeSubtitle}" />
-    <Setter Property="LineHeight" Value="{DynamicResource LineHeightSubtitle}" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
-    <Setter Property="Margin" Value="0,0,0,6" />
+    <Setter Property="Opacity" Value="1" />
+    <Setter Property="Margin" Value="0,0,0,5" />
   </Style>
 
   <!-- ══ Update notice ════════════════════════════════════════════════════════════════════════
-       Fluent 2's InfoBar shape: accent-tinted surface, left glyph, no shouting. -->
+       A whole-surface Button, so it is Aero's command button and this rule states only what the
+       banner adds to it: the stretch, the padding and the body size. Background, BorderBrush,
+       BorderThickness and CornerRadius are deliberately ABSENT — the element carries no Theme=, so
+       Themes/Aero/AeroResources.axaml's {x:Type Button} ControlTheme already paints all four states,
+       and setting them here would freeze one gradient across every state. They were
+       SubtleFillSecondaryBrush over StrokeControlBrush at RadiusControl until Round 7, Task 7
+       deleted the first of those tokens. -->
   <Style Selector="Button.tm-update">
-    <Setter Property="Background" Value="{DynamicResource SubtleFillSecondaryBrush}" />
     <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource StrokeControlBrush}" />
-    <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="{DynamicResource RadiusControl}" />
-    <Setter Property="Padding" Value="12,9" />
+    <Setter Property="Padding" Value="11,7" />
     <Setter Property="HorizontalAlignment" Value="Stretch" />
     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
     <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
   </Style>
 
   <!-- ══ Taskbar-pin InfoBar ══════════════════════════════════════════════════════════════════
-       Controls/InfoBar's surface. Same subtle-fill-plus-stroke shape as the update notice above,
-       but a Border (not a Button) — this bar's actions are its own child buttons, not the whole
-       surface. -->
+       Controls/InfoBar's surface, and a Border rather than a Button — this bar's actions are its own
+       child buttons, not the whole surface, so it cannot borrow the command button's gradients the
+       way the update notice above does.
+
+       Re-derived to the GROUP-BOX vocabulary in Round 7, Task 7, which is what Windows 7 drew around
+       a labelled region: a hairline outline at the control radius, no fill of its own. It was a
+       SubtleFillSecondaryBrush wash inside a StrokeControlBrush hairline; the wash token is gone and
+       an unfilled outline is the Aero answer rather than a substitute for one. StrokeControlBrush IS
+       the group-box outline now (Tokens.axaml aliases it onto AeroGroupBoxBorderBrush), so the
+       hairline needs no new key. -->
   <Style Selector="Border.tm-infobar">
-    <Setter Property="Background" Value="{DynamicResource SubtleFillSecondaryBrush}" />
+    <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderBrush" Value="{DynamicResource StrokeControlBrush}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="{DynamicResource RadiusControl}" />
-    <Setter Property="Padding" Value="12,10" />
+    <Setter Property="Padding" Value="11,7" />
   </Style>
 
   <!-- ══ Toast ════════════════════════════════════════════════════════════════════════════════
        A transient, self-clearing error. Sits in the overlay layer and contributes no layout size,
-       so it can never resize the popup. -->
+       so it can never resize the popup.
+
+       Round 7, Task 7: the outline moved from StrokeSurfaceFlyoutBrush to StrokeControlBrush (both
+       tokens resolved to different values; the first is deleted, and the group-box hairline is the
+       one outline Aero has) and the BoxShadow is DELETED with ShadowFlyout. Aero drew no soft shadow
+       inside a client area — elevation was the window frame's job, and this element is not a window.
+       The surface stays SurfaceBaseBrush, which is now AeroWindowBackground: a transient panel over
+       the page reads as a small piece of window. -->
   <Style Selector="Border.tm-toast">
     <Setter Property="Background" Value="{DynamicResource SurfaceBaseBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource StrokeSurfaceFlyoutBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource StrokeControlBrush}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="{DynamicResource RadiusControl}" />
-    <Setter Property="Padding" Value="14,10" />
-    <Setter Property="Margin" Value="16" />
+    <Setter Property="Padding" Value="11,7" />
+    <Setter Property="Margin" Value="11" />
     <Setter Property="HorizontalAlignment" Value="Center" />
     <Setter Property="VerticalAlignment" Value="Bottom" />
-    <Setter Property="BoxShadow" Value="{DynamicResource ShadowFlyout}" />
   </Style>
   <Style Selector="Border.tm-toast > TextBlock">
     <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
     <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
-    <Setter Property="LineHeight" Value="{DynamicResource LineHeightBody}" />
   </Style>
 
   <!-- ══ The rail's icon contrast ════════════════════════════════════════════════════════════════
@@ -699,18 +770,24 @@
 
        Measured, both apps, both variants, and identical in the selected and the unselected state in
        each: Task Manager's rail glyphs solve to alpha 0.893 black over their row in Light and reach
-       pure white in Dark — which IS this app's TextPrimaryBrush to the level in both (Tokens.axaml).
-       Ours were tm-icon's own TextSecondaryBrush: alpha 0.605 in Light, (208,209,210) in Dark. So
-       this is a lookup, not a colour choice.
+       pure white in Dark — which IS this app's TextPrimaryBrush to the level in both. Ours were
+       tm-icon's own TextSecondaryBrush: alpha 0.605 in Light, (208,209,210) in Dark. So the rule was
+       a lookup, not a colour choice.
+
+       ROUND 7, TASK 7 CHANGED WHAT IT HAS TO SAY, not what it does. tm-icon above no longer sets a
+       quieter FOREGROUND — TextSecondaryBrush is deleted and the rest contrast is TextPrimaryBrush at
+       Opacity 0.6 — so lifting the rail's glyphs to full ink is now an Opacity override rather than a
+       Foreground one. Setting Foreground here as well would be a rule with no pixels behind it: it
+       would assign the value the element already has.
 
        Scoped to the rail, and nothing else, through NavRailContent's own Classes="tm-nav-rail"
        (MainWindow.axaml) — the class that file kept for exactly this. The descendant combinator
-       reaches every one of the five rows on the logical tree, ListBox to ListBoxItem to TextBlock and
+       reaches every one of the four rows on the logical tree, ListBox to ListBoxItem to TextBlock and
        Button to TextBlock alike, which is intended: both apps draw every rail glyph at one contrast.
-       tm-icon's own Foreground further up is untouched, so the search affordance, the folder hint and
+       tm-icon's own Opacity further up is untouched, so the search affordance, the folder hint and
        the settings cards' icons keep theirs. -->
   <Style Selector="Grid.tm-nav-rail TextBlock.tm-icon">
-    <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+    <Setter Property="Opacity" Value="1" />
   </Style>
 
   <!-- Round 3, Task 2: live UI Automation on Task Manager's OWN rail found its
@@ -763,155 +840,71 @@
   </Style>
 
   <!-- ══ The content pane ═════════════════════════════════════════════════════════════════════════
-       ROUND 7, TASK 1 FALSIFIED TWO PREMISES OF THE MEASUREMENT RECORD BELOW. READ THIS FIRST.
-         1. The window no longer requests Mica. MainWindow.axaml now asks for AcrylicBlur and this
-            machine grants it (log: "Backdrop: requested AcrylicBlur, granted AcrylicBlur"). Every
-            sentence below that says "Mica" describes the surface this pane sat on until that commit.
-            The Δ-based conclusions may well survive — acrylic is also a mid-tone blur that straddles
-            SurfaceBaseBrush rather than reaching SurfacePageBrush's white — but NOBODY HAS
-            RE-MEASURED THEM ON ACRYLIC, and this note exists so nobody quotes them as if somebody had.
-         2. The search field is no longer on the window's backdrop. It moved out of the title strip and
-            back into the 应用 page (Views/AppPage.axaml), where it sits on the WHITE .app pane — so the
-            "a settings card on Mica is already on screen; it is the search field" paragraph names a
-            control that no longer photographs what it was cited for.
-       Round 7's Task 7 owns re-deriving this whole block against Aero and deleting what does not
-       survive; Task 1 marks it rather than pre-empting that.
+       MainWindow.axaml's PagePane — the Border that hosts whichever page is showing. The two rules
+       below are MUTUALLY EXCLUSIVE by construction (.app against :not(.app)), not a base rule plus an
+       override, and that is deliberate: see "WHY THESE LIVE HERE" at the end.
 
-       Round 4, item 5: MainWindow.axaml's PagePane — the Border that hosts whichever page is showing.
-       The two rules below are MUTUALLY EXCLUSIVE by construction (.app against :not(.app)), not a base
-       rule plus an override, and that is deliberate: see "WHY THESE LIVE HERE" below.
-
-       Round 6, item 2 flipped which page is the exception. Until then the class was "settings" and the
-       painted rule was :not(.settings), i.e. the white bordered pane was the DEFAULT and 设置 was the
-       opt-out. The user's sentence is the other way round (除了应用页，其他页面使用和窗口相同的材质面板),
-       so the class is now "app": a page that is not 应用 comes up on the window's own material, and a
-       hypothetical third page would come up on the material rather than silently white. ShellPage has
-       exactly two members today (Services/IShellNavigator.cs), so this changes nothing that is on
-       screen except 设置 — it changes which way the default points.
+       ROUND 7, TASK 7 REWROTE THIS BLOCK RATHER THAN EDITING IT, and the reason is worth stating
+       once. What stood here was a 147-line argument about Mica: it measured this window's Mica
+       backdrop at 238..247 in Light and 30..34 in Dark, showed that those numbers STRADDLE
+       SurfaceBaseBrush rather than reaching SurfacePageBrush, and concluded that a translucent
+       settings card would still separate from a transparent 设置 pane. Task 1 falsified its first
+       premise — the window asks for AcrylicBlur now and this machine grants it — and its second, by
+       moving the search field it cited as "a settings card on Mica is already on screen" onto the
+       white 应用 pane. Task 7 falsified what was left: there is no card fill any more (Border.tm-card
+       below), so there is no Δ to preserve, and the tokens the whole table was arithmetic over —
+       SurfaceLayerBrush, SubtleFillSecondaryBrush, SubtleFillTertiaryBrush — no longer exist. Its
+       Windows 11 measurements are archived in
+       docs/superpowers/archive/2026-08-04-windows11-measurement-record.md as the record of a build
+       this one replaced.
 
        ── 应用 (the .app rule) ───────────────────────────────────────────────────────────────────────
-       A pure white pane with a 1 DIP hairline on its TOP and LEFT edges only and an 8 DIP top-left
-       corner, flush against the rail and against the caption with zero inset — it is not a floating
-       card. Every one of those four facts is measured off the user's reference capture of Task Manager
-       (3.png, 1:1 at native resolution, so DIP = px / 1.5). NOTE that no colour below is written as a
-       hex literal, in comments included: Fluent2TokenTests.LauncherStyles_ContainNoColourLiterals greps
-       this WHOLE FILE, prose and all, and fails the build on one. Decimal RGB triples throughout.
+       An opaque pane with a 1 DIP hairline on its TOP and LEFT edges only, square corners, flush
+       against the rail and against the caption with zero inset. It is not a floating card and it
+       never was.
 
-         fill    (255,255,255) at (1700,100) and (100,600) — both re-sampled off 3.png during this
-                 implementation                                -> SurfacePageBrush
-         border  2 physical px on the top and left edges only, measuring (232,227,233) at x = 74,75
-                 y = 600 and (229,228,234) at y = 77,78 x = 400 — the pane fill starts at x = 76 / y = 79.
-                 Both are re-sampled here. On the RIGHT edge x = 1916..1921 reads (240,240,240) from
-                 y = 400 down but pure white at y = 200, i.e. a scrollbar track and not a border; there
-                 is no right or bottom border. StrokeControlBrush is the right token for it without a new
-                 one being minted: its Light value is black at alpha 15, and 15/255 = 0.0588 multiplies
-                 what is behind it by 0.9412, so over this app's own white pane it predicts
-                 255 x 0.9412 = 240 — and the app's border measures exactly (240,240,240). Authored as
-                 1 DIP rather than the measured 1.33: 2 physical px IS a 1 DIP stroke layout-rounded at
-                 this machine's 150%, and 1.33 would be wrong at every other scale.
-         corner  top-left ONLY -> RadiusPaneTopLeft (that token carries the arc measurement, this app's
-                 rendered arc beside the reference's, and the reason 8 DIP is the right value for it)
-         inset   0 on all four edges; the reference's pane starts at the first pixel after the rail
-                 (x = 73 is still backdrop, the border's outer edge is x = 74)
+       The FILL is SurfacePageBrush, which Task 7 aliased onto the vendored AeroListBoxBackground.
+       That is Explorer's own content area: in Windows 7 the item view was a list control and its
+       background was the list background, so the 应用/其他 pane distinction survives the conversion
+       with an Aero justification instead of the Windows 11 Settings one it was given in Round 4.
 
-       The 1 DIP left and top borders are laid out INSIDE this Border, so they take 1 DIP each away from
-       the page. MainWindow.RefitToContent hands that DIP back through PaneBorderDip, and
+       The BORDER is StrokeControlBrush, which Task 7 aliased onto AeroGroupBoxBorderBrush — the one
+       hairline Windows 7 draws around a bounded region. It replaces a black-at-alpha-15 token whose
+       whole derivation was "15/255 over white predicts 240", an argument about a translucent stroke
+       this layer no longer contains. 1 DIP rather than the 1.33 that 2 physical px at 150 % would
+       imply: 2 px IS a 1 DIP stroke layout-rounded at this scale, and 1.33 would be wrong at every
+       other one.
+
+       The CORNER is 0, and that is VENDORED rather than authored: the 应用 pane used to carry
+       RadiusPaneTopLeft, an 8 DIP arc on the top-left corner alone, measured off a Task Manager
+       capture. Aero's own ListBox sets CornerRadius="0" (Themes/Aero/ControlStyles/ListBox.axaml)
+       and a Windows 7 content pane has no rounded corner at all, so the token is deleted and its
+       20-line arc measurement is archived with the rest.
+
+       The 1 DIP left and top borders are laid out INSIDE this Border, so they take 1 DIP each away
+       from the page. MainWindow.RefitToContent hands that DIP back through PaneBorderDip, and
        WindowHost.ChromeHeightDip does the same for the top one — see both constants' own remarks. Do
        not change this thickness without changing those.
 
        ── every other page (the :not(.app) rule) ─────────────────────────────────────────────────────
-       Paints NOTHING: Transparent, no border, no corner, so the window's own surface — the backdrop
-       when the platform grants it, otherwise whatever ApplyBackdrop put on Window.Background — runs
-       unbroken from the rail and the caption straight through the content. That is what Windows' own
-       Settings does — measured on it during the Round 6 reconnaissance, not assumed: at image y = 470
-       its capture reads exactly (243,242,249) at x = 20, 100, 200, 300, 400, 450, 480, 490 and 499,
-       nine samples and one value, straight through where a pane edge would be. It has no content pane
-       at all; nav column and content column are one continuous surface with no border, no corner and
-       no seam.
+       Paints NOTHING: Transparent, no border, no corner, so the window's own surface runs unbroken
+       from the rail and the caption straight through the content. That is Round 6 item 2's decision
+       (除了应用页，其他页面使用和窗口相同的材质面板) and Task 7 keeps it to the letter — these three
+       setters are byte-identical to the ones that shipped.
 
-       ROUND 6, ITEM 2 OVERRULES ROUND 4 HERE — deliberately, on new measurements, not by accident.
-       Round 4 gave this half of the pane SurfaceBaseBrush and argued: our cards are SurfaceLayerBrush
-       (white at alpha 179), which composites to (251,251,251) over a 243 pane — a Δ8 separation — but
-       to (255,255,255) over a WHITE one, Δ0, i.e. a card the literal colour of the page behind it. That
-       arithmetic is right, and it is an argument about WHITE. White is not what this pane becomes.
-       Card minus backdrop, both terms taken at the same y. FOUR OF THESE SIX ROWS ARE PHOTOGRAPHS and
-       two are arithmetic; the rows say which, because they were not all obtained the same way. MEASURED
-       rows: the two "over SurfaceBaseBrush" rows are the real 设置 cards on the pre-change build, and the
-       two "AFTER" rows are this build, each pair sampled in one capture. COMPUTED rows: before this
-       change the 设置 pane was opaque, so no settings card on Mica existed to photograph — those two
-       rows composite the card's token alphas over Mica backdrops that WERE measured, at image x = 78 and
-       x ≈ 2000 on the pre-change build (Round 6 reconnaissance, r6-material §3.2, whose own heading
-       likewise says "Composited"). The paragraph after the table gives the measured card-token-on-Mica
-       deltas that do exist.
+       WHAT CHANGED IS WHAT SHOWS THROUGH, AND IT CHANGED IN MainWindow.axaml, NOT HERE. The window's
+       client area is opaque now: the content Grid below the caption paints SurfaceBaseBrush, i.e.
+       AeroWindowBackground. That is Aero's own structure — glass was the FRAME, the client area was
+       (252,252,252) — and it is what makes this pane's ink legible, because a transparent pane over the
+       acrylic puts every glyph on a live blur of an arbitrary desktop. MEASURED rather than argued:
+       on this machine PrintWindow photographs the transparent 设置 pane as (0,0,0), so its own ink
+       could not be sampled at all, and the wallpaper the acrylic is a blur of averages (87,84,103)
+       over its 7680x4532 pixels — against which the page's group headings compute to 1.4:1 and its
+       body ink to 2.9:1. MainWindow.axaml's content Grid carries that arithmetic in full.
 
-                                                     fill − backdrop      border − backdrop
-         Light, over SurfaceBaseBrush (was)  MEASURED    (8,8,8)             (−14,−14,−14)
-         Light, over Mica, window left edge  computed   (12,10,0)            (−14,−14,−15)
-         Light, over Mica, window right edge computed    (6,11,7)            (−14,−14,−14)
-         Dark,  over SurfaceBaseBrush (was)  MEASURED    (8,8,8)              (16,16,16)
-         Light, AFTER, this build            MEASURED   (12,9,4)             (−13,−14,−15)
-         Dark,  AFTER, this build            MEASURED    (9,8,6)              (16,16,15)
-
-       Mica under this window measures 238..247 Light and 30..34 Dark, i.e. it STRADDLES SurfaceBaseBrush
-       (243 / 32); it is nowhere near SurfacePageBrush (255 / 44). So the card-to-page separation is
-       unchanged to within 2-4 levels and the card's outline is unchanged to within 1. Round 4's Δ0 never
-       arises. NOTE that the fill's blue delta can legitimately reach 0 near the window's left edge — that
-       is the computed left-edge row, and it is a ceiling effect rather than a surprise: Mica measures 255
-       blue there, which a white-at-alpha fill cannot exceed. The outline is what draws the card, and it
-       is Δ13-16 everywhere. ABSOLUTE RGBs on this surface are NOT portable: PrintWindow composites the DWM
-       backdrop itself, so a Mica pane photographs as the blurred wallpaper behind that window's own
-       screen position. Only the relationships above are, which is why they are what is written down.
-
-       And that is not a projection. Border.tm-searchfield (above) uses the SAME three tokens as
-       Border.tm-card — SurfaceLayerBrush over a 1 DIP StrokeControlBrush at RadiusControl — and already
-       sits directly on this window's real Mica in the title strip. Measured there AT REST: Light backdrop
-       (244,240,248) gives fill (252,251,253) and border (230,226,233); Dark backdrop (33,31,35) gives
-       fill (41,40,42) and border (49,47,51). Predicted from the token alphas: (252,251,253)/(230,226,233)
-       and (41,39,42)/(49,47,50) — within 1 level on every channel. A settings card on Mica is already on
-       screen; it is the search field. As card-minus-backdrop, the same shape as the table above and
-       PHOTOGRAPHED rather than composited: Light fill (8,11,5) and border (−14,−14,−15); Dark fill
-       (8,9,7) and border (16,16,16). Those are the two MEASURED card-token-on-Mica rows the table above
-       could not supply, and they land inside the same envelope as its computed pair.
-       AT REST is load-bearing when re-measuring this: Border.tm-searchfield.focused (above) swaps the
-       fill to SurfaceLayerActiveBrush, and the app focuses the field on show, so a capture taken straight
-       after a cold start photographs the WRONG token. Dark reads (43,42,44) focused against (41,40,42) at
-       rest — a Δ(10,11,9) that looks like a regression and is not. Navigate away and back (or check for
-       the 2 px accent underline at the field's bottom edge) before sampling.
-
-       WHAT THIS BUYS, HONESTLY. Two seams disappear. On the PRE-CHANGE build the vertical rail→pane
-       step at image x 82 → 83 in Light measured (+5,+2,−12) at y = 150, (+5,+1,−12) at y = 400 and
-       (+4,+1,−10) at y = 700 — small per channel, but a straight 780 px line between a neutral grey and
-       a tinted gradient — and the horizontal strip→pane step at y 71 → 72 measured (−2,+4,−4) at
-       x = 1500. In DARK the same steps were (+2,0,−6)..(+2,0,−7) and (−2,+1,−2): close to invisible, so
-       the payoff is almost entirely a Light-theme payoff and this comment says so rather than
-       overselling it. On THIS build both steps measure (0,0,0) at every one of those points, in both
-       variants.
-
-       Background is Transparent and is never simply omitted. It states the intent where a missing setter
-       reads as an oversight, and a null-background Border is not hit-testable in Avalonia, so the gaps
-       between settings cards would stop absorbing pointer input.
-
-       THIS PANE DOES NOT PAINT ITS OWN MICA FALLBACK, and must not be given one. When the platform
-       refuses Mica, MainWindow.ApplyBackdrop subscribes Window.Background to SurfaceBaseBrush (a
-       resource observable, so it follows the theme variant), and everything transparent above it shows
-       that colour. A second fallback brush here would be a second source of truth for "what colour is
-       this window's surface", and it would be wrong in exactly the case it exists for: the window's
-       surface is Window.Background, whatever that resolves to.
-
-       WHAT IS AND IS NOT ESTABLISHED ABOUT THAT FALLBACK. The refused path was NOT exercised. It was
-       attempted in full while this item shipped — EnableTransparency cleared in the registry, the
-       window hidden and re-summoned so Opened and therefore ApplyBackdrop genuinely re-ran, then an
-       ImmersiveColorSet broadcast and a cold restart — and this machine kept granting Mica through all
-       three, so ActualTransparencyLevel never left Mica and the branch was never entered. Do not read
-       "the fallback works" into this comment. What IS established: the mechanism it relies on is not
-       new, because the rail is already Transparent over Window.Background and this pane measured
-       continuous with it to (0,0,0) at every sampled point. (That sentence used to cite the title strip
-       as the second witness, through TitleBarBackgroundBrush = Transparent in Tokens.axaml. Round 7,
-       Task 1 deleted both the strip and that key — the caption is drawn by the window's own decorations
-       template now — so only the rail's half of the observation survives.) What the fallback WOULD produce is arithmetic over the tokens,
-       computed and not measured: flat (243,243,243) Light / (32,32,32) Dark, with (251,251,251) /
-       (40,40,40) cards behind (229,229,229) / (48,48,48) outlines — i.e. the same colours 设置 had
-       before this change, when the pane painted SurfaceBaseBrush itself.
+       Background is Transparent and is never simply omitted. It states the intent where a missing
+       setter reads as an oversight, and a null-background Border is not hit-testable in Avalonia, so
+       the gaps between settings cards would stop absorbing pointer input.
 
        ── WHY THESE LIVE HERE, AND NOT AS LOCAL VALUES ON THE BORDER ─────────────────────────────────
        Because a style setter cannot override a local value in Avalonia, in either direction. A class
@@ -920,7 +913,7 @@
        higher priority than both (Avalonia 12.1.0's BindingPriority: Animation, LocalValue, StyleTrigger,
        Template, Style, Inherited, Unset). The app already relies on the same ranking from the other
        side — see the SearchBox TextBox's own remarks in Views/AppPage.axaml, where a LOCAL Background is
-       what stops Avalonia's :pointerover style repainting the field. So writing the 应用 look as
+       what stops the theme's :pointerover rule repainting the field. So writing the 应用 look as
        Background/BorderThickness/CornerRadius attributes on PagePane and then trying to switch it with a
        class toggle would silently do nothing at all: the pane would stay white everywhere. Both states
        are therefore styles, and they are written as non-overlapping selectors so the result does not
@@ -929,7 +922,7 @@
     <Setter Property="Background" Value="{DynamicResource SurfacePageBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource StrokeControlBrush}" />
     <Setter Property="BorderThickness" Value="1,1,0,0" />
-    <Setter Property="CornerRadius" Value="{DynamicResource RadiusPaneTopLeft}" />
+    <Setter Property="CornerRadius" Value="0" />
   </Style>
   <Style Selector="Border.tm-page-pane:not(.app)">
     <Setter Property="Background" Value="Transparent" />
@@ -969,110 +962,108 @@
        the point of this paragraph: the reference draws no container around a labelled group at all —
        measured on ms-settings:privacy, where the three group labels' ink starts at x = 500/500/501
        against their row cards' outer edge at x = 498, i.e. the label sits on the page above a bare
-       stack of cards. What the reference DOES supply, and what every number here comes from, is the
-       scale of its large side-by-side containers (RadiusPanel's own remarks in Tokens.axaml carry that
-       measurement).
+       stack of cards. What the reference supplied, and what this panel's shape came from, was the
+       scale of its large side-by-side containers — a measurement Round 7, Task 7 retired along with
+       the RadiusPanel token that carried it; it is archived in
+       docs/superpowers/archive/2026-08-04-windows11-measurement-record.md.
 
-       FILL: SubtleFillTertiaryBrush, and the choice was made by measurement on the white 应用 pane, not
-       by taste. Three candidates were measured or composited against SurfacePageBrush there:
-         SurfaceLayerBrush        renders (255,255,255) — measured; the pane and a tile's interior both
-                                  read pure white, so a tm-card-style panel here would be an outline
-                                  drawn around tiles that are themselves outlines. Invisible.
-         SubtleFillSecondaryBrush renders (245,245,245) — which is EXACTLY the colour a tile turns on
-                                  hover (TmTileButton's StateLayer, this file). A panel resting at the
-                                  hover colour is a collision, not a surface.
-         SubtleFillTertiaryBrush  renders (249,249,249). Delta 6 from the pane, delta 4 from hover, and it
-                                  coincides only with a tile's PRESSED wash, which is transient.
-       SurfaceBaseBrush was ruled out on sight: (243,243,243) opaque is the grey pane Round 4, item 5
-       removed from this page.
+       ROUND 7, TASK 7 REPLACED THE FILL AND THE RADIUS, AND RETIRED THE MEASUREMENT THAT PICKED THEM.
+       The fill was SubtleFillTertiaryBrush, chosen by compositing three alpha tokens over the white
+       应用 pane and taking the one that landed 6 levels below it and collided only with a tile's
+       transient pressed wash; the radius was RadiusPanel, an authored 8 derived from Windows 11
+       Settings' large side-by-side tiles. BOTH TOKENS ARE DELETED. What replaces them is not another
+       measurement but a different OBJECT: this is an Aero group box now — a hairline outline at the
+       control radius with no fill of its own, which is exactly what a Windows 7 property page drew
+       around a labelled group. StrokeControlBrush is that hairline (Tokens.axaml aliases it onto
+       AeroGroupBoxBorderBrush), so no new key is minted, and the separation the old fill bought is
+       bought by the outline instead. The tile inside is no longer a translucent outline either — it
+       is an opaque Aero command button, so nothing here has to make it visible.
 
-       And the panel repairs something the recon measured on the way past. A tile on this page has NO
-       fill today — pane and tile interior both (255,255,255), delta 0; it is an outline, not a surface.
-       Over a 249 panel the same tile composites to (253,253,253), a real delta 4, while hover keeps its
-       present strength (245 over 255 today, 243 over 253 now — delta 10 either way). The two hairlines
-       differ too, which is the "not two identical nested outlines" property: StrokeControlBrush over
-       the pane's 255 gives the panel's own (240,240,240), over the panel's 249 it gives the tile's
-       (234,234,234). Dark is computed from the same alphas and separates MORE, not less: pane
-       (44,44,44), panel fill (53,53,53), panel border (59,59,59), tile fill (55,55,55), tile border
-       (67,67,67).
+       Task 9 owns this panel's final form: the design gives the 应用 page its own task, and the
+       vendored ControlStyles/HeaderedContentControl.axaml — the real Aero group box, with its label
+       notched into the top edge — lands there. This rule is the token-layer half of the change and
+       says so rather than pretending to be the finished object.
 
-       PADDING 12,12,8,8 is a UNIFORM 12 DIP visible inset. The asymmetry corrects for something already
-       in the tile grid: every tile carries Margin="0,0,4,4" (AppPage.axaml), so the grid already
-       contributes 4 DIP on its own right and bottom inside the group box — measured on the running
-       build, where the single-column 常用工具 group reports 122.67 DIP against its tile's 118.67, and
-       the 工具 group reports 431.33 = 31.33 + 10 x (36 + 4). A symmetric Padding="12" would render
-       12/12/16/16. The 12 is Space3 and is the reference's measured large-tile gutter, which is also
-       what AppPage.axaml's categories panel now uses between panels, so the inset and the gutter are
-       one number rather than two.
+       PADDING 12,12,8,8 is UNCHANGED and is deliberately NOT re-derived onto the 5/7/11 ladder here.
+       It is a UNIFORM 12 DIP visible inset whose asymmetry corrects for the tile grid's own
+       Margin="0,0,4,4" (AppPage.axaml) — measured on the running build, where the single-column
+       常用工具 group reports 122.67 DIP against its tile's 118.67, and the 工具 group reports
+       431.33 = 31.33 + 10 x (36 + 4). Both terms of that correction live on the 应用 page, so moving
+       one without the other would break the inset; Task 9 moves the pair.
 
        NOT Border.tm-card, though the anatomy looks similar. tm-card encodes a specific 设置 row — its
        Border must wrap one Auto,*,Auto Grid holding exactly one tm-card-title and one tm-card-sub, and
        SettingsRowTests enforces that over Views/Settings. A category panel has none of those parts, so
        reusing the class would be a semantic collision that passes CI today only because that test's
        CardsDir does not reach Views/AppPage.axaml — one careless widening away from failing four tests
-       at once. Its fill does not transfer either, per the measurement above. -->
+       at once. -->
   <Style Selector="Border.tm-group-panel">
-    <Setter Property="Background" Value="{DynamicResource SubtleFillTertiaryBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource StrokeControlBrush}" />
-    <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="{DynamicResource RadiusPanel}" />
-    <Setter Property="Padding" Value="12,12,8,8" />
-  </Style>
-
-  <!-- ══ 设置 cards ═══════════════════════════════════════════════════════════════════════════
-       Windows 11 Settings' row card: a layered surface with a hairline outline, an icon, a title +
-       secondary line, and the control itself trailing. -->
-  <Style Selector="Border.tm-card">
-    <Setter Property="Background" Value="{DynamicResource SurfaceLayerBrush}" />
+    <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderBrush" Value="{DynamicResource StrokeControlBrush}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="{DynamicResource RadiusControl}" />
-    <Setter Property="Padding" Value="16,12" />
-    <Setter Property="Margin" Value="0,0,0,4" />
+    <Setter Property="Padding" Value="12,12,8,8" />
   </Style>
-  <!-- Round 5, item 3: LineHeight was the one half of the type ramp these two classes skipped, and
-       they were the ONLY text classes in this file that skipped it — tm-group-head and tm-page-title
-       below both set theirs. Measured cost of the omission on the live page: a title line box of
-       19.33 DIP instead of the token's 20, a subtitle box of 16.67 instead of 16, and 0.67 DIP of
-       drift WITHIN the subtitle class (the two pure-ASCII path lines measured 16.0 while every
-       subtitle containing CJK measured 16.67). Setting both pins a title-over-subtitle header block at
-       exactly 20 + 16 = 36 DIP, which is what lets one VerticalAlignment="Center" put the icon and the
-       trailing control at the same y on every row that HAS such a block. When this was written three
-       rows did not: PinTaskbarTitle and HotkeyTitle (BehaviorCard) and UpdateStatusText (UpdatesCard)
-       were bare tm-card-titles in column 1 with no tm-card-sub beside them, so their header block
-       measured 20 DIP, not 36. Part B gave all three a real two-line header, and
-       SettingsRowTests.PendingTwoLineHeader — which listed exactly those three — is now empty. Every
-       row on the page has the block.
 
-       WHAT IT COSTS IN CARD HEIGHT — it is not free, and one card GREW. Measured before and after on
-       the same window at 150 %, each card scrolled fully into view first and read from the card
-       Border's own UIA rect (physical px), over the sixteen cards the page had at the time (part B
-       deleted one of them): twelve did not change, three
-       lost 1-2 px and one gained 1. Two effects cancel on a conforming row — the title gains 0.67 and
-       a CJK subtitle loses 0.67 — and a row whose column 2 holds a 32 DIP button or ToggleSwitch
-       absorbs the title's gain outright, because that grid row was already the control's height.
-       (The ToggleSwitch measured 32 DIP tall when this was written; Round 7, Task 3's Aero pill made
-       it 34, which changes none of the card heights below — re-read on the same instrument, the four
-       toggle rows still sit exactly 100 physical px apart, because 34 is still under the 36 DIP
-       header block that sets the row.) The
-       SIGN of every delta follows from those two; the exact pixel counts do not reproduce from the
-       line-box arithmetic alone, because each UIA rect is a separately rounded pair of doubles at 1.5x,
-       so they are quoted as measured. Three cards lost: PinTaskbarStatusText's card 125 -> 124 and
-       HotkeyHelpText's 126 -> 125 (one lone CJK line below the Grid each, title gain absorbed by the
-       control in column 2), and DataFolderTitle's 219 -> 217 (two CJK lines against one title, around
-       an unchanged ASCII path line). One card gained: UpdatesCard's status card, 132 -> 133 — a bare
-       title, no subtitle to cancel it, and an empty column 2, so nothing absorbs it. One physical pixel
-       on the one card part B rebuilt from the header down (it gained a real title, demoted
-       UpdateStatusText to the subtitle and moved its buttons into column 2), so it was recorded here
-       rather than chased. -->
+  <!-- ══ 设置 rows ════════════════════════════════════════════════════════════════════════════
+       A row on a property page: an icon, a title + secondary line, and the control itself trailing.
+       The INFORMATION ARCHITECTURE is Round 5 item 3's and survives the conversion untouched — it is
+       the most durable thing in this file, and SettingsRowTests holds the parts of it no style can.
+
+       WHAT ROUND 7, TASK 7 TOOK AWAY IS THE CARD. It was a Windows 11 row card: a translucent
+       SurfaceLayerBrush fill inside a hairline at the control radius. Windows 7 drew no such object —
+       a property page grouped rows inside a GROUP BOX and drew nothing at all around an individual
+       row — so the fill, the outline and the radius all go and the class keeps only its spacing. The
+       class NAME stays tm-card, because four SettingsRowTests facts and six card files are written
+       against it and renaming it would be churn with no pixels behind it.
+
+       The group box that is supposed to be under these rows is Task 9's: the design vendors
+       ControlStyles/HeaderedContentControl.axaml there. Until it lands a row sits directly on the
+       window's client surface, which is opaque AeroWindowBackground (see the content-pane block
+       above), so the row is legible on its own — that was the gate on this task and it is measured in
+       the Round 7 Task 7 report rather than asserted here.
+
+       PADDING 16,12 became 11,7 and MARGIN 0,0,0,4 became 0,0,0,5, all three PUBLISHED by
+       https://learn.microsoft.com/en-us/windows/win32/uxguide/vis-layout: 11 relative pixels is the
+       dialog margin, 7 is "between related controls", and 5 is the minimum separation two target
+       regions may have without touching. -->
+  <Style Selector="Border.tm-card">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="11,7" />
+    <Setter Property="Margin" Value="0,0,0,5" />
+  </Style>
+  <!-- Round 5, item 3 pinned BOTH classes' LineHeight, so a title-over-subtitle header block always
+       measured exactly 20 + 16 = 36 DIP and one VerticalAlignment="Center" put the icon and the
+       trailing control on the same y on every row. ROUND 7, TASK 7 DELETED ALL THREE LineHeight
+       TOKENS and both setters with them: Windows 11's ramp publishes a line height beside every size
+       and Aero's does not — GDI text has one natural line box per face and size, and inventing a
+       second number for it would be a Fluent habit carried into a theme that has no opinion on it.
+       The invariant the pinning protected is unaffected, because it never depended on the block
+       being 36: it depends on every header being the SAME two lines, which is
+       SettingsRowTests.EveryCardHeader_IsOneTitleLineAndOneSubtitleLine's job and which no card
+       violates. What the block measures now is one FontSizeBody line over one FontSizeBody line at
+       60 % opacity, both at Segoe UI's own leading, and the Round 7 Task 7 report records the number.
+
+       The Round 5 measurement that justified the pinning — a title line box of 19.33 DIP against the
+       token's 20, a subtitle box of 16.67 against 16, 0.67 DIP of drift between an ASCII and a CJK
+       subtitle, and the four cards whose height moved by 1-2 physical px when the setters went in —
+       described a build with a 14/20 ramp and a 12/16 caption size. This one has neither. Those
+       numbers are archived in docs/superpowers/archive/2026-08-04-windows11-measurement-record.md.
+
+       A SUBTITLE IS THE TITLE'S INK AT 60 %, not a colour of its own. TextSecondaryBrush carried it
+       until Task 7 deleted it — Windows 7 published no secondary body colour, and inventing a third
+       grey beside AeroForeground and AeroDisabledForeground is worse than one opacity that follows
+       the variant for free (§3.2 #8). It is also the SAME size as the title now: FontSizeCaption is
+       deleted, because a Windows 7 property sheet uses one body size and gets its hierarchy from
+       colour, not from a fourth step on a ramp. -->
   <Style Selector="TextBlock.tm-card-title">
     <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
-    <Setter Property="LineHeight" Value="{DynamicResource LineHeightBody}" />
   </Style>
   <Style Selector="TextBlock.tm-card-sub">
-    <Setter Property="FontSize" Value="{DynamicResource FontSizeCaption}" />
-    <Setter Property="LineHeight" Value="{DynamicResource LineHeightCaption}" />
-    <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+    <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+    <Setter Property="Opacity" Value="0.6" />
     <!-- Wrap rather than overflow: the middle column is whatever is left after the leading icon and
          the trailing control, which is narrower than several of these descriptions' natural width. -->
     <Setter Property="TextWrapping" Value="Wrap" />
@@ -1099,7 +1090,7 @@
        and an invisible child contributes no margin at all.
 
        These rules are declared AFTER the two they refine, the same ordering this file already relies on
-       for TextBlock.tm-icon.subtle overriding TextBlock.tm-icon's Foreground. -->
+       for TextBlock.tm-icon.subtle overriding TextBlock.tm-icon's Opacity. -->
 
   <!-- The icon box. :is(Control) rather than a TextBlock-scoped selector so the same class boxes a row
        whose leading mark is not a glyph without a second rule — which part C then made real: the 关于
@@ -1113,16 +1104,23 @@
        one, so that ONE row states Height="16" locally; every glyph row still must not. -->
   <Style Selector=":is(Control).tm-card-icon">
     <Setter Property="Width" Value="16" />
-    <Setter Property="Margin" Value="0,0,14,0" />
+    <Setter Property="Margin" Value="0,0,7,0" />
     <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
 
-  <!-- The header text column: title over subtitle, nothing else. 12 is the gutter to the trailing
-       control; Center is what pairs with the icon's own Center so both land on one y once the header is
-       always two lines. -->
+  <!-- The header text column: title over subtitle, nothing else. Center is what pairs with the icon's
+       own Center so both land on one y, the header being always two lines.
+
+       The gutter to the trailing control was 12 and is 11, and the icon's own gutter above was 14 and
+       is 7. Both are PUBLISHED by
+       https://learn.microsoft.com/en-us/windows/win32/uxguide/vis-layout: an icon and the label it
+       marks are related controls (4 DLU / 7 relative pixels), a label and the control it governs are
+       further apart than that, and 11 is the guide's "between unrelated controls" step as well as its
+       dialog margin. Verification step 5 of the design's Task 7 reads exactly these two gaps off UI
+       Automation rects and expects 7 and 11 times the scale. -->
   <Style Selector="StackPanel.tm-card-text">
     <Setter Property="VerticalAlignment" Value="Center" />
-    <Setter Property="Margin" Value="0,0,12,0" />
+    <Setter Property="Margin" Value="0,0,11,0" />
   </Style>
 
   <!-- A value line — a path, a size, a version: a subtitle that is one ellipsized line rather than a
@@ -1182,19 +1180,23 @@
   </Style>
 
   <!-- The expansion row's own top gap, on the child rather than on the Grid — see the RowSpacing note
-       above. 8 rather than the 10 three of the old below-row blocks stated: 8 is a step on the spacing
-       ramp and 10 is not, and the two below-row TEXT margins the page already had were 8. Part B put
-       every action strip in column 2, so what this class now spaces is full-width expansion content —
-       FoldersCard's value lines, ToolsCard's bordered list, UpdatesCard's help line and progress bar. -->
+       above. 7 rather than the 8 it shipped with, and 8 rather than the 10 three of the old below-row
+       blocks stated before that: 10 was on no ladder at all, 8 was Fluent's rung, and 7 is
+       vis-layout's PUBLISHED "Between related controls — 4 / 7". Part B put every action strip in
+       column 2, so what this class now spaces is full-width expansion content — FoldersCard's value
+       lines, ToolsCard's bordered list, UpdatesCard's help line and progress bar. -->
   <Style Selector=":is(Control).tm-card-expander">
-    <Setter Property="Margin" Value="0,8,0,0" />
+    <Setter Property="Margin" Value="0,7,0,0" />
   </Style>
   <Style Selector="StackPanel.tm-card-expander">
-    <Setter Property="Spacing" Value="8" />
+    <Setter Property="Spacing" Value="7" />
   </Style>
   <!-- Value lines stack tighter than blocks do. Declared after tm-card-expander so a panel carrying both
        classes resolves to 2: at equal specificity the later rule wins, and a stack OF value lines is
-       what the smaller gap is for. -->
+       what the smaller gap is for. The 2 is AUTHORED and is deliberately BELOW the published ladder,
+       which starts at 5: vis-layout's rungs separate CONTROLS, and these are consecutive lines inside
+       one block of text. Setting it to 5 would open the same gap between two lines of one value that
+       the ladder puts between a label and the control it governs. -->
   <Style Selector="StackPanel.tm-card-values">
     <Setter Property="Spacing" Value="2" />
   </Style>
@@ -1209,7 +1211,7 @@
        unnecessary: a horizontal StackPanel stretches its children to its own height. -->
   <Style Selector="StackPanel.tm-card-actions">
     <Setter Property="Orientation" Value="Horizontal" />
-    <Setter Property="Spacing" Value="8" />
+    <Setter Property="Spacing" Value="7" />
     <Setter Property="HorizontalAlignment" Value="Right" />
     <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
@@ -1227,7 +1229,12 @@
        ColumnDefinition is not a Control, so no /template/ selector can reach it. The margin makes the
        desired width the pill's own, so the Auto column measures the pill and ArrangeCore deflates the
        slot by the negative margin — the pill lands on the content edge and the 12 DIP of empty presenter
-       overhangs into the card's own 16 DIP right padding, where it draws nothing.
+       overhangs into the row's own right padding, where it draws nothing. Round 7, Task 7 cut that
+       padding from 16 to 11 (Border.tm-card above), so the empty presenter now overhangs the padding
+       by 1 DIP instead of sitting 4 DIP inside it. That changes nothing measurable: the presenters
+       are blank, the element's DESIRED width is already the pill's own, and the row's width is set by
+       the ScrollViewer's viewport rather than by this column — so what the overhang covers is one DIP
+       of a surface nobody draws on.
 
        Round 7, Task 3 replaced the template underneath and the margin SURVIVED UNCHANGED, because the
        vendored Aero ToggleSwitch copies that inner grid verbatim, `ColumnDefinition Width="12"
@@ -1253,128 +1260,93 @@
     <Setter Property="Margin" Value="0,0,-12,0" />
   </Style>
 
-  <!-- The hotkey capture box (BehaviorCard's HotkeyBox), and the reason this class exists at all: it was
-       the ONE control on the 设置 page carrying no Classes and no Theme, so it fell through to the stock
-       text-box theme in every state. The visible consequence was its DISABLED fill, which came out a
-       heavy grey box next to buttons that grey out gently — two disabled vocabularies on one page. The
-       four rules below exist to give it the page's own vocabulary instead, in all four states.
+  <!-- The hotkey capture box (BehaviorCard's HotkeyBox). It IS legitimately disabled whenever
+       启用全局热键 is off (BehaviorCard's UpdateHotkeyEnabledState), and that logic is correct and
+       untouched. What this class states now is only its SIZE and its type; its paint is the theme's.
 
-       The box IS legitimately disabled whenever 启用全局热键 is off (BehaviorCard's
-       UpdateHotkeyEnabledState), and that logic is correct and untouched. Only its paint changes.
+       ── ROUND 7, TASK 7 DELETED THE FIVE PAINT RULES THIS CLASS USED TO CARRY ─────────────────────
+       They existed for one reason, stated in full when Round 3 wrote them: the box was the ONE control
+       on the 设置 page carrying no Classes and no Theme, so it fell through to the stock Fluent text
+       box, whose disabled fill was a heavy grey block standing next to buttons that greyed out gently
+       — two disabled vocabularies on one page. Four rules gave it the page's vocabulary instead, and
+       Task 4 re-aimed them from Fluent's Border#PART_BorderElement onto Aero's Border#BgElement and
+       re-measured the match: box and TmButton read the identical triple in every state, in both
+       variants.
 
-       Targeting the named template part is what reaches the screen: an app-level Style outranks a
-       ControlTheme's own rule for the same part at the same pseudo-class — the precedence written up in
-       full at TextBox.tm-search above, which the search field relies on the same way. The :disabled
-       recipe is deliberately TmButton's own (TextDisabledBrush plus Opacity 0.6 over the resting
-       surface), so the page has one disabled vocabulary rather than two.
+       That premise no longer holds, and the rules were the more expensive half of a problem that has
+       gone away. The page has ONE vocabulary now because every control on it is Aero's — the box, the
+       每列个数 NumericUpDown beside it, the three ComboBoxes and the buttons all resolve to a vendored
+       Aero theme — and the two brushes those rules named (SurfaceLayerBrush, SurfaceLayerActiveBrush)
+       are deleted. Re-pointing them at Aero's own text-box brushes would have been five rules that
+       repaint a part with the value it already has, which is the kind of rule this round's
+       dead-selector sweep exists to remove. So the box shows
+       Themes/Aero/ControlStyles/TextBox.axaml's own four states, and the disabled comparison the old
+       block guarded is now true by construction rather than by measurement.
 
-       The focus state is not decoration here. "Click the box, then press the combination" IS the
-       interaction (the tunneling KeyDown handler in BehaviorCard's ctor), so the box has to say when it
-       is listening. One accent hairline, not a filled accent band — the same conclusion Round 3, Task 1
-       reached for the search field.
-
-       ── ROUND 7 TASK 4 RE-TARGETED ALL FOUR, AND RE-MEASURED THE MATCH ────────────────────────────
-       The part name was Fluent's Border#PART_BorderElement until Task 4 vendored Aero's TextBox
-       template (Themes/Aero/ControlStyles/TextBox.axaml), whose border is named BgElement. Left on the
-       old name all four rules would have matched nothing, silently, and the box would have reverted to
-       Aero's stock paint in every state — which is exactly what the 每列个数 NumericUpDown in the 外观
-       group DOES show, on the same captures, and that is what makes this measurable rather than
-       assumed.
-
-       MEASURED on the live 设置 page, PrintWindow flag 2 at 150 % scale, both variants. The states are
-       driven with no input at all: enabled/disabled through 启用全局热键's own toggle, focus through
-       UI Automation SetFocus. Sampled at the box's left border column, one column in, and the centre
-       of its fill; the comparison row is the four TmButtons that are genuinely disabled on the same
-       page in a portable sandbox (ChangeDataBtn, ResetDataBtn, PinTaskbarBtn, CheckUpdateBtn).
-
-                            LIGHT  border / border+1 / fill      DARK  border / border+1 / fill
-         box enabled           (168,168,168) (218,218,218) (232,232,232)   (35,35,35) (47,47,47) (31,31,31)
-         TmButton enabled      (168,168,168) (218,218,218) (232,232,232)   (35,35,35) (47,47,47) (31,31,31)
-         box focused           (0,103,192)   (0,103,192)   (240,240,240)   (76,194,255) (76,194,255) (34,34,34)
-         box DISABLED          (173,173,173) (204,204,204) (211,211,211)   (27,27,27) (34,34,34) (25,25,25)
-         all four TmButtons    (173,173,173) (204,204,204) (211,211,211)   (27,27,27) (34,34,34) (25,25,25)
-
-       The disabled rows are IDENTICAL, in both variants — the one-vocabulary decision survives the
-       theme change exactly. The enabled rows are identical too, which is the proof the unconditional
-       rule is live: Aero's own idle fill is (249,249,249) Light / (87,87,87) Dark, and that is what the
-       NumericUpDown measures on the same captures. The focus rows are our accent, flat; Aero's focus
-       border is a two-stop gradient that reads nothing like it.
-
-       ONE THING THESE RULES DO NOT COVER, stated rather than left to be found: :pointerover sets only
-       Background, so the BorderBrush on hover is still the theme's — Aero's blue hover gradient now,
-       Fluent's grey before. This machine has no mouse, so that state could not be captured, and the
-       gap is the same one that existed before Task 4 rather than something it introduced. -->
+       ONE SIGNAL CHANGES HANDS AND IT MATTERS. "Click the box, then press the combination" IS the
+       interaction (the tunneling KeyDown handler in BehaviorCard's ctor), so the box has to say when
+       it is listening. That used to be an accent hairline this file painted; it is now Aero's own
+       AeroTextBoxFocusBorderBrush over AeroTextBoxFocusBackground, which is a real, visible focus
+       repaint rather than nothing — the same repaint the search field's own theme rules further up
+       this file describe suppressing, for the different reason that the field's fill is drawn by the
+       Border around it. The Round 7 Task 7 report carries the capture. -->
 
   <Style Selector="TextBox.tm-keycap">
     <Setter Property="Width" Value="160" />
     <Setter Property="MinHeight" Value="32" />
     <!-- Vertical padding 0, exactly as TmButton states it, and for the same reason: the height then
          comes from MinHeight rather than from font metrics plus padding, so the box matches the button
-         standing beside it in the same action strip. The card's inherited Padding="8,5" did not — it
-         put the box's own content over 32 DIP, so MinHeight stopped binding. Measured on the live page
-         at 150 %, reading the box's UIA rect at each of the eight scroll stops: with 8,5 it was
-         50/50/49/48/49/49 physical px against a TmButton's flat 48 at every stop, and because a
+         standing beside it in the same action strip. The horizontal 8 became 7 with the rest of the
+         page's spacing (vis-layout's published "between related controls"); the vertical 0 is not a
+         spacing value at all and is unchanged. Measured on the live page at 150 % when this was
+         written, reading the box's UIA rect at each of the eight scroll stops: with a vertical 5 it
+         was 50/50/49/48/49/49 physical px against a TmButton's flat 48 at every stop, and because a
          horizontal StackPanel stretches its children to its own height, 清除 was stretched to the same
-         50. With 8,0 it is 49/48/48/47/48/48 — the same value as the button at every stop but one, and
-         the ±1 that remains is rect quantisation, not layout: it tracks the scroll offset, and at the
-         same stops this card's title and subtitle read 29-30 and 24-25 for a box that never changes.
-         Setting an explicit Height instead of MinHeight was tried and measured byte-for-byte identical,
-         so MinHeight stays — it is what TmButton uses and it cannot clip a taller font fallback.
-         VerticalContentAlignment centres the text in whatever height MinHeight settles on. -->
-    <Setter Property="Padding" Value="8,0" />
+         50. With 0 it is 49/48/48/47/48/48 — the same value as the button at every stop but one, and
+         the ±1 that remains is rect quantisation, not layout. Setting an explicit Height instead of
+         MinHeight was tried and measured byte-for-byte identical, so MinHeight stays — it is what
+         TmButton uses and it cannot clip a taller font fallback. VerticalContentAlignment centres the
+         text in whatever height MinHeight settles on. -->
+    <Setter Property="Padding" Value="7,0" />
     <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
   </Style>
-  <Style Selector="TextBox.tm-keycap /template/ Border#BgElement">
-    <Setter Property="Background" Value="{DynamicResource SurfaceLayerBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource StrokeControlBrush}" />
-    <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="{DynamicResource RadiusControl}" />
-  </Style>
-  <Style Selector="TextBox.tm-keycap:pointerover /template/ Border#BgElement">
-    <Setter Property="Background" Value="{DynamicResource SurfaceLayerActiveBrush}" />
-  </Style>
-  <Style Selector="TextBox.tm-keycap:focus /template/ Border#BgElement">
-    <Setter Property="Background" Value="{DynamicResource SurfaceLayerActiveBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource AccentDefaultBrush}" />
-  </Style>
-  <Style Selector="TextBox.tm-keycap:disabled">
-    <Setter Property="Foreground" Value="{DynamicResource TextDisabledBrush}" />
-    <Setter Property="Opacity" Value="0.6" />
-  </Style>
-  <Style Selector="TextBox.tm-keycap:disabled /template/ Border#BgElement">
-    <Setter Property="Background" Value="{DynamicResource SurfaceLayerBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource StrokeControlBrush}" />
-  </Style>
 
-  <!-- Round 3, Task 3 (user item 9): the actual PAGE title ("设置") and each card GROUP'S own heading
-       ("外观"/"行为"/"文件夹"/"常用工具"/"更新") both used to share this one class at FontSizeSubtitle
-       (20) — the page title was too close in size to its own subsections. Live-measured Task Manager's
-       settings page (ink-height pixel sampling, not automation bounding boxes — those
-       include per-row template padding that differs between its title and its section rows and would
-       have overstated the title's real size by nearly 3x) found its page title's ink is ~1.4x its
-       section headings' ink, while its section headings and its CARD titles measure the SAME ink height
-       — the two are told apart by weight (bold vs regular) alone, confirmed by both ink height and ink
-       density (stroke-darkness-per-area, a boldness proxy) on live pixels. Our own ramp already has
-       FontSizeSubtitle:FontSizeBody = 20:14 = 1.43, matching that measured 1.4x almost exactly, so the
-       fix is a straight remap rather than a new token: the real page title gets its own class
-       (tm-page-title, below) at the old Subtitle size, and this class — now used only for the five
-       card-group headings — drops to FontSizeBody, SemiBold, matching Task Manager's own section
-       headings sitting at card-title size but bolder. -->
+  <!-- ══ The two headings ═════════════════════════════════════════════════════════════════════
+       The five card-group headings (外观 / 行为 / 文件夹 / 常用工具 / 更新) and the page's own title
+       (设置). Round 3, Task 3 separated them because they shared one class at one size and the page
+       title read as just another subsection; the separation stands, and both sides of it are now
+       PUBLISHED rather than derived from a Task Manager capture.
+
+       https://learn.microsoft.com/en-us/windows/win32/uxguide/vis-fonts gives Windows 7 exactly two
+       text roles above body: a MAIN INSTRUCTION at 12 pt in blue, and GROUP HEADERS at 11 pt in the
+       same blue. 12 pt at 96 dpi is 16 DIP (FontSizeSubtitle, and the vendored AeroFontSizeLarge
+       agrees exactly); 11 pt is 14.667, rounded up to FontSizeGroupHead's 15. Both take HeadingBrush,
+       which is that blue — Tokens.axaml carries the value, because this file may not quote a hex
+       colour anywhere, prose included.
+
+       WHAT THE ROUND 3 MEASUREMENT SAID, and why it is recorded rather than cited: live ink-height
+       sampling of Task Manager's settings page put its page title's ink at about 1.4x its section
+       headings', and the Fluent ramp's 20:14 = 1.43 matched it. Aero's published pair is 16:15 = 1.07,
+       so SIZE barely separates them any more and the separation is carried by weight and by one ladder
+       step instead. That is Aero's own answer rather than a compromise: a Windows 7 property sheet
+       takes its hierarchy from colour first, and it draws main instructions and group headers one
+       point apart on purpose.
+
+       The group heading's 0,20,0,8 margin becomes 0,22,0,7. 22 is the stated 2 x Space3 that replaces
+       the deleted Space5 (Tokens.axaml), and 7 is vis-layout's "between related controls" — a heading
+       and the group it labels are as related as two controls get. -->
   <Style Selector="TextBlock.tm-group-head">
-    <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
-    <Setter Property="LineHeight" Value="{DynamicResource LineHeightBody}" />
+    <Setter Property="FontSize" Value="{DynamicResource FontSizeGroupHead}" />
     <Setter Property="FontWeight" Value="SemiBold" />
-    <Setter Property="Margin" Value="0,20,0,8" />
+    <Setter Property="Foreground" Value="{DynamicResource HeadingBrush}" />
+    <Setter Property="Margin" Value="0,22,0,7" />
   </Style>
 
-  <!-- The one real page title (SettingsPage.axaml's own PageTitle) — AppPage's own
-       "tm-empty > TextBlock.title" (above) already uses this exact Subtitle+SemiBold shape for its own
-       single big heading, so this reuses the established size rather than inventing one. -->
   <Style Selector="TextBlock.tm-page-title">
     <Setter Property="FontSize" Value="{DynamicResource FontSizeSubtitle}" />
-    <Setter Property="LineHeight" Value="{DynamicResource LineHeightSubtitle}" />
     <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource HeadingBrush}" />
   </Style>
 
 </Styles>

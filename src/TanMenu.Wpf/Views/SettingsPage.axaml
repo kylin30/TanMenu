@@ -9,9 +9,9 @@
        CardStack's children itself (see ApplyStaticText in the code-behind), so adding a new group here
        is the only step needed; there is no separate call to remember.
 
-       The 24/16/24/24 inset is a MARGIN on CardStack, not a Padding on the ScrollViewer — it used to be
-       the latter, and that made the bottom 2×Padding.Top + Padding.Bottom worth of content (56 DIP here:
-       2×16 + 24) permanently unreachable at VerticalScrollPercent=100 (confirmed live via UI Automation's
+       The inset is a MARGIN on CardStack, not a Padding on the ScrollViewer — it used to be
+       the latter, and that made the bottom 2×Padding.Top + Padding.Bottom worth of content (56 DIP at
+       the 24/16/24/24 it carried then: 2×16 + 24) permanently unreachable at VerticalScrollPercent=100 (confirmed live via UI Automation's
        ScrollPattern: 检查更新's bottom edge sat measurably below the window's own bottom edge — a real
        defect, not the PrintWindow capture artifact Round 1's review wrongly guessed). Root cause,
        confirmed by decompiling Avalonia.Controls 12.1.0: ScrollContentPresenter overrides
@@ -46,10 +46,16 @@
        is what lets Stretch mean something here instead of silently doing nothing the way it would if
        horizontal scrolling were enabled. Layoutable.ArrangeCore's own Stretch case centres a
        MaxWidth-clamped child in exactly the leftover space this needs, for free, once the cap engages.
-       Margin stays 24,16,24,24 — Task Manager's own measured gutter already matched that value. -->
+       Margin was 24,16,24,24 while Task Manager was the reference and its measured gutter matched;
+       Round 7, Task 7 re-derived it — see the remark immediately above the ScrollViewer. -->
+  <!-- Round 7, Task 7 re-derived both margins onto Aero's published ladder. CardStack's 24,16,24,24
+       becomes 22,11,22,22 — 22 is the stated 2 x Space3 that replaces the deleted Space5, and 11 is
+       vis-layout's dialog margin; the Task Manager gutter the 24 matched is not this app's reference
+       any more. PageTitle's own 0,0,0,8 becomes 0,0,0,11, the "between unrelated controls" step,
+       because the page title and the first group heading below it are not related controls. -->
   <ScrollViewer x:Name="SettingsScroll" VerticalScrollBarVisibility="Auto">
-    <StackPanel x:Name="CardStack" MaxWidth="1250" Margin="24,16,24,24">
-      <TextBlock x:Name="PageTitle" Classes="tm-page-title" Margin="0,0,0,8" />
+    <StackPanel x:Name="CardStack" MaxWidth="1250" Margin="22,11,22,22">
+      <TextBlock x:Name="PageTitle" Classes="tm-page-title" Margin="0,0,0,11" />
       <cards:AppearanceCard x:Name="Appearance" />
       <cards:BehaviorCard x:Name="Behavior" />
       <cards:FoldersCard x:Name="Folders" />

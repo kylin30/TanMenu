@@ -288,10 +288,17 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
     // ══════════════════════════════════════════════════════════════════════════════════════════
 
     /// <summary>
-    /// The face for Subtitle-sized text (20 px). Windows 11 switches Segoe UI Variable to its
-    /// Display optical size at 18 px and up — but only when the user has NOT chosen a font of their
+    /// The face for Subtitle-sized text — 16 DIP since Round 7, Task 7 re-valued
+    /// <c>FontSizeSubtitle</c> to Aero's published main-instruction size, 20 before it. It resolves
+    /// to <see cref="AppFonts.DefaultDisplay"/> only when the user has NOT chosen a font of their
     /// own, because a font setting that stopped applying to headings would look like a bug.
     /// </summary>
+    /// <remarks>
+    /// The property earned its own existence because Windows 11 switched Segoe UI Variable to its
+    /// Display optical size at 18 px and up. Aero has no optical sizes, so <c>DefaultDisplay</c> and
+    /// the ordinary UI stack are now the same string — see that constant, which says why it is kept
+    /// separate anyway. Nothing about this property's contract changed.
+    /// </remarks>
     public FontFamily TitleFontFamily =>
         AppFonts.Resolve(_cfg.General.FontFamily, whenBlank: AppFonts.DefaultDisplay);
 

@@ -124,12 +124,18 @@ public static class AppTheme
         app.Resources.MergedDictionaries.Add(dict);
         _published = dict;
 
+        // THREE KEYS, NOT FIVE, SINCE ROUND 7 TASK 7. AccentTextBrush and TextOnAccentBrush stopped
+        // being published with the two things that would have read them: the first never had a
+        // consumer anywhere in the tree (grep found it only in this file), and the second's only one
+        // was TmAccentButton, the accent-filled default button Task 3 deleted because Windows 7 had
+        // none to imitate. ResolveAccent still RESOLVES all five — Text and OnAccent are part of what
+        // Windows' eight-shade palette means, AppThemeTests asserts on both, and re-deriving them
+        // later would be the same work again — it is only the publication that stops.
         static ResourceDictionary Build(AccentSet a) => new()
         {
             ["AccentDefaultBrush"] = new SolidColorBrush(a.Fill),
-            ["AccentTextBrush"] = new SolidColorBrush(a.Text),
-            ["TextOnAccentBrush"] = new SolidColorBrush(a.OnAccent),
-            // Raw Colors as well as brushes: a GradientStop takes a Color (the splash card).
+            // Raw Colors as well as brushes: a GradientStop takes a Color (the splash card and the
+            // caption's glass tint, which are the accent's two remaining jobs).
             ["AccentColor"] = a.Gradient,
             ["AccentColorShaded"] = a.GradientShaded,
         };

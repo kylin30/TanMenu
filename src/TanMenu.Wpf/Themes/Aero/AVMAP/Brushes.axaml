@@ -13,10 +13,16 @@
     merges the very same file into BOTH ThemeDictionaries. Upstream AeroTheme.axaml does exactly
     that too; it is the library's own designed position for this file, not an adaptation of it.
 
-    This is the seam of the whole conversion. Aero's fills are two- and four-stop vertical gradients
-    built from paired ...Color0/...Color1 keys; a token layer of flat SolidColorBrushes has no
-    gradient to give, which is why Themes/Fluent2/Tokens.axaml is planned to alias onto THESE
-    brushes rather than re-derive its own values from the colours. Nothing aliases onto them yet.
+    This is the seam of the whole conversion, and since Round 7 Task 7 it is a spent one. Aero's
+    fills are two- and four-stop vertical gradients built from paired ...Color0/...Color1 keys; a
+    token layer of flat SolidColorBrushes has no gradient to give, so the seam splits in two.
+    Themes/Fluent2/Tokens.axaml takes the FLAT values — seven of its themed keys are one-line
+    SolidColorBrushes over an Aero ...Color key from Variant/*.axaml, which is the same mechanism
+    every brush in this file uses and follows the variant the same way. The GRADIENTS are named
+    directly by their consumers: Themes/Fluent2/Launcher.axaml's five ControlThemes reach for
+    AeroButton*/AeroListBoxItem*/AeroTextBox* by name for their rest and state fills, because there
+    is no flat token that could carry them. Fluent2TokenTests unions this file into its defined set,
+    so those references are checked rather than trusted.
 -->
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
