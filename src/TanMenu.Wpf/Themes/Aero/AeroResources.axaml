@@ -42,13 +42,18 @@
     bar's indicator fill. Four were vendored; Task 5 deleted ProgressBarAnimationConverter.cs and
     ProgressBarFillColorConverter.cs with the indeterminate machinery that was their only caller.
 
-    ── The control themes, added by Round 7 Tasks 3, 4, 5 and 6 ──────────────────────────────────
-    Thirteen ControlStyles dictionaries are merged below, VARIANT-INDEPENDENTLY: a control theme holds
+    ── The control themes, added by Round 7 Tasks 3, 4, 5, 6 and 9 ───────────────────────────────
+    Fourteen ControlStyles dictionaries are merged below, VARIANT-INDEPENDENTLY: a control theme holds
     geometry and {DynamicResource} brush references, never a colour, so the same dictionary serves
     both variants and the brushes it names re-resolve when ActualThemeVariant changes. That is
     upstream AVMAP/Controls.axaml's own arrangement.
 
-    Each is keyed {x:Type X} and therefore auto-applies to every X that does not set Theme= itself.
+    Thirteen of the fourteen are keyed {x:Type X} and therefore auto-apply to every X that does not
+    set Theme= itself. HeaderedContentControl is the exception and is OPT-IN, keyed "GroupBox",
+    which is upstream's own choice rather than an adaptation: HeaderedContentControl is the base
+    class of TabItem and of several other headered controls, so a {x:Type} key there would repaint
+    things nobody asked for. Its consumers name it with Theme="{StaticResource GroupBox}".
+
     Counted against the tree - MARKUP AND CODE-BEHIND BOTH, because a control built in code has no
     Theme= to grep for - that reach is:
 
@@ -84,6 +89,8 @@
         UpdateProgress on the 设置 page and AppPage.axaml's banner bar, which Task 5 turned from a
         hand-drawn Border-in-Border into a real ProgressBar. Both had Height="4" and both are 15
         now, for the reason each one's own remark states. Task 5.
+      - HeaderedContentControl, SIX, and every one of them names the theme explicitly because this
+        one is opt-in: the six group boxes on the 设置 page, one per file in Views/Settings. Task 9.
 
     Everything else is untouched BY CONSTRUCTION rather than by luck: the other 25 <Button> elements
     and both <ListBoxItem>s carry an explicit Theme= from Themes/Fluent2/Launcher.axaml, and the app's
@@ -120,17 +127,21 @@
     nine branches, so there is no upstream file it could be a copy of and no path a Source: line
     could name; its header names item by item the vocabulary it does reuse. AeroAttributionTests
     encodes exactly that split - ProgressBar and ComboBoxItem keep the notice, ComboBox alone is
-    listed as not-vendored. The last remaining merge is HeaderedContentControl, which the design
-    schedules for Task 9.
+    listed as not-vendored. HeaderedContentControl, the last merge to land (Task 9), is an ordinary
+    copy and needs no note beyond its own header - but it brings the only vendored CONTROL in the
+    tree with it, Controls/HeaderGapClipper.cs, without which its template draws the group label on
+    top of an unbroken outline instead of in a notch cut out of it.
 
     ── The keys here that are not Aero-prefixed ─────────────────────────────────────────────────
-    63 keys are merged below (comments stripped, Metrics plus the thirteen control-style
-    dictionaries). All but 32 are Aero-prefixed, and all 32 are wanted:
+    64 keys are merged below (comments stripped, Metrics plus the fourteen control-style
+    dictionaries). All but 33 are Aero-prefixed, and all 33 are wanted:
 
       - the FIFTEEN {x:Type X} ControlTheme keys - Button, RepeatButton, ToggleButton (the Button
         file keys three), ButtonSpinner, CheckBox, ComboBox, ComboBoxItem, ListBox, ListBoxItem,
         NumericUpDown, ProgressBar, ScrollBar, ScrollViewer, TextBox, ToggleSwitch. A {x:Type} key
         is how a ControlTheme auto-applies at all, so these are the reach listed above;
+      - GroupBox (ControlStyles/HeaderedContentControl.axaml), the one opt-in theme, keyed by name
+        upstream and kept that way here for the reason given above;
       - ELEVEN inside ControlStyles/ButtonSpinner.axaml: two spinner arrow geometries, the
         ButtonSpinnerRightThickness margin converter and eight Spinner*Filter_Left/Right corner and
         thickness converters. All eleven are consumed by that one file's own template and by
@@ -187,6 +198,7 @@
         <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/CheckBox.axaml" />
         <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/ComboBox.axaml" />
         <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/ComboBoxItem.axaml" />
+        <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/HeaderedContentControl.axaml" />
         <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/ListBox.axaml" />
         <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/ListBoxItem.axaml" />
         <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/NumericUpDown.axaml" />

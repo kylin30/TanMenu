@@ -303,9 +303,42 @@ public partial class AppPage : UserControl, IDisposable
     }
 
     /// <summary>Focus is drawn on the FIELD (the bordered box), not on the bare TextBox inside it, so
-    /// the outline frames the glyph too. The TextBox has no border of its own to light up.</summary>
-    private void OnSearchFocusChanged(object? sender, RoutedEventArgs e) =>
-        SearchField.Classes.Set("focused", SearchBox.IsFocused);
+    /// the outline frames the glyph too. The TextBox has no border of its own to light up — it is given
+    /// a local <c>BorderThickness="0"</c>, so Aero's own focus brush pair is applied to the field's
+    /// Border by <c>Border.tm-searchfield.focused</c> instead.</summary>
+    /// <remarks>Round 7, Task 9 added the <c>SelectAll</c>. PUBLISHED,
+    /// <c>https://learn.microsoft.com/en-us/windows/win32/uxguide/ctrl-search-boxes</c>: "On input
+    /// focus, automatically select any previously entered text." It is guarded on the box actually
+    /// being focused because this one handler serves both GotFocus and LostFocus.</remarks>
+    private void OnSearchFocusChanged(object? sender, RoutedEventArgs e)
+    {
+        var focused = SearchBox.IsFocused;
+        SearchField.Classes.Set("focused", focused);
+        if (focused)
+            SearchBox.SelectAll();
+    }
+
+    /// <summary>The right-end "x". PUBLISHED,
+    /// <c>https://learn.microsoft.com/en-us/windows/win32/uxguide/ctrl-search-boxes</c>: "a clear
+    /// button appears after the user starts typing … On hover, the 'x' gets a button look and can be
+    /// clicked." Clearing and then re-focusing is the same pair the empty state's 清除筛选 button does,
+    /// through the same <c>PendingFocus</c> channel, so there is one path for every "focus the box"
+    /// request and MainWindow still owns the timing.</summary>
+    /// <remarks>Primary button only, for the same reason <see cref="OnGroupTitlePressed"/> guards:
+    /// <c>PointerPressed</c> fires for every button, and a right-click here would otherwise wipe the
+    /// filter. The affordance is a Border rather than a Button because every Button theme in this app
+    /// carries a height floor that would hold the 23 DIP field open — see the
+    /// <c>Border.tm-search-affordance</c> rule.</remarks>
+    private void OnSearchClearPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (sender is not Control control ||
+            !e.GetCurrentPoint(control).Properties.IsLeftButtonPressed)
+            return;
+
+        _viewModel.ClearFilter();
+        _viewModel.PendingFocus = true;
+        e.Handled = true;
+    }
 
     /// <summary>Enter launches the first match, Escape clears then hides, Down enters the tile
     /// grid.</summary>

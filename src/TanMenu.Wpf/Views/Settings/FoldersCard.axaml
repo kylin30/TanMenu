@@ -51,60 +51,64 @@
        31.33 tall), and 主文件夹's wraps to two with only two buttons (MainFolderSub 480.67 wide, 32
        tall). tm-card-sub wraps on purpose; a wrapped header is a property of the width the app actually
        opens at and of the face it is set in, not of any button placement. -->
-  <StackPanel>
-    <TextBlock x:Name="GroupHead" Classes="tm-group-head" />
+  <HeaderedContentControl Classes="tm-group-box" Theme="{StaticResource GroupBox}">
+    <HeaderedContentControl.Header>
+      <TextBlock x:Name="GroupHead" Classes="tm-group-head" />
+    </HeaderedContentControl.Header>
+    <StackPanel>
 
-    <Border Classes="tm-card">
-      <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
-        <TextBlock Grid.Column="0" Classes="tm-icon tm-card-icon" Text="&#xE8B7;" />
-        <StackPanel Grid.Column="1" Classes="tm-card-text">
-          <TextBlock x:Name="MainFolderTitle" Classes="tm-card-title" />
-          <TextBlock x:Name="MainFolderSub" Classes="tm-card-sub" />
-        </StackPanel>
-        <StackPanel Grid.Column="2" Classes="tm-card-actions">
-          <Button x:Name="OpenRootBtn" Theme="{StaticResource TmButton}" Click="OnOpenRootClick" />
-          <Button x:Name="PickRootBtn" Theme="{StaticResource TmButton}" Click="OnPickRootClick" />
-        </StackPanel>
-        <StackPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2"
-                    Classes="tm-card-expander tm-card-values">
-          <TextBlock x:Name="RootPathText" Classes="tm-card-sub tm-card-value" />
-        </StackPanel>
-      </Grid>
-    </Border>
+      <Border Classes="tm-card">
+        <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
+          <TextBlock Grid.Column="0" Classes="tm-icon tm-card-icon" Text="&#xE8B7;" />
+          <StackPanel Grid.Column="1" Classes="tm-card-text">
+            <TextBlock x:Name="MainFolderTitle" Classes="tm-card-title" />
+            <TextBlock x:Name="MainFolderSub" Classes="tm-card-sub" />
+          </StackPanel>
+          <StackPanel Grid.Column="2" Classes="tm-card-actions">
+            <Button x:Name="OpenRootBtn" Theme="{StaticResource TmButton}" Click="OnOpenRootClick" />
+            <Button x:Name="PickRootBtn" Theme="{StaticResource TmButton}" Click="OnPickRootClick" />
+          </StackPanel>
+          <StackPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2"
+                      Classes="tm-card-expander tm-card-values">
+            <TextBlock x:Name="RootPathText" Classes="tm-card-sub tm-card-value" />
+          </StackPanel>
+        </Grid>
+      </Border>
 
-    <Border Classes="tm-card">
-      <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
-        <TextBlock Grid.Column="0" Classes="tm-icon tm-card-icon" Text="&#xE8B7;" />
-        <StackPanel Grid.Column="1" Classes="tm-card-text">
-          <TextBlock x:Name="DataFolderTitle" Classes="tm-card-title" />
-          <TextBlock x:Name="DataFolderSub" Classes="tm-card-sub" />
-        </StackPanel>
-        <StackPanel Grid.Column="2" Classes="tm-card-actions">
-          <Button x:Name="OpenDataBtn" Theme="{StaticResource TmButton}" Click="OnOpenDataClick" />
-          <Button x:Name="ChangeDataBtn" Theme="{StaticResource TmButton}" Click="OnChangeDataClick" />
-          <Button x:Name="ResetDataBtn" Theme="{StaticResource TmButton}" Click="OnResetDataClick" />
-        </StackPanel>
-        <StackPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2"
-                    Classes="tm-card-expander tm-card-values">
-          <TextBlock x:Name="DataPathText" Classes="tm-card-sub tm-card-value" />
-          <TextBlock x:Name="DataInfoText" Classes="tm-card-sub tm-card-value" />
-        </StackPanel>
-      </Grid>
-    </Border>
+      <Border Classes="tm-card">
+        <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
+          <TextBlock Grid.Column="0" Classes="tm-icon tm-card-icon" Text="&#xE8B7;" />
+          <StackPanel Grid.Column="1" Classes="tm-card-text">
+            <TextBlock x:Name="DataFolderTitle" Classes="tm-card-title" />
+            <TextBlock x:Name="DataFolderSub" Classes="tm-card-sub" />
+          </StackPanel>
+          <StackPanel Grid.Column="2" Classes="tm-card-actions">
+            <Button x:Name="OpenDataBtn" Theme="{StaticResource TmButton}" Click="OnOpenDataClick" />
+            <Button x:Name="ChangeDataBtn" Theme="{StaticResource TmButton}" Click="OnChangeDataClick" />
+            <Button x:Name="ResetDataBtn" Theme="{StaticResource TmButton}" Click="OnResetDataClick" />
+          </StackPanel>
+          <StackPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2"
+                      Classes="tm-card-expander tm-card-values">
+            <TextBlock x:Name="DataPathText" Classes="tm-card-sub tm-card-value" />
+            <TextBlock x:Name="DataInfoText" Classes="tm-card-sub tm-card-value" />
+          </StackPanel>
+        </Grid>
+      </Border>
 
-    <Border Classes="tm-card">
-      <Grid ColumnDefinitions="Auto,*,Auto">
-        <TextBlock Grid.Column="0" Classes="tm-icon tm-card-icon" Text="&#xE74D;" />
-        <StackPanel Grid.Column="1" Classes="tm-card-text">
-          <TextBlock x:Name="MaintenanceTitle" Classes="tm-card-title" />
-          <TextBlock x:Name="MaintenanceSub" Classes="tm-card-sub" />
-        </StackPanel>
-        <StackPanel Grid.Column="2" Classes="tm-card-actions">
-          <Button x:Name="ClearCacheBtn" Theme="{StaticResource TmButton}" Click="OnClearCacheClick" />
-          <Button x:Name="BackupBtn" Theme="{StaticResource TmButton}" Click="OnBackupConfigClick" />
-          <Button x:Name="RestoreBtn" Theme="{StaticResource TmButton}" Click="OnRestoreConfigClick" />
-        </StackPanel>
-      </Grid>
-    </Border>
-  </StackPanel>
+      <Border Classes="tm-card">
+        <Grid ColumnDefinitions="Auto,*,Auto">
+          <TextBlock Grid.Column="0" Classes="tm-icon tm-card-icon" Text="&#xE74D;" />
+          <StackPanel Grid.Column="1" Classes="tm-card-text">
+            <TextBlock x:Name="MaintenanceTitle" Classes="tm-card-title" />
+            <TextBlock x:Name="MaintenanceSub" Classes="tm-card-sub" />
+          </StackPanel>
+          <StackPanel Grid.Column="2" Classes="tm-card-actions">
+            <Button x:Name="ClearCacheBtn" Theme="{StaticResource TmButton}" Click="OnClearCacheClick" />
+            <Button x:Name="BackupBtn" Theme="{StaticResource TmButton}" Click="OnBackupConfigClick" />
+            <Button x:Name="RestoreBtn" Theme="{StaticResource TmButton}" Click="OnRestoreConfigClick" />
+          </StackPanel>
+        </Grid>
+      </Border>
+    </StackPanel>
+  </HeaderedContentControl>
 </UserControl>

@@ -3,11 +3,21 @@
              xmlns:cards="using:TanMenu.Wpf.Views.Settings"
              x:Class="TanMenu.Wpf.Views.SettingsPage">
 
-  <!-- Windows 11 Settings' shape: one scrolling column of grouped cards, no tabs and no
-       OK/Cancel/Apply. Every control writes through to config the moment it changes. Every card group
-       below implements ISettingsCard — SettingsPage finds and reloads every ISettingsCard among
-       CardStack's children itself (see ApplyStaticText in the code-behind), so adding a new group here
-       is the only step needed; there is no separate call to remember.
+  <!-- A WINDOWS 7 PROPERTY PAGE, since Round 7 Task 9: one scrolling column of GROUP BOXES, no tabs
+       and no OK/Cancel/Apply. Each of the six below is a HeaderedContentControl on the vendored Aero
+       theme (Themes/Aero/ControlStyles/HeaderedContentControl.axaml, opt-in under its "GroupBox" key)
+       with its 外观 / 行为 / 文件夹 / 常用工具 / 更新 / 关于 label notched into the top of its outline;
+       Themes/Fluent2/Launcher.axaml's HeaderedContentControl.tm-group-box rule carries the three
+       metrics we override and their citations. The INFORMATION ARCHITECTURE inside each box is Round 5
+       item 3's row spec and is untouched — what changed is that a row now sits inside a container
+       instead of under a bare heading. The immediate-apply behaviour is unchanged too: every control
+       writes through to config the moment it changes.
+
+       The shape was Windows 11 Settings' until Task 9 and the six groups were six bare headings over
+       six stacks of rows, which is what Task 7 left when it deleted the Windows 11 row card. Every
+       card group below implements ISettingsCard — SettingsPage finds and reloads every ISettingsCard
+       among CardStack's children itself (see ApplyStaticText in the code-behind), so adding a new
+       group here is the only step needed; there is no separate call to remember.
 
        The inset is a MARGIN on CardStack, not a Padding on the ScrollViewer — it used to be
        the latter, and that made the bottom 2×Padding.Top + Padding.Bottom worth of content (56 DIP at
@@ -52,7 +62,14 @@
        becomes 22,11,22,22 — 22 is the stated 2 x Space3 that replaces the deleted Space5, and 11 is
        vis-layout's dialog margin; the Task Manager gutter the 24 matched is not this app's reference
        any more. PageTitle's own 0,0,0,8 becomes 0,0,0,11, the "between unrelated controls" step,
-       because the page title and the first group heading below it are not related controls. -->
+       because the page title and the first group heading below it are not related controls.
+
+       BOTH SURVIVE TASK 9 UNCHANGED, and CardStack's 22 is now measurable rather than merely stated:
+       at the 872 DIP floor the group boxes' outline measures 1000 px = 666.67 DIP against a 711 DIP
+       content pane (PrintWindow flag 2, 150 %), which is 711 − 2×22. The gap BETWEEN two groups moved
+       though — it used to be tm-group-head's own 22 DIP top margin and it is now the group box's
+       11 DIP bottom margin (Themes/Fluent2/Launcher.axaml's tm-group-box rule says why). -->
+
   <ScrollViewer x:Name="SettingsScroll" VerticalScrollBarVisibility="Auto">
     <StackPanel x:Name="CardStack" MaxWidth="1250" Margin="22,11,22,22">
       <TextBlock x:Name="PageTitle" Classes="tm-page-title" Margin="0,0,0,11" />

@@ -22,139 +22,143 @@
        them, and carries the negative right margin that puts the pill's ink on the same x as every other
        row's control. Avalonia's default content is the untranslated English "On"/"Off", which would sit
        next to a Chinese row label whenever AppLanguage is zh-Hans. -->
-  <StackPanel>
-    <TextBlock x:Name="GroupHead" Classes="tm-group-head" />
+  <HeaderedContentControl Classes="tm-group-box" Theme="{StaticResource GroupBox}">
+    <HeaderedContentControl.Header>
+      <TextBlock x:Name="GroupHead" Classes="tm-group-head" />
+    </HeaderedContentControl.Header>
+    <StackPanel>
 
-    <Border Classes="tm-card">
-      <Grid ColumnDefinitions="Auto,*,Auto">
-        <TextBlock Grid.Column="0" Classes="tm-icon tm-card-icon" Text="&#xED1A;" />
-        <StackPanel Grid.Column="1" Classes="tm-card-text">
-          <TextBlock x:Name="AutoCloseTitle" Classes="tm-card-title" />
-          <TextBlock x:Name="AutoCloseSub" Classes="tm-card-sub" />
-        </StackPanel>
-        <ToggleSwitch Grid.Column="2" x:Name="AutoCloseToggle" Classes="tm-card-toggle"
-                      IsCheckedChanged="OnAutoCloseChanged" />
-      </Grid>
-    </Border>
+      <Border Classes="tm-card">
+        <Grid ColumnDefinitions="Auto,*,Auto">
+          <TextBlock Grid.Column="0" Classes="tm-icon tm-card-icon" Text="&#xED1A;" />
+          <StackPanel Grid.Column="1" Classes="tm-card-text">
+            <TextBlock x:Name="AutoCloseTitle" Classes="tm-card-title" />
+            <TextBlock x:Name="AutoCloseSub" Classes="tm-card-sub" />
+          </StackPanel>
+          <ToggleSwitch Grid.Column="2" x:Name="AutoCloseToggle" Classes="tm-card-toggle"
+                        IsCheckedChanged="OnAutoCloseChanged" />
+        </Grid>
+      </Border>
 
-    <Border Classes="tm-card">
-      <Grid ColumnDefinitions="Auto,*,Auto">
-        <TextBlock Grid.Column="0" Classes="tm-icon tm-card-icon" Text="&#xE718;" />
-        <StackPanel Grid.Column="1" Classes="tm-card-text">
-          <TextBlock x:Name="TopMostTitle" Classes="tm-card-title" />
-          <TextBlock x:Name="TopMostSub" Classes="tm-card-sub" />
-        </StackPanel>
-        <ToggleSwitch Grid.Column="2" x:Name="TopMostToggle" Classes="tm-card-toggle"
-                      IsCheckedChanged="OnTopMostChanged" />
-      </Grid>
-    </Border>
+      <Border Classes="tm-card">
+        <Grid ColumnDefinitions="Auto,*,Auto">
+          <TextBlock Grid.Column="0" Classes="tm-icon tm-card-icon" Text="&#xE718;" />
+          <StackPanel Grid.Column="1" Classes="tm-card-text">
+            <TextBlock x:Name="TopMostTitle" Classes="tm-card-title" />
+            <TextBlock x:Name="TopMostSub" Classes="tm-card-sub" />
+          </StackPanel>
+          <ToggleSwitch Grid.Column="2" x:Name="TopMostToggle" Classes="tm-card-toggle"
+                        IsCheckedChanged="OnTopMostChanged" />
+        </Grid>
+      </Border>
 
-    <Border Classes="tm-card">
-      <Grid ColumnDefinitions="Auto,*,Auto">
-        <TextBlock Grid.Column="0" Classes="tm-icon tm-card-icon" Text="&#xE7E8;" />
-        <StackPanel Grid.Column="1" Classes="tm-card-text">
-          <TextBlock x:Name="AutoStartTitle" Classes="tm-card-title" />
-          <TextBlock x:Name="AutoStartSub" Classes="tm-card-sub" />
-        </StackPanel>
-        <ToggleSwitch Grid.Column="2" x:Name="AutoStartToggle" Classes="tm-card-toggle"
-                      IsCheckedChanged="OnAutoStartChanged" />
-      </Grid>
-    </Border>
+      <Border Classes="tm-card">
+        <Grid ColumnDefinitions="Auto,*,Auto">
+          <TextBlock Grid.Column="0" Classes="tm-icon tm-card-icon" Text="&#xE7E8;" />
+          <StackPanel Grid.Column="1" Classes="tm-card-text">
+            <TextBlock x:Name="AutoStartTitle" Classes="tm-card-title" />
+            <TextBlock x:Name="AutoStartSub" Classes="tm-card-sub" />
+          </StackPanel>
+          <ToggleSwitch Grid.Column="2" x:Name="AutoStartToggle" Classes="tm-card-toggle"
+                        IsCheckedChanged="OnAutoStartChanged" />
+        </Grid>
+      </Border>
 
-    <Border Classes="tm-card">
-      <Grid ColumnDefinitions="Auto,*,Auto">
-        <TextBlock Grid.Column="0" Classes="tm-icon tm-card-icon" Text="&#xE840;" />
-        <StackPanel Grid.Column="1" Classes="tm-card-text">
-          <TextBlock x:Name="PinTaskbarTitle" Classes="tm-card-title" />
-          <!-- The pin state IS this row's description — "not pinned yet", "already pinned", "pinning
-               needs a manual step" — so it is the subtitle, not a value line and not a below-row block.
-               The code-behind rewrites it from one of eight AppLanguage strings — five in
-               ApplyTaskbarPinState's switch, three more in the click handlers. None of the eight
-               contains a hard "\n", which is load-bearing rather than incidental: a
-               tm-card-sub renders an explicit break as a second line at EVERY window width, so one would
-               put this row's header at three lines and move its icon and its button off the y invariant
-               I1 centres every other row on. PinToTaskbarFailed carried one until this was written and
-               carries the comment saying why it may not; SettingsRowTests guards all eight.
-               Long-but-unbroken wording still wraps when the window narrows, the same as every other
-               row's subtitle, which is what tm-card-sub's Wrap is for. -->
-          <TextBlock x:Name="PinTaskbarStatusText" Classes="tm-card-sub" />
-        </StackPanel>
-        <!-- The only button on this row. Its Theme is now STATIC, and Round 7, Task 3 is what made it
-             so: TmAccentButton was deleted with the arrival of the Aero control themes (Windows 7 had
-             no accent-filled default button), and the run-time Theme swap in ApplyTaskbarPinState went
-             with it, because both of its branches had become TmButton.
+      <Border Classes="tm-card">
+        <Grid ColumnDefinitions="Auto,*,Auto">
+          <TextBlock Grid.Column="0" Classes="tm-icon tm-card-icon" Text="&#xE840;" />
+          <StackPanel Grid.Column="1" Classes="tm-card-text">
+            <TextBlock x:Name="PinTaskbarTitle" Classes="tm-card-title" />
+            <!-- The pin state IS this row's description — "not pinned yet", "already pinned", "pinning
+                 needs a manual step" — so it is the subtitle, not a value line and not a below-row block.
+                 The code-behind rewrites it from one of eight AppLanguage strings — five in
+                 ApplyTaskbarPinState's switch, three more in the click handlers. None of the eight
+                 contains a hard "\n", which is load-bearing rather than incidental: a
+                 tm-card-sub renders an explicit break as a second line at EVERY window width, so one would
+                 put this row's header at three lines and move its icon and its button off the y invariant
+                 I1 centres every other row on. PinToTaskbarFailed carried one until this was written and
+                 carries the comment saying why it may not; SettingsRowTests guards all eight.
+                 Long-but-unbroken wording still wraps when the window narrows, the same as every other
+                 row's subtitle, which is what tm-card-sub's Wrap is for. -->
+            <TextBlock x:Name="PinTaskbarStatusText" Classes="tm-card-sub" />
+          </StackPanel>
+          <!-- The only button on this row. Its Theme is now STATIC, and Round 7, Task 3 is what made it
+               so: TmAccentButton was deleted with the arrival of the Aero control themes (Windows 7 had
+               no accent-filled default button), and the run-time Theme swap in ApplyTaskbarPinState went
+               with it, because both of its branches had become TmButton.
 
-             What the swap existed for still holds, and is still delivered — by IsEnabled alone. Round
-             3, Task 3 (user item 8): once pinned there is no affirmative action left to offer, only a
-             completed state to report, and a disabled TmAccentButton still painted a dimmed BLUE
-             swatch (its ^:disabled rule only lowers Opacity; it never repainted Background off
-             AccentDefaultBrush), which read as a live call to action, just quieter. A disabled
-             TmButton has no accent fill to dim in the first place, so "done" now falls out of
-             IsEnabled="false" — set by ApplyTaskbarPinState from the live COM pin query — instead of
-             out of a second theme. One fewer moving part for the same rendering.
+               What the swap existed for still holds, and is still delivered — by IsEnabled alone. Round
+               3, Task 3 (user item 8): once pinned there is no affirmative action left to offer, only a
+               completed state to report, and a disabled TmAccentButton still painted a dimmed BLUE
+               swatch (its ^:disabled rule only lowers Opacity; it never repainted Background off
+               AccentDefaultBrush), which read as a live call to action, just quieter. A disabled
+               TmButton has no accent fill to dim in the first place, so "done" now falls out of
+               IsEnabled="false" — set by ApplyTaskbarPinState from the live COM pin query — instead of
+               out of a second theme. One fewer moving part for the same rendering.
 
-             The static Theme is also what makes the first frame of a process defensible. SettingsPage's
-             constructor calls ReloadFromConfig (hence ApplyTaskbarPinState) while this card tree is
-             still detached from the logical tree, where FindResource cannot reach Application.Styles at
-             all; a Button with no Theme and no Classes would have rendered as stock Fluent for that
-             frame. It renders as TmButton instead, which is what it renders as afterwards too. -->
-        <Button Grid.Column="2" x:Name="PinTaskbarBtn" Theme="{StaticResource TmButton}"
-                Click="OnPinTaskbarClick" VerticalAlignment="Center" />
-      </Grid>
-    </Border>
+               The static Theme is also what makes the first frame of a process defensible. SettingsPage's
+               constructor calls ReloadFromConfig (hence ApplyTaskbarPinState) while this card tree is
+               still detached from the logical tree, where FindResource cannot reach Application.Styles at
+               all; a Button with no Theme and no Classes would have rendered as stock Fluent for that
+               frame. It renders as TmButton instead, which is what it renders as afterwards too. -->
+          <Button Grid.Column="2" x:Name="PinTaskbarBtn" Theme="{StaticResource TmButton}"
+                  Click="OnPinTaskbarClick" VerticalAlignment="Center" />
+        </Grid>
+      </Border>
 
-    <Border Classes="tm-card">
-      <Grid ColumnDefinitions="Auto,*,Auto">
-        <TextBlock Grid.Column="0" Classes="tm-icon tm-card-icon" Text="&#xE765;" />
-        <StackPanel Grid.Column="1" Classes="tm-card-text">
-          <TextBlock x:Name="HotkeyEnabledTitle" Classes="tm-card-title" />
-          <TextBlock x:Name="HotkeyEnabledSub" Classes="tm-card-sub" />
-        </StackPanel>
-        <ToggleSwitch Grid.Column="2" x:Name="HotkeyEnabledToggle" Classes="tm-card-toggle"
-                      IsCheckedChanged="OnHotkeyEnabledChanged" />
-      </Grid>
-    </Border>
+      <Border Classes="tm-card">
+        <Grid ColumnDefinitions="Auto,*,Auto">
+          <TextBlock Grid.Column="0" Classes="tm-icon tm-card-icon" Text="&#xE765;" />
+          <StackPanel Grid.Column="1" Classes="tm-card-text">
+            <TextBlock x:Name="HotkeyEnabledTitle" Classes="tm-card-title" />
+            <TextBlock x:Name="HotkeyEnabledSub" Classes="tm-card-sub" />
+          </StackPanel>
+          <ToggleSwitch Grid.Column="2" x:Name="HotkeyEnabledToggle" Classes="tm-card-toggle"
+                        IsCheckedChanged="OnHotkeyEnabledChanged" />
+        </Grid>
+      </Border>
 
-    <Border Classes="tm-card">
-      <Grid ColumnDefinitions="Auto,*,Auto">
-        <TextBlock Grid.Column="0" Classes="tm-icon tm-card-icon" Text="&#xE92E;" />
-        <StackPanel Grid.Column="1" Classes="tm-card-text">
-          <TextBlock x:Name="HotkeyTitle" Classes="tm-card-title" />
-          <!-- The help line tells the user how to work the box beside it, so it is this row's
-               subtitle. Moving it out from under the Grid moved the box it points at from above the
-               sentence to beside it, so AppLanguage's HotkeyHelp was reworded from 上方/"above" to
-               右侧/"on the right" in the same commit — the same correction PinToTaskbarNotAllowed and
-               PinToTaskbarUnsupported needed for their own button. -->
-          <TextBlock x:Name="HotkeyHelpText" Classes="tm-card-sub" />
-        </StackPanel>
-        <StackPanel Grid.Column="2" Classes="tm-card-actions">
-          <!-- Key capture is wired in code with a TUNNELING KeyDown handler (see the ctor): a
-               bubbling handler would run after the TextBox has already consumed the key.
+      <Border Classes="tm-card">
+        <Grid ColumnDefinitions="Auto,*,Auto">
+          <TextBlock Grid.Column="0" Classes="tm-icon tm-card-icon" Text="&#xE92E;" />
+          <StackPanel Grid.Column="1" Classes="tm-card-text">
+            <TextBlock x:Name="HotkeyTitle" Classes="tm-card-title" />
+            <!-- The help line tells the user how to work the box beside it, so it is this row's
+                 subtitle. Moving it out from under the Grid moved the box it points at from above the
+                 sentence to beside it, so AppLanguage's HotkeyHelp was reworded from 上方/"above" to
+                 右侧/"on the right" in the same commit — the same correction PinToTaskbarNotAllowed and
+                 PinToTaskbarUnsupported needed for their own button. -->
+            <TextBlock x:Name="HotkeyHelpText" Classes="tm-card-sub" />
+          </StackPanel>
+          <StackPanel Grid.Column="2" Classes="tm-card-actions">
+            <!-- Key capture is wired in code with a TUNNELING KeyDown handler (see the ctor): a
+                 bubbling handler would run after the TextBox has already consumed the key.
 
-               tm-keycap now carries only this box's SIZE and PADDING; its paint is the theme's. It was
-               once the ONE control on the whole 设置 page with no Classes and no Theme, so in every state
-               it fell through to the stock text box — Fluent's then — whose disabled fill was a different
-               grey from the one every disabled button beside it used, i.e. two disabled vocabularies on
-               one page. Four TextBox.tm-keycap /template/ rules in Themes/Fluent2/Launcher.axaml existed
-               to fix exactly that, and Round 7 Task 7 DELETED all four: every control on this page is a
-               vendored Aero theme now — this box, the 每列个数 NumericUpDown beside it, the three
-               ComboBoxes and the buttons — so "one disabled vocabulary" is true by construction, and
-               re-pointing the rules would have repainted a part with the value it already had. The box
-               shows Themes/Aero/ControlStyles/TextBox.axaml's own four states, and the focus signal that
-               says "I am listening" changed hands from a hand-painted accent hairline to Aero's own focus
-               border over its focus fill. Launcher.axaml's surviving TextBox.tm-keycap block records the
-               deletion and its reasoning; the retired before/after measurement went with the rules. -->
-          <TextBox x:Name="HotkeyBox" Classes="tm-keycap" IsReadOnly="True" />
-          <!-- Clearing a hotkey is a reset, not a forward-moving action, so this button never
-               qualified for the accent treatment even though it is the row's only button. The
-               criterion is moot now: Round 7, Task 3 deleted TmAccentButton along with the rest of
-               the accent-filled default button (Windows 7 had none), leaving TmButton the only
-               settings-card button theme there is. Kept because it records WHY this row never
-               changed when the two buttons that did carry the accent were moved. -->
-          <Button x:Name="HotkeyClearBtn" Theme="{StaticResource TmButton}"
-                  Click="OnHotkeyClearClick" />
-        </StackPanel>
-      </Grid>
-    </Border>
-  </StackPanel>
+                 tm-keycap now carries only this box's SIZE and PADDING; its paint is the theme's. It was
+                 once the ONE control on the whole 设置 page with no Classes and no Theme, so in every state
+                 it fell through to the stock text box — Fluent's then — whose disabled fill was a different
+                 grey from the one every disabled button beside it used, i.e. two disabled vocabularies on
+                 one page. Four TextBox.tm-keycap /template/ rules in Themes/Fluent2/Launcher.axaml existed
+                 to fix exactly that, and Round 7 Task 7 DELETED all four: every control on this page is a
+                 vendored Aero theme now — this box, the 每列个数 NumericUpDown beside it, the three
+                 ComboBoxes and the buttons — so "one disabled vocabulary" is true by construction, and
+                 re-pointing the rules would have repainted a part with the value it already had. The box
+                 shows Themes/Aero/ControlStyles/TextBox.axaml's own four states, and the focus signal that
+                 says "I am listening" changed hands from a hand-painted accent hairline to Aero's own focus
+                 border over its focus fill. Launcher.axaml's surviving TextBox.tm-keycap block records the
+                 deletion and its reasoning; the retired before/after measurement went with the rules. -->
+            <TextBox x:Name="HotkeyBox" Classes="tm-keycap" IsReadOnly="True" />
+            <!-- Clearing a hotkey is a reset, not a forward-moving action, so this button never
+                 qualified for the accent treatment even though it is the row's only button. The
+                 criterion is moot now: Round 7, Task 3 deleted TmAccentButton along with the rest of
+                 the accent-filled default button (Windows 7 had none), leaving TmButton the only
+                 settings-card button theme there is. Kept because it records WHY this row never
+                 changed when the two buttons that did carry the accent were moved. -->
+            <Button x:Name="HotkeyClearBtn" Theme="{StaticResource TmButton}"
+                    Click="OnHotkeyClearClick" />
+          </StackPanel>
+        </Grid>
+      </Border>
+    </StackPanel>
+  </HeaderedContentControl>
 </UserControl>

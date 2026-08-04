@@ -42,23 +42,27 @@
        revision of this note put the test against tm-card-value's own "260 DIP measure-time bound";
        that Setter was measured inert on a spanning expansion row and deleted — see the class's own
        remark.) -->
-  <StackPanel>
-    <TextBlock x:Name="GroupHead" Classes="tm-group-head" />
+  <HeaderedContentControl Classes="tm-group-box" Theme="{StaticResource GroupBox}">
+    <HeaderedContentControl.Header>
+      <TextBlock x:Name="GroupHead" Classes="tm-group-head" />
+    </HeaderedContentControl.Header>
+    <StackPanel>
 
-    <Border Classes="tm-card">
-      <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
-        <Image Grid.Column="0" Classes="tm-card-icon" Height="16"
-               Source="avares://TanMenu.Wpf/wwwroot/app-tile.png" />
-        <StackPanel Grid.Column="1" Classes="tm-card-text">
-          <TextBlock Text="TanMenu" Classes="tm-card-title" />
-          <TextBlock x:Name="PublisherText" Classes="tm-card-sub" />
-        </StackPanel>
-        <StackPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2"
-                    Classes="tm-card-expander tm-card-values">
-          <TextBlock x:Name="VersionLine" Classes="tm-card-sub tm-card-value" />
-          <TextBlock x:Name="CopyrightLine" Classes="tm-card-sub tm-card-value" />
-        </StackPanel>
-      </Grid>
-    </Border>
-  </StackPanel>
+      <Border Classes="tm-card">
+        <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
+          <Image Grid.Column="0" Classes="tm-card-icon" Height="16"
+                 Source="avares://TanMenu.Wpf/wwwroot/app-tile.png" />
+          <StackPanel Grid.Column="1" Classes="tm-card-text">
+            <TextBlock Text="TanMenu" Classes="tm-card-title" />
+            <TextBlock x:Name="PublisherText" Classes="tm-card-sub" />
+          </StackPanel>
+          <StackPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2"
+                      Classes="tm-card-expander tm-card-values">
+            <TextBlock x:Name="VersionLine" Classes="tm-card-sub tm-card-value" />
+            <TextBlock x:Name="CopyrightLine" Classes="tm-card-sub tm-card-value" />
+          </StackPanel>
+        </Grid>
+      </Border>
+    </StackPanel>
+  </HeaderedContentControl>
 </UserControl>

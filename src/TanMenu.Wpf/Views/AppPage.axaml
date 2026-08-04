@@ -26,9 +26,10 @@
        tile at the single fixed width that setting had called "小" (a 168 DIP Width Setter on
        TmTileButton); Round 4, item 3 deleted that Setter in turn, so TmTileButton
        (Themes/Fluent2/Launcher.axaml) now sets no Width at all and a tile is as wide as its own
-       icon-plus-label content. Its header comment has the 48 DIP chrome arithmetic and the reason
-       columns still come out uniform — the ABSENCE of a HorizontalAlignment on the tile Button
-       further down this file. -->
+       icon-plus-label content. Its header comment has the chrome arithmetic (43 DIP since Round 7,
+       Task 9 re-derived the tile's padding and this file's icon margin onto Aero's published ladder;
+       it was 48) and the reason columns still come out uniform — the ABSENCE of a HorizontalAlignment
+       on the tile Button further down this file. -->
   <Panel x:Name="Root"
          Background="Transparent">
 
@@ -55,56 +56,70 @@
              tracking is what removes ApplySearchFieldWidth, its three constants and MainWindow's
              ClientSize subscription without adding a sixth re-fit trigger.
 
-             Round 7, Task 1 restored the MINIMUM here and left the field's paint alone. Task 7 has since
-             taken it: Border.tm-searchfield's three states name Aero's own text-box brushes, its padding
-             is on the published ladder and its radius is RadiusControl. What is still Task 9's is the
-             ACCENT UNDERLINE below — a Windows 11 focus form that Windows 7 had no equivalent of — and
-             Launcher.axaml's Border.tm-searchfield.focused block is where that open question is written
-             down. -->
+             Round 7, Task 1 restored the MINIMUM here and left the field's paint alone; Task 7 gave the
+             field Aero's own brushes and ladder; TASK 9 FINISHED IT, and three things changed shape
+             here. The accent underline and the Panel that stacked it over the field are DELETED — a
+             Windows 11 focus form Windows 7 has no equivalent of; Launcher.axaml's
+             Border.tm-searchfield.focused rule carries Aero's own focus pair instead, on this same
+             Border. The magnifier moved from the LEFT end to the RIGHT and gained a second face, the
+             clear "x"; both faces and the published sentence behind them are below. And the field's
+             height floor went 32 -> 23 (PUBLISHED, vis-layout), which is what makes this header 9 DIP
+             shorter than it was. -->
         <Border Classes="tm-header" DockPanel.Dock="Top">
           <Border Classes="tm-searchfield" x:Name="SearchField"
                   Width="320"
                   HorizontalAlignment="Center">
-            <Panel>
-              <DockPanel>
-                <TextBlock DockPanel.Dock="Left" Classes="tm-icon subtle small"
-                           Text="&#xE721;" Margin="0,0,7,0" />
-                <!-- Background and BorderThickness are LOCAL values on purpose: a local value outranks
-                     a style setter for the SAME property on the SAME element, so the TextBox itself
-                     paints nothing over the fill Border.tm-searchfield already draws.
+            <DockPanel>
+              <!-- THE TWO FACES OF THE RIGHT-END AFFORDANCE. PUBLISHED, ctrl-search-boxes
+                   (https://learn.microsoft.com/en-us/windows/win32/uxguide/ctrl-search-boxes): "In
+                   Instant search mode, a clear button appears after the user starts typing; an 'x'
+                   replaces the magnifying glass search symbol. On hover, the 'x' gets a button look
+                   and can be clicked", under a figure captioned "…at the right end of the control".
 
-                     What that does NOT block is a theme rule aimed at a NAMED PART inside the TextBox
-                     control template — a different element, with no local value of its own, whatever
-                     is set here. Under the vendored Aero theme that part is Border#BgElement and the
-                     rules that reach it are :pointerover and :focus. See Launcher.axaml's two
-                     "TextBox.tm-search…/template/ Border#BgElement" rules for what suppresses them and
-                     why the BorderBrush half needs no rule. (Before Round 7 Task 4 the part was
-                     Fluent's Border#PART_BorderElement and the rule was a single :focus one.) -->
-                <TextBox x:Name="SearchBox"
-                         Classes="tm-search"
-                         AutomationProperties.Name="{Binding SearchPlaceholderText}"
-                         Background="Transparent"
-                         BorderThickness="0"
-                         PlaceholderText="{Binding SearchPlaceholderText}"
-                         Text="{Binding Filter, Mode=TwoWay}"
-                         KeyDown="OnSearchKeyDown"
-                         GotFocus="OnSearchFocusChanged"
-                         LostFocus="OnSearchFocusChanged" />
-              </DockPanel>
-              <!-- The focused-TextBox accent underline (Launcher.axaml's own remarks on
-                   Border.tm-searchfield.focused explain why this is a second element rather than a
-                   BorderBrush change): transparent at rest, painted only while SearchField carries the
-                   "focused" class. IsHitTestVisible="False" keeps it from ever stealing a click from the
-                   TextBox it sits on top of — it draws over the DockPanel only because it is the LATER
-                   child in this Panel, not because it needs input. -->
-              <Border Classes="tm-searchfield-focusbar"
-                      IsHitTestVisible="False"
-                      HorizontalAlignment="Stretch"
-                      VerticalAlignment="Bottom"
-                      Height="2"
-                      Margin="1,0,1,1"
-                      CornerRadius="0,0,2,2" />
-            </Panel>
+                   The swap is driven off the TEXT BOX ITSELF rather than off a view-model flag, with
+                   Avalonia's own StringConverters singletons — the same pair, and the same x:Static
+                   form, the vendored TextBox template uses for PART_Watermark's own visibility. That
+                   keeps a purely visual state out of LauncherViewModel and needs no new property to
+                   raise, and it still answers the view model: SearchBox.Text is TwoWay-bound to
+                   Filter, so setting Filter programmatically flips these two exactly as typing does.
+
+                   Both are DockPanel.Dock="Right" and both are declared BEFORE the TextBox, because a
+                   DockPanel gives its LAST child the remaining space and the text box is what should
+                   take it. Only one of the two is ever visible, so the field's layout does not move
+                   when they swap: they are the same box with the same padding. -->
+              <Border DockPanel.Dock="Right" Classes="tm-search-affordance"
+                      IsVisible="{Binding #SearchBox.Text, Converter={x:Static StringConverters.IsNullOrEmpty}}">
+                <TextBlock Classes="tm-icon subtle small" Text="&#xE721;" />
+              </Border>
+              <Border DockPanel.Dock="Right" x:Name="SearchClear"
+                      Classes="tm-search-affordance clickable"
+                      AutomationProperties.Name="{Binding ClearFilterText}"
+                      IsVisible="{Binding #SearchBox.Text, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                      PointerPressed="OnSearchClearPressed">
+                <TextBlock Classes="tm-icon small" Text="&#xE711;" />
+              </Border>
+              <!-- Background and BorderThickness are LOCAL values on purpose: a local value outranks
+                   a style setter for the SAME property on the SAME element, so the TextBox itself
+                   paints nothing over the fill Border.tm-searchfield already draws.
+
+                   What that does NOT block is a theme rule aimed at a NAMED PART inside the TextBox
+                   control template — a different element, with no local value of its own, whatever
+                   is set here. Under the vendored Aero theme that part is Border#BgElement and the
+                   rules that reach it are :pointerover and :focus. See Launcher.axaml's two
+                   "TextBox.tm-search…/template/ Border#BgElement" rules for what suppresses them and
+                   why the BorderBrush half needs no rule. (Before Round 7 Task 4 the part was
+                   Fluent's Border#PART_BorderElement and the rule was a single :focus one.) -->
+              <TextBox x:Name="SearchBox"
+                       Classes="tm-search"
+                       AutomationProperties.Name="{Binding SearchPlaceholderText}"
+                       Background="Transparent"
+                       BorderThickness="0"
+                       PlaceholderText="{Binding SearchPlaceholderText}"
+                       Text="{Binding Filter, Mode=TwoWay}"
+                       KeyDown="OnSearchKeyDown"
+                       GotFocus="OnSearchFocusChanged"
+                       LostFocus="OnSearchFocusChanged" />
+            </DockPanel>
           </Border>
         </Border>
 
@@ -141,10 +156,17 @@
              horizontal row of groups. Only for Available / Downloading / ReadyToRestart. MinWidth is
              deliberate anti-jitter: without it the page's width would change as the "…42%" text grows
              and shrinks during a download. The bottom margin is 0 because the body ScrollViewer's own
-             content margin (SurfacePadding) supplies the gap to whatever renders below. -->
+             content margin (SurfacePadding) supplies the gap to whatever renders below.
+
+             THE TOP MARGIN IS 7, NOT 11, SINCE ROUND 7 TASK 9. It was 16 while the search field lived
+             in the window's title strip and this banner was the first thing in the page; Task 7 put
+             it on the ladder at 11 and Task 9 re-derived WHICH rung, because there is a header above
+             it now and this is a gap between two things on one page rather than a page's top margin.
+             PUBLISHED, vis-layout: 11 is the dialog margin (kept on the two sides, where this banner
+             really is against the page edge) and 7 is "Between related controls". -->
         <Button Classes="tm-update"
                 DockPanel.Dock="Top"
-                Margin="11,11,11,0"
+                Margin="11,7,11,0"
                 IsVisible="{Binding ShowUpdateNotice}"
                 IsEnabled="{Binding !IsUpdateDownloading}"
                 MinWidth="360"
@@ -199,21 +221,32 @@
                  (设置 → 外观 → 每列个数, default 10); a category with no visible items after filtering
                  removes itself.
 
-                 Spacing 12, not the 24 this panel carried before item 4: 12 is the gutter Windows 11
-                 puts between its large side-by-side tiles, and the panels now supply the separation the
-                 wider gap was doing on its own. Halving it also pays for most of the panels' chrome.
-                 The AUTHORED arithmetic is 5 x 22 for the five panels less 4 x 12 given back here, a
-                 net +62 (22 = 12 + 8 of padding plus 2 x 1 of border). That is not what this machine
-                 renders: a 1 DIP stroke LAYS OUT as 2 physical px = 1.3333 DIP at 150 %, the rounding
-                 Launcher.axaml's tm-page-pane border block already records, so a panel really costs
-                 22.6667 per axis and the shipped page grew +65.3333 = 5 x 22.6667 less 4 x 12.
-                 Measured: the fit line went page 1643.3333 to 1708.6667 wide, and the four gaps here
-                 are 18 px each, exactly 12 DIP. Re-derive with the authored 1, not the 1.3333, at
-                 another scale. -->
+                 SPACING 11, PUBLISHED, and it was 12 (Windows 11's gutter between its large
+                 side-by-side tiles) until Round 7, Task 9. https://learn.microsoft.com/en-us/windows/
+                 win32/uxguide/vis-layout gives "Between unrelated controls — 7 / 11", and two
+                 categories are exactly that: 常用工具 and 工具 have nothing to do with each other. It
+                 was 24 before Round 6 item 4 put the panels in; the panels' own outlines supply the
+                 separation the wider gap used to do alone, which is why halving it then did not read
+                 as crowding and why one more DIP off it does not either.
+
+                 WHAT ITEM 4'S OWN ARITHMETIC MEASURED, kept because the mechanism is still live: a
+                 1 DIP stroke LAYS OUT as 2 physical px = 1.3333 DIP at 150 % (the rounding
+                 Launcher.axaml's tm-page-pane border block records), so a panel's chrome costs
+                 1.3333 per side rather than 1, and the five panels' arrival grew the page by
+                 +65.3333 rather than the authored +62 — measured then as page 1643.3333 -> 1708.6667.
+                 Re-derive with the authored 1, not the 1.3333, at another scale. Task 9 moved every
+                 term in that sum (panel padding 12,12,8,8 -> 11,11,6,6, this gap 12 -> 11, the tile's
+                 own chrome 48 -> 43), so the 1708.6667 is history. THE FIT LINE AFTER TASK 9, on the
+                 same 74-item folder at 150 % and at the DEFAULT font, is
+                 "page 1486.6666666666667x508.6666666666667 + chrome 161x31" in Chinese and
+                 "page 1500x508.6666666666667 + chrome 161x31" in English; the window resolves to
+                 1647.6666666666667x568 and 1661x568 DIP. Launcher.axaml's tm-group-panel block carries
+                 the new inset. -->
+
             <ItemsControl IsVisible="{Binding HasVisibleItems}" ItemsSource="{Binding Groups}">
               <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
-                  <StackPanel Orientation="Horizontal" Spacing="12" />
+                  <StackPanel Orientation="Horizontal" Spacing="11" />
                 </ItemsPanelTemplate>
               </ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
@@ -280,9 +313,17 @@
                               </ItemsControl.ItemsPanel>
                               <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:MenuItemVm">
+                                  <!-- The tile grid's own gutter. 4 became 5 in Round 7, Task 9, and
+                                       it moves as one with Border.tm-group-panel's Padding — that
+                                       rule's remark carries the pair and the reason (the visible
+                                       inset stays a uniform 11 on all four sides only if
+                                       padding.right + this = padding.left). PUBLISHED, vis-layout:
+                                       "target regions … should either be touching or have at least
+                                       3 DLUs (5 relative pixels) of space between them". Two tiles
+                                       are two target regions, and 4 was on no ladder at all. -->
                                   <Button Classes="tm-tile"
                                           Theme="{StaticResource TmTileButton}"
-                                          Margin="0,0,4,4"
+                                          Margin="0,0,5,5"
                                           IsEnabled="{Binding !IsDisabled}"
                                           Click="OnItemClick"
                                           PointerEntered="OnItemPointerEntered">
@@ -290,17 +331,32 @@
                                       <!-- The icon slot is always occupied (the build always assigns at
                                            least a fallback), which is why the async icon fill never
                                            reflows the grid. -->
+                                      <!-- 7, not the 10 this carried until Round 7 Task 9. PUBLISHED,
+                                           vis-layout's "Between related controls — 4 / 7"; an icon
+                                           and the label it belongs to are as related as two things
+                                           on one control get. It is a term in the tile's width —
+                                           TmTileButton's header states the whole sum. -->
                                       <Image Classes="tm-tile-icon"
                                              DockPanel.Dock="Left"
                                              Source="{Binding Icon}"
-                                             Margin="0,0,10,0"
+                                             Margin="0,0,7,0"
                                              Stretch="Uniform"
                                              VerticalAlignment="Center" />
                                       <!-- NoWrap and NO TextTrimming: Round 4, item 3 sizes the tile to
                                            this label instead of trimming the label to the tile, so
-                                           there is nothing left for a trimmer to do — measured on the
-                                           running build, all 74 labels' ink ended inside their tile's
-                                           padding box, the tightest with 0.67 DIP to spare. NoWrap is
+                                           there is nothing left for a trimmer to do — RE-MEASURED at
+                                           Round 7 Task 9's tile padding on the same 74-item folder,
+                                           at the DEFAULT font (general.fontFamily = "", the value
+                                           AppConfig ships; a label advance follows the configured
+                                           face, so this reading is void at another one). UI
+                                           Automation, every tile Button's rect against the first Text
+                                           descendant inside it: 74 of 74 labels' ink ends inside their
+                                           tile's padding box, none crosses it, and the tightest slack
+                                           is 0.00 DIP on 计算器 — which is the widest label in its
+                                           column and therefore the one that DEFINES the column's
+                                           width, so 0.00 is the expected reading rather than a near
+                                           miss. Item 3's own reading was 0.67 DIP at the 8 DIP
+                                           padding this task took to 7. NoWrap is
                                            load-bearing twice: it is what makes the label's desired
                                            width a single-line advance, and it keeps every tile the
                                            same height, which is what FindAdjacentTile's sameRow test

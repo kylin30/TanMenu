@@ -124,18 +124,22 @@ public static class AppTheme
         app.Resources.MergedDictionaries.Add(dict);
         _published = dict;
 
-        // THREE KEYS, NOT FIVE, SINCE ROUND 7 TASK 7. AccentTextBrush and TextOnAccentBrush stopped
-        // being published with the two things that would have read them: the first never had a
-        // consumer anywhere in the tree (grep found it only in this file), and the second's only one
-        // was TmAccentButton, the accent-filled default button Task 3 deleted because Windows 7 had
-        // none to imitate. ResolveAccent still RESOLVES all five — Text and OnAccent are part of what
-        // Windows' eight-shade palette means, AppThemeTests asserts on both, and re-deriving them
-        // later would be the same work again — it is only the publication that stops.
+        // TWO KEYS, NOT FIVE, AND BOTH ARE RAW Colors. Round 7 Task 7 dropped AccentTextBrush and
+        // TextOnAccentBrush: the first never had a consumer anywhere in the tree (grep found it only
+        // in this file), and the second's only one was TmAccentButton, the accent-filled default
+        // button Task 3 deleted because Windows 7 had none to imitate. Round 7 Task 9 dropped the
+        // third, AccentDefaultBrush, when it deleted the search field's accent underline — Task 8 had
+        // already deleted the navigation pane's selection pill, and those two were the brush's last
+        // readers. What is left is what Aero actually had a user colour FOR: a frame tint. Both
+        // survivors are Colors rather than Brushes because both consumers are GradientStops (the
+        // caption's glass tint in MainWindow.axaml and the splash card's gradient in
+        // Controls/SplashPanel.axaml), and a GradientStop takes a Color.
+        //
+        // ResolveAccent still RESOLVES all five — Fill, Text and OnAccent are part of what Windows'
+        // eight-shade palette means, AppThemeTests asserts on Fill in five of its seven facts, and
+        // re-deriving them later would be the same work again. It is only the publication that stops.
         static ResourceDictionary Build(AccentSet a) => new()
         {
-            ["AccentDefaultBrush"] = new SolidColorBrush(a.Fill),
-            // Raw Colors as well as brushes: a GradientStop takes a Color (the splash card and the
-            // caption's glass tint, which are the accent's two remaining jobs).
             ["AccentColor"] = a.Gradient,
             ["AccentColorShaded"] = a.GradientShaded,
         };

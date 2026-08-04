@@ -459,12 +459,16 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
+    /// The window's two keys: Ctrl+E (Round 7, Task 9 — see the comment on the branch itself) and
+    /// Escape.
+    /// <para>
     /// Escape reaches here only when focus was NOT inside the search box or <see cref="AppPage"/>'s own
     /// tile grid — e.g. a nav-rail row, or anywhere at all on 设置. Both of those already handle Escape
     /// (and mark it handled) themselves, matching the clear-then-hide behaviour the launcher always had.
     /// Before the rail existed, this window's own OnKeyDown handled Escape identically regardless of
     /// where focus was — calling the SAME view-model method here (rather than an unconditional Hide)
     /// keeps that behaviour rather than merely approximating it, ON 应用.
+    /// </para>
     /// </summary>
     /// <remarks>
     /// On 设置 it dismisses outright instead. <c>HandleSearchEscape</c> is two-stage — a non-empty filter
@@ -476,7 +480,31 @@ public partial class MainWindow : Window
     protected override void OnKeyDown(KeyEventArgs e)
     {
         base.OnKeyDown(e);
-        if (e.Handled || e.Key != Key.Escape)
+        if (e.Handled)
+            return;
+
+        // Ctrl+E — the search accelerator. PUBLISHED,
+        // https://learn.microsoft.com/en-us/windows/win32/uxguide/ctrl-search-boxes: "Assign the
+        // keyboard shortcut for the Search box to be Ctrl+E." (Round 7, Task 9.)
+        //
+        // It lives HERE rather than in AppPage.OnKeyDown because an accelerator that only works when
+        // focus is already inside the page it belongs to is not an accelerator: a key pressed on a
+        // navigation-pane row bubbles to this window, never to AppPage. It is guarded to 应用 because
+        // that is the only page that CONTAINS a search box (Round 6 item 1, made structural by Task
+        // 1) — on 设置 there is nothing to focus and the key is left unhandled rather than made to
+        // navigate, which would be a second behaviour nothing published asks for. The request goes
+        // through PendingFocus like every other one, so ConsumePendingFocus keeps owning the timing.
+        if (e.Key == Key.E && e.KeyModifiers == KeyModifiers.Control)
+        {
+            if (!ReferenceEquals(PageHost.Content, _appPage))
+                return;
+
+            _appPage.ViewModel.PendingFocus = true;
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key != Key.Escape)
             return;
 
         if (ReferenceEquals(PageHost.Content, _appPage))

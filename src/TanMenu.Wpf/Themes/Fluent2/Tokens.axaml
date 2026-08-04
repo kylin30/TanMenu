@@ -99,9 +99,17 @@
                recognisably blue colour, because 10.2:1 against #373737 needs a relative luminance of
                0.85, i.e. a near-white. The value below is the design's literal #6699FF, kept for
                that reason and not for the reason the design gave; what it actually delivers is 4.3:1,
-               which clears WCAG's 3:1 large-text bar and misses the 4.5:1 body bar by 0.2. Task 9
-               moves these headings onto an Aero group box, which changes the surface and therefore
-               the number; re-measure there rather than quoting this one afterwards. -->
+               which clears WCAG's 3:1 large-text bar and misses the 4.5:1 body bar by 0.2.
+
+               TASK 9 PUT THESE HEADINGS INSIDE AN AERO GROUP BOX AND THE NUMBER DID NOT MOVE, which
+               is worth stating because Task 7 left a note here expecting it to. The vendored
+               HeaderedContentControl theme sets Background="Transparent" and its header presenter
+               sets it again, so a group head still sits on the window's own SurfaceBaseBrush and not
+               on a surface of the box's. Re-measured on the shipped build, PrintWindow flag 2 at
+               150 %, the 外观 head's extreme ink against the modal background of its own rect:
+               ink (0,51,153) on (252,252,252) = 10.59:1 Light, ink (102,153,255) on (55,55,55) =
+               4.29:1 Dark — the same two figures Task 7 recorded. A card title on the same capture
+               reads 20.47:1 and 11.90:1. -->
           <SolidColorBrush x:Key="HeadingBrush" Color="#003399" />
 
           <!-- Accent: design-time defaults only. Services/AppTheme.PublishAccent overwrites these in
@@ -110,14 +118,21 @@
                anywhere in the tree, and TextOnAccentBrush's only one was TmAccentButton, which
                Task 3 deleted with the accent-filled default button Windows 7 never had.
 
+               ROUND 7, TASK 9 CUT THE THIRD, AccentDefaultBrush, and it is the last flat accent fill
+               this app had. Task 7's own note here said it kept "two hairline consumers in
+               Launcher.axaml — the rail's selection pill and the search field's focus underline —
+               which Tasks 8 and 9 own": Task 8 deleted the pill with TmNavRowItem's template, Task 9
+               deleted the underline (Border.tm-searchfield-focusbar) because Windows 7 signalled
+               focus in a text field by repainting the field, not by drawing an accent bar under it.
+               grep then found the key in this file, in AppTheme.Build and in four comments, and in no
+               live lookup anywhere — so it stops being defined and stops being published.
+
                The accent has TWO jobs left and both are frame-or-identity rather than fill: the
                caption's glass tint (MainWindow.axaml) and the splash card's gradient
-               (Controls/SplashPanel.axaml). Aero's user colour WAS DwmGetColorizationColor, a frame
-               colour, so this is the role restored rather than a leftover. AccentDefaultBrush keeps
-               two hairline consumers in Launcher.axaml — the rail's selection pill and the search
-               field's focus underline — which Tasks 8 and 9 own. -->
-          <SolidColorBrush x:Key="AccentDefaultBrush" Color="#0078D4" />
-          <!-- Raw Colors too: a GradientStop takes a Color, not a Brush. -->
+               (Controls/SplashPanel.axaml). Both take a raw Color, because a GradientStop does. Aero's
+               user colour WAS DwmGetColorizationColor, a frame colour, so this is the role restored
+               rather than a leftover — and with the brush gone, the two keys below are exactly those
+               two jobs and nothing else. -->
           <Color x:Key="AccentColor">#0078D4</Color>
           <Color x:Key="AccentColorShaded">#00629F</Color>
 
@@ -280,7 +295,6 @@
                value does and does not achieve. -->
           <SolidColorBrush x:Key="HeadingBrush" Color="#6699FF" />
 
-          <SolidColorBrush x:Key="AccentDefaultBrush" Color="#4CC2FF" />
           <Color x:Key="AccentColor">#4CC2FF</Color>
           <Color x:Key="AccentColorShaded">#3E9FD1</Color>
 

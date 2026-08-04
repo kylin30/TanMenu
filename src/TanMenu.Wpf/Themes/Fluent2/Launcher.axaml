@@ -82,17 +82,41 @@
          There is deliberately NO Width Setter here any more. Round 3, Task 4 removed the 小/中/大
          button-size setting and left every tile at one fixed 168 DIP; Round 4, item 3 deleted that
          fixed width too, because it was what forced long labels through TextTrimming. A tile is now
-         as wide as its own content: 2 DIP of border + 16 DIP of Padding (both below) + the 20 DIP
-         icon box (Image.tm-tile-icon further down) + the icon's own 10 DIP right margin
-         (Views/AppPage.axaml) + the label's single-line advance = 48 DIP of chrome plus the label.
+         as wide as its own content: 2 DIP of border + 14 DIP of Padding (both below) + the 20 DIP
+         icon box (Image.tm-tile-icon further down) + the icon's own 7 DIP right margin
+         (Views/AppPage.axaml) + the label's single-line advance = 43 DIP of chrome plus the label.
+
+         THAT ARITHMETIC READ 48 UNTIL ROUND 7, TASK 9, and the two terms that moved are the two this
+         file and the 应用 page were still stating off Aero's published ladder. Padding was 8,7 and is
+         7,5; the icon's right margin was 10 and is 7. Both new numbers are PUBLISHED by
+         https://learn.microsoft.com/en-us/windows/win32/uxguide/vis-layout — 7 is "Between related
+         controls" (an icon and the label it belongs to; and the tile's own edge to its content), 5 is
+         the minimum separation between two target regions. The 20 DIP icon box is NOT re-derived and
+         stays where Round 3 Task 4 left it: vis-layout's only published figure near it is "A control
+         size of 16x16 relative pixels is a good minimum size for any input device", which 20 clears,
+         and shrinking the app's most-repeated mark to a published FLOOR would be reading a minimum as
+         a target. The type term is FontSizeBody, 12 since Task 7.
+
+         VIS-LAYOUT'S 75 x 23 COMMAND-BUTTON MINIMUM IS DELIBERATELY NOT APPLIED HERE, and the number
+         is recorded so nobody re-derives it later and thinks it was missed. That rule is for a command
+         button — the OK/Cancel/Apply kind, whose width is a legibility floor for a one-or-two-word
+         verb. A tile is an icon-plus-label launcher, nearer a large-icon list-view item than a command
+         button, and a 75 DIP floor would widen exactly the narrowest categories (the shipped build's
+         narrowest column measured 118.67 DIP, so the floor would bind on nothing today and only ever
+         bind on a short label somebody adds later) for no published reason at all. The 23 DIP half is
+         a HEIGHT floor for a text-line control and this tile is 32 DIP tall, so it never bound.
 
          What keeps that from reading as a ragged right edge is the ABSENCE of a HorizontalAlignment
          on the tile Button, so do not add one: each tile stretches to the width of the column
          StackPanel it sits in, and a vertical StackPanel is as wide as its widest child, so a column
          comes out uniform and only differs from the next column. Measured on the running build with
-         UI Automation bounding rectangles (Round 4, item 3, on a 74-item folder): exactly one width
-         and one right edge per column, and every one of the nine columns a different width, from
-         118.67 to 204 DIP.
+         UI Automation bounding rectangles (Round 4, item 3, on a 74-item folder; RE-MEASURED on the
+         same folder at Round 7 Task 9's metrics, AT THE DEFAULT FONT — general.fontFamily = "", which
+         is what AppConfig ships; a column's width is a label advance, so it follows the configured
+         face and every number here is void at another one): exactly one width and one right edge per
+         column, and the nine columns take EIGHT distinct widths — 102.67 / 117.33 / 124 / 124 /
+         148.67 / 152 / 160 / 172 / 176 DIP, two of them coinciding at 124. Item 3 read 118.67 to 204
+         and called all nine distinct; both halves of that were a different font's and a wider tile's.
 
          A MinWidth and a MaxWidth are equally deliberately absent: MaxWidth would bring the ellipsis
          straight back, and a MinWidth floor would only re-pad the columns that came out short. The
@@ -107,7 +131,7 @@
       <Setter Property="BorderThickness" Value="1" />
       <Setter Property="CornerRadius" Value="{DynamicResource RadiusControl}" />
       <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
-      <Setter Property="Padding" Value="8,7" />
+      <Setter Property="Padding" Value="7,5" />
       <Setter Property="HorizontalContentAlignment" Value="Stretch" />
       <Setter Property="VerticalContentAlignment" Value="Center" />
       <Setter Property="Cursor" Value="Hand" />
@@ -474,8 +498,12 @@
        hairline and is StrokeDividerBrush, which is now the Aero group-box outline — a divider and a
        group-box edge are one hairline in a Windows 7 dialog. The padding was 12,10 (Fluent's ramp)
        and is 11,7: PUBLISHED, vis-layout's "Dialog box margins — 7 DLU / 11 relative pixels" for the
-       horizontal component and "Between related controls — 4 / 7" for the vertical. The field's own
-       Aero treatment is still Task 9's. -->
+       horizontal component and "Between related controls — 4 / 7" for the vertical.
+
+       THIS RULE ITSELF IS UNCHANGED BY TASK 9 and the header is measurably shorter anyway: the FIELD
+       inside it went from a 32 DIP minimum to the published 23, so the whole strip is 9 DIP shorter
+       without a number here moving. Task 9's own changes are on Border.tm-searchfield and on the
+       right-end affordance below it. -->
 
   <Style Selector="Border.tm-header">
     <Setter Property="BorderThickness" Value="0,0,0,1" />
@@ -527,13 +555,21 @@
        local Transparent — at rest. The two rules that undo it are near the tm-search style below,
        beside the write-up of what Aero actually repaints and what that measured. -->
 
+  <!-- ROUND 7, TASK 9: MinHeight 32 -> 23, and it is the single most Aero-legible metric on the page.
+       PUBLISHED, https://learn.microsoft.com/en-us/windows/win32/uxguide/vis-layout, which gives one
+       height for the whole family of text-line controls: "combo box / drop-down / text box height 23".
+       32 was Windows 11's touch-friendly field and nothing published ever asked for it. MinHeight
+       rather than Height, for the same reason TmButton uses one: the on-screen height still tracks the
+       OS text-scale setting instead of being a hardcoded pixel box. TextBox.tm-search's own
+       MinHeight="30" is deleted with it — a 30 DIP floor inside a 23 DIP field would have held the
+       field at 30 and the change would have measured as a no-op. -->
   <Style Selector="Border.tm-searchfield">
     <Setter Property="CornerRadius" Value="{DynamicResource RadiusControl}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="BorderBrush" Value="{DynamicResource AeroTextBoxIdleBorderBrush}" />
     <Setter Property="Background" Value="{DynamicResource AeroTextBoxIdleBackground}" />
-    <Setter Property="Padding" Value="7,0" />
-    <Setter Property="MinHeight" Value="32" />
+    <Setter Property="Padding" Value="7,0,0,0" />
+    <Setter Property="MinHeight" Value="23" />
   </Style>
   <!-- Round 7, Task 7: this Border draws the field, so its three states now name Aero's own text-box
        brushes rather than the deleted SurfaceLayer*/StrokeControl/TextTertiary tokens. Aero's idle
@@ -545,30 +581,25 @@
   <Style Selector="Border.tm-searchfield:pointerover">
     <Setter Property="BorderBrush" Value="{DynamicResource AeroTextBoxHoverBorderBrush}" />
   </Style>
-  <!-- The focus signal is a fill change plus the accent underline below, and NOT a full ring around
-       the field: the resting border stays on all four sides (this rule leaves BorderBrush and
-       BorderThickness alone). The 2 px underline on the bottom edge only is a separate element —
-       Border.tm-searchfield-focusbar, inside SearchField in Views/AppPage.axaml — because a Border
-       cannot draw a differently-coloured thickness on one side while keeping the other three at the
-       ambient resting colour: BorderBrush is a single brush for every side. Round 3 Task 1 reached
-       that shape against Windows 11; Round 7 Task 7 kept it and swapped the fill to Aero's own focus
-       background. Task 9 owns whether the accent underline survives the conversion at all. -->
+  <!-- THE ACCENT UNDERLINE IS GONE, ROUND 7 TASK 9, and so is the element that drew it. It was a
+       2 DIP bar pinned to the field's bottom edge (Border.tm-searchfield-focusbar in
+       Views/AppPage.axaml) plus the two rules here that painted it AccentDefaultBrush while the field
+       carried the "focused" class — a Windows 11 focus form that Windows 7 has no equivalent of. It
+       existed because a Border cannot draw one edge in a different brush from the other three; Aero
+       does not want one edge in a different brush, it wants the whole frame repainted, which a Border
+       CAN do.
+
+       So this rule is now Aero's own focus signal, on the one element that can draw it: the SAME pair
+       of brushes the vendored TextBox's ^:focus block sets on its Border#BgElement
+       (Themes/Aero/ControlStyles/TextBox.axaml — AeroTextBoxFocusBackground and
+       AeroTextBoxFocusBorderBrush, verbatim). The BorderBrush half is the part that could not be
+       delegated to the TextBox: Views/AppPage.axaml gives the inner box a local BorderThickness="0"
+       so that its border cannot draw at all, and Task 4 measured the consequence — the two
+       /template/ rules further down exist to suppress the half that CAN draw. Hoisting the pair to
+       this Border is what puts the whole signal back on the shape the user sees as the field. -->
   <Style Selector="Border.tm-searchfield.focused">
     <Setter Property="Background" Value="{DynamicResource AeroTextBoxFocusBackground}" />
-  </Style>
-  <!-- The bar itself: transparent at rest, so it takes no visual space and needs no separate
-       Opacity/IsVisible toggle. IsHitTestVisible="False" (set in Views/AppPage.axaml, not here — a
-       ControlTheme/Style cannot express it any earlier than the element's own local markup) keeps it
-       from ever intercepting a click meant for the TextBox underneath. CornerRadius "0,0,2,2" is
-       RadiusControlInner (RadiusControl minus one) on the bottom corners only, and Margin "1,0,1,1"
-       insets it a hairline inside SearchField's own 1 px border and radius — the same "sit just inside
-       the parent's border" idea RadiusControlInner already documents in Tokens.axaml, reused here
-       instead of a second literal. -->
-  <Style Selector="Border.tm-searchfield-focusbar">
-    <Setter Property="Background" Value="Transparent" />
-  </Style>
-  <Style Selector="Border.tm-searchfield.focused Border.tm-searchfield-focusbar">
-    <Setter Property="Background" Value="{DynamicResource AccentDefaultBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource AeroTextBoxFocusBorderBrush}" />
   </Style>
   <!-- There is deliberately NO :disabled rule for this field. Round 6, item 1 established that on a
        page that cannot be searched the field is not shown at all rather than greyed out; Round 7,
@@ -577,13 +608,70 @@
        Either way nothing in this app puts this field into :disabled and a rule for that state would
        have no producer left. -->
 
+  <!-- ══ The right-end search affordance ══════════════════════════════════════════════════════
+       ROUND 7, TASK 9 MOVED THE GLYPH FROM THE LEFT END TO THE RIGHT AND GAVE IT A SECOND FACE.
+       PUBLISHED, https://learn.microsoft.com/en-us/windows/win32/uxguide/ctrl-search-boxes, verbatim:
+       "In Instant search mode, a clear button appears after the user starts typing; an 'x' replaces
+       the magnifying glass search symbol. On hover, the 'x' gets a button look and can be clicked",
+       under a figure captioned "…at the right end of the control". All three clauses are implemented:
+       the glyph swaps on Filter going non-empty (Views/AppPage.axaml binds both IsVisible states to
+       the same view-model flag), the hover fill below is the button look, and OnSearchClearPressed
+       clears the filter and puts focus back in the box.
+
+       IT IS A Border + TextBlock, NOT A Button, and that is a sizing decision rather than a shortcut:
+       every Button theme in this app carries a MinHeight (32 on TmButton) or a fixed 32x32 box
+       (TmIconButton), and either would hold the 23 DIP field open to 32 and undo the metric this task
+       exists to change. Border.tm-section-head is the same pattern on the same page, for the same
+       reason, and this rule deliberately names the same hover brush.
+
+       THE MAGNIFIER FACE TAKES NO HOVER FILL, because it is not a button — it is the label of an
+       empty search box, which is what tm-icon.subtle is for. The hover rule below is scoped to the
+       clear face by the "clickable" class, exactly as Border.tm-section-head.clickable is.
+
+       THE FIELD'S RIGHT PADDING IS 0 SO THAT THIS ONE IS THE ONLY RIGHT INSET (Border.tm-searchfield
+       above reads 7,0,0,0). Two paddings in series would have put 12 DIP of air right of the glyph in
+       a 23 DIP box, and it would have held the hover capsule 7 DIP off the field's inner edge, where
+       it reads as a floating pill rather than as the end of the control. 0 is on the ladder: "target
+       regions … should either be touching or have at least 3 DLUs" — this one touches. -->
+  <Style Selector="Border.tm-search-affordance">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="CornerRadius" Value="{DynamicResource RadiusControlInner}" />
+    <Setter Property="Padding" Value="5,0" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Border.tm-search-affordance.clickable">
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+  <Style Selector="Border.tm-search-affordance.clickable:pointerover">
+    <Setter Property="Background" Value="{DynamicResource AeroListBoxItemHoverBackground}" />
+  </Style>
+
   <Style Selector="TextBox.tm-search">
     <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
     <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
     <Setter Property="CaretBrush" Value="{DynamicResource TextPrimaryBrush}" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
-    <Setter Property="MinHeight" Value="30" />
     <Setter Property="Padding" Value="0" />
+  </Style>
+  <!-- THE PROMPT IS ITALIC AND THAT IS THE WHOLE OF IT. PUBLISHED,
+       https://learn.microsoft.com/en-us/windows/win32/uxguide/ctrl-text-boxes: "Draw the prompt text
+       in italic gray". The grey half is already there — the vendored template gives PART_Watermark
+       Opacity="0.5" over the box's own foreground — so only the face is stated here.
+
+       THE SAME PAGE ALSO SAYS the prompt "should disappear once users click in or tab into the text
+       box", with the exception that "If the text box has default input focus, the prompt is
+       displayed, and it disappears once the user starts typing." Avalonia's PlaceholderText
+       disappears on TEXT, not on focus, which is the EXCEPTION's behaviour rather than the rule's.
+       This field is the exception: the launcher focuses it on every summon (MainWindow's
+       ConsumePendingFocus), so the common path coincides exactly and the two diverge only after a
+       tab-away-and-back with the box still empty. WE ACCEPT THAT DIVERGENCE rather than build a
+       second element bound to IsFocused-or-HasText to fix a case nobody reaches.
+
+       PART_Watermark is declared by Themes/Aero/ControlStyles/TextBox.axaml's own template, so this
+       selector is live rather than dead — ShellConstantTests.NoTemplatePartSelector_… is what keeps
+       that true. -->
+  <Style Selector="TextBox.tm-search /template/ TextBlock#PART_Watermark">
+    <Setter Property="FontStyle" Value="Italic" />
   </Style>
   <!-- There is deliberately no ":disabled" companion to the rule above either. It used to repaint
        Foreground and PlaceholderForeground to TextDisabledBrush, because the Foreground set above at
@@ -615,17 +703,17 @@
        the border-brush half of the signal cannot draw at all on this field, because neither Aero
        rule sets BorderThickness and the local 0 therefore still holds. Deleting them would leave
        only the background half — an opaque rectangle covering the TextBox's own rect but not the
-       icon or Border.tm-searchfield's 10 DIP padding, i.e. a lighter block inset inside the field.
+       icon or Border.tm-searchfield's left padding, i.e. a lighter block inset inside the field.
 
        Only Background is put back, and only at the two states that take it: BorderBrush is left to
        Aero, since at BorderThickness 0 it paints nothing, and adding a setter for it would be a rule
-       with no pixels behind it. Border.tm-searchfield.focused stays the ONLY focus signal that
+       with no pixels behind it. Border.tm-searchfield's own rules stay the ONLY focus signal that
        reaches the screen, which is the conclusion Round 3 Task 1 reached and this keeps.
 
-       MEASURED, this build against one with these two rules deleted. PrintWindow flag 2, 150 %
-       scale, the field focused (the app focuses it on summon, so this is its everyday state). Three
-       samples on one row through the middle of the field: one in its own 10 DIP left padding, two
-       inside the TextBox's rect.
+       MEASURED AT ROUND 7 TASK 4 (87dd54f), this build against one with these two rules deleted.
+       PrintWindow flag 2, 150 % scale, the field focused (the app focuses it on summon, so this is
+       its everyday state). Three samples on one row through the middle of the field: one in the
+       field's own left padding, two inside the TextBox's rect.
 
          DARK, rules deleted : padding (49,49,49)   interior (93,93,93) (93,93,93)
          DARK, rules present : padding (49,49,49)   interior (49,49,49) (49,49,49)
@@ -633,10 +721,25 @@
 
        (93,93,93) is AeroTextBoxFocusBackground's Dark value exactly — an opaque block covering the
        TextBox's rect and stopping at the padding, which is what "a lighter rectangle inset inside
-       the field" looks like when you sample it. LIGHT HIDES IT COMPLETELY: that token's Light value
-       is white and the field already renders white, so a Light-only check would have passed a build
-       that is visibly wrong in Dark. The accent underline reads (0,103,192) Light / (76,194,255)
-       Dark across 3 physical rows = 2 DIP, unchanged by any of this. -->
+       the field" looks like when you sample it. LIGHT HID IT COMPLETELY: that token's Light value is
+       white and the field already rendered white, so a Light-only check would have passed a build
+       that was visibly wrong in Dark.
+
+       ROUND 7 TASK 9 CHANGED WHAT THAT A/B WOULD NOW MEASURE, AND SAYING SO IS THE POINT OF THIS
+       PARAGRAPH. Task 9 gave Border.tm-searchfield.focused a BorderBrush as well as a Background —
+       Aero's own focus PAIR, hoisted onto the element that can draw both — so the whole field, its
+       padding included, is AeroTextBoxFocusBackground while it has focus. Re-measured on this build,
+       same instrument, one row through the field's middle at the 7 DIP left padding and inside the
+       TextBox's rect: DARK reads (93,93,93) at BOTH, LIGHT (255,255,255) at both. The :focus half of
+       the suppression below therefore has no pixels of its OWN left: whatever it hides is now the
+       same colour as what surrounds it, in both variants.
+
+       IT IS KEPT ANYWAY, and not as decoration. The :pointerover half is still live and still
+       different — Aero repaints BgElement to AeroTextBoxHoverBackground, which is NOT the focus
+       token, so a hovered field would still show the inset block — and the two states are one
+       mechanism written as two selectors because Avalonia matches them independently. The
+       :pointerover half could not be exercised on this machine: there is no mouse here, and no
+       synthetic path sets :pointerover. That is stated rather than glossed. -->
 
   <Style Selector="TextBox.tm-search:pointerover /template/ Border#BgElement">
     <Setter Property="Background" Value="Transparent" />
@@ -652,7 +755,8 @@
 
        Round 4, item 3 then deleted TmTileButton's own Width Setter, which makes this 20x20 more
        load-bearing than it looks — it is no longer just how big the icon draws, it is a term in every
-       tile's WIDTH (48 DIP of chrome = 2 border + 16 padding + 20 here + 10 icon margin). TmTileButton
+       tile's WIDTH (43 DIP of chrome = 2 border + 14 padding + 20 here + 7 icon margin, Round 7 Task 9;
+       it was 48 = 2 + 16 + 20 + 10). TmTileButton
        above still carries the FontSize, the other term the label's advance depends on. Note that this
        is a class-scoped style, i.e. a FrameType.Style frame that a logical-tree detach drops, whereas
        TmTileButton is an element-local theme frame that survives one — see MainWindow.RefitToContent's
@@ -1001,8 +1105,13 @@
        horizontal StackPanel a child at the default Stretch is arranged to the row's height, so every
        panel Border comes out as tall as the tallest category; the inner StackPanel's Top then keeps
        each heading and tile grid at the top of its own panel and leaves the slack at the bottom of the
-       shorter ones. Ragged panels were the alternative and were rejected: measured today the five
-       categories are 231.33 / 431.33 / 431.33 / 271.33 / 271.33 DIP, and five bordered boxes of five
+       shorter ones. Ragged panels were the alternative and were rejected: on the 74-item folder, at the
+       DEFAULT font, the five categories' own content heights are 226 / 422.67 / 422.67 / 265.33 /
+       265.33 DIP (Round 7 Task 9 — a 34.67 DIP heading block read off the capture as the gap from the
+       panel's content top to the first tile's top, plus the tallest column's measured span,
+       191.33 / 388 / 230.67 DIP for 5 / 10 / 6 tiles at the measured 39.33 DIP pitch; item 4 read
+       231.33 / 431.33 / 431.33 / 271.33 / 271.33 at the old 40 DIP pitch), and five
+       bordered boxes of five
        different heights side by side read as an error, where Windows 11 Settings' own large
        side-by-side tiles are equal height. It costs nothing in the fit, because Stretch changes the
        ARRANGE and the panel's DESIRED height is still its own content — WindowHost.FitToContent
@@ -1033,17 +1142,27 @@
        bought by the outline instead. The tile inside is no longer a translucent outline either — it
        is an opaque Aero command button, so nothing here has to make it visible.
 
-       Task 9 owns this panel's final form: the design gives the 应用 page its own task, and the
-       vendored ControlStyles/HeaderedContentControl.axaml — the real Aero group box, with its label
-       notched into the top edge — lands there. This rule is the token-layer half of the change and
-       says so rather than pretending to be the finished object.
+       ROUND 7, TASK 9 FINISHED IT, AND DELIBERATELY DID NOT MAKE IT A HeaderedContentControl. That
+       control — the vendored ControlStyles/HeaderedContentControl.axaml, with its label notched into
+       the top edge — landed in the same task and the 设置 page's six groups took it. A category panel
+       did not, and the reason is in this page's own markup rather than in taste: the heading here is a
+       SEPARATE, INTERACTIVE, FILTERABLE element (Border.tm-section-head — clickable when the category
+       is backed by a real folder, with a hover fill and a fade-in glyph of its own), and a group box's
+       Header slot is a static presenter clipped to the notch the outline is cut for. Putting a
+       clickable target inside that notch would give it a hit rect the size of the gap in a line. So
+       the panel stays a hand-authored Border with the same paint the group box has — AeroGroupBoxBorderBrush
+       at the control radius, no fill — and the heading stays where the user can press it.
 
-       PADDING 12,12,8,8 is UNCHANGED and is deliberately NOT re-derived onto the 5/7/11 ladder here.
-       It is a UNIFORM 12 DIP visible inset whose asymmetry corrects for the tile grid's own
-       Margin="0,0,4,4" (AppPage.axaml) — measured on the running build, where the single-column
-       常用工具 group reports 122.67 DIP against its tile's 118.67, and the 工具 group reports
-       431.33 = 31.33 + 10 x (36 + 4). Both terms of that correction live on the 应用 page, so moving
-       one without the other would break the inset; Task 9 moves the pair.
+       PADDING 12,12,8,8 BECAME 11,11,6,6, and the pair it belongs to moved with it: the tile grid's
+       Margin="0,0,4,4" (AppPage.axaml) became 0,0,5,5. The asymmetry is what makes the VISIBLE inset
+       uniform, since every tile carries its own right/bottom gutter and the last one in each direction
+       leaves that gutter inside the panel: 11 on the left and top, 6 + 5 = 11 on the right and bottom.
+       11 is PUBLISHED (vis-layout, "Dialog box margins — 7 DLU / 11 relative pixels on all sides") and
+       5 is PUBLISHED on the same page ("target regions … should either be touching or have at least
+       3 DLUs (5 relative pixels) of space between them" — two tiles are two target regions). 6 is on no
+       ladder and is not offered as a rung: it is stated as 11 − 5, exactly the way RadiusControlInner
+       is stated as RadiusControl − 1 in Tokens.axaml. Both terms live on the 应用 page, so they move
+       together or the inset breaks.
 
        NOT Border.tm-card, though the anatomy looks similar. tm-card encodes a specific 设置 row — its
        Border must wrap one Auto,*,Auto Grid holding exactly one tm-card-title and one tm-card-sub, and
@@ -1056,7 +1175,7 @@
     <Setter Property="BorderBrush" Value="{DynamicResource StrokeControlBrush}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="{DynamicResource RadiusControl}" />
-    <Setter Property="Padding" Value="12,12,8,8" />
+    <Setter Property="Padding" Value="11,11,6,6" />
   </Style>
 
   <!-- ══ 设置 rows ════════════════════════════════════════════════════════════════════════════
@@ -1071,20 +1190,23 @@
        class NAME stays tm-card, because four SettingsRowTests facts and six card files are written
        against it and renaming it would be churn with no pixels behind it.
 
-       The group box that is supposed to be under these rows is Task 9's: the design vendors
-       ControlStyles/HeaderedContentControl.axaml there. Until it lands a row sits directly on the
-       window's client surface, which is opaque AeroWindowBackground (see the content-pane block
-       above), so the row is legible on its own — that was the gate on this task and it is measured in
-       the Round 7 Task 7 report rather than asserted here.
+       ROUND 7, TASK 9 PUT THE GROUP BOX UNDER THEM, which is the other half of that sentence and the
+       reason the horizontal padding below is now 0. Between Task 7 and Task 9 a row sat directly on
+       the window's client surface (opaque AeroWindowBackground — see the content-pane block above)
+       and its own 11 DIP left inset was the only thing holding it off the page edge. The group box
+       supplies that inset now, as its Padding, and it is the same published 11; leaving a second one
+       here would have indented every row 22 DIP inside its box for no stated reason. The VERTICAL 7
+       stays and is the row's own, because the box has no opinion about the gap between two rows.
 
-       PADDING 16,12 became 11,7 and MARGIN 0,0,0,4 became 0,0,0,5, all three PUBLISHED by
+       PADDING 16,12 became 11,7 in Task 7 and 11 became 0 in Task 9; MARGIN 0,0,0,4 became 0,0,0,5.
+       Everything still on the ladder is PUBLISHED by
        https://learn.microsoft.com/en-us/windows/win32/uxguide/vis-layout: 11 relative pixels is the
-       dialog margin, 7 is "between related controls", and 5 is the minimum separation two target
-       regions may have without touching. -->
+       dialog margin (now spent by the group box), 7 is "between related controls", and 5 is the
+       minimum separation two target regions may have without touching. -->
   <Style Selector="Border.tm-card">
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderThickness" Value="0" />
-    <Setter Property="Padding" Value="11,7" />
+    <Setter Property="Padding" Value="0,7" />
     <Setter Property="Margin" Value="0,0,0,5" />
   </Style>
   <!-- Round 5, item 3 pinned BOTH classes' LineHeight, so a title-over-subtitle header block always
@@ -1188,26 +1310,42 @@
        push the trailing controls past the visible edge. That mechanism was measured when a path line
        lived in column 1, BESIDE those controls. Round 5 moved every value line onto a Grid.Row="1"
        ColumnSpan="2" expansion row, and it does not reach there — re-measured rather than reasoned:
-       with the Setter deleted and DataPathText fed a ~250-character path still ellipsized at 1182.00 DIP
-       on the widest row this page has — so at least twice the row it sits on below — at the app's own
-       floor (then MainWindow's MinWidth="760"; SetWindowPos
-       clamped at GetWindowRect 1162 px = 760 DIP client, card 664.00 DIP, content box 629.33, expansion
-       span 599.33 — Round 7, Task 8 moved the floor to a 872 DIP WINDOW, which is the SAME 711 DIP
-       content pane and therefore the same 664.00 DIP card and the same three figures below it; that is
-       exactly why the minimum moved by the pane's own 112 DIP rather than staying at 760) in BOTH
-       languages: every card still measures 664.00 DIP with unchanged heights, every
-       trailing control still lands on the content right edge (0.00 DIP over; 12.00 on the five toggle
-       rows, the documented tm-card-toggle overhang), and SettingsScroll still reports
-       HorizontallyScrollable=False with a vertical ScrollBar as its only one. It cannot reach there:
-       SettingsPage's ScrollViewer never enables horizontal scrolling, so ScrollContentPresenter measures
-       CardStack against the real viewport width, the card Border stretches to it, and a spanning child's
-       desired width has nowhere to inflate into.
+       with the Setter deleted and DataPathText fed a ~250-character path, still ellipsized on the
+       widest row this page has, at the app's own floor. THE MECHANISM is what carries this and it has
+       not moved: SettingsPage's ScrollViewer never enables horizontal scrolling, so
+       ScrollContentPresenter measures CardStack against the real viewport width, everything under it
+       stretches to that, and a spanning child's desired width has nowhere to inflate into.
+
+       THE NUMBERS HAVE MOVED THREE TIMES AND ARE STATED WITH THE ROUND AND THE CONFIGURATION THAT
+       READ THEM, because two rounds re-derived the geometry around them and one of those left this
+       paragraph quoting figures its own build no longer produced.
+
+         Round 5, at MinWidth="760": GetWindowRect 1162 px = 760 DIP client, card 664.00 DIP,
+           content box 629.33, expansion span 599.33.
+         Round 7 Task 7 re-derived the padding (16,12 -> 11,7) and CardStack's margin (24 -> 22) and
+           did not re-read them; Round 7 Task 8 moved the floor to a 872 DIP WINDOW, which is the SAME
+           711 DIP content pane — that is exactly why the minimum moved by the pane's own 112 DIP
+           rather than staying at 760 — and inherited the three figures rather than re-reading them.
+         Round 7 Task 9, MEASURED on the shipped build at the 872 DIP floor, at the DEFAULT font
+           (general.fontFamily = "", which is what AppConfig ships and what a sandbox seeded from the
+           portable config does NOT have), in BOTH languages, with every element SCROLLED INTO VIEW
+           before its rect was read — Avalonia's UIA peers hand back a stale rect for anything outside
+           this ScrollViewer's viewport, and the first pass of this re-measurement reported four
+           different strings at one identical width because of it:
+             content pane 711 DIP · SettingsScroll 712 DIP · header cell (column 1) 393.33 DIP ·
+             EXPANSION SPAN 624 DIP · SettingsScroll HorizontallyScrollable=False,
+             VerticallyScrollable=True · the four trailing controls all 220 DIP and all ending on one
+             x (3874 zh / 3864 en).
+           The card itself has no UIA element of its own, so its outer width is read off the capture
+           instead: the group box's outline measures 1000 px = 666.67 DIP, which is CardStack's
+           711 − 2×22.
 
        What the bound did cost was visible: DataPathText sat clamped at 259.33 DIP and already ellipsized
        (258 DIP of ink) on a row measured at 1185.33 DIP at the app's fitted width — some 925 DIP of
-       empty space immediately right of a truncated path. That same real path measures 522.67 DIP
-       untrimmed and now renders whole. It still ellipsizes when the row genuinely runs out (591.33 DIP
-       of the probe path at the floor), which is what the trimming is for.
+       empty space immediately right of a truncated path (Round 5's reading, at Round 5's geometry).
+       That same real path renders whole now, and it still ellipsizes when the row genuinely runs out:
+       at the floor DataPathText measures the full 624 DIP span on one 16 DIP line, in both languages,
+       which is what the trimming is for.
 
        HorizontalAlignment="Left" STAYS, but its job changed with the bound's removal. It is no longer
        what stops the accidental centring — Avalonia 12.1.0's Layoutable.ArrangeCore clamps the arranged
@@ -1216,10 +1354,11 @@
        exactly what put the two folder rows' path lines 384.67 and 456.67 DIP right of their own titles
        on the shipped build. With no MaxWidth there is nothing to centre. What Left does now is keep the
        element's bounds equal to its TEXT: a Stretch line arranges to the whole span instead — measured
-       against UpdateHelpText, a plain tm-card-sub on the same kind of row, which reports 1185.33 DIP
-       fitted and 599.33 at the floor, the full span both times — which would spread the two path lines'
-       ToolTip across the empty width beside them. The centring mechanism is separately load-bearing in
-       SettingsPage.axaml, which uses it deliberately to centre CardStack at its own cap.
+       against UpdateHelpText, a plain tm-card-sub on the same kind of row, which reports the full
+       624 DIP span at the floor in both languages (Round 7 Task 9, default font, scrolled into view;
+       Round 5 read 1185.33 fitted and 599.33 at its own narrower floor) — which would spread the two
+       path lines' ToolTip across the empty width beside them. The centring mechanism is separately
+       load-bearing in SettingsPage.axaml, which uses it deliberately to centre CardStack at its own cap.
 
        THE ToolTip RULE SURVIVES THE BOUND, restated against the row rather than against 260: a value
        line whose text CAN outgrow the row it sits on and has no ToolTip is a defect in that card, and
@@ -1227,9 +1366,12 @@
        user data — a long one still ellipsizes at the floor — and set a matching ToolTip in code
        (FoldersCard.axaml.cs:102, 138, 220). Its third value line, DataInfoText, sets none on purpose:
        its text is the fixed CurrentDataSize / CurrentDataPending format over one of four short kind
-       literals plus a formatted byte count, and it measures 124.67 DIP Chinese / 142.00 English against
-       the floor's 599.33 span, so it can never be trimmed and a ToolTip would only repeat the line
-       already on screen. AboutCard's two lines (91.33 and 186.00) go without one for the same reason. -->
+       literals plus a formatted byte count, and it measures 127.33 DIP Chinese / 135.33 English against
+       the floor's 624 DIP span, so it can never be trimmed and a ToolTip would only repeat the line
+       already on screen. AboutCard's two lines go without one for the same reason: 91.33 and 186 DIP
+       Chinese, 118 and 186 English. (All five figures are Round 7 Task 9's re-measurement at the
+       default font, scrolled into view; Round 5 read 124.67 / 142.00 for DataInfoText and 91.33 /
+       186.00 for AboutCard's pair against its own narrower floor.) -->
   <Style Selector="TextBlock.tm-card-value">
     <Setter Property="TextWrapping" Value="NoWrap" />
     <Setter Property="TextTrimming" Value="CharacterEllipsis" />
@@ -1371,10 +1513,41 @@
     <Setter Property="VerticalContentAlignment" Value="Center" />
   </Style>
 
+  <!-- ══ The 设置 group box ════════════════════════════════════════════════════════════════════
+       ROUND 7, TASK 9. Every group on the 设置 page is a real Aero group box now: the vendored
+       Themes/Aero/ControlStyles/HeaderedContentControl.axaml, opt-in under its "GroupBox" key, with
+       its label notched into the top of the outline by Themes/Aero/Controls/HeaderGapClipper.cs.
+       Before this the page was six bare headings over six stacks of rows, which is what Task 7 left
+       when it deleted the Windows 11 row card — a Windows 7 property page grouped rows inside a
+       group box and drew nothing at all around an individual row, and only half of that had landed.
+
+       THIS RULE EXISTS TO OVERRIDE THREE OF THE VENDORED THEME'S OWN SETTERS, and the mechanism is
+       Avalonia's documented precedence rather than a fight: a Style in Application.Styles outranks a
+       ControlTheme's Setter for the same property. The vendored file is therefore left stating
+       upstream's numbers and this rule states ours.
+
+         CornerRadius 5 -> RadiusControl (3). VENDORED: AeroControlCornerRadius is 3, and every other
+           bordered object in this app already takes it. Upstream's 5 is the one metric in that file
+           that does not come from its own metrics dictionary.
+         Padding 10 -> 11. PUBLISHED, vis-layout: "Dialog box margins — 7 DLU / 11 relative pixels on
+           all sides". A group box's inside edge is a dialog margin.
+         Margin -> 0,0,0,11. PUBLISHED, same page, "Between unrelated controls — 7 / 11": two
+           settings groups are as unrelated as two controls on one page get. It replaces the 22 the
+           HEADING used to carry above itself — with a visible outline round each group the gap does
+           less work and the ladder's next rung down is enough.
+
+       The FontSize setter is deliberately not overridden: the theme sets AeroFontSizeNormal (12),
+       which is FontSizeBody, and it is inherited by every row inside the box. -->
+  <Style Selector="HeaderedContentControl.tm-group-box">
+    <Setter Property="CornerRadius" Value="{DynamicResource RadiusControl}" />
+    <Setter Property="Padding" Value="11" />
+    <Setter Property="Margin" Value="0,0,0,11" />
+  </Style>
+
   <!-- ══ The two headings ═════════════════════════════════════════════════════════════════════
-       The five card-group headings (外观 / 行为 / 文件夹 / 常用工具 / 更新) and the page's own title
-       (设置). Round 3, Task 3 separated them because they shared one class at one size and the page
-       title read as just another subsection; the separation stands, and both sides of it are now
+       The six card-group headings (外观 / 行为 / 文件夹 / 常用工具 / 更新 / 关于) and the page's own
+       title (设置). Round 3, Task 3 separated them because they shared one class at one size and the
+       page title read as just another subsection; the separation stands, and both sides of it are now
        PUBLISHED rather than derived from a Task Manager capture.
 
        https://learn.microsoft.com/en-us/windows/win32/uxguide/vis-fonts gives Windows 7 exactly two
@@ -1392,14 +1565,18 @@
        takes its hierarchy from colour first, and it draws main instructions and group headers one
        point apart on purpose.
 
-       The group heading's 0,20,0,8 margin becomes 0,22,0,7. 22 is the stated 2 x Space3 that replaces
-       the deleted Space5 (Tokens.axaml), and 7 is vis-layout's "between related controls" — a heading
-       and the group it labels are as related as two controls get. -->
+       THE GROUP HEADING CARRIES NO MARGIN AT ALL SINCE ROUND 7, TASK 9, and the two numbers it used
+       to carry (0,22,0,7 — before that 0,20,0,8) are not re-derived, they are gone. A group head is
+       the group box's Header now, arranged by the vendored template into a notch cut out of the
+       outline: 7 DIP in from the left by that template's own Panel Margin="7,0" plus its
+       ContentPresenter Padding="2,0", and vertically centred on the line by Border#Bd's own
+       Margin="0,8,0,0". A local margin here would push the label off the notch the clipper cuts for
+       it, because the clipper cuts to the header's ARRANGED RECT and the margin is inside that rect.
+       The 22 that separated one group from the next is now the group box's own Margin, above. -->
   <Style Selector="TextBlock.tm-group-head">
     <Setter Property="FontSize" Value="{DynamicResource FontSizeGroupHead}" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Foreground" Value="{DynamicResource HeadingBrush}" />
-    <Setter Property="Margin" Value="0,22,0,7" />
   </Style>
 
   <Style Selector="TextBlock.tm-page-title">

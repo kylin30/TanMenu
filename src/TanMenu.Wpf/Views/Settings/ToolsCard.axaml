@@ -41,32 +41,36 @@
        the shipped list: at 299 DIP of content the eight default tools used to overflow 240 and this
        ScrollViewer showed a vertical bar (measured 24 x 360 physical); at 197 DIP they fit, the bar is
        gone, and the clamp now starts biting at roughly twelve tools instead of roughly seven. -->
-  <StackPanel>
-    <TextBlock x:Name="GroupHead" Classes="tm-group-head" />
+  <HeaderedContentControl Classes="tm-group-box" Theme="{StaticResource GroupBox}">
+    <HeaderedContentControl.Header>
+      <TextBlock x:Name="GroupHead" Classes="tm-group-head" />
+    </HeaderedContentControl.Header>
+    <StackPanel>
 
-    <Border Classes="tm-card">
-      <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
-        <TextBlock Grid.Column="0" Classes="tm-icon tm-card-icon" Text="&#xE90F;" />
-        <StackPanel Grid.Column="1" Classes="tm-card-text">
-          <TextBlock x:Name="ShowToolsTitle" Classes="tm-card-title" />
-          <TextBlock x:Name="ShowToolsSub" Classes="tm-card-sub" />
-        </StackPanel>
-        <ToggleSwitch Grid.Column="2" x:Name="ShowToolsToggle" Classes="tm-card-toggle"
-                      IsCheckedChanged="OnShowToolsChanged" />
+      <Border Classes="tm-card">
+        <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
+          <TextBlock Grid.Column="0" Classes="tm-icon tm-card-icon" Text="&#xE90F;" />
+          <StackPanel Grid.Column="1" Classes="tm-card-text">
+            <TextBlock x:Name="ShowToolsTitle" Classes="tm-card-title" />
+            <TextBlock x:Name="ShowToolsSub" Classes="tm-card-sub" />
+          </StackPanel>
+          <ToggleSwitch Grid.Column="2" x:Name="ShowToolsToggle" Classes="tm-card-toggle"
+                        IsCheckedChanged="OnShowToolsChanged" />
 
-        <!-- Disabled (not hidden) while ShowToolsToggle is off — ported verbatim from
-             SettingsWindow.BuildToolCheckboxes ("Unchecking only disables the list; the individual
-             states stay and are still persisted"): the per-tool Show values keep whatever the user set
-             so re-enabling the category does not silently reset which tools it contains. -->
-        <Border Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Classes="tm-card-expander"
-                Padding="7,5"
-                BorderBrush="{DynamicResource StrokeControlBrush}" BorderThickness="1"
-                CornerRadius="{DynamicResource RadiusControl}">
-          <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="240">
-            <StackPanel x:Name="ToolsPanel" />
-          </ScrollViewer>
-        </Border>
-      </Grid>
-    </Border>
-  </StackPanel>
+          <!-- Disabled (not hidden) while ShowToolsToggle is off — ported verbatim from
+               SettingsWindow.BuildToolCheckboxes ("Unchecking only disables the list; the individual
+               states stay and are still persisted"): the per-tool Show values keep whatever the user set
+               so re-enabling the category does not silently reset which tools it contains. -->
+          <Border Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Classes="tm-card-expander"
+                  Padding="7,5"
+                  BorderBrush="{DynamicResource StrokeControlBrush}" BorderThickness="1"
+                  CornerRadius="{DynamicResource RadiusControl}">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="240">
+              <StackPanel x:Name="ToolsPanel" />
+            </ScrollViewer>
+          </Border>
+        </Grid>
+      </Border>
+    </StackPanel>
+  </HeaderedContentControl>
 </UserControl>

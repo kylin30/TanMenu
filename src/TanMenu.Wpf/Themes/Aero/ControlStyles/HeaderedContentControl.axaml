@@ -1,0 +1,96 @@
+<!--
+    Copyright (c) 2026 Splitwirez
+    Licensed under the MIT License. See LICENSE-aero-theme-for-avalonia.txt in the Themes/Aero
+    directory for the full text of the copyright notice and permission notice.
+    Source: https://github.com/Splitwirez/aero-theme-for-avalonia at main = a705b7c0
+            src/AeroAvalonia/ControlStyles/HeaderedContentControl.axaml
+    Changes from upstream:
+      1. RE-POINTED the ae xmlns from "using:AeroAvalonia" to
+         "using:TanMenu.Wpf.Themes.Aero.Controls", which is where HeaderGapClipper.cs was vendored.
+      2. DELETED upstream's commented-out MaxWidth binding on PART_HeaderPresenter (its own lines
+         46-49). It is dead prose about a binding the author disabled, and this project deletes
+         markup that does nothing rather than carrying it.
+    Everything else is byte for byte upstream, line endings included.
+
+    THE KEY IS "GroupBox", NOT {x:Type HeaderedContentControl}, and that is upstream's choice rather
+    than ours: a HeaderedContentControl is the base class of TabItem, Expander's header host and
+    several others, so the library never auto-applies this theme. It is opt-in through
+    Theme="{StaticResource GroupBox}", and this app's five interactive settings groups plus 关于 are
+    its only consumers (Views/Settings/*.axaml, Round 7 Task 9).
+
+    WHAT THE CLIPPER IS FOR. A Windows 7 group box draws its label ON the outline, with the outline
+    interrupted behind it. Bd is the outline; HeaderGapClipper takes PART_HeaderPresenter's arranged
+    rect and clips Bd to everything outside it, which is what cuts the notch. Nothing else in the
+    template does that, so removing the clipper would draw the label on top of an unbroken line.
+
+    THE THREE METRICS BELOW ARE OVERRIDDEN BY US, in Themes/Fluent2/Launcher.axaml's
+    HeaderedContentControl.tm-group-box rule, and this file is left stating upstream's: a Style in
+    Application.Styles outranks a ControlTheme's own Setter in Avalonia, so the override is the
+    documented mechanism rather than a fight. See that rule for the numbers and their citations.
+-->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:ae="using:TanMenu.Wpf.Themes.Aero.Controls"
+                    x:ClassModifier="Internal">
+    <ControlTheme x:Key="GroupBox"
+                TargetType="{x:Type HeaderedContentControl}">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AeroGroupBoxBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="5" />
+        <Setter Property="Padding" Value="10" />
+        <Setter Property="FontSize" Value="{DynamicResource AeroFontSizeNormal}" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="VerticalAlignment" Value="Stretch" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Grid RowDefinitions="Auto,*">
+                    <ae:HeaderGapClipper HeaderElement="{Binding #PART_HeaderPresenter, Mode=OneWay}"
+                                        Grid.Row="0"
+                                        Grid.RowSpan="2">
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="{TemplateBinding CornerRadius}" />
+                    </ae:HeaderGapClipper>
+
+                    <Panel Grid.Row="0"
+                        Margin="7,0">
+                        <Control x:Name="HeaderPresenterSizeHelper"
+                                HorizontalAlignment="Stretch"
+                                IsHitTestVisible="False"
+                                IsTabStop="False"
+                                Focusable="False" />
+                        <ContentPresenter x:Name="PART_HeaderPresenter"
+                                        Background="Transparent"
+                                        BorderBrush="Transparent"
+                                        BorderThickness="0"
+                                        Content="{TemplateBinding Header}"
+                                        ContentTemplate="{TemplateBinding HeaderTemplate}"
+                                        HorizontalAlignment="Left"
+                                        VerticalContentAlignment="Center"
+                                        Padding="2,0"
+                                         />
+                    </Panel>
+
+                    <ContentPresenter x:Name="PART_ContentPresenter"
+                                    Background="Transparent"
+                                    BorderBrush="Transparent"
+                                    BorderThickness="0"
+                                    Margin="0,-4,0,0"
+                                    Padding="{TemplateBinding Padding}"
+                                    Content="{TemplateBinding Content}"
+                                    ContentTemplate="{TemplateBinding ContentTemplate}"
+                                    Foreground="{TemplateBinding Foreground}"
+                                    HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                    VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                    Grid.Row="1" />
+                </Grid>
+            </ControlTemplate>
+        </Setter>
+        <Style Selector="^ /template/ Border#Bd">
+            <Setter Property="Margin" Value="0,8,0,0" />
+        </Style>
+    </ControlTheme>
+</ResourceDictionary>

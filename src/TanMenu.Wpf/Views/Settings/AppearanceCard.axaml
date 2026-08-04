@@ -22,75 +22,79 @@
        Round 5, item 3: these four rows were already the shape the row spec generalised, so all that
        changed here is that the icon's and the header stack's literal attributes became the shared
        classes tm-card-icon / tm-card-text (Themes/Fluent2/Launcher.axaml). No pixel moves. -->
-  <StackPanel>
-    <TextBlock x:Name="GroupHead" Classes="tm-group-head" />
+  <HeaderedContentControl Classes="tm-group-box" Theme="{StaticResource GroupBox}">
+    <HeaderedContentControl.Header>
+      <TextBlock x:Name="GroupHead" Classes="tm-group-head" />
+    </HeaderedContentControl.Header>
+    <StackPanel>
 
-    <Border Classes="tm-card">
-      <Grid ColumnDefinitions="Auto,*,Auto">
-        <TextBlock Grid.Column="0" Classes="tm-icon tm-card-icon" Text="&#xE774;" />
-        <StackPanel Grid.Column="1" Classes="tm-card-text">
-          <TextBlock x:Name="LanguageTitle" Classes="tm-card-title" />
-          <TextBlock x:Name="LanguageSub" Classes="tm-card-sub" />
-        </StackPanel>
-        <ComboBox Grid.Column="2" x:Name="LanguageCombo" Width="220" VerticalAlignment="Center"
-                  SelectionChanged="OnLanguageChanged" />
-      </Grid>
-    </Border>
+      <Border Classes="tm-card">
+        <Grid ColumnDefinitions="Auto,*,Auto">
+          <TextBlock Grid.Column="0" Classes="tm-icon tm-card-icon" Text="&#xE774;" />
+          <StackPanel Grid.Column="1" Classes="tm-card-text">
+            <TextBlock x:Name="LanguageTitle" Classes="tm-card-title" />
+            <TextBlock x:Name="LanguageSub" Classes="tm-card-sub" />
+          </StackPanel>
+          <ComboBox Grid.Column="2" x:Name="LanguageCombo" Width="220" VerticalAlignment="Center"
+                    SelectionChanged="OnLanguageChanged" />
+        </Grid>
+      </Border>
 
-    <Border Classes="tm-card">
-      <Grid ColumnDefinitions="Auto,*,Auto">
-        <TextBlock Grid.Column="0" Classes="tm-icon tm-card-icon" Text="&#xE793;" />
-        <StackPanel Grid.Column="1" Classes="tm-card-text">
-          <TextBlock x:Name="AppearanceTitle" Classes="tm-card-title" />
-          <TextBlock x:Name="AppearanceSub" Classes="tm-card-sub" />
-        </StackPanel>
-        <ComboBox Grid.Column="2" x:Name="AppearanceCombo" Width="220" VerticalAlignment="Center"
-                  SelectionChanged="OnAppearanceChanged" />
-      </Grid>
-    </Border>
+      <Border Classes="tm-card">
+        <Grid ColumnDefinitions="Auto,*,Auto">
+          <TextBlock Grid.Column="0" Classes="tm-icon tm-card-icon" Text="&#xE793;" />
+          <StackPanel Grid.Column="1" Classes="tm-card-text">
+            <TextBlock x:Name="AppearanceTitle" Classes="tm-card-title" />
+            <TextBlock x:Name="AppearanceSub" Classes="tm-card-sub" />
+          </StackPanel>
+          <ComboBox Grid.Column="2" x:Name="AppearanceCombo" Width="220" VerticalAlignment="Center"
+                    SelectionChanged="OnAppearanceChanged" />
+        </Grid>
+      </Border>
 
-    <Border Classes="tm-card">
-      <Grid ColumnDefinitions="Auto,*,Auto">
-        <TextBlock Grid.Column="0" Classes="tm-icon tm-card-icon" Text="&#xE8D2;" />
-        <StackPanel Grid.Column="1" Classes="tm-card-text">
-          <TextBlock x:Name="FontTitle" Classes="tm-card-title" />
-          <TextBlock x:Name="FontSub" Classes="tm-card-sub" />
-        </StackPanel>
-        <!-- IsTextSearchEnabled restores the WPF list's type-ahead: with hundreds of installed
-             families, typing the first letters is how the list is actually navigated. The rows are
-             ComboBoxItems whose Content is the display name, so no TextSearch.TextPath is needed, and
-             the disabled group-header rows are skipped because they are not selectable. -->
-        <ComboBox Grid.Column="2" x:Name="FontCombo" Width="220" MaxDropDownHeight="320"
-                  IsTextSearchEnabled="True" VerticalAlignment="Center"
-                  SelectionChanged="OnFontChanged" />
-      </Grid>
-    </Border>
+      <Border Classes="tm-card">
+        <Grid ColumnDefinitions="Auto,*,Auto">
+          <TextBlock Grid.Column="0" Classes="tm-icon tm-card-icon" Text="&#xE8D2;" />
+          <StackPanel Grid.Column="1" Classes="tm-card-text">
+            <TextBlock x:Name="FontTitle" Classes="tm-card-title" />
+            <TextBlock x:Name="FontSub" Classes="tm-card-sub" />
+          </StackPanel>
+          <!-- IsTextSearchEnabled restores the WPF list's type-ahead: with hundreds of installed
+               families, typing the first letters is how the list is actually navigated. The rows are
+               ComboBoxItems whose Content is the display name, so no TextSearch.TextPath is needed, and
+               the disabled group-header rows are skipped because they are not selectable. -->
+          <ComboBox Grid.Column="2" x:Name="FontCombo" Width="220" MaxDropDownHeight="320"
+                    IsTextSearchEnabled="True" VerticalAlignment="Center"
+                    SelectionChanged="OnFontChanged" />
+        </Grid>
+      </Border>
 
-    <!-- Round 3, Task 4: replaces the removed 按钮大小 (小/中/大) row. Nothing on this page names a
-         tile width any more — Task 4 fixed every tile at the width that row had called "小" (168 DIP),
-         and Round 4, item 3 removed that fixed width too, so a tile is as wide as its own
-         icon-plus-label content (see GeneralConfig.ButtonSize's remarks, and TmTileButton in
-         Themes/Fluent2/Launcher.axaml, which carries no Width Setter). This row governs how many
-         shortcuts a column holds before wrapping, not how big a tile is. A
-         NumericUpDown, not a ComboBox like the other rows here: the value is an integer the user
-         picks from a small range, not one of a short list of named choices, and Avalonia ships
-         NumericUpDown as a plain control (no extra NuGet package) that already gives a spinner AND
-         type-in for exactly that. Range 1–30 matches the pre-Avalonia Blazor build's own numeric input
-         for this same setting (docs/plans/2026-06-22-tanmenu-wpf-blazor.md: `min="1" max="30"`) —
-         below 1 a "column" is not a column, and 30 comfortably covers even a large 常用工具/folder
-         group without inviting a single, absurdly tall column. ClipValueToMinMax keeps a typed
-         out-of-range value inside that band rather than accepting it verbatim. -->
-    <Border Classes="tm-card">
-      <Grid ColumnDefinitions="Auto,*,Auto">
-        <TextBlock Grid.Column="0" Classes="tm-icon tm-card-icon" Text="&#xE80A;" />
-        <StackPanel Grid.Column="1" Classes="tm-card-text">
-          <TextBlock x:Name="ColCountTitle" Classes="tm-card-title" />
-          <TextBlock x:Name="ColCountSub" Classes="tm-card-sub" />
-        </StackPanel>
-        <NumericUpDown Grid.Column="2" x:Name="ColCountUpDown" Width="220" VerticalAlignment="Center"
-                       Minimum="1" Maximum="30" Increment="1" FormatString="0"
-                       ClipValueToMinMax="True" ValueChanged="OnColCountChanged" />
-      </Grid>
-    </Border>
-  </StackPanel>
+      <!-- Round 3, Task 4: replaces the removed 按钮大小 (小/中/大) row. Nothing on this page names a
+           tile width any more — Task 4 fixed every tile at the width that row had called "小" (168 DIP),
+           and Round 4, item 3 removed that fixed width too, so a tile is as wide as its own
+           icon-plus-label content (see GeneralConfig.ButtonSize's remarks, and TmTileButton in
+           Themes/Fluent2/Launcher.axaml, which carries no Width Setter). This row governs how many
+           shortcuts a column holds before wrapping, not how big a tile is. A
+           NumericUpDown, not a ComboBox like the other rows here: the value is an integer the user
+           picks from a small range, not one of a short list of named choices, and Avalonia ships
+           NumericUpDown as a plain control (no extra NuGet package) that already gives a spinner AND
+           type-in for exactly that. Range 1–30 matches the pre-Avalonia Blazor build's own numeric input
+           for this same setting (docs/plans/2026-06-22-tanmenu-wpf-blazor.md: `min="1" max="30"`) —
+           below 1 a "column" is not a column, and 30 comfortably covers even a large 常用工具/folder
+           group without inviting a single, absurdly tall column. ClipValueToMinMax keeps a typed
+           out-of-range value inside that band rather than accepting it verbatim. -->
+      <Border Classes="tm-card">
+        <Grid ColumnDefinitions="Auto,*,Auto">
+          <TextBlock Grid.Column="0" Classes="tm-icon tm-card-icon" Text="&#xE80A;" />
+          <StackPanel Grid.Column="1" Classes="tm-card-text">
+            <TextBlock x:Name="ColCountTitle" Classes="tm-card-title" />
+            <TextBlock x:Name="ColCountSub" Classes="tm-card-sub" />
+          </StackPanel>
+          <NumericUpDown Grid.Column="2" x:Name="ColCountUpDown" Width="220" VerticalAlignment="Center"
+                         Minimum="1" Maximum="30" Increment="1" FormatString="0"
+                         ClipValueToMinMax="True" ValueChanged="OnColCountChanged" />
+        </Grid>
+      </Border>
+    </StackPanel>
+  </HeaderedContentControl>
 </UserControl>
