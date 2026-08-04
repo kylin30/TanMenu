@@ -444,13 +444,27 @@ synthetic `VK_TAB` (`SetFocus()` alone shows nothing — `Control.OnGotFocus` bu
 for `NavigationMethod.Tab` or `Directional`), so §3.4's conditional fallback never fired. Fluent's
 two-ring ring is therefore still what an Aero button shows on Tab. Task 3 assigned the dotted
 rectangle to **Task 7**, which is where `FocusStrokeOuterBrush` becomes `AeroForeground`. **Task 7
-shipped it.** All five `FocusAdorner`s in `Launcher.axaml` — `TmTileButton`, `TmIconButton`,
-`TmButton`, `TmNavRowButton`, `TmNavRowItem` — are now a single `Rectangle` with
-`Stroke="{DynamicResource FocusStrokeOuterBrush}" StrokeThickness="1" StrokeDashArray="1,1"
-Margin="-2"`, and `FocusStrokeInnerBrush` is deleted with the second ring. The three
-`FocusAdorner="{x:Null}"` suppressions (vendored `TextBox`, `NumericUpDown`, authored `ComboBox`)
-are unchanged and still repaint their own field instead. From this task on the section describes
-the tree.
+shipped it, and its fix round made it draw.** All five `FocusAdorner`s in `Launcher.axaml` —
+`TmTileButton`, `TmIconButton`, `TmButton`, `TmNavRowButton`, `TmNavRowItem` — are a single
+`Rectangle` with `Stroke="{DynamicResource FocusStrokeOuterBrush}" StrokeThickness="1"
+StrokeDashArray="1,1" Margin="2"`, and `FocusStrokeInnerBrush` is deleted with the second ring.
+
+> **CORRECTION, Task 7's fix round.** Task 7 first wrote `Margin="-2"` here and in the code, and
+> that value renders **zero pixels**: an adorner is clipped, so a stroke pushed outside the adorned
+> element's own box is thrown away. Measured on the shipped build (`4a72e44`), Light, `PrintWindow`
+> flag 2 at 150 %: a synthetic `VK_TAB` onto the rail's 退出 row (`TmNavRowButton`, UIA
+> `HasKeyboardFocus`, rect 60x54 px) left the whole-window capture byte-identical to the resting one
+> — **0 differing pixels**. The same probe with the stroke swapped for a red `Fill` at `Margin="-8"`
+> painted 48x42 px anchored at the row's top-left instead of the 84x78 px that margin asks for.
+> Decompiled (`ilspycmd`, Avalonia 12.1.0): `AdornerLayer.ArrangeOverride` arranges each adorner into
+> `new Rect(adorned.Bounds.Size)`, assigns `AdornerHelper.CalculateAdornerClip(adorned)`, and the
+> composition renderer pushes a second clip because `AdornerLayer.IsClipEnabled` defaults to true.
+> The margin is **`2`** — inset, which is also where Windows drew this rectangle relative to a
+> button's border — and the fix round measured it drawing.
+
+The three `FocusAdorner="{x:Null}"` suppressions (vendored `TextBox`, `NumericUpDown`, authored
+`ComboBox`) are unchanged and still repaint their own field instead. With the correction above
+applied, the section describes the tree.
 
 ---
 

@@ -55,8 +55,12 @@
              tracking is what removes ApplySearchFieldWidth, its three constants and MainWindow's
              ClientSize subscription without adding a sixth re-fit trigger.
 
-             Round 7, Task 1 restores the MINIMUM: the field's Aero treatment (Border.tm-searchfield is
-             still the Fluent 2 shape here) is Task 9's, not this task's. -->
+             Round 7, Task 1 restored the MINIMUM here and left the field's paint alone. Task 7 has since
+             taken it: Border.tm-searchfield's three states name Aero's own text-box brushes, its padding
+             is on the published ladder and its radius is RadiusControl. What is still Task 9's is the
+             ACCENT UNDERLINE below — a Windows 11 focus form that Windows 7 had no equivalent of — and
+             Launcher.axaml's Border.tm-searchfield.focused block is where that open question is written
+             down. -->
         <Border Classes="tm-header" DockPanel.Dock="Top">
           <Border Classes="tm-searchfield" x:Name="SearchField"
                   Width="320"

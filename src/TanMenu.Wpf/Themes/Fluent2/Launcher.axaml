@@ -34,6 +34,21 @@
     Button (SetFocus() alone shows nothing: Control.OnGotFocus builds an adorner only for
     NavigationMethod.Tab or Directional), so what an Aero button showed on Tab was still Fluent's
     ring; these five adorners are what replace it on everything this file themes.
+
+    THE MARGIN IS 2 AND IT MUST NEVER GO NEGATIVE. AN ADORNER IS CLIPPED. Task 7's first cut wrote
+    Margin="-2" on all five, meaning "draw just outside the control", and it rendered NOTHING —
+    measured on the shipped build, Light, PrintWindow flag 2 at 150 %: a synthetic VK_TAB moved
+    keyboard focus onto the rail's 退出 row (a TmNavRowButton; UIA reported HasKeyboardFocus and a
+    60x54 px rect) and the whole-window capture came back byte-identical to the resting one, ZERO
+    differing pixels. The same probe with the stroke swapped for a plain red FILL at Margin="-8"
+    showed why: instead of the 84x78 px block that margin asks for, it painted 48x42 px anchored at
+    the row's own top-left corner. Decompiled (ilspycmd, Avalonia 12.1.0) that is
+    AdornerLayer.ArrangeOverride, which arranges every adorner into new Rect(adorned.Bounds.Size),
+    assigns it AdornerHelper.CalculateAdornerClip(adorned), and lets the composition renderer push a
+    second clip of its own because AdornerLayer.IsClipEnabled defaults to true. A negative margin
+    slides the stroke out of that pair of clips; a positive one cannot. 2 draws the rectangle 2 DIP
+    INSIDE the control's box — which is also where Windows drew it, just inside a button's border
+    rather than on top of it — and this fix round measured it drawing on the same 退出 row.
   -->
 
   <Styles.Resources>
@@ -92,13 +107,16 @@
       <Setter Property="VerticalContentAlignment" Value="Center" />
       <Setter Property="Cursor" Value="Hand" />
 
-      <!-- An adorner rather than a border: it draws OUTSIDE the tile, so showing focus cannot
-           reflow the grid the way a border thickness change would. The classic dotted rectangle —
-           see this file's header for what it replaced and why. -->
+      <!-- An adorner rather than a border: it is painted by the adorner layer and costs no layout
+           at all, so showing focus cannot reflow the grid the way a border thickness change would.
+           That is the whole reason, and it holds at any margin — the ADORNER is what buys it, not
+           the direction the rectangle is offset in. The classic dotted rectangle, inset 2 DIP; see
+           this file's header for what it replaced and for the measurement that says why the margin
+           is positive rather than the negative one this task first shipped. -->
       <Setter Property="FocusAdorner">
         <Template>
           <Rectangle Stroke="{DynamicResource FocusStrokeOuterBrush}"
-                     StrokeThickness="1" StrokeDashArray="1,1" Margin="-2" />
+                     StrokeThickness="1" StrokeDashArray="1,1" Margin="2" />
         </Template>
       </Setter>
 
@@ -144,13 +162,18 @@
     </ControlTheme>
 
     <!-- ══ Header icon button (☰ nav toggle, ✕ close) ═══════════════════════════════════════════
-         A 32×32 square target. Same subtle-fill state model as the tile so the whole surface reads
-         as one system. (Round 3, Task 2 removed this theme's third user, the title strip's own ⋯
-         overflow button — MainWindow.axaml's rail comment explains where its functions went.) -->
+         A 32×32 square target with no rest-state chrome of its own: transparent until it is hovered
+         or pressed, when it takes a LIST ROW's fill rather than the raised command-button gradient
+         TmTileButton and TmButton take. Round 7, Task 7 chose that pairing deliberately and it is
+         no longer "the same state model as the tile" — the tile's four opaque AeroButton* gradients
+         and this theme's two AeroListBoxItem* ones are different vocabularies, because an icon
+         button is a toolbar affordance and Aero draws a toolbar affordance as a soft capsule, not
+         as a button that pops out of the surface. (Round 3, Task 2 removed this theme's third user,
+         the title strip's own ⋯ overflow button — MainWindow.axaml's rail comment explains where
+         its functions went. The one consumer left is Controls/InfoBar.axaml's CloseButton.) -->
     <ControlTheme x:Key="TmIconButton" TargetType="Button">
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
-      <Setter Property="Opacity" Value="0.6" />
       <Setter Property="Width" Value="32" />
       <Setter Property="Height" Value="32" />
       <Setter Property="HorizontalContentAlignment" Value="Center" />
@@ -159,7 +182,7 @@
       <Setter Property="FocusAdorner">
         <Template>
           <Rectangle Stroke="{DynamicResource FocusStrokeOuterBrush}"
-                     StrokeThickness="1" StrokeDashArray="1,1" Margin="-2" />
+                     StrokeThickness="1" StrokeDashArray="1,1" Margin="2" />
         </Template>
       </Setter>
       <Setter Property="Template">
@@ -173,16 +196,30 @@
           </Border>
         </ControlTemplate>
       </Setter>
-      <!-- The rest state is a bare glyph at 60 % of the ink — TextSecondaryBrush's job before Task 7
-           deleted it, done by the mechanism §3.2 #8 chose instead of a third grey: one opacity that
-           follows the variant for free. Hover takes the FULL ink and the Aero list-row hover fill;
-           an icon button is a toolbar affordance, and a list row is the Aero object whose hover is a
-           soft blue capsule rather than a raised command button. -->
+      <!-- THERE IS DELIBERATELY NO Opacity SETTER ON THIS THEME, and the rest state is still a
+           glyph at 60 % of the ink. The 60 % lives on TextBlock.tm-icon (in the Styles body below),
+           which every consumer's content already carries — Controls/InfoBar.axaml's CloseButton,
+           the only one there is, holds a TextBlock with Classes="tm-icon small". Task 7 first put a
+           second Opacity 0.6 here as well, on the reasoning that §3.2 #8 replaced the deleted
+           TextSecondaryBrush with an opacity; Visual.Opacity NESTS MULTIPLICATIVELY, so that glyph
+           rendered at 0.6 x 0.6 = 36 % of TextPrimaryBrush, not 60 %. Over the 应用 pane that
+           computes to 2.52:1 in Light and 2.60:1 in Dark — under WCAG's 3:1 non-text floor, in the
+           task whose whole point was legibility. Dropping the setter puts the glyph back at the
+           0.6 the deleted TextSecondaryBrush measured (alpha 0.605 in Light; the rail's own comment
+           further down carries that measurement).
+
+           NOR IS THERE A :pointerover Opacity RULE, and there was no ink change on hover to lose.
+           A Style setter on the glyph outranks anything this Button contributes to it, so the
+           pre-Task-7 pair — Foreground TextSecondaryBrush here, TextPrimaryBrush on hover — never
+           reached a tm-icon TextBlock either: it sets its own Foreground. Hover's signal is the
+           FILL below, and it always was.
+
+           None of this is photographed. InfoBar's only host opens it on
+           "state.Status != TaskbarPinStatus.Pinned" (Views/AppPage.axaml.cs) and this machine's
+           TanMenu is pinned, which the round's rules forbid changing; the figures above are
+           computed from the two setters, not measured. -->
       <Style Selector="^:pointerover /template/ Border#Root">
         <Setter Property="Background" Value="{DynamicResource AeroListBoxItemHoverBackground}" />
-      </Style>
-      <Style Selector="^:pointerover">
-        <Setter Property="Opacity" Value="1" />
       </Style>
       <Style Selector="^:pressed /template/ Border#Root">
         <Setter Property="Background" Value="{DynamicResource AeroListBoxItemSelectedBackground}" />
@@ -228,7 +265,7 @@
       <Setter Property="FocusAdorner">
         <Template>
           <Rectangle Stroke="{DynamicResource FocusStrokeOuterBrush}"
-                     StrokeThickness="1" StrokeDashArray="1,1" Margin="-2" />
+                     StrokeThickness="1" StrokeDashArray="1,1" Margin="2" />
         </Template>
       </Setter>
       <Setter Property="Template">
@@ -278,10 +315,12 @@
          but this is a full custom Button ControlTheme, not that ListBoxItem theme reused on a Button,
          because a Button has NO :selected pseudoclass at all: that is what makes "a command row must
          never look selected" (the task's own constraint) true by construction rather than by a style
-         rule a later edit could defeat. Same two-layer Root/nothing-else shape as TmIconButton (a
-         command row needs no separate state layer the way TmTileButton/TmButton do, since it has no
-         persistent rest-state fill to protect from being replaced outright by the hover wash — Root
-         IS transparent at rest). -->
+         rule a later edit could defeat. Same single-Border shape as TmIconButton: one Root that the
+         state rules repaint, and nothing layered over it. Round 7, Task 7 took that shape to
+         TmTileButton and TmButton too — it deleted their separate StateLayer Border — so it is now
+         the only shape in this file, and the parenthesis that used to stand here contrasting the two
+         is retired with the layer it described. Aero repaints a surface per state from opaque
+         gradients and has no alpha wash needing a layer of its own to stack on. -->
     <ControlTheme x:Key="TmNavRowButton" TargetType="Button">
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
@@ -295,7 +334,7 @@
       <Setter Property="FocusAdorner">
         <Template>
           <Rectangle Stroke="{DynamicResource FocusStrokeOuterBrush}"
-                     StrokeThickness="1" StrokeDashArray="1,1" Margin="-2" />
+                     StrokeThickness="1" StrokeDashArray="1,1" Margin="2" />
         </Template>
       </Setter>
       <Setter Property="Template">
@@ -388,7 +427,7 @@
       <Setter Property="FocusAdorner">
         <Template>
           <Rectangle Stroke="{DynamicResource FocusStrokeOuterBrush}"
-                     StrokeThickness="1" StrokeDashArray="1,1" Margin="-2" />
+                     StrokeThickness="1" StrokeDashArray="1,1" Margin="2" />
         </Template>
       </Setter>
       <Setter Property="Template">

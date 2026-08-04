@@ -699,19 +699,29 @@ public partial class MainWindow : Window
         // RefitToContent's detach guard and the measurement it protects are untouched by it.
         //
         // Round 6, item 2: the class is "app", NOT "settings", and the flip is the point rather than a
-        // rename. 应用 keeps the white pane with the hairline and the rounded top-left corner; every
-        // OTHER page now paints nothing and lets the window's own surface (the acrylic backdrop, or
-        // ApplyBackdrop's SurfaceBaseBrush when the platform refuses it) run straight through, the way
+        // rename. 应用 keeps an opaque pane with a 1 DIP hairline on its top and left edges; every
+        // OTHER page paints nothing and lets the window's own surface run straight through, the way
         // Windows' own Settings page does — measured: it has no content pane at all. Encoding it as
         // "app" makes "on the window material" the DEFAULT, so a third ShellPage member would come up on
-        // the material instead of silently coming up white, which is the opposite of what was asked.
-        // This overrules Round 4 §5.1(d) deliberately: that ruling kept 设置 on SurfaceBaseBrush because
-        // our cards composite to the exact colour of a WHITE page, and the backdrop is not white — Mica
-        // measured 238..247 Light / 30..34 Dark under this window, straddling SurfaceBaseBrush, so the
-        // card separation held. THAT STRADDLE WAS MEASURED AGAINST MICA and Round 7, Task 1 requested
-        // AcrylicBlur instead; the conclusion has not been re-measured on acrylic and Round 7's Task 7
-        // owns re-taking it. The Mica measurements are in the Launcher.axaml block. Do not
-        // "restore" the grey.
+        // the material instead of silently coming up in the 应用 pane's fill, which is the opposite of
+        // what was asked.
+        //
+        // Round 7, Task 7 RETIRED the argument this comment used to carry, and did not merely defer it.
+        // Round 4 §5.1(d) had kept 设置 on SurfaceBaseBrush because a settings card composited to the
+        // exact colour of a white page, and the Mica backdrop measured 238..247 Light / 30..34 Dark —
+        // straddling SurfaceBaseBrush — so a card still separated from a transparent pane. Every premise
+        // of that is now gone: Task 1 moved the window to AcrylicBlur, so there is no Mica to straddle;
+        // Task 7 deleted the card fill, the card border and the card radius outright, so there is no Δ
+        // left to preserve; and Task 7 made the window's CLIENT AREA opaque (MainWindow.axaml's content
+        // Grid paints SurfaceBaseBrush = AeroWindowBackground, Aero's own structure, where the glass was
+        // the frame), so what shows through a transparent pane is no longer a live blur of the desktop.
+        // Nothing about this is outstanding and nothing here is waiting on a re-measurement. The current
+        // reasoning, with the colours, lives in Launcher.axaml's "Border.tm-page-pane" block; the
+        // superseded Windows 11 measurements are archived in
+        // docs/superpowers/archive/2026-08-04-windows11-measurement-record.md. Do not "restore" the grey.
+        //
+        // The corner is square in both states now — RadiusPaneTopLeft and its 8 DIP arc were deleted in
+        // the same task, so do not read a rounded top-left corner into any of the above.
         PagePane.Classes.Set("app", page == ShellPage.App);
 
         // Round 6, item 1 hid the title strip's search box on 设置 — a page with nothing to search —
