@@ -247,11 +247,12 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
 
     // MenuOpenRootText/MenuAboutText/MenuExitText/MenuMoreText used to back the title strip's ⋯
     // overflow MenuFlyout's Header bindings and the button's own tooltip. Round 3, Task 2 moved those
-    // four commands into rail rows whose labels/tooltips/automation names MainWindow.ApplyRailText sets
-    // imperatively (via AppLanguage.Text directly, the same way NavAppsLabel/NavSettingsLabel already
-    // were) rather than through a XAML {Binding} — see that method's own remarks — so those four
-    // properties have no reader left and were removed. MenuRefreshText survives: AppPage's own
-    // empty-state "刷新" button (AppPage.axaml) still binds it, unrelated to the rail move.
+    // four commands into navigation-pane rows and Round 8, Task 3 moved them again, into the classic
+    // menu band; either way their labels and their accessible names are set IMPERATIVELY, by
+    // MainWindow.ApplyMenuText via AppLanguage.Text directly, rather than through a XAML {Binding} —
+    // see that method's own remarks — so those four properties have no reader left and were removed.
+    // MenuRefreshText survives: AppPage's own empty-state "刷新" button (AppPage.axaml) still binds it,
+    // and it is the one menu-command string this view model still owns.
     public string MenuRefreshText => L("MenuRefresh");
     public string SearchPlaceholderText => L("SearchPlaceholder");
     public string EmptyTitleText => L("EmptyTitle");

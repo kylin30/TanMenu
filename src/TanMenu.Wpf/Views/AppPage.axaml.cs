@@ -15,17 +15,20 @@ using TanMenu.Wpf.Views.Settings;
 namespace TanMenu.Wpf.Views;
 
 /// <summary>
-/// The 应用 page: the search header, the update notice, the categories and the three non-menu states.
-/// All state lives in <see cref="LauncherViewModel"/> (still exposed as <see cref="ViewModel"/>, which
-/// the shell reads for the launcher's commands and for the <c>PendingFocus</c> hand-off); this class is
-/// the thin view layer that wires clicks and keys to it and owns the two things that genuinely need
-/// this page's own visual tree: geometric keyboard navigation across the tiles, and the search box.
+/// The 应用 page: the two docked notices, the categories and the three non-menu states. All state lives
+/// in <see cref="LauncherViewModel"/> (still exposed as <see cref="ViewModel"/>, which the shell reads
+/// for the menu band's five commands, for the search field's bindings and for the <c>PendingFocus</c>
+/// hand-off); this class is the thin view layer that wires clicks and keys to it and owns the one thing
+/// that genuinely needs this page's own visual tree: geometric keyboard navigation across the tiles.
 /// <para>
-/// Round 7, Task 1 brought the search box back here from MainWindow's title strip, where Rounds 2-6 had
-/// it. The Aero conversion deletes that strip, and Microsoft's window-frame guidance rules on the
-/// relocation directly: "Don't add controls to a window frame. Put the controls within the window
-/// instead." What did NOT come back with it is the ⋯ overflow button — its commands have been rail rows
-/// since Round 3, Task 2 and a settings card since Round 5, item 2.
+/// <b>ROUND 8, TASK 3 TOOK THE SEARCH BOX OUT OF THIS CLASS.</b> It is in the shell's classic menu band
+/// now, immediately after 关于 (item 5), so <see cref="MainWindow"/> owns the control, its four handlers
+/// and the focus call. That is not a revert of Round 7, Task 1, which had moved the box here out of the
+/// window's TITLE STRIP: "Don't add controls to a window frame. Put the controls within the window
+/// instead." forbids a control in the FRAME, and the menu band is inside the client area, which is the
+/// same sentence's other half. What is left here of the search contract is
+/// <see cref="OnClearFilterClick"/> (an empty-state button, not the field) and
+/// <see cref="FocusFirstTile"/>, which the band's own Down-arrow handler calls back into.
 /// </para>
 /// </summary>
 public partial class AppPage : UserControl, IDisposable
@@ -271,104 +274,31 @@ public partial class AppPage : UserControl, IDisposable
     }
 
     // ══════════════════════════════════════════════════════════════════════════════════════════
-    // Search box
+    // What is LEFT of the search contract on this page
     //
-    // Round 7, Task 1 brought the control back into this page from MainWindow's title strip, which
-    // the Aero caption deletes (win-window-frames forbids controls in a window frame). Three members
-    // moved with it and moved unchanged: OnSearchFocusChanged, OnSearchKeyDown and FocusSearchBox,
-    // the entry point MainWindow's PendingFocus consumer calls.
+    // ROUND 8, TASK 3 MOVED THE CONTROL AND ITS FOUR HANDLERS INTO MainWindow, with the markup: the
+    // field lives in the classic menu band now, immediately after 关于. OnSearchFocusChanged,
+    // OnSearchClearPressed, OnSearchKeyDown and FocusSearchBox all went there verbatim — the last of
+    // them was this class's only public member MainWindow called, and MainWindow.ConsumePendingFocus
+    // focuses the box directly now instead of forwarding here.
     //
-    // ROUND 7, TASK 9 VOIDED BOTH HALVES OF "THREE, UNCHANGED", so the sentence above is history and
-    // not a description of what is here. OnSearchFocusChanged now also calls SearchBox.SelectAll()
-    // when the box TAKES focus — published behaviour for a search box, cited in that member's own
-    // remarks — and OnSearchClearPressed is a fourth member, the handler for the right-end "x" the
-    // same task added. OnClearFilterClick is a fifth and belongs to the empty state rather than to
-    // the field; it lives here because it makes the identical ClearFilter + PendingFocus pair.
+    // Two things stayed, and both are genuinely the page's rather than the field's:
+    //   · OnClearFilterClick — the "nothing matched" empty state's 清除筛选 button, which is a page
+    //     control. It makes the same ClearFilter + PendingFocus pair the field's own "x" does, and it
+    //     still routes through the flag rather than reaching for the box: MainWindow owns the timing,
+    //     and one channel for every "focus the box" request is what keeps that true.
+    //   · FocusFirstTile — the tile grid is this page's, and MainWindow.OnSearchKeyDown's Down case
+    //     calls it. That is the one call that crosses back the other way.
     // ══════════════════════════════════════════════════════════════════════════════════════════
 
     /// <summary>Same "please focus the search box" request a fresh summon makes
-    /// (<c>LauncherViewModel.HandleLauncherShownAsync</c> sets <c>PendingFocus</c>). It still goes
-    /// through the flag rather than calling <see cref="FocusSearchBox"/> directly: MainWindow is the
-    /// one place that knows whether this page is the one on screen, and routing every request through
-    /// it keeps a request that arrives on 设置 deferred instead of lost.</summary>
+    /// (<c>LauncherViewModel.HandleLauncherShownAsync</c> sets <c>PendingFocus</c>). It goes through
+    /// the flag rather than reaching for the box directly: <c>MainWindow.ConsumePendingFocus</c> owns
+    /// the timing, and since Round 8, Task 3 it owns the box as well.</summary>
     private void OnClearFilterClick(object? sender, RoutedEventArgs e)
     {
         _viewModel.ClearFilter();
         _viewModel.PendingFocus = true;
-    }
-
-    /// <summary>Focus the search box. Called by <c>MainWindow.ConsumePendingFocus</c>, which owns the
-    /// decision of WHEN (see its own remarks — it defers while 设置 is showing). Swallowing is
-    /// deliberate and is carried over verbatim from the pre-move version: focus is a nicety and must
-    /// never take startup down.</summary>
-    public void FocusSearchBox()
-    {
-        try
-        {
-            SearchBox.Focus();
-        }
-        catch
-        {
-            /* focus is a nicety; never let it take startup down */
-        }
-    }
-
-    /// <summary>Focus is drawn on the FIELD (the bordered box), not on the bare TextBox inside it, so
-    /// the outline frames the glyph too. The TextBox has no border of its own to light up — it is given
-    /// a local <c>BorderThickness="0"</c>, so Aero's own focus brush pair is applied to the field's
-    /// Border by <c>Border.tm-searchfield.focused</c> instead.</summary>
-    /// <remarks>Round 7, Task 9 added the <c>SelectAll</c>. PUBLISHED,
-    /// <c>https://learn.microsoft.com/en-us/windows/win32/uxguide/ctrl-search-boxes</c>: "On input
-    /// focus, automatically select any previously entered text." It is guarded on the box actually
-    /// being focused because this one handler serves both GotFocus and LostFocus.</remarks>
-    private void OnSearchFocusChanged(object? sender, RoutedEventArgs e)
-    {
-        var focused = SearchBox.IsFocused;
-        SearchField.Classes.Set("focused", focused);
-        if (focused)
-            SearchBox.SelectAll();
-    }
-
-    /// <summary>The right-end "x". PUBLISHED,
-    /// <c>https://learn.microsoft.com/en-us/windows/win32/uxguide/ctrl-search-boxes</c>: "a clear
-    /// button appears after the user starts typing … On hover, the 'x' gets a button look and can be
-    /// clicked." Clearing and then re-focusing is the same pair the empty state's 清除筛选 button does,
-    /// through the same <c>PendingFocus</c> channel, so there is one path for every "focus the box"
-    /// request and MainWindow still owns the timing.</summary>
-    /// <remarks>Primary button only, for the same reason <see cref="OnGroupTitlePressed"/> guards:
-    /// <c>PointerPressed</c> fires for every button, and a right-click here would otherwise wipe the
-    /// filter. The affordance is a Border rather than a Button because every Button theme in this app
-    /// carries a height floor that would hold the 23 DIP field open — see the
-    /// <c>Border.tm-search-affordance</c> rule.</remarks>
-    private void OnSearchClearPressed(object? sender, PointerPressedEventArgs e)
-    {
-        if (sender is not Control control ||
-            !e.GetCurrentPoint(control).Properties.IsLeftButtonPressed)
-            return;
-
-        _viewModel.ClearFilter();
-        _viewModel.PendingFocus = true;
-        e.Handled = true;
-    }
-
-    /// <summary>Enter launches the first match, Escape clears then hides, Down enters the tile
-    /// grid.</summary>
-    private void OnSearchKeyDown(object? sender, KeyEventArgs e)
-    {
-        switch (e.Key)
-        {
-            case Key.Enter:
-                _viewModel.HandleSearchEnter();
-                e.Handled = true;
-                break;
-            case Key.Escape:
-                _viewModel.HandleSearchEscape();
-                e.Handled = true;
-                break;
-            case Key.Down:
-                e.Handled = FocusFirstTile();
-                break;
-        }
     }
 
     // ══════════════════════════════════════════════════════════════════════════════════════════
@@ -424,11 +354,11 @@ public partial class AppPage : UserControl, IDisposable
 
     private static bool IsTile(Control c) => c.Classes.Contains("tm-tile");
 
-    /// <summary>Focus the first rendered tile. Called from <see cref="OnSearchKeyDown"/>'s Down case.
-    /// Public because it was MainWindow's entry point into this grid for the four rounds the search box
-    /// spent in the title strip; kept public rather than narrowed, since nothing about walking this
-    /// page's own tiles is private to the keyboard handler.</summary>
-    public bool FocusFirstTile()
+    /// <summary>Focus the first rendered tile. Called from <c>MainWindow.OnSearchKeyDown</c>'s Down
+    /// case — the one call that still crosses from the shell into this grid, and the reason this member
+    /// is not private. It is <c>internal</c> rather than <c>public</c> since Round 8, Task 3: the caller
+    /// is in this assembly and always was, and the field it belongs to is the shell's again.</summary>
+    internal bool FocusFirstTile()
     {
         var first = Tiles().FirstOrDefault();
         if (first is null)

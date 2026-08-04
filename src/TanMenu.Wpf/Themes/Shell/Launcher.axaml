@@ -33,17 +33,24 @@
     verified with a synthetic VK_TAB that Avalonia's default adorner does draw on the vendored Aero
     Button (SetFocus() alone shows nothing: Control.OnGotFocus builds an adorner only for
     NavigationMethod.Tab or Directional), so what an Aero button showed on Tab was still Fluent's
-    ring; these five adorners are what replace it on everything this file themes.
+    ring; these three adorners are what replace it on everything this file themes.
+
+    THREE, NOT FIVE, SINCE ROUND 8, TASK 3. There were five until that task deleted the navigation
+    pane and the two themes that dressed its rows, TmNavRowButton and TmNavRowItem, each of which
+    carried one. What is left is TmTileButton's, TmIconButton's and TmButton's. Nothing was added
+    back on the menu band: the vendored Themes/Aero/ControlStyles/Menu.axaml declares no FocusAdorner
+    and none is authored here, because a top-level menu item is reached with Alt and the arrow keys
+    rather than with Tab — Menu overrides KeyboardNavigation.TabNavigation to Once (decompiled,
+    Avalonia 12.1.0) — so the dotted rectangle a Tab would draw is not the affordance that bar uses.
 
     THE MARGIN IS 2 AND IT MUST NEVER GO NEGATIVE. AN ADORNER IS CLIPPED. Task 7's first cut wrote
-    Margin="-2" on all five, meaning "draw just outside the control", and it rendered NOTHING —
-    measured on the shipped build, Light, PrintWindow flag 2 at 150 %: a synthetic VK_TAB moved
+    Margin="-2" on all of them, meaning "draw just outside the control", and it rendered NOTHING.
+    THE MEASUREMENT BELOW IS KEPT AS A HISTORICAL RECORD AND ITS SUBJECT NO LONGER EXISTS: it was
+    taken in Round 7 on a navigation-pane row, which Round 8, Task 3 deleted. It is kept rather than
+    rewritten because what it establishes is a fact about AdornerLayer, not about that row.
+    Measured on the Round 7 build, Light, PrintWindow flag 2 at 150 %: a synthetic VK_TAB moved
     keyboard focus onto the rail's 退出 row (a TmNavRowButton; UIA reported HasKeyboardFocus and a
-    60x54 px rect — that row was 40x36 DIP on the icon-only rail; Round 7, Task 8 widened the pane and
-    the same row is 156 DIP wide now, at a HEIGHT THAT FOLLOWS THE CONFIGURED FONT AND THE UI LANGUAGE —
-    MEASURED 22.67 to 24.67 DIP across the four configurations tabulated in MainWindow.axaml's
-    NavRailPane block, and the 22 the design predicted is reached in none of them; see TmNavRowItem
-    below) and the whole-window capture came back byte-identical to the
+    60x54 px rect) and the whole-window capture came back byte-identical to the
     resting one, ZERO
     differing pixels. The same probe with the stroke swapped for a plain red FILL at Margin="-8"
     showed why: instead of the 84x78 px block that margin asks for, it painted 48x42 px anchored at
@@ -340,181 +347,7 @@
       </Style>
     </ControlTheme>
 
-    <!-- ══ Nav pane command row ═══════════════════════════════════════════════════════════════════
-         Round 3, Task 2: 打开主目录/刷新/关于/退出 moved out of the title strip's ⋯ overflow flyout
-         into their own rows in the navigation pane's bottom-pinned footer (MainWindow.axaml). Three of
-         those four are this theme's consumers today — Round 5, item 2 took 关于 out of the pane and made
-         it a settings card, and its row went with it.
-
-         THE BUTTON-VERSUS-ListBoxItem SPLIT GOT MORE LOAD-BEARING IN ROUND 7, TASK 8, NOT LESS. The
-         page rows below are now the vendored Aero ListBoxItem theme, which brings FOUR states with it,
-         one of them :selected. A command row rendered as a ListBoxItem would therefore gain a selected
-         gradient it must never show. "A Button has no :selected pseudoclass at all" is still what makes
-         that impossible by construction rather than by a style rule a later edit could defeat.
-
-         The SHAPE is Aero's list row, rebuilt here rather than inherited, because a Button cannot be
-         BasedOn a ListBoxItem's theme: a Panel holding an OuterBorder that wraps an InnerBorder, with
-         the ContentPresenter over the pair, and the OuterBorder hidden outright at rest so an
-         un-hovered row paints nothing at all. Structure, brush names and both corner radii are the
-         vendored Themes/Aero/ControlStyles/ListBoxItem.axaml's own — outer 2 is its CornerRadius setter
-         and inner 1 is what its AdjustCornerRadiusConverter Amount="-1" computes from that (VENDORED).
-         Both are restated as literals here because this template is ours and cannot template-bind into
-         theirs; they are the one pair of numbers in this theme that is not authored.
-
-         Padding "8,3" and Margin "2,1" are IDENTICAL to TmNavRowItem below, and must be: a command row
-         has to measure exactly like a page row for the pane to read as one list. Both are AUTHORED as
-         part of the pane's 160 DIP derivation, which MainWindow.axaml's NavRailPane carries in full.
-
-         TWO STATES, not Aero's four. A command row can never be :selected, and none of the three is
-         ever disabled (each fires immediately). :pressed borrows the SELECTED gradients rather than
-         inventing a third pair, which is also what the vendored file does — its
-         "^:selected:not(:pointerover),^:pressed" rule names one pair for both. :focus is deliberately
-         NOT in the resting rule's exclusion list even though the vendored row puts it there: a command
-         row keeps focus after a click, so honouring :focus would leave a fired row wearing a frame that
-         reads exactly like the selection this theme exists to make impossible. The dotted FocusAdorner
-         is this row's whole focus signal. -->
-    <ControlTheme x:Key="TmNavRowButton" TargetType="Button">
-      <Setter Property="Background" Value="{DynamicResource AeroListBoxItemHoverBackground}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource AeroListBoxItemHoverOuterBorderBrush}" />
-      <Setter Property="BorderThickness" Value="1" />
-      <Setter Property="CornerRadius" Value="2" />
-      <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
-      <Setter Property="Padding" Value="8,3" />
-      <Setter Property="Margin" Value="2,1" />
-      <Setter Property="HorizontalAlignment" Value="Stretch" />
-      <Setter Property="HorizontalContentAlignment" Value="Left" />
-      <Setter Property="VerticalContentAlignment" Value="Center" />
-      <Setter Property="Cursor" Value="Hand" />
-      <Setter Property="FocusAdorner">
-        <Template>
-          <Rectangle Stroke="{DynamicResource FocusStrokeOuterBrush}"
-                     StrokeThickness="1" StrokeDashArray="1,1" Margin="2" />
-        </Template>
-      </Setter>
-      <Setter Property="Template">
-        <ControlTemplate>
-          <!-- Transparent rather than unset: a null Background is not hit-testable, so the strip of
-               row between the borders and the glyph would swallow the pointer. The vendored row states
-               the same fact as a nearly-transparent alpha; this file may not write a colour literal at
-               all (ShellTokenTests.LauncherStyles_ContainNoColourLiterals greps the prose too), and
-               Transparent IS hit-testable in Avalonia, so it is the same guarantee spelled without a
-               number. -->
-          <Panel Background="Transparent">
-            <Border x:Name="OuterBorder"
-                    BorderBrush="{TemplateBinding BorderBrush}"
-                    BorderThickness="{TemplateBinding BorderThickness}"
-                    CornerRadius="{TemplateBinding CornerRadius}">
-              <Border x:Name="InnerBorder"
-                      Background="{TemplateBinding Background}"
-                      BorderBrush="{DynamicResource AeroListBoxItemHoverInnerBorderBrush}"
-                      BorderThickness="{TemplateBinding BorderThickness}"
-                      CornerRadius="1" />
-            </Border>
-            <ContentPresenter Content="{TemplateBinding Content}"
-                              Padding="{TemplateBinding Padding}"
-                              HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
-                              VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
-          </Panel>
-        </ControlTemplate>
-      </Setter>
-      <Style Selector="^:not(:pointerover, :pressed) /template/ Border#OuterBorder">
-        <Setter Property="IsVisible" Value="False" />
-      </Style>
-      <Style Selector="^:pressed /template/ Border#OuterBorder">
-        <Setter Property="BorderBrush" Value="{DynamicResource AeroListBoxItemSelectedOuterBorderBrush}" />
-      </Style>
-      <Style Selector="^:pressed /template/ Border#InnerBorder">
-        <Setter Property="Background" Value="{DynamicResource AeroListBoxItemSelectedBackground}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource AeroListBoxItemSelectedInnerBorderBrush}" />
-      </Style>
-    </ControlTheme>
-
-    <!-- ══ Nav pane page row ══════════════════════════════════════════════════════════════════════
-         The other row kind: a DESTINATION the window navigates to and stays on (应用, 设置), so unlike
-         TmNavRowButton above it is a ListBoxItem and it has a :selected state. Since Round 7, Task 8
-         it is the VENDORED Aero ListBoxItem theme with four setters on top, and no template of its own.
-
-         WHAT THE BasedOn BRINGS, in one line: :pointerover, :selected:not(:pointerover),
-         :selected:pointerover and :disabled — four states where this theme declared three, and not one
-         of them uses the accent. Selection is Aero's own two nested borders over a two-stop gradient
-         (VENDORED, Themes/Aero/ControlStyles/ListBoxItem.axaml, which is also where the resting row's
-         "hide the OuterBorder outright" rule lives). :selected:pointerover is genuinely new here and
-         cannot be captured on this machine, which has no pointer; it is inherited, not authored, so
-         there is nothing this file could have got wrong about it.
-
-         THE 3x16 DIP ACCENT PILL IS DELETED, and so are the 55 lines of Task Manager measurement that
-         derived it — the row box, the pitch, the pill's cap radius, the glyph-displacement finding, the
-         alpha solve behind its fills. Every one of them was a measurement of Windows 11's OWN icon rail,
-         taken to make this app's 48 DIP icon rail match it. Under a labelled Windows 7 pane they
-         describe nothing: there is no 48 DIP pane, no 40x36 DIP row box, no 40 DIP pitch and no accent
-         anywhere in the pane. They are archived, with their instrument and the commit at which their
-         subject stopped existing, in
-         docs/superpowers/archive/2026-08-04-windows11-measurement-record.md.
-
-         THE FOUR SETTERS, and nothing else:
-           · HorizontalContentAlignment Left — a labelled row is read from its leading edge. The
-             vendored theme states no alignment at all, so this adds rather than overrides.
-           · Padding "8,3" — AUTHORED. The 3 is the row box's vertical inset and the 8 is its leading
-             text inset. The row box it produces is NOT the 22 DIP the design predicted, and it is not
-             ONE number: the tallest child is the label's line box, not the 16 DIP glyph, so the row
-             follows the configured font and the UI language. MEASURED 24.67 DIP at the app's DEFAULT
-             font in Chinese, 24.00 at the default font in English, 23.33 with 字体 = Verdana in
-             Chinese, 22.67 with Verdana in English. See MainWindow.axaml's NavRailPane block for the
-             four measurements and for why the 22 is not chased.
-           · Margin "2,1" — AUTHORED. The 1 is what turns the row box into the row pitch, so the pitch
-             tracks the row box and is no more constant than it is: MEASURED 26.67 DIP at the app's
-             DEFAULT font in either language, 25.33 with 字体 = Verdana in either. The 2 leaves the item
-             column 156 DIP inside the 160 DIP pane, which is the span Border.tm-nav-separator further
-             down is derived from — and unlike the vertical numbers, that one IS constant, because it is
-             a margin rather than a line box; 156 DIP came back in all four configurations.
-           · FocusAdorner — the dotted rectangle this file gives all five of its focusable themes. The
-             vendored theme declares none, so WITHOUT this setter a Tab onto 应用 would draw Fluent's
-             two-ring rectangle over an Aero row. It is not decoration: it is the only thing that keeps
-             the header block at the top of this file true.
-         Every number above is AUTHORED. There is no Windows 7 machine here and no Aero reference
-         capture in this tree; MainWindow.axaml's NavRailPane carries the whole derivation, including
-         the published statements it does rest on.
-
-         Padding and Margin are the SAME literals TmNavRowButton states above, and they have to be: a
-         command row and a page row must measure alike for the pane to read as one list. -->
-    <ControlTheme x:Key="TmNavRowItem" TargetType="ListBoxItem"
-                  BasedOn="{StaticResource {x:Type ListBoxItem}}">
-      <Setter Property="HorizontalContentAlignment" Value="Left" />
-      <Setter Property="Padding" Value="8,3" />
-      <Setter Property="Margin" Value="2,1" />
-      <Setter Property="FocusAdorner">
-        <Template>
-          <Rectangle Stroke="{DynamicResource FocusStrokeOuterBrush}"
-                     StrokeThickness="1" StrokeDashArray="1,1" Margin="2" />
-        </Template>
-      </Setter>
-    </ControlTheme>
-
   </Styles.Resources>
-
-  <!-- ══ Search header ═══════════════════════════════════════════════════════════════════════════
-       Round 7, Task 1 restored this rule along with the field it frames. It was deleted by commit
-       6d00060, which moved search into the window's title strip; the Aero conversion deletes that strip
-       (win-window-frames: "Don't add controls to a window frame. Put the controls within the window
-       instead.") and the header comes back to Views/AppPage.axaml with it.
-
-       Round 7, Task 7 re-derived the two values the revert carried over. The divider stays a 1 DIP
-       hairline and is StrokeDividerBrush, which is now the Aero group-box outline — a divider and a
-       group-box edge are one hairline in a Windows 7 dialog. The padding was 12,10 (Fluent's ramp)
-       and is 11,7: PUBLISHED, vis-layout's "Dialog box margins — 7 DLU / 11 relative pixels" for the
-       horizontal component and "Between related controls — 4 / 7" for the vertical.
-
-       THIS RULE ITSELF IS UNCHANGED BY TASK 9 and the header is measurably shorter anyway: the FIELD
-       inside it went from a 32 DIP minimum to the published 23, so the whole strip is 9 DIP shorter
-       without a number here moving. Task 9's own changes are on Border.tm-searchfield and on the
-       right-end affordance below it. -->
-
-  <Style Selector="Border.tm-header">
-    <Setter Property="BorderThickness" Value="0,0,0,1" />
-    <Setter Property="BorderBrush" Value="{DynamicResource StrokeDividerBrush}" />
-    <Setter Property="Padding" Value="11,7" />
-  </Style>
-
 
   <!-- Iconography is Segoe Fluent Icons, and it is the ONE deliberate Windows 11 anachronism this
        conversion keeps: Windows 7 had no icon font at all — its shell glyphs were bitmap resources —
@@ -547,7 +380,9 @@
 
   <!-- The search field is a plain TextBox stripped to text only; the field's own shape, fill and
        outline are drawn by the Border it sits in (Border.tm-searchfield). Background and
-       BorderThickness are set as LOCAL values on the element in Views/AppPage.axaml, and a local
+       BorderThickness are set as LOCAL values on the element in MainWindow.axaml — the field moved
+       there from Views/AppPage.axaml in Round 8, Task 3, into the classic menu band, immediately
+       after 关于 — and a local
        value outranks a style setter for the same property on the same element.
 
        WHAT THAT DOES AND DOES NOT BUY, corrected in Round 7 Task 4: it settles the OUTER TextBox's
@@ -579,7 +414,7 @@
        brushes rather than the deleted SurfaceLayer*/StrokeControl/TextTertiary tokens. Aero's idle
        border is a two-stop gradient and its hover border is the blue one — that IS Aero's hover
        signal, and it is the same brush the vendored TextBox template would have drawn if this field
-       were painting itself (it is not: Views/AppPage.axaml gives the inner TextBox a local
+       were painting itself (it is not: MainWindow.axaml gives the inner TextBox a local
        Background="Transparent" and BorderThickness="0", and the two /template/ rules further down
        are what stop Aero repainting the part underneath). -->
   <Style Selector="Border.tm-searchfield:pointerover">
@@ -597,7 +432,7 @@
        of brushes the vendored TextBox's ^:focus block sets on its Border#BgElement
        (Themes/Aero/ControlStyles/TextBox.axaml — AeroTextBoxFocusBackground and
        AeroTextBoxFocusBorderBrush, verbatim). The BorderBrush half is the part that could not be
-       delegated to the TextBox: Views/AppPage.axaml gives the inner box a local BorderThickness="0"
+       delegated to the TextBox: MainWindow.axaml gives the inner box a local BorderThickness="0"
        so that its border cannot draw at all, and Task 4 measured the consequence — the two
        /template/ rules further down exist to suppress the half that CAN draw. Hoisting the pair to
        this Border is what puts the whole signal back on the shape the user sees as the field. -->
@@ -607,10 +442,12 @@
   </Style>
   <!-- There is deliberately NO :disabled rule for this field. Round 6, item 1 established that on a
        page that cannot be searched the field is not shown at all rather than greyed out; Round 7,
-       Task 1 made that structural — the field is inside the 应用 page now, so a page that is not 应用
-       simply does not contain it and MainWindow's old "SearchField.IsVisible = …" write is deleted.
-       Either way nothing in this app puts this field into :disabled and a rule for that state would
-       have no producer left. -->
+       Task 1 made that structural by putting the field inside the 应用 page, so a page that was not
+       应用 simply did not contain it, and MainWindow's old "SearchField.IsVisible = …" write was
+       deleted then. ROUND 8 RETIRED THE ARGUMENT RATHER THAN THE RULE: Task 2 left the shell one
+       page, and Task 3 moved the field into the menu band, which is always on screen. Either way
+       nothing in this app puts this field into :disabled and a rule for that state would have no
+       producer left. -->
 
   <!-- ══ The right-end search affordance ══════════════════════════════════════════════════════
        ROUND 7, TASK 9 MOVED THE GLYPH FROM THE LEFT END TO THE RIGHT AND GAVE IT A SECOND FACE.
@@ -622,13 +459,13 @@
        button look, and OnSearchClearPressed clears the filter and puts focus back in the box.
 
        THE SWAP IS AN ELEMENT BINDING, NOT A VIEW-MODEL FLAG — there is no flag on LauncherViewModel
-       to go looking for. Views/AppPage.axaml gives the two faces complementary IsVisible bindings
+       to go looking for. MainWindow.axaml gives the two faces complementary IsVisible bindings
        onto the TextBox itself: IsVisible="{Binding #SearchBox.Text, Converter={x:Static
        StringConverters.IsNullOrEmpty}}" on the magnifier and the IsNotNullOrEmpty twin on the clear
        face. It still answers the view model, because SearchBox.Text is TwoWay-bound to Filter, so
        setting Filter in code flips the pair exactly as typing does — which is how both Task 9 and
        its fix round exercised it: UIA ValuePattern.SetValue on SearchBox, no keyboard, magnifier to
-       "x" and back. AppPage.axaml's own comment at that markup says the same thing at more length.
+       "x" and back. MainWindow.axaml's own comment at that markup says the same thing at more length.
 
        IT IS A Border + TextBlock, NOT A Button, and that is a sizing decision rather than a shortcut:
        every Button theme in this app carries a MinHeight (32 on TmButton) or a fixed 32x32 box
@@ -695,7 +532,7 @@
 
   <!-- ══ Suppressing the theme's own fill, at the two states that repaint it ══════════════════
        This field's fill is Border.tm-searchfield's, above. The TextBox inside it is meant to
-       contribute nothing but glyphs, which is why Views/AppPage.axaml gives it a LOCAL
+       contribute nothing but glyphs, which is why MainWindow.axaml gives it a LOCAL
        Background="Transparent" and BorderThickness="0".
 
        That local pair is enough at rest and only at rest. Aero's TextBox template
@@ -919,175 +756,31 @@
     <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
   </Style>
 
-  <!-- ══ The pane's ink ══════════════════════════════════════════════════════════════════════════
-       tm-icon (further up) draws every glyph in the app at 60 % of the ink; the navigation pane draws
-       its own at full ink, and since Round 7, Task 8 that is a statement about a pane whose rows carry
-       VISIBLE LABELS rather than about an icon rail.
-
-       The rule is KEPT and RE-DERIVED. Its Round 6 justification was a lookup — Task Manager's rail
-       glyphs solved to alpha 0.893 black in Light and pure white in Dark, which is this app's
-       TextPrimaryBrush to the level — and that reference is void twice over: this app is not matching
-       Windows 11 any more, and the thing being matched was an icon-only rail. What replaces it is
-       Aero's own structure rather than a number: a labelled row's glyph and its label are ONE piece of
-       ink. tm-nav-label below states no Opacity, so it inherits the full AeroForeground; a glyph left
-       at tm-icon's 0.6 beside it would read as a disabled icon next to an enabled word. Both at 1 is
-       the only pair that says "one row, one label".
-
-       Scoped to the pane, and nothing else, through NavRailContent's own Classes="tm-nav-rail"
-       (MainWindow.axaml) — the class that file kept for exactly this. The descendant combinator reaches
-       all five rows on the logical tree, ListBox to ListBoxItem to DockPanel to TextBlock and Button to
-       DockPanel to TextBlock alike. tm-icon's own Opacity further up is untouched, so the search
-       affordance, the folder hint and the settings cards' icons keep theirs. -->
-  <Style Selector="Grid.tm-nav-rail TextBlock.tm-icon">
-    <Setter Property="Opacity" Value="1" />
-  </Style>
-
-  <!-- ══ The pane row's label ════════════════════════════════════════════════════════════════════
-       Round 7, Task 8 gave the navigation pane visible labels, so this class exists again. It is not
-       a revert of the class Round 4, item 1 deleted: that one had to be hidden and shown as the rail
-       animated between two widths, and there is still exactly ONE width.
-
-       The 6 DIP leading gap is the icon-to-label gap in the pane's own 160 DIP derivation
-       (Margin 2 + Padding 8 + icon 16 + gap 6 = 32 DIP before the label; MainWindow.axaml's
-       NavRailPane carries the whole sum). It lives here rather than on the five rows so that the five
-       row markups state a glyph and a name, and this file stays the one place the number is written.
-       AUTHORED, like every other number in that derivation.
-
-       No Foreground and no Opacity: a label takes the window's own Foreground, which MainWindow.axaml
-       sets to TextPrimaryBrush, at full strength — see the pane-ink rule directly above for why the
-       glyph beside it is lifted to match rather than the other way round. NoWrap + CharacterEllipsis
-       because the label column is a fixed 118 DIP and the strings are user-selectable language data:
-       a longer translation must trim on ONE LINE, never reflow into two and push every row below it
-       down. No pitch figure is quoted here on purpose — the pitch follows the configured font (see
-       TmNavRowItem above), and this rule holds whatever it currently measures. The row's
-       AutomationProperties.Name (ApplyRailText, MainWindow.axaml.cs) carries the untrimmed text for a
-       screen reader either way. -->
-  <Style Selector="TextBlock.tm-nav-label">
-    <Setter Property="Margin" Value="6,0,0,0" />
-    <Setter Property="VerticalAlignment" Value="Center" />
-    <Setter Property="TextWrapping" Value="NoWrap" />
-    <Setter Property="TextTrimming" Value="CharacterEllipsis" />
-  </Style>
-
-  <!-- ══ The footer's one group boundary ═════════════════════════════════════════════════════════
-       A single hairline separating the terminal action from the reversible rows. Round 4, item 2 put it
-       UNDER 退出, which was then the footer's first row; Round 5, item 1 moved 退出 to the bottom at the
-       user's request and the hairline travelled with it, so it now sits ABOVE 退出 and below 设置. Its
-       position is MainWindow.axaml's business — that file's footer StackPanel carries the ordering
-       rationale and the reason the fence has to follow the row.
-
-       BOTH NUMBERS ARE DERIVED, NOT PICKED, AND ROUND 7, TASK 8 MOVED THE HORIZONTAL ONE. It is the
-       rows' own Margin — "2,1", set by both TmNavRowItem and TmNavRowButton — so the line spans exactly
-       the 156 DIP item column (160 DIP pane − 2×2 DIP item margin) and stops flush with the row boxes
-       instead of running edge-to-edge across the pane. It was 4, against a 40 DIP item column in a
-       48 DIP pane, and that pane is gone. The VERTICAL 4 is unchanged and still puts 4 DIP of clear
-       space on each side of the 1 DIP line; with the neighbouring rows' own 1 DIP vertical margins that
-       is 5 DIP between the line and each adjacent row box, against the 2 DIP that separates two
-       ordinary rows — enough to read as a boundary, not so much that it reads as a missing row.
-
-       The block is 9 DIP tall (1 + 2×4), and THAT number is constant — it is margins and a hairline.
-       THE FOOTER IT SITS IN IS NOT, because four of its terms are row pitches and a row pitch follows
-       the configured font and the UI language (TmNavRowItem above). MEASURED with UI Automation on the
-       shipped build, from NavRail's own bottom edge to the client's: 184 px = 122.67 DIP at the app's
-       DEFAULT font in Chinese, 180 px = 120.00 DIP at the default font in English, 176 px = 117.33 DIP
-       with 字体 = Verdana in Chinese, and 172 px = 114.67 DIP with Verdana in English. The design
-       predicted 109 from "four rows at a 24 DIP pitch + 9 + 4"; run that same sum at the default font's
-       real 26.67 pitch in Chinese and it gives 106.67 + 9 + 4 = 119.67 against the measured 122.67,
-       with NavFooterRail's own wrapper plus 150 % layout rounding accounting for the remaining 3 DIP —
-       measured in that configuration, the ListBox is 41 px tall around a 37 px row. NO configuration
-       measured here comes near 109. It was 173 DIP on the 48 DIP icon rail's 40 DIP pitch, and 213
-       before Round 5, item 2 took the 关于 row out of the footer.
-
-       StrokeDividerBrush is the right token and always was: a divider is exactly what this is, and being
-       a DynamicResource it follows the light/dark swap for free. Round 7, Task 7 re-pointed it onto the
-       vendored Aero group-box outline, on the ground that a divider and a group-box edge are one
-       hairline in a Windows 7 dialog, so this line now matches the 设置 page's own rules by
-       construction. -->
-  <Style Selector="Border.tm-nav-separator">
-    <Setter Property="Height" Value="1" />
-    <Setter Property="Margin" Value="2,4" />
-    <Setter Property="Background" Value="{DynamicResource StrokeDividerBrush}" />
-  </Style>
-
   <!-- ══ The content pane ═════════════════════════════════════════════════════════════════════════
-       MainWindow.axaml's PagePane — the Border that hosts the 应用 page.
+       MainWindow.axaml's PagePane — the Border that hosts the 应用 page, which since Round 8, Task 2
+       is the only page there is.
 
-       ROUND 8, TASK 2 DELETED THE SECOND RULE. There were two, mutually exclusive by construction
-       (.app against :not(.app)) rather than a base rule plus an override, and the class was flipped
-       from MainWindow's ShowPageCore. 设置 was the ONLY subject :not(.app) ever had, and 设置 is a
-       modal dialog now (Dialogs/OptionsWindow) rather than a page in this window, so that rule
-       matched nothing and is gone; PagePane carries "app" statically in the markup instead, and the
-       rule below is byte-identical to what it has been since Round 7, Task 7. The deleted rule's
-       three setters were Background="Transparent", BorderThickness="0", CornerRadius="0" — recorded
-       here rather than lost, because the DECISION behind them (Round 6, item 2:
-       除了应用页，其他页面使用和窗口相同的材质面板) is what a future second page would have to be
-       measured against again. Round 8, Task 3 collapses what is left into a plain
-       Border.tm-page-pane and drops the BorderThickness with the nav pane it separated from.
+       ROUND 8, TASK 3 COLLAPSED THE PAIR INTO ONE RULE AND DROPPED THE HAIRLINE. There were two
+       rules until Task 2 (.app against :not(.app), the class flipped from ShowPageCore) and one
+       after it; the class is gone from the markup now and the selector is a plain
+       Border.tm-page-pane. What went with it is BorderThickness="1,1,0,0". Its LEFT edge existed to
+       separate this pane from the 160 DIP navigation pane beside it, and there is nothing to its
+       left any more; its TOP edge is redundant against the two 1 DIP bottom rules the vendored Menu
+       template already draws under the band above it (Themes/Aero/ControlStyles/Menu.axaml).
+       CornerRadius="0" goes with them, as a restatement of Border's own default. Deleting those two
+       DIP is what takes MainWindow.PaneBorderDip and ChromeHeightDip's "+1" out of the fit
+       arithmetic — WindowHost.ChromeHeightDip is TitleStripHeightDip + MenuBandHeightDip now, and
+       MainWindow's chrome WIDTH term is 0.
 
-       ROUND 7, TASK 7 REWROTE THIS BLOCK RATHER THAN EDITING IT, and the reason is worth stating
-       once. What stood here was a 147-line argument about Mica: it measured this window's Mica
-       backdrop at 238..247 in Light and 30..34 in Dark, showed that those numbers STRADDLE
-       SurfaceBaseBrush rather than reaching SurfacePageBrush, and concluded that a translucent
-       settings card would still separate from a transparent 设置 pane. Task 1 falsified its first
-       premise — the window asks for AcrylicBlur now and this machine grants it — and its second, by
-       moving the search field it cited as "a settings card on Mica is already on screen" onto the
-       white 应用 pane. Task 7 falsified what was left: there is no card fill any more (Border.tm-card
-       below), so there is no Δ to preserve, and the tokens the whole table was arithmetic over —
-       SurfaceLayerBrush, SubtleFillSecondaryBrush, SubtleFillTertiaryBrush — no longer exist. Its
-       Windows 11 measurements are archived in
-       docs/superpowers/archive/2026-08-04-windows11-measurement-record.md as the record of a build
-       this one replaced.
-
-       ── 应用 (the .app rule) ───────────────────────────────────────────────────────────────────────
-       An opaque pane with a 1 DIP hairline on its TOP and LEFT edges only, square corners, flush
-       against the rail and against the caption with zero inset. It is not a floating card and it
-       never was.
-
-       The FILL is SurfacePageBrush, which Task 7 aliased onto the vendored AeroListBoxBackground.
-       That is Explorer's own content area: in Windows 7 the item view was a list control and its
-       background was the list background, so the 应用/其他 pane distinction survives the conversion
-       with an Aero justification instead of the Windows 11 Settings one it was given in Round 4.
-
-       The BORDER is StrokeControlBrush, which Task 7 aliased onto AeroGroupBoxBorderBrush — the one
-       hairline Windows 7 draws around a bounded region. It replaces a black-at-alpha-15 token whose
-       whole derivation was "15/255 over white predicts 240", an argument about a translucent stroke
-       this layer no longer contains. 1 DIP rather than the 1.33 that 2 physical px at 150 % would
-       imply: 2 px IS a 1 DIP stroke layout-rounded at this scale, and 1.33 would be wrong at every
-       other one.
-
-       The CORNER is 0, and that is VENDORED rather than authored: the 应用 pane used to carry
-       RadiusPaneTopLeft, an 8 DIP arc on the top-left corner alone, measured off a Task Manager
-       capture. Aero's own ListBox sets CornerRadius="0" (Themes/Aero/ControlStyles/ListBox.axaml)
-       and a Windows 7 content pane has no rounded corner at all, so the token is deleted and its
-       20-line arc measurement is archived with the rest.
-
-       The 1 DIP left and top borders are laid out INSIDE this Border, so they take 1 DIP each away
-       from the page. MainWindow.RefitToContent hands that DIP back through PaneBorderDip, and
-       WindowHost.ChromeHeightDip does the same for the top one — see both constants' own remarks. Do
-       not change this thickness without changing those.
-
-       ── every other page (the :not(.app) rule, DELETED in Round 8, Task 2) ─────────────────────────
-       It painted NOTHING: Transparent, no border, no corner, so the window's own surface ran unbroken
-       from the navigation pane straight through the content. (Not from the CAPTION: that band is
-       glass over the acrylic and the client below it is opaque, so the two never meet in one
-       surface — the phrase said "from the rail and the caption" until Round 7, Task 10.) That was
-       Round 6 item 2's decision
-       (除了应用页，其他页面使用和窗口相同的材质面板), kept to the letter by Round 7, Task 7. It is
-       deleted rather than retained because it has no subject: the shell has one page.
-
-       WHAT CHANGED IS WHAT SHOWS THROUGH, AND IT CHANGED IN MainWindow.axaml, NOT HERE. The window's
-       client area is opaque now: the content Grid below the caption paints SurfaceBaseBrush, i.e.
-       AeroWindowBackground. That is Aero's own structure — glass was the FRAME, the client area was
-       (252,252,252) — and it is what makes this pane's ink legible, because a transparent pane over the
-       acrylic puts every glyph on a live blur of an arbitrary desktop. MEASURED rather than argued:
-       on this machine PrintWindow photographs the transparent 设置 pane as (0,0,0), so its own ink
-       could not be sampled at all, and the wallpaper the acrylic is a blur of averages (87,84,103)
-       over its 7680x4532 pixels — against which the page's group headings compute to 1.4:1 and its
-       body ink to 2.9:1. MainWindow.axaml's content Grid carries that arithmetic in full.
-
-       Background is Transparent and is never simply omitted. It states the intent where a missing
-       setter reads as an oversight, and a null-background Border is not hit-testable in Avalonia, so
-       the gaps between settings cards would stop absorbing pointer input.
+       THE FILL STAYS, and it is the whole of what is left. SurfacePageBrush is Tokens.axaml's alias
+       onto the vendored AeroListBoxBackground: in Windows 7 the item view was a list control and its
+       background was the list background, so a white content area inside an off-white window is
+       Aero's own structure rather than a Windows 11 Settings borrowing. Nothing in any theme paints
+       a bare Border, so deleting this rule would let the window's own SurfaceBaseBrush run straight
+       through the page — which is exactly what the DELETED :not(.app) branch used to do, on purpose,
+       for every non-应用 page (Round 6, item 2: 除了应用页，其他页面使用和窗口相同的材质面板). That
+       decision is recorded here rather than lost with the rule, because a future second page would
+       have to be measured against it again.
 
        ── WHY THIS LIVES HERE, AND NOT AS LOCAL VALUES ON THE BORDER ─────────────────────────────────
        Because a style setter cannot override a local value in Avalonia, in either direction. A class
@@ -1095,18 +788,41 @@
        documentation on that member describes as overriding a TEMPLATE value; LocalValue is a strictly
        higher priority than both (Avalonia 12.1.0's BindingPriority: Animation, LocalValue, StyleTrigger,
        Template, Style, Inherited, Unset). The app already relies on the same ranking from the other
-       side — see the SearchBox TextBox's own remarks in Views/AppPage.axaml, where a LOCAL Background is
-       what stops the theme's :pointerover rule repainting the field. So writing the 应用 look as
-       Background/BorderThickness/CornerRadius attributes on PagePane and then trying to switch it with a
-       class toggle would silently do nothing at all: the pane would stay white everywhere. The look is
-       therefore a style. That argument OUTLIVES the class flip that first needed it — a local value
-       still outranks a style setter now that the class is static — which is why Round 8, Task 2
-       deleted the second rule without moving the first one's setters onto the Border. -->
-  <Style Selector="Border.tm-page-pane.app">
+       side — see the SearchBox TextBox's own remarks in MainWindow.axaml, where a LOCAL Background is
+       what stops the theme's :pointerover rule repainting the field. The look stayed a style through
+       both collapses for that reason, and it stays one now. -->
+  <Style Selector="Border.tm-page-pane">
     <Setter Property="Background" Value="{DynamicResource SurfacePageBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource StrokeControlBrush}" />
-    <Setter Property="BorderThickness" Value="1,1,0,0" />
-    <Setter Property="CornerRadius" Value="0" />
+  </Style>
+
+  <!-- ══ The menu band's one divider ══════════════════════════════════════════════════════════════
+       Round 8, item 5 asks for 关于, then a separator, then the search field, left-aligned in the
+       band. MainWindow.axaml's SearchGroup lays that out; this is the separator.
+
+       IT IS A Border, NOT A Separator AND NOT A MENU PART, and both halves of that are forced rather
+       than chosen. PUBLISHED, https://learn.microsoft.com/en-us/windows/win32/menurc/about-menus:
+       "A separator cannot be used in a menu bar." The Win32 vocabulary that DOES contain a vertical
+       divider is the toolbar's — part TP_SEPARATORVERT of class TOOLBAR, PUBLISHED,
+       https://learn.microsoft.com/en-us/windows/win32/controls/parts-and-states — so the divider is
+       built as that rather than as something the menu bar is published not to have. And
+       Avalonia.Controls.Separator is a bare TemplatedControl whose whole look is theme-supplied: no
+       vendored Aero file themes it, so it would fall back to Fluent's, which is HORIZONTAL. A Border
+       is the one primitive with no theme value under it, which is why it cannot draw the wrong thing.
+
+       BOTH SPACINGS ARE PUBLISHED, https://learn.microsoft.com/en-us/windows/win32/uxguide/vis-layout:
+       11 is "Between unrelated controls", which the menu run and the search field are, and 3 is the
+       "smallest space between a non-interactive control and any other control". The 23 DIP footprint
+       the pair produces (11 + 1 + 11) is the number Task 3's verification measures between 关于's
+       right edge and the field's left one. THE 17 DIP HEIGHT THAT FALLS OUT of the band's 23 DIP item
+       strip minus two 3 DIP margins IS AUTHORED — nothing published gives a vertical menu-bar
+       separator a height, because nothing published has one to give.
+
+       The brush is the darker of the bar's own two bottom rules, so the divider is ink the band
+       already draws and needs no key of its own. -->
+  <Style Selector="Border.tm-bar-separator">
+    <Setter Property="Width" Value="1" />
+    <Setter Property="Margin" Value="11,3" />
+    <Setter Property="Background" Value="{DynamicResource AeroMenuBarBottomInnerBorderBrush}" />
   </Style>
 
   <!-- ══ 应用 categories ═══════════════════════════════════════════════════════════════════════

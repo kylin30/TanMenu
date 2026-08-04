@@ -15,13 +15,13 @@ namespace TanMenu.Core.Tests.Themes;
 /// <remarks>
 /// <para>
 /// These are SOURCE tests, exactly like <see cref="ShellTokenTests"/>, and for the same reason: the
-/// three failures below all render rather than throw. A caption height that disagrees with
+/// failures below all render rather than throw. A caption height that disagrees with
 /// <c>ExtendClientAreaTitleBarHeightHint</c> produces a drag band that does not line up with the caption
 /// you can see (Win32's <c>HitTestNCA</c> derives the band from the hint, not from what is drawn); a
-/// rail width that disagrees with <c>RailWidthDip</c> makes the fit-to-content arithmetic hand back the
-/// wrong chrome and brings back the horizontal scrollbar the fit exists to remove; and a
-/// <c>MinWidth</c> that disagrees with <c>MinWindowWidthDip</c> makes the placement clamp and the
-/// platform's own minimum track size disagree.
+/// menu band whose painted height, reserved row and fit term disagree makes the fit-to-content
+/// arithmetic hand back the wrong chrome and brings back the horizontal scrollbar the fit exists to
+/// remove; and a <c>MinWidth</c> that disagrees with <c>MinWindowWidthDip</c> makes the placement clamp
+/// and the platform's own minimum track size disagree.
 /// </para>
 /// <para>
 /// Every one of the 23 <c>WindowPlacementTests</c> takes the chrome terms as PARAMETERS, so they keep
@@ -33,14 +33,13 @@ public class ShellConstantTests
     private static string SrcDir => Path.Combine(RepoRoot(), "src", "TanMenu.Wpf");
 
     /// <summary>MainWindow's markup with every XML comment stripped. Load-bearing: this file's own
-    /// subject matter — the caption height, the rail width, the 760 DIP floor — is discussed at length
-    /// in that file's prose, so a raw read would match a number in a sentence as readily as the
+    /// subject matter — the caption height, the menu band's height, the width floor — is discussed at
+    /// length in that file's prose, so a raw read would match a number in a sentence as readily as the
     /// attribute it describes, and <see cref="Single"/> would fail on the count.</summary>
     private static string MainWindowXaml =>
         Regex.Replace(File.ReadAllText(Path.Combine(SrcDir, "MainWindow.axaml")),
             "<!--.*?-->", " ", RegexOptions.Singleline);
 
-    private static string MainWindowCs => File.ReadAllText(Path.Combine(SrcDir, "MainWindow.axaml.cs"));
     private static string WindowHostCs =>
         File.ReadAllText(Path.Combine(SrcDir, "Services", "WindowHost.cs"));
 
@@ -79,21 +78,52 @@ public class ShellConstantTests
             $"WindowHost.TitleStripHeightDip={constant}.");
     }
 
+    /// <summary>
+    /// The menu band's height is stated in three unlinked places and they have to agree.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>THIS IS THE SUCCESSOR TO <c>RailWidth_MatchesTheRailPaneWidth</c>, WHICH ROUND 8, TASK 3
+    /// DELETED WITH ITS SUBJECT.</b> That fact tied <c>MainWindow.axaml</c>'s <c>NavRailPane</c>
+    /// <c>Width</c> to <c>MainWindow.RailWidthDip</c>; the navigation pane is gone, both sides of it
+    /// are gone, and <see cref="Single"/> would have failed it with "found 0" rather than passing
+    /// vacuously — which is the behaviour that made deleting it a deliberate act rather than an
+    /// omission.
+    /// </para>
+    /// <para>
+    /// <b>THREE READS, NOT TWO, AND EACH IS A DIFFERENT JOB.</b> The vendored
+    /// <c>Themes/Aero/ControlStyles/Menu.axaml</c>'s <c>MenuBarHeight</c> is what the bar PAINTS (the
+    /// <c>{x:Type Menu}</c> theme's own <c>Height</c> setter reads it); <c>MainWindow.axaml</c>'s
+    /// <c>MenuBand</c> <c>Height</c> is what the content Grid's Auto row RESERVES;
+    /// <c>WindowHost.MenuBandHeightDip</c> is what <c>FitToContent</c> HANDS BACK on top of the measured
+    /// page. Any two of the three can agree while the third drifts, and the only symptom of that drift
+    /// is a window fitted to a chrome height its own band does not have — which nothing renders as an
+    /// error. <c>CaptionHeight_IsTheSameNumberInAllThreePlaces</c> above is the form this copies.
+    /// </para>
+    /// </remarks>
     [Fact]
-    public void RailWidth_MatchesTheRailPaneWidth()
+    public void MenuBandHeight_IsTheSameNumberInAllThreePlaces()
     {
-        // NavRailPane's own literal Width is the single source of truth; RailWidthDip mirrors it as the
-        // fit's chrome term.
-        var pane = Single(MainWindowXaml,
-            @"x:Name=""NavRailPane""\s*\r?\n\s*Width=""(?<v>[0-9.]+)""",
-            "MainWindow.axaml's NavRailPane Width");
+        // Comments stripped for the same reason MainWindowXaml strips them: the vendored file's own
+        // header discusses this number at length, including the 20 it was raised from.
+        var menuXaml = Regex.Replace(
+            File.ReadAllText(Path.Combine(SrcDir, "Themes", "Aero", "ControlStyles", "Menu.axaml")),
+            "<!--.*?-->", " ", RegexOptions.Singleline);
 
-        var constant = Single(MainWindowCs, @"RailWidthDip\s*=\s*(?<v>[0-9.]+)\s*;",
-            "MainWindow.RailWidthDip");
+        var painted = Single(menuXaml, @"<x:Double x:Key=""MenuBarHeight"">(?<v>[0-9.]+)</x:Double>",
+            "the vendored Menu.axaml's MenuBarHeight");
 
-        Assert.True(pane == constant,
-            $"NavRailPane Width={pane} but MainWindow.RailWidthDip={constant}. The fit's chrome width " +
-            "would be wrong by the difference, with no error anywhere.");
+        var reserved = Single(MainWindowXaml, @"x:Name=""MenuBand""[^>]*Height=""(?<v>[0-9.]+)""",
+            "MainWindow.axaml's MenuBand Height");
+
+        var fitTerm = Single(WindowHostCs, @"MenuBandHeightDip\s*=\s*(?<v>[0-9.]+)\s*;",
+            "WindowHost.MenuBandHeightDip");
+
+        Assert.True(painted == reserved && reserved == fitTerm,
+            "The menu band's height is stated in three unlinked places and they disagree: the vendored " +
+            $"Menu.axaml's MenuBarHeight={painted}, MainWindow.axaml's MenuBand Height={reserved}, " +
+            $"WindowHost.MenuBandHeightDip={fitTerm}. The band would paint one height, the Auto row " +
+            "would reserve another, and the fit would hand back a third — none of which throws.");
     }
 
     [Fact]

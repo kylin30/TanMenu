@@ -133,7 +133,8 @@ public partial class OptionsWindow : Window
     /// <para>
     /// <b>The six tab headers take the six keys the cards' own group heads take, and this method owns
     /// the writes.</b> No <c>Binding</c>: <c>AppLanguage</c> has no change notification, which is the
-    /// same reason <c>MainWindow.ApplyRailText</c> exists. Round 8, Task 6 deletes five of the six
+    /// same reason <c>MainWindow.ApplyMenuText</c> exists (it was <c>ApplyRailText</c> until Round 8,
+    /// Task 3 replaced the navigation pane with the menu band). Round 8, Task 6 deletes five of the six
     /// group boxes and with them five <c>GroupHead</c> <c>TextBlock</c>s and the five
     /// <c>GroupHead.Text</c> assignments behind them, at which point the <c>TabItem</c> header is the
     /// only remaining statement of a group's name — so the text had to move here first.
@@ -223,6 +224,16 @@ public partial class OptionsWindow : Window
         foreach (var card in Cards())
             card.ReloadFromConfig();
     }
+
+    /// <summary>
+    /// Select the 关于 tab. <b>Round 8, Task 3, and it is provisional in exactly the way its one caller
+    /// says it is:</b> the menu band's 关于 item has to land somewhere, 关于 is a tab of this dialog
+    /// today, and Round 8, Task 4 moves that content into a real About box
+    /// (<c>Dialogs/AboutWindow</c>) and deletes both this method and the tab it selects. PUBLISHED,
+    /// <c>win-property-win</c>: "Is the content solely an application's attributes? If so, use an About
+    /// box."
+    /// </summary>
+    public void ShowAboutTab() => Tabs.SelectedItem = AboutTab;
 
     /// <summary>Every settings card hosted by a tab, in tab order. Structural discovery, inherited from
     /// the page this window replaced: the tabs are the authority on which groups exist.</summary>

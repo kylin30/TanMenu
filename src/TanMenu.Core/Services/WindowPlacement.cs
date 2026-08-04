@@ -81,20 +81,22 @@ public static class WindowPlacement
     /// real Avalonia visual tree.
     /// </summary>
     /// <param name="contentWidth">The active page's natural content width, as measured by Avalonia (e.g.
-    /// <c>AppPage.DesiredSize.Width</c>) — excludes the navigation rail.</param>
-    /// <param name="contentHeight">The active page's natural content height — excludes the caption band.</param>
+    /// <c>AppPage.DesiredSize.Width</c>) — excludes whatever the shell lays out beside the page.</param>
+    /// <param name="contentHeight">The active page's natural content height — excludes the caption band
+    /// and the menu band above it.</param>
     /// <param name="chromeWidth">Everything beside the content that still counts toward the window's own
-    /// Width: the navigation pane, which is one fixed width, plus whatever left border the content pane
-    /// carries. This function only adds it — what it is composed of, and what that width currently is,
-    /// are the caller's business (<c>MainWindow.RefitToContent</c>, which composes
-    /// <c>RailWidthDip + PaneBorderDip</c>). No number from the shell is restated here: this file is the
-    /// unit-testable arithmetic, and all 23 <c>WindowPlacementTests</c> pass both terms in as
-    /// parameters.</param>
+    /// Width. This function only adds it — what it is composed of, and what it currently is, are the
+    /// caller's business (<c>MainWindow.RefitToContent</c>, which passes
+    /// <c>MainWindow.ChromeWidthDip</c>). It was the navigation pane's width plus the content pane's
+    /// left hairline; it is ZERO as of Round 8, Task 3, which deleted both. The parameter stays because
+    /// no number from the shell is restated here — this file is the unit-testable arithmetic, and all
+    /// 23 <c>WindowPlacementTests</c> pass both terms in as parameters.</param>
     /// <param name="chromeHeight">Everything above the content that still counts toward the window's own
-    /// Height: the caption band, plus whatever top border the content pane carries
-    /// (<c>WindowHost.ChromeHeightDip</c>). "Title strip" is what this said until Round 7 — that was a
-    /// client-side element Task 1 deleted outright, and the term above is the one
-    /// <c>Services/WindowHost.cs</c> already uses.</param>
+    /// Height: the caption band plus the classic menu band
+    /// (<c>WindowHost.ChromeHeightDip</c>, which is <c>TitleStripHeightDip + MenuBandHeightDip</c>).
+    /// "Title strip" is what this said until Round 7 — that was a client-side element Task 1 deleted
+    /// outright — and "plus whatever top border the content pane carries" is what it said until
+    /// Round 8, Task 3 deleted that border with the pane it separated from.</param>
     /// <remarks>
     /// A fit no longer takes a position at all. Before Round 4, item 4 it took the window's own current
     /// Left/Top and re-clamped them, so a re-fit preserved wherever the window happened to be; now

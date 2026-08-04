@@ -1,9 +1,10 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:chrome="using:Avalonia.Controls.Chrome"
+        xmlns:vm="using:TanMenu.Wpf.ViewModels"
         x:Class="TanMenu.Wpf.MainWindow"
         Title="TanMenu"
-        Width="1112" Height="688" MinWidth="872"
+        Width="1000" Height="688" MinWidth="711"
         WindowStartupLocation="Manual"
         TransparencyLevelHint="AcrylicBlur"
         Background="Transparent"
@@ -14,45 +15,49 @@
         ExtendClientAreaTitleBarHeightHint="30">
 
   <!--
-    The shell: an acrylic window split into a hand-drawn Windows 7 Aero caption, a wide labelled
-    navigation pane (160 DIP, see NavRailPane below) and a page host.
+    The shell: an acrylic window split into a hand-drawn Windows 7 Aero caption, a CLASSIC MENU BAND
+    and a page host.
 
-    Round 3, Task 2 (user items 4, 5) gave the pane its two-group shape, and that shape survives every
-    later change to what the rows look like: the page rows sit in a top "*"-sized group (NavRail, a
-    ListBox in the Grid's "*" row) and the commands plus 设置 sit in a SEPARATE, bottom-pinned footer
-    group, pushed to the pane's bottom edge by whatever space the "*" row does not use. Round 3 moved
-    four commands out of the title strip's old ⋯ overflow (打开主目录/刷新/关于/退出); three are still
-    rows here, because Round 5, item 2 took 关于 back out and made it a settings card. A command row is
-    NOT a page — invoking one leaves whatever page is currently shown alone — so they are plain Buttons
-    (Theme="{StaticResource TmNavRowButton}"), not ListBoxItems: a Button has no :selected pseudoclass
-    at all, which is what makes "a command row must never look selected" true by construction rather
-    than by a style rule a future edit could defeat. That split got MORE load-bearing in Round 7,
-    Task 8, not less — see TmNavRowButton's own remark in Themes/Shell/Launcher.axaml.
+    ROUND 8, TASK 3 DELETED THE NAVIGATION PANE AND PUT THE BAND WHERE IT USED TO POINT. The pane was
+    a 160 DIP vertical strip down the LEFT of the client area (Round 7, Task 8 widened it from a
+    48 DIP icon rail; Round 3, Task 2 had built its two-group shape). It is gone, and with it the
+    ListBox that held 应用, the four command Buttons, the group separator, the five
+    Theme="{StaticResource TmNavRow…}" rows and the two ControlThemes that dressed them
+    (Themes/Shell/Launcher.axaml). What replaces it is a horizontal Menu across the top of the client
+    area, below the caption — "windows 经典的 mainmenu", in the user's own words.
 
-    ROUND 8, TASK 2 MOVED 设置 ACROSS THAT SPLIT AND DELETED THE SHELL'S PAGE MODEL WITH IT. 设置 was
-    the second PAGE and had a ListBox of its own (NavFooterRail) so it could carry a selected look; it
-    is a modal Options DIALOG now (Dialogs/OptionsWindow) — PUBLISHED,
-    https://learn.microsoft.com/en-us/windows/win32/uxguide/win-property-win, "Properties for an
-    application are displayed in a modal dialog box" — which makes it a command by the paragraph
-    above's own test, so its row is a Button like the three around it and NavFooterRail is gone. What
-    went with it, in the code-behind: ShowPage, ShowPageCore, OnNavSelectionChanged, the _inShowPage
-    and _navReady flags, the _settingsPage field; and, outside this file, Services/IShellNavigator.cs
-    whole, its two DI registrations, WindowHost's navigator dependency, and Views/SettingsPage.axaml.
-    ONE PAGE REMAINS. PageHost.Content is assigned once, in MainWindow's constructor. The pane itself
-    dies in Round 8, Task 3, which replaces it with a horizontal menu band.
+    FIVE ITEMS, IN THIS ORDER: 设置 · 主目录 · 刷新 · 退出 · 关于. Every one is a DIRECT COMMAND with
+    no submenu, which is legal and rare rather than ordinary — PUBLISHED,
+    https://learn.microsoft.com/en-us/windows/win32/menurc/about-menus: "A menu bar typically contains
+    menu names, but it can also contain command items." and "An item on the menu bar almost always
+    opens a menu. Menu bars rarely contain command items." THE UX GUIDE POINTS THE OTHER WAY AND THE
+    DEVIATION IS BOOKED RATHER THAN ARGUED AWAY — PUBLISHED, cmd-menus: "The presence of menus goes
+    without saying in a menu bar", and cmd-toolbars sanctions this row's exact shape ("Partial
+    toolbars can be combined with navigation buttons, a search box, or tabs"). A toolbar would satisfy
+    every published sentence and has no published height at all, which would have dissolved the
+    20-versus-23 arithmetic that forces the band to 25 DIP. The user asked for a main menu; the user's
+    word wins and those sentences are the stated cost.
 
-    ROUND 7, TASK 8 TURNED THE 48 DIP ICON RAIL INTO A 160 DIP LABELLED PANE, and it is ONE width, not
-    two. Round 4, item 1 had deleted the rail's expand capability in five pieces — the label
-    TextBlocks, the StackPanels that paired them with icons, the 200 DIP second width, the
-    DoubleTransition that animated between the two, and the ClipToBounds that clipped that animation.
-    Task 8 reverts the first two and NOT the other three. Keeping one width is what keeps RailWidthDip
-    a constant rather than a config read, and it is what keeps the sixth re-fit trigger deleted.
-    Because the rows carry visible labels again, ApplyRailText's five ToolTip.SetTip calls are GONE and
-    five TextBlock.Text writes stand in their place; the five AutomationProperties.Name writes stay, and
-    every row still has one. Microsoft's own glossary settles the tooltips:
-    https://learn.microsoft.com/en-us/windows/win32/uxguide/glossary — "tooltip — A small pop-up window
-    that labels the UNLABELED control being pointed to". A tooltip that repeats a visible label is by
-    that definition the wrong control.
+    刷新 IS IN THE LIST FOR A REASON THAT IS NOT SYMMETRY. LauncherViewModel.RefreshAsync is the only
+    USER-REACHABLE caller of ReloadAsync(force: true) — the other is InitializeCoreAsync, the
+    once-per-process startup build — and force is the only way past MenuService's fingerprint gate,
+    whose own comment names a case it cannot catch: "A target exe overwritten in place under the SAME
+    .lnk still needs a manual 刷新". Dropping the item would leave a manual rescan unreachable.
+
+    THE SEARCH FIELD IS IN THE BAND, IMMEDIATELY AFTER 关于, WITH ONE SEPARATOR BETWEEN THEM AND THE
+    WHOLE GROUP LEFT-ALIGNED. That is the request (放在"关于"后面) taken literally. A RIGHT-ALIGNED
+    VARIANT WAS CONSIDERED AND REJECTED: Office XP/2003's "Type a question for help" box is the one
+    adjacent Microsoft precedent, and it puts the separator a window-width away from 关于, which is a
+    different layout wearing the same words. No Microsoft-shipped Windows 7 application was found with
+    a text field in its menu bar at all — COULD NOT VERIFY — so this is a documented extrapolation
+    rather than a reproduction, and the band's own 25 DIP says so again where it departs from the OS
+    metric (SM_CYMENU MEASURED 20; see Themes/Aero/ControlStyles/Menu.axaml's header).
+
+    THIS IS NOT THE THING ROUND 7, TASK 1 REMOVED. That was a control in the window FRAME, which
+    https://learn.microsoft.com/en-us/windows/win32/uxguide/win-window-frames forbids verbatim: "Don't
+    add controls to a window frame. Put the controls within the window instead." The frame is the
+    caption — the Window.WindowDecorationsTheme block below. This band is inside the client area,
+    under it, which is exactly where that sentence says to put controls.
 
     ExtendClientAreaToDecorationsHint pulls the whole client area — including the strip where the OS
     used to paint its own title bar — under our control. ExtendClientAreaTitleBarHeightHint is pinned to
@@ -64,6 +69,13 @@
     places — here, the root Grid's row 0 below, and WindowHost.TitleStripHeightDip — and
     ShellConstantTests.CaptionHeight_IsTheSameNumberInAllThreePlaces is what keeps them equal.
 
+    THE MENU BAND'S 25 IS THE SECOND SUCH NUMBER, and it lands in three unlinked places of its own:
+    the vendored Menu.axaml's <x:Double x:Key="MenuBarHeight">, WindowHost.MenuBandHeightDip (the
+    fit's chrome term), and MenuBand's own Height below.
+    ShellConstantTests.MenuBandHeight_IsTheSameNumberInAllThreePlaces ties all three, and it needs all
+    three because two of them can agree while the third drifts — and the only symptom of that drift is
+    a band whose painted height and whose fit term disagree, silently.
+
     There is deliberately NO MinHeight here, and MinWidth stays. Round 4, item 4: Avalonia's
     WM_GETMINMAXINFO handler sets ptMinTrackSize.Y to MinHeight × scale PLUS BorderThickness.Top+Bottom
     (decompiled Win32.WindowImpl 12.1.0), which on this window's style is the full 45+11 px frame — but
@@ -72,21 +84,18 @@
     a bottom anchor computed from the requested height overlap the taskbar. The horizontal case has no
     such error (the 22 px AdjustWindowRectEx reports IS the real horizontal inset), so MinWidth stays
     declared. The app's own 568 DIP height floor now lives in WindowHost.MinWindowHeightDip, where
-    it is applied to the request instead of to the window. Round 7, Task 8 moved that MinWidth from 760
-    to 872 and the declared Width from 1000 to 1112, both by the pane's own 112 DIP growth: the number
-    the four measurement records elsewhere in the tree actually rest on is the CONTENT PANE's floor, and
-    872 − 161 of chrome holds it at exactly the 711 DIP it has always been. WindowHost.MinWindowWidthDip
-    mirrors the 872 and ShellConstantTests.MinWindowWidth_IsTheSameNumberInBothPlaces ties them.
+    it is applied to the request instead of to the window.
 
-    Round 3, Task 2: the ⋯ overflow button that used to sit in the title strip
-    (打开主目录/刷新/关于/退出 behind a MenuFlyout) is gone — those commands became rows in the navigation
-    rail below (NavRailContent's bottom-pinned footer group). Round 7, Task 1 then removed the strip
-    itself: Microsoft's own rule for a window frame is verbatim "Don't add controls to a window frame.
-    Put the controls within the window instead."
-    (https://learn.microsoft.com/en-us/windows/win32/uxguide/win-window-frames), so the search field went
-    back to the 应用 page's own content area (Views/AppPage.axaml) where it lived before commit 6d00060.
-    The overflow ⋯ button does NOT come back with it — Round 3 Task 2 and Round 5 item 2 removed that
-    pattern deliberately and only the search field reverts.
+    ROUND 8, TASK 3 MOVED MinWidth FROM 872 BACK TO 711 AND Width FROM 1112 BACK TO 1000, and both are
+    reversions of Round 7 Task 8's pane growth rather than new numbers. The floor the four measurement
+    records elsewhere in this tree actually rest on is the CONTENT PANE's 711 DIP; the pane made the
+    window's own floor 711 + 161 of chrome, and with the pane deleted the chrome WIDTH is 0, so the
+    window's floor IS the content pane's. WindowHost.MinWindowWidthDip mirrors the 711 and
+    ShellConstantTests.MinWindowWidth_IsTheSameNumberInBothPlaces ties them;
+    WindowHost.PlaceholderWidthDip mirrors the 1000 and its own remark says why the two must agree.
+    THE 711 HAS ONE NEW FLOOR TO CLEAR that the old one did not: the band is five menu items, then the
+    separator's whole 23 DIP footprint, then a 320 DIP field, then 11 DIP of trailing margin, laid end
+    to end. Task 3 MEASURED that run rather than estimating it — see this task's report.
   -->
 
   <Window.Resources>
@@ -363,20 +372,13 @@
        (decompiled Window.UpdateDrawnDecorationMargins: the inset is only applied in
        _isForcedDecorationMode, i.e. when decorations are drawn WITHOUT the client area being
        extended), so the window's content is arranged over the whole window and this row is what keeps
-       the rail and the page host out from under the caption. It must carry no Background: a
+       the menu band and the page host out from under the caption. It must carry no Background: a
        hit-testable element here would shadow the caption's own underlay in
        PresentationSource.HitTestChromeElement's topmost-first walk and the window would stop being
        draggable. The 30 is one of the three copies ShellConstantTests ties together. -->
   <Grid RowDefinitions="30,*">
 
-    <!-- Grid.Column="0" is "Auto", not a literal width: NavRailPane below carries its OWN explicit
-         Width and the Auto column just follows whatever that Border measures at, so the pane's width is
-         stated exactly once in this file (Round 4, item 1 removed the second state that Width used to
-         animate between; a fixed column here would restore a second copy of the number instead — and
-         Round 7, Task 8 moved that number from 48 to 160 with no edit here, which is the arrangement
-         working).
-
-         ══ THE CLIENT SURFACE, ROUND 7 TASK 7 ═══════════════════════════════════════════════════
+    <!-- ══ THE CLIENT SURFACE, ROUND 7 TASK 7 ═══════════════════════════════════════════════════
          This Background is what makes the app legible, and it is Aero's own structure rather than a
          compromise: in Windows 7 the GLASS was the window FRAME and the client area under it was
          opaque #FCFCFC. Row 0 above — the caption band — deliberately keeps no Background at all, so
@@ -384,430 +386,244 @@
          blur. Everything below the caption is SurfaceBaseBrush, which Tokens.axaml aliases onto the
          vendored AeroWindowBackground.
 
-         MEASURED, and this is why it is not optional. Until this task the whole client was
+         MEASURED, and this is why it is not optional. Until Task 7 the whole client was
          Transparent over the acrylic. Avalonia's AcrylicBlur on Win32 is a plain gaussian blur of
          what is behind the window with NO tint layer of its own, so every glyph on a page that
          painted nothing sat on a blur of the user's desktop. On this machine the wallpaper
          (D:\0.Documents\Pictures\壁纸, 7680x4532) averages (87,84,103) over 120,684 sampled pixels,
          whose WCAG relative luminance is 0.093. Against that surface the 设置 page's group headings
-         (HeadingBrush's Light value, luminance 0.050) compute to 1.4:1 and its body ink (pure black)
+         (HeadingBrush's Light value, luminance 0.050) computed to 1.4:1 and its body ink (pure black)
          to 2.9:1 — against WCAG AA's 4.5:1 for body text. PrintWindow cannot photograph the composite
          at all (flag 2 returns (0,0,0) for a transparent client), so the failure was neither visible
          to the instrument nor arguable away: the group headings really did sample (0,0,0) ink on a
-         (0,0,0) background, ratio 1.00, on the build this task replaced. Over AeroWindowBackground
-         the same two elements measure 10.59:1 and 20.47:1 in Light and 4.29:1 and 11.90:1 in Dark,
-         read off PrintWindow captures rather than computed.
+         (0,0,0) background, ratio 1.00, on the build that task replaced. Over AeroWindowBackground
+         the same two elements measured 10.59:1 and 20.47:1 in Light and 4.29:1 and 11.90:1 in Dark,
+         read off PrintWindow captures rather than computed. (That page is a modal dialog since
+         Round 8, Task 2 and reads the same SurfaceBaseBrush from its own Background; the argument is
+         about what the window's material IS, so it survives the move.)
 
-         Border.tm-page-pane:not(.app) in Themes/Shell/Launcher.axaml carried Round 6 item 2's
-         decision that every non-应用 page shows the window's own material; ROUND 8, TASK 2 DELETED
-         THAT RULE, because 设置 was its only subject and 设置 is a modal dialog now rather than a
-         page. Nothing about the paragraph above changes — it is about what the window's own material
-         IS, and the dialog's own Background reads the same SurfaceBaseBrush. -->
-    <Grid Grid.Row="1" ColumnDefinitions="Auto,*"
+         ══ TWO ROWS, NOT TWO COLUMNS — ROUND 8, TASK 3 ═══════════════════════════════════════════
+         This Grid was ColumnDefinitions="Auto,*" with the 160 DIP navigation pane in the Auto column
+         and the page host in the "*" one. The pane is deleted and the chrome runs HORIZONTALLY now:
+         an Auto row holding the menu band, and a "*" row holding the page. The Auto row follows
+         MenuBand's own explicit Height rather than restating it, which is the same arrangement the
+         deleted Auto COLUMN had with the pane's Width — the number is stated once, in the markup
+         below. -->
+    <Grid Grid.Row="1" RowDefinitions="Auto,*"
           Background="{DynamicResource SurfaceBaseBrush}">
 
-      <!-- ══ Navigation pane: 160 DIP, wide and labelled ════════════════════════════════════════════
-           EVERY NUMBER IN THIS DERIVATION IS AUTHORED. Microsoft never published the Windows 7
-           navigation pane's geometry: the Windows 7 UX Guide's table of contents
-           (https://learn.microsoft.com/en-us/windows/win32/uxguide/toc.json, 73 slugs) has no Explorer
-           article and no navigation-pane article, and its glossary has no "navigation pane" entry.
-           There is no Windows 7 machine and no Aero reference capture anywhere in this tree. What
-           follows is therefore DERIVED from the published statements that do bear on it, not measured,
-           and the one place this conversion has to say so out loud.
+      <!-- ══ The classic menu band ═══════════════════════════════════════════════════════════════
+           25 DIP: the item strip is 23 and the vendored Menu template docks two 1 DIP bottom rules
+           inside the same height. 23 is PUBLISHED,
+           https://learn.microsoft.com/en-us/windows/win32/uxguide/vis-layout — a one-line text box is
+           23 relative pixels tall, and item 5 puts one of those in this bar. The full derivation, the
+           5 DIP departure from the MEASURED SM_CYMENU of 20, and the two alternatives that were
+           rejected are in Themes/Aero/ControlStyles/Menu.axaml's own header, which is also where the
+           three changes made to that vendored file are recorded.
 
-           WHY 160.
-             · PUBLISHED, https://learn.microsoft.com/en-us/windows/win32/uxguide/vis-layout — the only
-               sizing statement the guide makes about trees at all: "Tree views | width of longest item
-               + 30% x an integral number of items (5 items minimum)". A formula; its relative-pixels
-               cell is blank.
-             · Longest label in either language, MEASURED on the shipped build at 150 % with the app's
-               DEFAULT font (UI Automation on each label TextBlock): 打开主目录 is 105 px = 70 DIP, and
-               its English twin — "Open Main Folder", not the design's "Open root folder" — is
-               168 px = 112 DIP. The design estimated 60 and 88 and was wrong about both, and about the
-               English string itself.
-               THE +30% IS THEREFORE MET IN CHINESE AND NOT IN ENGLISH, and that is recorded rather than
-               papered over: 70 × 1.3 = 91 fits the 118 DIP label column with room; 112 × 1.3 = 145.6
-               does not. The English label still RENDERS WHOLE — 112 against 118, 6 DIP of clearance,
-               confirmed on a PrintWindow capture with no ellipsis — so the pane is legible in both
-               languages; what it does not have is the formula's headroom. 160 is kept anyway because it
-               is the number the whole fit table is derived from (MinWidth 872 holds the content pane at
-               its historical 711 DIP, §2.1 of the design), and widening the pane to satisfy a formula
-               whose own relative-pixels cell is blank would move four measurement records elsewhere in
-               the tree for no legibility gain.
-             · A USER-CHOSEN FONT CAN STILL OVERFLOW THE COLUMN, and tm-nav-label's
-               NoWrap + CharacterEllipsis is what handles it. MEASURED with 字体 = Verdana — that is
-               general.fontFamily in config.json, which the 设置 page's 外观 card writes
-               (Views/Settings/AppearanceCard.axaml.cs): "Open Main Folder" trims to "Open Main Fol…"
-               where the default font renders it whole. The row's
-               AutomationProperties.Name still carries the untrimmed string, so nothing is lost to a
-               screen reader; a sighted user of a wide font at that one row loses the last word. The
-               alternative — sizing the pane for the widest installed face — is not sizeable at all.
-             · This row's own structure: Margin 2 + Padding 8 + icon 16 + gap 6 = 32 DIP ahead of the
-               label, and Padding 8 + Margin 2 = 10 DIP after it. Label column = 160 − 32 − 10 = 118 DIP.
-               That is the number the two measured labels above are checked against, and both FIT: 70
-               fits with room, 112 fits with 6 DIP of clearance. What 118 does NOT clear is the +30 %
-               itself in English — see the bullet above, which is the honest reading; the design's own
-               "≥ 114" is superseded, because 114 came from its 88 DIP estimate for a string the app
-               does not use. The margin, the padding and the gap are TmNavRowItem's and tm-nav-label's
-               (Themes/Shell/Launcher.axaml); the 16 is each glyph's own local Width below.
-               MEASURED on the shipped build at 150 %, all five rows identical and IDENTICAL IN ALL
-               FOUR CONFIGURATIONS TABULATED BELOW — stated as offsets from the row box, because the
-               absolute screen coordinates move with the window's fitted width and the offsets do not:
-               the glyph starts 12 px (8 DIP of Padding) inside the row box and is 24 px (16 DIP) wide,
-               the label starts 9 px (6 DIP of gap) after the glyph, and the row's trailing 12 px of
-               Padding closes it — leaving 234 − 12 − 24 − 9 − 12 = 177 px = 118 DIP of label column,
-               exactly the arithmetic above.
-             · NO INDENT, and that is published too:
-               https://learn.microsoft.com/en-us/windows/win32/controls/tree-view-control-window-extended-styles
-               — "TVS_EX_NOINDENTSTATE — [Windows Vista]. Do not indent the tree view for the expando
-               buttons." The indent exists to make room for an expando; no row here has children, so
-               this is exactly that case. vis-layout's one published indent figure ("dependent controls
-               are indented 12 DLUs or 18 relative pixels") is quoted only to say why it is not used.
-             · THE ROW BOX AND THE PITCH ARE NOT CONSTANTS OF THIS DESIGN, and writing either as one
-               number is the mistake this bullet exists to prevent. A row box is the LABEL'S LINE BOX
-               plus this row's Padding, and a line box follows the CONFIGURED FONT (general.fontFamily,
-               AppConfig.cs — "" means AppFonts.UiStack, "Segoe UI, Microsoft YaHei UI") and the UI
-               LANGUAGE, both of which the user owns. The design predicted a 22 DIP row box and a 24 DIP
-               pitch from "16 DIP glyph + 2×3 DIP Padding", and THAT ARITHMETIC IS WRONG ABOUT WHICH
-               CHILD IS TALLEST: UI Automation on every one of the five rows puts the glyph box at 24 px
-               wide and 23-24 px tall in every configuration below — the 16 DIP icon column, give or
-               take a pixel of layout rounding — and the label beside it at 26 px at the very least, so
-               the DockPanel always measures the label, never the glyph.
-               MEASURED at this machine's 150 %, four configurations, all five rows alike within each:
+           x:DataType IS REQUIRED HERE AND IS NOT TIDINESS. AvaloniaUseCompiledBindingsByDefault is
+           true (TanMenu.Wpf.csproj), and a compiled {Binding} resolves its path against the nearest
+           ancestor's x:DataType. The search field below moved out of Views/AppPage.axaml, which
+           supplies one on its root; this Window's root does NOT and must not — the Window's own
+           DataContext is not the view model, and a root-level x:DataType would mis-type every other
+           binding in this file. Scoping it to the band is what makes {Binding Filter},
+           {Binding SearchPlaceholderText} and {Binding ClearFilterText} compile. Without it they are
+           a BUILD ERROR, not a silent no-op. The DataContext itself is assigned once, in the
+           constructor: MenuBand.DataContext = _appPage.ViewModel.
+           The THREE {Binding #Name.…} bindings below — MenuRunSpacer's Width and the two affordance
+           faces' IsVisible — are ELEMENT-NAME bindings: they resolve against the named element's own
+           type, need no x:DataType, and would have moved unchanged either way. -->
+      <Grid Grid.Row="0" x:Name="MenuBand" Height="25"
+            x:DataType="vm:LauncherViewModel">
 
-                 general.fontFamily        语言    label line box   row box            row pitch
-                 "" (the shipping default) zh-CN   29 px            37 px = 24.67 DIP  40 px = 26.67 DIP
-                 "" (the shipping default) en-US   28 px            36 px = 24.00 DIP  40 px = 26.67 DIP
-                 "Verdana"                 zh-CN   27 px            35 px = 23.33 DIP  38 px = 25.33 DIP
-                 "Verdana"                 en-US   26 px            34 px = 22.67 DIP  38 px = 25.33 DIP
+        <!-- The Menu fills the whole cell, which is what makes Aero's own bar — the gradient, the
+             7 DIP shine and the two bottom rules — run the FULL WINDOW WIDTH. The search group below
+             is a SIBLING over it, not a child of it: MenuBase.NeedsContainerOverride accepts only
+             MenuItem and Separator as their own containers (decompiled, Avalonia 12.1.0), so a
+             TextBox placed in Menu.Items would be wrapped in a generated MenuItem, become its Header,
+             and inherit DefaultMenuInteractionHandler's key handling and click-closes-the-menu
+             behaviour. Menu also overrides KeyboardNavigation.TabNavigation to Once, so a field
+             inside it might not be individually tab-reachable; a sibling is unaffected by both.
 
-               The two Verdana rows are here because the portable config this pane was first measured
-               against carries "fontFamily":"Verdana" — Verdana is a real user choice, it is not in
-               AppAppearance.RetiredFontNames, and the numbers it produces are NOT the numbers a
-               maintainer re-measuring the app as shipped will see. In all four, row box = label line
-               box + 8 physical px: the authored 3 DIP of Padding lands on 4 px per side at 150 %. The
-               pitch adds the two neighbours' 1 DIP vertical Margins, which land on 3 or 4 px depending
-               on where the row boundary falls.
-               THE 22 IS NOT REACHABLE — it would need a 25 px line box, and the smallest measured here
-               is 26 — and it is not chased. Pinning the label's LineHeight is the only thing that would
-               collapse the row box to one number, and Round 7, Task 7 deleted every LineHeight token in
-               Themes/Shell on the ground that GDI text takes its natural line height; re-introducing
-               one here would contradict that decision and risk clipping CJK descenders. The measured
-               values ship, and they ship as a range rather than as a constant.
-               This does cost the evenness citation, so it is recorded as forgone rather than claimed:
-               https://learn.microsoft.com/en-us/windows/win32/controls/tvm-setitemheight — "If this
-               argument is not even and the tree-view control does not have the TVS_NONEVENHEIGHT style,
-               this value will be rounded down to the nearest even value" — argues for an even item
-               height, and the four measured row boxes are 37, 36, 35 and 34 physical px — two odd, two
-               even — so evenness is not a property this pane has, or could be given, while the row
-               height is a line box. Win32 rounds; Avalonia does not, and nothing in this app is a tree
-               view.
+             NO ICONS AND NO ELLIPSES. PUBLISHED, cmd-menus: "If you use icons, don't feel obligated
+             to provide them for all menu items", and About/Options "must display another window when
+             clicked, but don't require additional information from the user. Therefore they don't
+             need ellipses." Dropping the glyphs also removes five of this app's Segoe Fluent Icons
+             uses, which is the one anachronism the conversion declares.
 
-           ONE WIDTH, NOT TWO, and re-reading this as "expandable" is the mistake to avoid. Round 4,
-           item 1 deleted the second 200 DIP width, the DoubleTransition and the ClipToBounds along with
-           the labels; Task 8 brings back only the labels. A second width would restore all three plus a
-           config read for the fit term and a sixth re-fit trigger — four deliberate deletions.
+             HEADERS AND ACCESSIBLE NAMES ARE BOTH WRITTEN FROM CODE — ApplyMenuText, five Header
+             writes and five AutomationProperties.Name writes, the same ten ApplyRailText did for the
+             pane's rows. The Header carries the access-key marker "_" and the name does not: the
+             vendored template opts in with RecognizesAccessKey="True" on PART_HeaderPresenter, and
+             Avalonia's AccessText strips the marker before drawing, but a UIA name taken from the raw
+             header string keeps it — MEASURED on the Options dialog's own 应用 button in Round 8,
+             Task 2, which is why that button carries the same explicit pair. Access keys are
+             PUBLISHED where a published assignment exists (inter-keyboard's standard table gives
+             O = Options, x = Exit, A = About) and app-specific where none does (M for 主目录, on the
+             guide's own preference for wide letters "such as w, m"; R for 刷新). -->
+        <Menu x:Name="MainMenu">
+          <MenuItem x:Name="MenuOptions" Click="OnOptionsClick" />
+          <MenuItem x:Name="MenuOpenRoot" Click="OnOpenRootClick" />
+          <MenuItem x:Name="MenuRefresh" Click="OnRefreshClick" />
+          <MenuItem x:Name="MenuExit" Click="OnExitClick" />
+          <MenuItem x:Name="MenuAbout" Click="OnAboutClick" />
+        </Menu>
 
-           This literal Width is the SINGLE source of truth for the pane's width. MainWindow.axaml.cs's
-           RailWidthDip mirrors it as the window content fit's chrome term and has to be kept in step
-           with it — see that constant's own remarks, and
-           ShellConstantTests.RailWidth_MatchesTheRailPaneWidth, which is what catches a drift between
-           the two. -->
-      <Border Grid.Column="0"
-              x:Name="NavRailPane"
-              Width="160"
-              Background="Transparent">
+        <!-- ══ 关于, then the separator, then the field — LEFT-ALIGNED ═════════════════════════════
+             The group starts exactly where 关于 ends, and it does that with a SPACER rather than with
+             a Grid column, because the two requirements are in tension: a
+             ColumnDefinitions="Auto,Auto,*" with the Menu in column 0 would put the group in the
+             right place and stop Aero's bar painting past the last item. So the Menu keeps the whole
+             cell and the group is offset by the x of 关于's right edge, taken from the one element
+             that knows it.
 
-        <!-- Two rows: the page list in a "*" row and the footer pinned alone in an Auto row below it,
-             the "*" row's own leftover space pushing the footer down to the pane's bottom edge. Round 4,
-             item 1 removed the third (Auto) row this Grid used to open with, which held nothing but the
-             hamburger toggle; nothing replaces it, so 应用 rises by that row's whole height.
-             Classes="tm-nav-rail" is this element's own name for anything that needs to scope a rule to
-             the pane root, and EXACTLY ONE rule does: Launcher.axaml's "Grid.tm-nav-rail
-             TextBlock.tm-icon", which lifts every pane glyph to full ink so it matches the label beside
-             it. There is no second reader — grepping src for the class name finds that one selector and
-             nothing else. tm-nav-label needs no scoping because no other part of the app uses that
-             class. -->
-        <Grid x:Name="NavRailContent" Classes="tm-nav-rail" RowDefinitions="*,Auto">
+             MenuAbout.Bounds is stated in its items panel's coordinate space, and READ OUT OF THE
+             VENDORED TEMPLATE that panel has no left inset to correct for: PART_ItemsPresenter is a
+             SIBLING of the bordered Border inside the template's Panel, not its child, so the 1 DIP
+             side border does not push it. Task 3 measured the gap to confirm it. MenuItem.Bounds is a
+             Rect and .Right a double, so this is a plain double-to-double element-name binding with
+             no converter, and it re-evaluates on every language, font and DPI change for free. There
+             is no layout cycle: MenuAbout's arrange depends on the Menu, which fills the cell whatever
+             this group measures.
 
-          <!-- Page list: 应用, and since Round 8, Task 2 that is not a shorthand — it is the ONLY page
-               the shell has. 设置 was the second, in NavFooterRail below; it is a modal dialog now and
-               its row is a command Button, so this ListBox is the last one in the pane and
-               PageHost.Content never swaps.
+             VerticalAlignment="Top", NOT Center, and that is a correction to the design rather than a
+             preference. The band is 25 DIP and its bottom 2 belong to the template's two rules, so
+             the item strip is the TOP 23 — exactly the field's own MinHeight. Centring a 23 DIP field
+             in 25 DIP would push it 1 DIP down and lay its bottom edge across the inner rule, half a
+             DIP out of step with the menu items beside it.
 
-               Padding is "0,11". The horizontal component is ZERO, unlike a plain ListBox default,
-               because the rows' own Margin="2,1" (TmNavRowItem / TmNavRowButton, Launcher.axaml) is what
-               supplies the item column's gutter: a second ListBox-level inset on top of it would narrow
-               the item column below the 156 DIP the pane's derivation above and
-               Border.tm-nav-separator's span both depend on. The vertical 11 is PUBLISHED, vis-layout:
-               "Dialog box margins — 7 DLU / 11 relative pixels on all sides". It was 12, a rung of the
-               Fluent ramp Round 7, Task 7 retired. Grid.Row="0" since Round 4, item 1 deleted the
-               hamburger row above it. -->
-          <!-- Round 8, Task 2 removed this ListBox's SelectionChanged handler. It existed to route a
-               row click into ShellNavigator, and there is nothing to route to: 应用 is the only page.
-               SelectedIndex="0" STAYS — it is what gives the one row its selected look, which is the
-               whole reason 应用 is a ListBoxItem rather than a Button (a destination the window is
-               ON, versus a command that leaves the page alone). The list is a one-item selection
-               display now rather than a navigation control, and Task 3 deletes it with the pane. -->
-          <ListBox x:Name="NavRail"
-                   Grid.Row="0"
-                   SelectedIndex="0"
-                   Background="Transparent"
-                   BorderThickness="0"
-                   Padding="0,11">
-            <!-- EVERY ROW IN THIS FILE IS A DockPanel: the glyph docked left in a fixed 16 DIP column,
-                 the label filling what is left. Round 7, Task 8 restored the label; the row is not a
-                 revert of the pre-Round-4 StackPanel, because a DockPanel is what lets the label take
-                 the remaining 118 DIP and ellipsize inside it instead of pushing the row wider.
+             The trailing Margin is 11 (PUBLISHED, vis-layout's dialog margin) so the field never
+             touches the window's right edge at the width floor. It is a margin on this panel rather
+             than a Grid column because below the floor the thing that should clip is the FIELD, not
+             the menu run. -->
+        <StackPanel x:Name="SearchGroup" Orientation="Horizontal"
+                    HorizontalAlignment="Left" VerticalAlignment="Top"
+                    Margin="0,0,11,0">
 
-                 The local Width="16" on each glyph STAYS, and its job is unchanged — it is what stops
-                 Segoe Fluent Icons' per-glyph advance from de-aligning the icon column, which was
-                 measured on this app: 应用's grid glyph and 设置's gear glyph centred 4 physical px
-                 apart from each other purely from font-metric differences. What changes is the citation
-                 behind the 16. It used to be Task Manager's own measured icon box, doubled up with an
-                 arithmetic coincidence about the icon-only row's content width; neither survives a
-                 labelled pane. It is now PUBLISHED, vis-layout: "A control size of 16x16 relative
-                 pixels is a good minimum size for any input device."
+          <Border x:Name="MenuRunSpacer" IsHitTestVisible="False"
+                  Width="{Binding #MenuAbout.Bounds.Right}" />
 
-                 The local HorizontalAlignment/VerticalAlignment attributes Round 4 put on each glyph
-                 are gone with the icon-only row that needed them: tm-icon's own Setters already centre
-                 the glyph, and inside a 16 DIP dock column there is nothing left to centre it against.
-                 The labels carry no Text here — ApplyRailText (code-behind) writes all five, from the
-                 same AppLanguage keys that used to feed the tooltips. -->
-            <ListBoxItem x:Name="NavAppsItem" Theme="{StaticResource TmNavRowItem}">
-              <DockPanel>
-                <TextBlock Classes="tm-icon" DockPanel.Dock="Left" Width="16" Text="&#xE71D;" />
-                <TextBlock x:Name="NavAppsLabel" Classes="tm-nav-label" />
-              </DockPanel>
-            </ListBoxItem>
-          </ListBox>
+          <!-- Geometry, and why this is a Border rather than a Separator, are in
+               Themes/Shell/Launcher.axaml's "Border.tm-bar-separator" block. -->
+          <Border Classes="tm-bar-separator" />
 
-          <!-- Bottom-pinned footer: Round 3, Task 2 (user item 4) moved the title strip's old ⋯
-               overflow flyout (打开主目录/刷新/关于/退出 — 关于 has since left again, Round 5, item 2)
-               into the rail, here — and user item 5 asks to put 设置 where Task Manager's OWN Settings
-               gear sits, separated from the page list. Both
-               land in the SAME Auto row (Grid.Row="1" since Round 4, item 1 deleted the hamburger row
-               this Grid used to open with): Row 0's "*" already gives the page list every
-               pixel it does not use, which is what pushes this whole group to the pane's true bottom
-               edge without this row needing an explicit height of its own — the identical mechanism
-               Task Manager's own FooterMenuItemsHost relies on (measured: its MenuItemsScrollViewer
-               fills a "*"-sized 1390 physical px even though its 7 items only occupy 414 of them).
-               Task Manager stopped being this app's reference at Round 7 — every measurement of it
-               that this file still cites is a record of WHY a structure was chosen, and the survey
-               those numbers come from is filed in
-               docs/superpowers/archive/2026-08-04-windows11-measurement-record.md.
+          <!-- ══ The search field ════════════════════════════════════════════════════════════════
+               Moved here from Views/AppPage.axaml by Round 8, Task 3, with its two affordance faces,
+               its four handlers and its authored 320 DIP width unchanged. THE 320 IS AUTHORED and
+               nothing published fixes it: ctrl-search-boxes states no width rule at all and its
+               sizing section is an image. 320 holds the longest prompt this app ships in either
+               language plus the "additional 30 percent" localisation allowance ctrl-drop publishes
+               (https://learn.microsoft.com/en-us/windows/win32/uxguide/ctrl-drop). It is a fixed
+               width, not a proportional one: the Task-Manager-measured 0.34 x client ratio that drove
+               this field through Rounds 3-6 was a property of a control living in the window's own
+               chrome, and ApplySearchFieldWidth died with that strip in Round 7, Task 1. Nothing here
+               brings it back — a re-fit trigger is exactly what a proportional width would need.
 
-               The command rows — three of them below, since Round 5, item 2 took 关于 out of this
-               footer (see that item's own note further down) — are Buttons (Theme="{StaticResource
-               TmNavRowButton}"), not ListBoxItems, on purpose: they are one-shot actions that leave
-               whatever page is on screen alone, never a destination the window navigates TO and stays
-               on the way 应用/设置 are, and a Button has no :selected pseudoclass at all — so "a command
-               row must never look selected" (the task's own constraint) holds by construction, not by a
-               style rule a later edit could accidentally defeat. This also means they need no
-               participation in OnNavSelectionChanged's selection bookkeeping below; Click is the whole
-               contract.
+               ctrl-search-boxes puts a primary-entry-point search box "centered at the top of the
+               window" (https://learn.microsoft.com/en-us/windows/win32/uxguide/ctrl-search-boxes).
+               This field is at the top of the window and is NOT centred, and that is item 5's
+               instruction rather than an oversight: 放在"关于"后面. Booked as a deviation, like the
+               menu-bar-versus-toolbar one above. -->
+          <Border Classes="tm-searchfield" x:Name="SearchField" Width="320">
+            <DockPanel>
+              <!-- THE TWO FACES OF THE RIGHT-END AFFORDANCE. PUBLISHED, ctrl-search-boxes
+                   (https://learn.microsoft.com/en-us/windows/win32/uxguide/ctrl-search-boxes): "In
+                   Instant search mode, a clear button appears after the user starts typing; an 'x'
+                   replaces the magnifying glass search symbol. On hover, the 'x' gets a button look
+                   and can be clicked", under a figure captioned "…at the right end of the control".
 
-               Folding the commands into one flyout-triggering row instead was the other option Round 3,
-               Task 2 named — rejected because nothing in the measured reference shows that shape
-               anywhere: Task Manager's OWN rail (both its 7-item page list and its 1-item footer) is
-               built entirely from flat, one-row-per-destination entries, never a row that reveals a
-               flyout of further choices. Such a row would also just relocate the exact ⋯-button pattern
-               Round 3, Task 2 explicitly removed, rather than actually removing it.
+                   The swap is driven off the TEXT BOX ITSELF rather than off a view-model flag, with
+                   Avalonia's own StringConverters singletons — the same pair, and the same x:Static
+                   form, the vendored TextBox template uses for PART_Watermark's own visibility. That
+                   keeps a purely visual state out of LauncherViewModel and needs no new property to
+                   raise, and it still answers the view model: SearchBox.Text is TwoWay-bound to
+                   Filter, so setting Filter programmatically flips these two exactly as typing does.
+                   Both are ELEMENT-NAME bindings, so they need no x:DataType and moved unchanged.
 
-               Round 7, Task 8: every row below is a DockPanel of a docked 16 DIP glyph and a label —
-               see NavAppsItem above for the whole shape and for the published citation behind the 16.
-               AutomationProperties.Name (ApplyRailText) is no longer the row's ONLY label, but it is
-               still written for every row: it is the accessibility contract, and it is cheaper to state
-               than to reason about what Avalonia derives from a DockPanel of two TextBlocks. The
-               ToolTip.Tip that used to duplicate it is gone with the icon-only rail.
-               Classes="tm-nav-row" below is kept as these rows' own name for anything that needs to
-               scope a rule to them, but NO Launcher.axaml selector keys off it: its only reader was
-               one of the three rail-state rules Round 4, item 1 deleted. (NavRailContent's own
-               Classes="tm-nav-rail" was in the same position until Round 6, item 3 gave it a reader —
-               see its remark above.)
+                   Both are DockPanel.Dock="Right" and both are declared BEFORE the TextBox, because a
+                   DockPanel gives its LAST child the remaining space and the text box is what should
+                   take it. Only one of the two is ever visible, so the field's layout does not move
+                   when they swap: they are the same box with the same padding. -->
+              <Border DockPanel.Dock="Right" Classes="tm-search-affordance"
+                      IsVisible="{Binding #SearchBox.Text, Converter={x:Static StringConverters.IsNullOrEmpty}}">
+                <TextBlock Classes="tm-icon subtle small" Text="&#xE721;" />
+              </Border>
+              <Border DockPanel.Dock="Right" x:Name="SearchClear"
+                      Classes="tm-search-affordance clickable"
+                      AutomationProperties.Name="{Binding ClearFilterText}"
+                      IsVisible="{Binding #SearchBox.Text, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                      PointerPressed="OnSearchClearPressed">
+                <TextBlock Classes="tm-icon small" Text="&#xE711;" />
+              </Border>
+              <!-- Background and BorderThickness are LOCAL values on purpose: a local value outranks
+                   a style setter for the SAME property on the SAME element, so the TextBox itself
+                   paints nothing over the fill Border.tm-searchfield already draws.
 
-               ══ Round 5, item 1: the order below, and why it is what it is ═══════════════════════
-               Top to bottom: 打开主目录 · 刷新 · 设置 · separator · 退出. The rows are LITERAL
-               XAML, deliberately: rebuilding the footer from a collection would need a DataTemplate
-               over a type that does not exist, and every DataTemplate in this app must carry an
-               x:DataType (AvaloniaUseCompiledBindingsByDefault + PublishAot, TanMenu.Wpf.csproj), so
-               a reorder is an edit HERE and nowhere else. Nothing downstream is index-based —
-               every row is its own Click handler and ApplyRailText addresses every row by x:Name — so
-               moving a row is inert by construction. (This sentence also named OnNavSelectionChanged's
-               ReferenceEquals branch against NavFooterRail until Round 8, Task 2 deleted both.)
-
-               退出 IS LAST BECAUSE THE USER ASKED FOR IT ("退出移动到最下"). The placement is the user's
-               call and is not re-litigated here. Round 4 had put it FIRST, and its argument was never
-               that 退出 belongs at the top — it was that 退出 must not sit directly above 设置: 退出
-               fires immediately with no confirmation (ShellCommands.Exit's own comment: "there is no
-               dialog and nothing to wait for"), and 设置 is the row the app itself treats as
-               most-reached, the only footer action with TWO other entry points (the tray menu, wired in
-               App.axaml.cs to TrayService; and the 应用 empty state's 打开设置… button, AppPage.axaml).
-               That argument's MITIGATION survives the reversal, and is why the separator below moved
-               WITH 退出 instead of staying where it was or being dropped: the terminal action is still
-               fenced into a group of its own rather than sitting one ordinary row gap (2 DIP since
-               Round 7, Task 8; it was 4) from the row the pointer returns to at a fixed screen
-               coordinate. A menu convention (退出 last, as this
-               app's own tray menu does) now agrees with this footer instead of being overruled by it.
-
-               关于 IS NO LONGER IN THIS FOOTER (Round 5, item 2 — "关于集成到设置页中"). It is a card at
-               the bottom of the 设置 page now (Views/Settings/AboutCard.axaml), and the overlay its row
-               used to raise was DELETED rather than hidden, with everything it orphaned: OnAboutClick,
-               LauncherViewModel's ShowAbout/OpenAbout/CloseAbout, AppPage's About Border, SplashPanel's
-               dismiss hint and the ClickToDismiss language key.
-
-               设置 stays bottom-most among the DESTINATIONS, matching the reference: Task Manager's rail
-               footer holds exactly ONE entry, its Settings gear, pinned to the very bottom of the pane.
-               The commands being in the rail at all is this app's own divergence from that reference and
-               was not re-litigated by this item either.
-
-               The separator is not decoration. The flat run of five was an accident of the Round 3
-               move: the ⋯ overflow MenuFlyout it came from encoded THREE groups —
-               [打开主目录, 刷新] | [关于] | [退出] — and both <Separator/> elements were dropped in
-               transit. Exactly one is restored, and only the boundary that carries safety meaning
-               (terminal vs reversible).
-
-               Margin="0,0,0,4" on this StackPanel is the footer's own inset from the pane's bottom edge
-               (Task Manager's measured ~4 DIP gap between its FooterMenuItemsHost and the window edge).
-               It used to be the 设置 ListBox's Padding, back when that ListBox was the last child;
-               Round 5, item 1 put 退出 below it and the inset moved onto the footer, where the fact it
-               states actually lives — which is why Round 8, Task 2 could delete that ListBox outright
-               without having to unpick a number out of it. -->
-          <StackPanel Grid.Row="1" Margin="0,0,0,4">
-            <Button x:Name="NavOpenRootItem"
-                    Theme="{StaticResource TmNavRowButton}"
-                    Classes="tm-nav-row"
-                    Click="OnOpenRootClick">
-              <DockPanel>
-                <TextBlock Classes="tm-icon" DockPanel.Dock="Left" Width="16" Text="&#xE8B7;" />
-                <TextBlock x:Name="NavOpenRootLabel" Classes="tm-nav-label" />
-              </DockPanel>
-            </Button>
-            <Button x:Name="NavRefreshItem"
-                    Theme="{StaticResource TmNavRowButton}"
-                    Classes="tm-nav-row"
-                    Click="OnRefreshClick">
-              <DockPanel>
-                <TextBlock Classes="tm-icon" DockPanel.Dock="Left" Width="16" Text="&#xE72C;" />
-                <TextBlock x:Name="NavRefreshLabel" Classes="tm-nav-label" />
-              </DockPanel>
-            </Button>
-
-            <!-- 设置: A COMMAND ROW SINCE ROUND 8, TASK 2, and this is the one structural change that
-                 task makes to this pane. It used to be a real PAGE — a ListBoxItem inside its own
-                 second ListBox (NavFooterRail), selected and navigated to like NavAppsItem above,
-                 with OnNavSelectionChanged keeping the two lists acting as one selection group.
-                 设置 is a modal dialog now (Dialogs/OptionsWindow), which is PUBLISHED,
-                 https://learn.microsoft.com/en-us/windows/win32/uxguide/win-property-win — "Options
-                 dialog boxes. Properties for an application are displayed in a modal dialog box."
-
-                 So it is now exactly what the three rows around it already are, and it takes their
-                 form for the reason this footer's own comment gives above: a command leaves whatever
-                 is on screen alone and is never a destination the window sits ON, and a Button has no
-                 :selected pseudo-class at all — so "设置 must never look selected" holds by
-                 construction rather than by a style rule a later edit could defeat. It was true of
-                 打开主目录/刷新/退出 from Round 3; it is true of 设置 from here.
-
-                 The ListBox that wrapped it is DELETED, not emptied, and with it the second half of
-                 the shell's page model: OnNavSelectionChanged, ShellNavigator, ShowPage. NavRail
-                 above keeps its own selection because 应用 really is a page.
-
-                 The row's position, its glyph and its label are all unchanged — 设置 stays
-                 bottom-most among the reversible rows, above the separator and 退出, which is Round 5
-                 item 1's ordering and is not re-litigated here. ApplyRailText still writes both its
-                 AutomationProperties.Name and its visible label, from the same NavSettings key. -->
-            <Button x:Name="NavSettingsItem"
-                    Theme="{StaticResource TmNavRowButton}"
-                    Classes="tm-nav-row"
-                    Click="OnOptionsClick">
-              <DockPanel>
-                <TextBlock Classes="tm-icon" DockPanel.Dock="Left" Width="16" Text="&#xE713;" />
-                <TextBlock x:Name="NavSettingsLabel" Classes="tm-nav-label" />
-              </DockPanel>
-            </Button>
-
-            <!-- The one group boundary, between the reversible rows above and the terminal action
-                 below. Geometry is in Launcher.axaml's "Border.tm-nav-separator" rule; its Margin is
-                 what makes the gap on either side of the hairline (5 DIP row-box to line since Round 7,
-                 Task 8, when the rows' vertical margin went from 2 to 1) read as a boundary against the
-                 2 DIP that separates two ordinary rows. Round 5, item 1 moved it down here with 退出 —
-                 see the ordering block above for why the fence has to travel with the row it fences. -->
-            <Border Classes="tm-nav-separator" />
-
-            <Button x:Name="NavExitItem"
-                    Theme="{StaticResource TmNavRowButton}"
-                    Classes="tm-nav-row"
-                    Click="OnExitClick">
-              <DockPanel>
-                <TextBlock Classes="tm-icon" DockPanel.Dock="Left" Width="16" Text="&#xE7E8;" />
-                <TextBlock x:Name="NavExitLabel" Classes="tm-nav-label" />
-              </DockPanel>
-            </Button>
-          </StackPanel>
-        </Grid>
-      </Border>
+                   What that does NOT block is a theme rule aimed at a NAMED PART inside the TextBox
+                   control template — a different element, with no local value of its own, whatever
+                   is set here. Under the vendored Aero theme that part is Border#BgElement and the
+                   rules that reach it are :pointerover and :focus. See Launcher.axaml's two
+                   "TextBox.tm-search…/template/ Border#BgElement" rules for what suppresses them and
+                   why the BorderBrush half needs no rule. -->
+              <TextBox x:Name="SearchBox"
+                       Classes="tm-search"
+                       AutomationProperties.Name="{Binding SearchPlaceholderText}"
+                       Background="Transparent"
+                       BorderThickness="0"
+                       PlaceholderText="{Binding SearchPlaceholderText}"
+                       Text="{Binding Filter, Mode=TwoWay}"
+                       KeyDown="OnSearchKeyDown"
+                       GotFocus="OnSearchFocusChanged"
+                       LostFocus="OnSearchFocusChanged" />
+            </DockPanel>
+          </Border>
+        </StackPanel>
+      </Grid>
 
       <!-- ══ Content pane: the opaque 应用 surface ═════════════════════════════════════════════════
-           The acrylic reaches ONE band and one only — row 0, the caption. Everything from the
-           navigation pane down is the opaque SurfaceBaseBrush the content Grid above paints, so
-           "the window's own material" below this point means AeroWindowBackground, not a backdrop.
-           (This sentence read "the backdrop shows through the caption and the nav rail" until Round 7,
-           Task 10; Task 7 made the client opaque and the claim stopped being true then. The two
-           paragraphs below already described the change and this one had not been rewritten with
-           them.) On the 应用 page that surface is covered again, by this Border. The page paints no
-           surface of its own — AppPage's root Panel sets only Transparent — which is what lets this
-           single Border decide the surface under it.
+           The acrylic reaches ONE band and one only — row 0, the caption. Everything below it is the
+           opaque SurfaceBaseBrush the content Grid above paints, so "the window's own material" below
+           this point means AeroWindowBackground, not a backdrop. On the 应用 page that surface is
+           covered again, by this Border. The page paints no surface of its own — AppPage's root Panel
+           sets only Transparent — which is what lets this single Border decide the surface under it.
 
            Round 4, item 5 gave the shell's two pages two DIFFERENT looks on this one Border, and
-           Round 6, item 2 flipped which of them was the exception: 应用 got an opaque pane with a
-           1 DIP top+left hairline, every other page painted NOTHING. ROUND 8, TASK 2 ENDED THE PAIR
-           by ending the plurality — 设置 is a modal dialog now, so 应用 is the only page there is,
-           the :not(.app) rule's only subject is gone and that rule is deleted from Launcher.axaml.
-           The class is written here, statically, instead of being flipped from ShowPageCore, which
-           went with the page model. The look is byte-identical to what shipped; what changed is that
-           it can no longer be turned off. Task 3 collapses the surviving .app rule into a plain
-           Border.tm-page-pane and drops the hairline with the pane it separated from.
+           Round 6, item 2 flipped which of them was the exception. ROUND 8, TASK 2 ENDED THE PAIR by
+           ending the plurality — 设置 became a modal dialog, so the :not(.app) rule lost its only
+           subject — and ROUND 8, TASK 3 ENDED THE CLASS: there is one rule now, Border.tm-page-pane,
+           and the markup states no "app" any more.
 
-           ROUND 7, TASK 7 CHANGED WHAT THE LOOK IS MADE OF. 应用's fill is SurfacePageBrush aliased
-           onto the vendored AeroListBoxBackground — Explorer's own content area was a list background
-           — and its 8 DIP top-left arc is GONE: Aero's ListBox sets CornerRadius="0" and a Windows 7
-           content pane has no rounded corner, so RadiusPaneTopLeft was deleted with its measurement.
-           What used to show through the OTHER pages' Transparent is the opaque Aero client surface
-           this file's own content Grid paints (see its remark above), which is what made those pages
-           legible and what replaced the Mica-straddle argument Round 6 relied on. That argument's
-           premises are all gone — there is no Mica, no card fill and no SurfaceLayerBrush — and its
-           measurements are archived in
-           docs/superpowers/archive/2026-08-04-windows11-measurement-record.md; Round 8, Task 2 took
-           the last non-应用 page out of the window entirely, so the second look has no subject left
-           either. The backdrop-refused fallback is unchanged and still the single source of truth for
-           the window's colour (Window.Background, set by ApplyBackdrop); this Border must never grow
-           a fallback of its own. Why the look is a STYLE rather than local attributes here is in
-           Launcher.axaml's "Border.tm-page-pane" block — a style setter cannot override a local
-           value in Avalonia, in either direction, and that argument outlives the class flip that
-           first needed it.
+           THE 1 DIP TOP+LEFT HAIRLINE IS GONE WITH IT, and that is this task's one visible change to
+           this element. Its LEFT edge separated the page from the navigation pane, which no longer
+           exists; its TOP edge is redundant against the two 1 DIP bottom rules the menu band's own
+           vendored template draws directly above it. Both DIP came out of the fit in the same commit
+           — MainWindow.PaneBorderDip is deleted, the chrome WIDTH term is 0, and
+           WindowHost.ChromeHeightDip is TitleStripHeightDip + MenuBandHeightDip with no "+1" left.
+
+           ROUND 7, TASK 7 CHANGED WHAT THE LOOK IS MADE OF, and that half is unchanged here. The fill
+           is SurfacePageBrush aliased onto the vendored AeroListBoxBackground — Explorer's own content
+           area was a list background — and the 8 DIP top-left arc is GONE: Aero's ListBox sets
+           CornerRadius="0" and a Windows 7 content pane has no rounded corner, so RadiusPaneTopLeft
+           was deleted with its measurement. The backdrop-refused fallback is unchanged and still the
+           single source of truth for the window's colour (Window.Background, set by ApplyBackdrop);
+           this Border must never grow a fallback of its own. Why the look is a STYLE rather than local
+           attributes here is in Launcher.axaml's "Border.tm-page-pane" block — a style setter cannot
+           override a local value in Avalonia, in either direction.
 
            ClipToBounds — AND WHY THE EVIDENCE THAT ONCE JUSTIFIED IT IS NOW MOOT TWICE OVER. Round 4
            recorded here that a Border clips its child to its CORNER RADIUS rather than to its bounds
            rectangle, on one observation: the 关于 overlay's square accent card traced an arc down its
            first eleven rows on a PrintWindow capture. Round 5, item 2 deleted that overlay, so the
            observation lost its subject; Round 7, Task 7 deleted the arc, so it has lost its mechanism
-           as well — this pane's corners are square in both states now and a radius clip and a bounds
-           clip are the same rectangle. ClipToBounds stays because it costs nothing and because a
-           full-bleed child of AppPage's OverlayPanel (whose ArrangeOverride arranges every child over
-           the WHOLE panel rect) would otherwise be free to paint over the pane's 1 DIP hairline. None
-           of the five children it has today can: the DockPanel's own children inset themselves, and
-           SplashPanel, both tm-empty panels and tm-toast are all centred. -->
-      <!-- Classes carries "app" STATICALLY since Round 8, Task 2. It used to be flipped from
-           ShowPageCore, which is deleted with the rest of the page model, and Launcher.axaml's
-           Border.tm-page-pane:not(.app) branch is deleted with it — 设置 was that branch's only
-           subject and 设置 is a dialog now. The .app rule is retained UNCHANGED, so the pane paints
-           exactly what it painted before, and stating the class here rather than collapsing the pair
-           into one rule is what keeps this task's fit arithmetic at zero movement: PaneBorderDip and
-           ChromeHeightDip still describe a 1 DIP top+left hairline that is still drawn. Round 8,
-           Task 3 collapses the rule and deletes both. -->
-      <Border Grid.Column="1"
+           as well — this pane's corners are square and a radius clip and a bounds clip are the same
+           rectangle. ClipToBounds stays because it costs nothing and because a full-bleed child of
+           AppPage's OverlayPanel (whose ArrangeOverride arranges every child over the WHOLE panel
+           rect) would otherwise be free to paint outside the pane. None of the five children it has
+           today can: the DockPanel's own children inset themselves, and SplashPanel, both tm-empty
+           panels and tm-toast are all centred. -->
+      <Border Grid.Row="1"
               x:Name="PagePane"
-              Classes="tm-page-pane app"
+              Classes="tm-page-pane"
               ClipToBounds="True">
         <ContentControl x:Name="PageHost" />
       </Border>

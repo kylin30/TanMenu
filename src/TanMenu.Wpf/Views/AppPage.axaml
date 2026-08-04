@@ -5,19 +5,27 @@
              x:Class="TanMenu.Wpf.Views.AppPage"
              x:DataType="vm:LauncherViewModel">
 
-  <!-- The launcher proper. The window shell owns the Aero caption and the navigation rail; everything
-       here is the 应用 page's own content: the search header, the update notice, the categories, and the
-       three non-menu states (loading, nothing configured, nothing matched).
+  <!-- The launcher proper. The window shell owns the Aero caption, the classic menu band and the
+       search field that sits in it; everything here is the 应用 page's own content: the two docked
+       notices, the categories, and the three non-menu states (loading, nothing configured, nothing
+       matched).
 
-       Round 7, Task 1 brought the search field BACK here, where it lived before commit 6d00060. Rounds
-       2-6 had it in the window's title strip, Task Manager style; the Aero conversion deletes that strip
-       because Microsoft's own window-frame guidance is verbatim "Don't add controls to a window frame.
-       Put the controls within the window instead."
-       (https://learn.microsoft.com/en-us/windows/win32/uxguide/win-window-frames). Only the FIELD
-       reverts: the ⋯ overflow button and the page-close glyph that shared that old header do not come
-       back — Round 3 Task 2 moved 打开主目录/刷新/退出 into the rail's footer and Round 5 item 2 made 关于
-       a settings card, and re-adding the flyout would restage the exact pattern those two rounds
-       removed. -->
+       ROUND 8, TASK 3 TOOK THE SEARCH HEADER OUT OF THIS FILE. The field spent Rounds 2-6 in the
+       window's title strip, Round 7 Task 1 through Round 8 Task 2 here, and now lives in the menu
+       band, immediately after 关于 (item 5: 放在"关于"后面). What went with it: the Border.tm-header
+       wrapper — which is deleted outright, because the band IS the header now — the field's own
+       Border, its two affordance faces, the SearchBox TextBox, and the four handlers in this file's
+       code-behind (OnSearchFocusChanged, OnSearchClearPressed, OnSearchKeyDown, FocusSearchBox).
+       This page keeps the OTHER half of the search contract, and it has to: LauncherViewModel is
+       still the page's, the filter is still its property, FocusFirstTile is still this grid's, and
+       OnClearFilterClick below still belongs to the "nothing matched" empty state.
+
+       Nothing about that move is a revert of Round 7, Task 1. That task removed a control from the
+       window FRAME, which https://learn.microsoft.com/en-us/windows/win32/uxguide/win-window-frames
+       forbids verbatim — "Don't add controls to a window frame. Put the controls within the window
+       instead." The menu band is inside the client area, which is the "within the window" that same
+       sentence asks for. The ⋯ overflow button and the page-close glyph that shared the old title
+       strip do NOT come back either way: 打开主目录/刷新/退出 are menu items now and 关于 is one too. -->
 
 
   <!-- Round 3, Task 4 removed the 小/中/大 button-size setting, so the Classes.size-* bindings this
@@ -40,88 +48,6 @@
     <ctl:OverlayPanel>
 
       <DockPanel>
-
-        <!-- ══ Search header ═══════════════════════════════════════════════════════════════════════
-             ctrl-search-boxes puts a primary-entry-point search box "centered at the top of the
-             window" (https://learn.microsoft.com/en-us/windows/win32/uxguide/ctrl-search-boxes), which
-             is exactly where this sits — one row above everything else the page docks, centred in it.
-
-             THE 320 DIP WIDTH IS AUTHORED, and nothing published fixes it: ctrl-search-boxes states no
-             width rule at all and its sizing section is an image. 320 holds the longest prompt this app
-             ships in either language plus the "additional 30 percent" localisation allowance
-             ctrl-drop publishes (https://learn.microsoft.com/en-us/windows/win32/uxguide/ctrl-drop).
-             It is a fixed width, not a proportional one: the Task-Manager-measured 0.34 × client ratio
-             that drove this field through Rounds 3-6 was a property of a control living in the window's
-             own chrome, and a field inside the page has no reason to track the window — deleting the
-             tracking is what removes ApplySearchFieldWidth, its three constants and MainWindow's
-             ClientSize subscription without adding a sixth re-fit trigger.
-
-             Round 7, Task 1 restored the MINIMUM here and left the field's paint alone; Task 7 gave the
-             field Aero's own brushes and ladder; TASK 9 FINISHED IT, and three things changed shape
-             here. The accent underline and the Panel that stacked it over the field are DELETED — a
-             Windows 11 focus form Windows 7 has no equivalent of; Launcher.axaml's
-             Border.tm-searchfield.focused rule carries Aero's own focus pair instead, on this same
-             Border. The magnifier moved from the LEFT end to the RIGHT and gained a second face, the
-             clear "x"; both faces and the published sentence behind them are below. And the field's
-             height floor went 32 -> 23 (PUBLISHED, vis-layout), which is what makes this header 9 DIP
-             shorter than it was. -->
-        <Border Classes="tm-header" DockPanel.Dock="Top">
-          <Border Classes="tm-searchfield" x:Name="SearchField"
-                  Width="320"
-                  HorizontalAlignment="Center">
-            <DockPanel>
-              <!-- THE TWO FACES OF THE RIGHT-END AFFORDANCE. PUBLISHED, ctrl-search-boxes
-                   (https://learn.microsoft.com/en-us/windows/win32/uxguide/ctrl-search-boxes): "In
-                   Instant search mode, a clear button appears after the user starts typing; an 'x'
-                   replaces the magnifying glass search symbol. On hover, the 'x' gets a button look
-                   and can be clicked", under a figure captioned "…at the right end of the control".
-
-                   The swap is driven off the TEXT BOX ITSELF rather than off a view-model flag, with
-                   Avalonia's own StringConverters singletons — the same pair, and the same x:Static
-                   form, the vendored TextBox template uses for PART_Watermark's own visibility. That
-                   keeps a purely visual state out of LauncherViewModel and needs no new property to
-                   raise, and it still answers the view model: SearchBox.Text is TwoWay-bound to
-                   Filter, so setting Filter programmatically flips these two exactly as typing does.
-
-                   Both are DockPanel.Dock="Right" and both are declared BEFORE the TextBox, because a
-                   DockPanel gives its LAST child the remaining space and the text box is what should
-                   take it. Only one of the two is ever visible, so the field's layout does not move
-                   when they swap: they are the same box with the same padding. -->
-              <Border DockPanel.Dock="Right" Classes="tm-search-affordance"
-                      IsVisible="{Binding #SearchBox.Text, Converter={x:Static StringConverters.IsNullOrEmpty}}">
-                <TextBlock Classes="tm-icon subtle small" Text="&#xE721;" />
-              </Border>
-              <Border DockPanel.Dock="Right" x:Name="SearchClear"
-                      Classes="tm-search-affordance clickable"
-                      AutomationProperties.Name="{Binding ClearFilterText}"
-                      IsVisible="{Binding #SearchBox.Text, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                      PointerPressed="OnSearchClearPressed">
-                <TextBlock Classes="tm-icon small" Text="&#xE711;" />
-              </Border>
-              <!-- Background and BorderThickness are LOCAL values on purpose: a local value outranks
-                   a style setter for the SAME property on the SAME element, so the TextBox itself
-                   paints nothing over the fill Border.tm-searchfield already draws.
-
-                   What that does NOT block is a theme rule aimed at a NAMED PART inside the TextBox
-                   control template — a different element, with no local value of its own, whatever
-                   is set here. Under the vendored Aero theme that part is Border#BgElement and the
-                   rules that reach it are :pointerover and :focus. See Launcher.axaml's two
-                   "TextBox.tm-search…/template/ Border#BgElement" rules for what suppresses them and
-                   why the BorderBrush half needs no rule. (Before Round 7 Task 4 the part was
-                   Fluent's Border#PART_BorderElement and the rule was a single :focus one.) -->
-              <TextBox x:Name="SearchBox"
-                       Classes="tm-search"
-                       AutomationProperties.Name="{Binding SearchPlaceholderText}"
-                       Background="Transparent"
-                       BorderThickness="0"
-                       PlaceholderText="{Binding SearchPlaceholderText}"
-                       Text="{Binding Filter, Mode=TwoWay}"
-                       KeyDown="OnSearchKeyDown"
-                       GotFocus="OnSearchFocusChanged"
-                       LostFocus="OnSearchFocusChanged" />
-            </DockPanel>
-          </Border>
-        </Border>
 
         <!-- Taskbar-pin notice. An inline InfoBar rather than the modal dialog the app used to throw
              up on every reveal: RefreshPinNoticeAsync (AppPage.axaml.cs) opens it whenever the app is

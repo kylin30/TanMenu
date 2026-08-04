@@ -20,9 +20,10 @@ public static class AppLanguage
             // The settings surface's third commit button, added by Round 8, Task 1's delayed commit.
             // The English word is Apply, not Save: PUBLISHED, win-property-win — "Right-align the
             // buttons and use this order (from left to right): OK, Cancel, and Apply." The Chinese 应用
-            // is the same word the launcher's 应用 PAGE uses ("NavApps" below) and that collision is
-            // Windows' own — Apply and Apps are both 应用 in the Chinese Windows UI — so the two keys
-            // stay separate rather than being folded together.
+            // is the same word the launcher's 应用 PAGE was labelled with until Round 8, Task 3 deleted
+            // the navigation pane and the "NavApps" key with it — a collision that is Windows' own,
+            // since Apply and Apps are both 应用 in the Chinese Windows UI. The keys stayed separate for
+            // that reason and only one of them is left.
             ["Apply"] = ("应用", "Apply"),
             // The SAME button, with its access-key marker (Round 8, Task 2). PUBLISHED,
             // https://learn.microsoft.com/en-us/windows/win32/uxguide/win-property-win — of the three
@@ -43,12 +44,13 @@ public static class AppLanguage
             // dialog box titles — Use 'Options.' Use title-style capitalization. Don't use ending
             // punctuation." So it is "Options", not "TanMenu Settings" and not "TanMenu 设置".
             //
-            // A KEY OF ITS OWN, not a reuse of "NavSettings" ("设置"/"Settings"), because the two
-            // differ in BOTH halves: the English is fixed by the sentence above, and the Chinese
+            // A KEY OF ITS OWN, not a reuse of the then-"NavSettings" ("设置"/"Settings"), because the
+            // two differ in BOTH halves: the English is fixed by the sentence above, and the Chinese
             // title of a Windows property window is 选项 while the thing the user clicks to reach it
-            // is 设置. Round 8, Task 3 mints a third, "MenuOptions" = ("设置", "Options"), for the
-            // menu bar's own item — same English word, the other Chinese one — which is exactly why
-            // none of the three can be folded into another.
+            // is 设置. Round 8, Task 3 deleted NavSettings with the navigation pane and minted
+            // "MenuOptions" = ("设置", "Options") below for the menu bar's own item — same English word,
+            // the other Chinese one — which is exactly why the two cannot be folded together. The tray's
+            // "TraySettings" is a third and stays separate for the same reason.
             ["Options"] = ("选项", "Options"),
             // 取消 and the title-bar × ask this, identically, when the draft is dirty (Round 8, Task 2).
             // A NAMED DEVIATION: PUBLISHED, win-property-win — "Don't confirm if users discard their
@@ -266,19 +268,56 @@ public static class AppLanguage
             ["RestoreSucceeded"] = ("配置已恢复并生效。", "Config restored and applied."),
             ["RestoreInvalid"] = ("恢复失败：所选文件不是有效的 TanMenu 配置。", "Restore failed: the selected file is not a valid TanMenu config."),
 
-            // MenuOpenRoot/MenuRefresh/MenuExit label the navigation rail's three bottom-pinned command
-            // rows (MainWindow.ApplyRailText, Round 3 Task 2). They used to label the title strip's ⋯
-            // overflow MenuFlyout's own MenuItems before that button was removed — same keys, same
-            // Chinese/English text, only the reader moved. MenuMore ("更多"), that button's own
-            // tooltip/AutomationProperties.Name, had no other reader and was removed with it.
+            // MenuOpenRoot/MenuRefresh/MenuExit are three of the classic menu band's five items'
+            // ACCESSIBLE NAMES (MainWindow.ApplyMenuText). They have had three readers in three rounds
+            // and the strings never changed: the title strip's ⋯ overflow MenuFlyout until Round 3
+            // Task 2, the navigation pane's command rows until Round 8 Task 3, and the menu band since.
+            // The name is finally accurate again — these really are menu items. MenuMore ("更多"), the
+            // overflow button's own tooltip/AutomationProperties.Name, had no other reader and was
+            // removed with that button.
             //
             // There was a fourth, MenuAbout, until Round 5 item 2 moved 关于 off the rail and into the
             // 设置 page. Its text was right and its NAME was not — a Menu* key labelling a settings
             // group head is a lie this very comment would have had to carry — so it was renamed to
             // "About" and re-homed below with the other 关于 string rather than deleted and re-minted.
+            // ROUND 8, TASK 3 BROUGHT 关于 BACK TO A MENU and did NOT re-mint a Menu* key for it: the
+            // string is still shared with the About group head, so re-naming it would have made the
+            // same kind of lie in the other direction. Only its access-key twin below is Menu*-named.
             ["MenuOpenRoot"] = ("打开主目录", "Open Main Folder"),
             ["MenuRefresh"] = ("刷新", "Refresh"),
             ["MenuExit"] = ("退出", "Exit"),
+            // 设置's own menu-bar string, minted by Round 8, Task 3. THE THIRD OF THREE 设置-ish keys
+            // and none of them can be folded into another: "Options" above is the DIALOG's title
+            // (选项 / Options — PUBLISHED, win-property-win, "Options dialog box titles — Use
+            // 'Options.'"), "TraySettings" below is the tray entry (设置 / Settings), and this is the
+            // menu item — 设置 in Chinese, because that is what the user clicks, and Options in
+            // English, because PUBLISHED, cmd-menus: "Settings — Don't use as a menu label. Use
+            // Options instead." It replaces "NavSettings", which was ("设置", "Settings") and was
+            // deleted with the navigation pane in the same task; the Chinese half is re-minted here
+            // unchanged and the English half is the one that had to differ.
+            ["MenuOptions"] = ("设置", "Options"),
+
+            // ══ The same five, with their access-key markers ══════════════════════════════════════
+            // Every menu item gets an access key, no exceptions — PUBLISHED,
+            // https://learn.microsoft.com/en-us/windows/win32/uxguide/inter-keyboard. O = Options,
+            // x = Exit and A = About are that article's own standard table; M for 打开主目录 and R for
+            // 刷新 are app-specific (it assigns neither), with M taken on the article's stated
+            // preference for wide letters "such as w, m".
+            //
+            // A SECOND KEY PER ITEM RATHER THAN AN UNDERSCORE SPLICED IN BY CODE, exactly as
+            // "ApplyWithAccessKey" above: where the marker goes is a localisation decision. English
+            // underlines a letter inside the word; Chinese cannot (the Latin letter is not in the
+            // word) and Windows' own Chinese UI appends it in parentheses instead. "_" is Avalonia's
+            // marker character and AccessText strips it before drawing, so neither string ever renders
+            // an underscore — but a UIA name taken from the raw header string WOULD keep it, which is
+            // why MainWindow.ApplyMenuText writes the plain key above as AutomationProperties.Name and
+            // this one as the Header. That pairing was MEASURED in Round 8, Task 2 on the Options
+            // dialog's 应用 button, whose name read literally "应用(_A)" until it was given one.
+            ["MenuOptionsWithAccessKey"] = ("设置(_O)", "_Options"),
+            ["MenuOpenRootWithAccessKey"] = ("打开主目录(_M)", "Open _Main Folder"),
+            ["MenuRefreshWithAccessKey"] = ("刷新(_R)", "_Refresh"),
+            ["MenuExitWithAccessKey"] = ("退出(_X)", "E_xit"),
+            ["MenuAboutWithAccessKey"] = ("关于(_A)", "_About"),
             // The 设置 page's last group and its one card (Views/Settings/AboutCard.axaml). "About" is
             // the group head; AboutPublisher is the card's subtitle. The overlay this replaced showed an
             // untranslated English "by TanSoft" (Controls/SplashPanel.axaml still does, inside a branded
@@ -286,8 +325,13 @@ public static class AppLanguage
             // line is localized here.
             ["About"] = ("关于", "About"),
             ["AboutPublisher"] = ("由 TanSoft 出品", "by TanSoft"),
-            ["NavApps"] = ("应用", "Apps"),
-            ["NavSettings"] = ("设置", "Settings"),
+            // "NavApps" ("应用"/"Apps") and "NavSettings" ("设置"/"Settings") were here until Round 8,
+            // Task 3 deleted the navigation pane. They labelled its two page rows, MainWindow's
+            // ApplyRailText was their only reader, and that method is ApplyMenuText now — a band of
+            // five commands with no 应用 row at all, because there is no page to navigate to. 设置's
+            // Chinese text is re-minted above as "MenuOptions" so the English half can be Options
+            // rather than Settings; "应用" survives in "Apply" above, which is a different word that
+            // Chinese Windows happens to spell the same way.
             ["NoMatchTitle"] = ("未找到匹配项", "No matches"),
             ["NoMatchHelp"] = ("没有名称包含该关键词的快捷方式。", "No shortcut's name contains that text."),
             ["ClearFilter"] = ("清除搜索", "Clear search"),

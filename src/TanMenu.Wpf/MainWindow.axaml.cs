@@ -10,6 +10,7 @@ using Avalonia.Reactive;
 using Avalonia.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using TanMenu.Core.Services;
+using TanMenu.Wpf.Dialogs;
 using TanMenu.Wpf.Services;
 using TanMenu.Wpf.ViewModels;
 using TanMenu.Wpf.Views;
@@ -18,16 +19,35 @@ namespace TanMenu.Wpf;
 
 /// <summary>
 /// The shell: the hand-drawn Aero caption (MainWindow.axaml's replaced
-/// <c>Window.WindowDecorationsTheme</c>), the wide labelled navigation pane and the page host. All
-/// launcher STATE lives in <see cref="AppPage"/>'s <c>LauncherViewModel</c>. This class owns what
-/// genuinely belongs to the window — the backdrop and its opaque fallback, the caption's active/inactive
-/// glass (<see cref="ApplyCaptionGlass"/>), close-to-tray, labelling the pane's five rows
-/// (<see cref="ApplyRailText"/>, ten writes — an automation name and a visible label each), dispatching
-/// the four command rows the pane now holds (打开主目录/刷新/设置/退出), and kicking off the startup
-/// build + the fit-to-content resize that follows it, on EVERY summon
+/// <c>Window.WindowDecorationsTheme</c>), the classic menu band and the page host. All launcher STATE
+/// lives in <see cref="AppPage"/>'s <c>LauncherViewModel</c>. This class owns what genuinely belongs to
+/// the window — the backdrop and its opaque fallback, the caption's active/inactive glass
+/// (<see cref="ApplyCaptionGlass"/>), close-to-tray, labelling the band's five items
+/// (<see cref="ApplyMenuText"/>, ten writes — a header with its access-key marker and an accessible
+/// name without it), dispatching all five commands (设置/主目录/刷新/退出/关于), the search box, and
+/// kicking off the startup build + the fit-to-content resize that follows it, on EVERY summon
 /// (<see cref="InitializeAndFitAsync"/>) — the actual geometry math, and the rule for when a manual
 /// resize should win over a fresh fit, lives in <c>WindowHost</c>, which owns every other piece of
 /// window placement too.
+/// <para>
+/// <b>ROUND 8, TASK 3 DELETED THE NAVIGATION PANE AND BROUGHT THE SEARCH BOX BACK HERE.</b> The pane
+/// was a 160 DIP vertical strip with a <c>ListBox</c> and four command <c>Button</c>s; it is a
+/// horizontal <c>Menu</c> now, so <c>ApplyRailText</c> became <see cref="ApplyMenuText"/> (same
+/// subscription, same ten writes, different targets) and the two fit constants the pane owned —
+/// <c>RailWidthDip</c> and <c>PaneBorderDip</c> — are deleted outright: the band is ABOVE the page, not
+/// beside it, so <see cref="RefitToContent"/> hands back a chrome WIDTH of zero and the height term
+/// moved into <c>WindowHost.ChromeHeightDip</c> as <c>TitleStripHeightDip + MenuBandHeightDip</c>.
+/// </para>
+/// <para>
+/// <b>The search box is this class's again, and this is the second time it has moved.</b> Rounds 2-6
+/// had it in the window's TITLE STRIP, which Round 7, Task 1 removed because <c>win-window-frames</c>
+/// forbids a control in a window frame in as many words; it went to the 应用 page. Task 3 brings the
+/// control — not the strip — into the menu band, which is inside the CLIENT area and is therefore the
+/// "within the window instead" that same sentence asks for. Four members came with it unchanged:
+/// <see cref="OnSearchFocusChanged"/>, <see cref="OnSearchClearPressed"/>,
+/// <see cref="OnSearchKeyDown"/> and <see cref="FocusSearchBox"/>, which
+/// <see cref="ConsumePendingFocus"/> now calls directly instead of forwarding to the page.
+/// </para>
 /// <para>
 /// <b>ROUND 8, TASK 2 TOOK THE PAGE MODEL DOWN, and this class is where most of it lived.</b> 设置 was
 /// the shell's second PAGE and is a modal dialog now (<c>Dialogs/OptionsWindow</c>), so there is nothing
@@ -37,11 +57,6 @@ namespace TanMenu.Wpf;
 /// with it. <see cref="PageHost"/><c>.Content</c> is written exactly once, in this constructor, and
 /// never again — which is what <see cref="RefitToContent"/>'s retained guard now asserts rather than
 /// tests.
-/// </para>
-/// <para>
-/// Round 7, Task 1 took the search box back OUT of this class: it was a control in the window frame,
-/// which <c>win-window-frames</c> forbids in as many words, so it returned to the 应用 page. What is
-/// left here of it is the <c>PendingFocus</c> hand-off — see <see cref="ConsumePendingFocus"/>.
 /// </para>
 /// </summary>
 public partial class MainWindow : Window
@@ -74,17 +89,23 @@ public partial class MainWindow : Window
         // whole life of the window instead of only between navigations.
         PageHost.Content = _appPage;
 
-        // AppLanguage/AppFonts have no change notification of their own, so both the navigation pane's
-        // row labels (their visible text and their accessible names — see ApplyRailText; since Round 7,
-        // Task 8 there IS a visible label again, and this subscription is what keeps it and the
-        // automation name in step through a 语言 change) and the window font are re-applied on every
-        // SettingsChanged — the same imperative approach every settings card group uses for its own
-        // labels (AppLanguage has no change notification there either).
+        // THE MENU BAND'S DataContext, and the only assignment of it. The search field moved into the
+        // band in Round 8, Task 3 and its three property bindings (Filter, SearchPlaceholderText,
+        // ClearFilterText) resolve against LauncherViewModel, which the WINDOW's own DataContext is
+        // not — the window has none. MenuBand carries the matching x:DataType (MainWindow.axaml); the
+        // two are a pair, and the compiled-binding build breaks loudly if either is missing.
+        MenuBand.DataContext = _appPage.ViewModel;
+
+        // AppLanguage/AppFonts have no change notification of their own, so both the menu band's five
+        // item labels (their headers and their accessible names — see ApplyMenuText; this subscription
+        // is what keeps the two in step through a 语言 change) and the window font are re-applied on
+        // every SettingsChanged — the same imperative approach every settings card group uses for its
+        // own labels (AppLanguage has no change notification there either).
         _events = App.Services.GetRequiredService<AppEvents>();
         _events.SettingsChanged += ApplyWindowFont;
-        _events.SettingsChanged += ApplyRailText;
+        _events.SettingsChanged += ApplyMenuText;
         ApplyWindowFont();
-        ApplyRailText();
+        ApplyMenuText();
 
         // Round 7, Task 1: the Aero caption's glass has an ACTIVE and an INACTIVE gradient, and
         // WindowDrawnDecorations has no pseudo-class for either — its published set is :normal,
@@ -364,61 +385,34 @@ public partial class MainWindow : Window
         if (!ReferenceEquals(PageHost.Content, _appPage))
             return;
 
-        (_host as WindowHost)?.FitToContent(_appPage, RailWidthDip + PaneBorderDip);
+        (_host as WindowHost)?.FitToContent(_appPage, ChromeWidthDip);
     }
 
     /// <summary>
-    /// The navigation pane's width, mirroring <c>MainWindow.axaml</c>'s literal <c>Width="160"</c> on
-    /// <c>NavRailPane</c> — the single source of truth; this constant has to be kept in step with it.
-    /// A literal here (rather than a read of the pane's live <c>Width</c>/<c>Bounds</c>) is what the
-    /// design asked for, and the reason it gives is that the fit term then depends on nothing but the
-    /// XAML it mirrors — no layout state, no visual-tree lookup. Round 4, item 1 is what made this a
-    /// constant at all — until then the rail had two widths and this term was read out of the config on
-    /// every call.
-    /// <para>
-    /// Round 7, Task 8 moved it from 48 to 160: the icon-only rail became a wide labelled Windows 7
-    /// pane. It is still ONE width — Task 8 restored the row labels and none of the other three things
-    /// Round 4 deleted with them (the 200 DIP second width, the <c>DoubleTransition</c>, the
-    /// <c>ClipToBounds</c>) — so this stays a constant.
-    /// <c>ShellConstantTests.RailWidth_MatchesTheRailPaneWidth</c> is what catches a drift between the
-    /// two copies; nothing else in the tree can see one. Round 8, Task 2 left both the pane and this
-    /// term alone — it changed what the pane's 设置 ROW is (a Button that opens a dialog, not a
-    /// ListBoxItem the shell navigates to), not how wide the pane is — so no fit arithmetic moves in
-    /// that task. Round 8, Task 3 deletes the pane and this constant with it.
-    /// </para>
-    /// <para>
-    /// An earlier draft of this remark justified the literal by claiming a fit can run before the pane
-    /// has ever been arranged. That is withdrawn: it was never verified, and the call sites say
-    /// otherwise — all four indirect ones POST <see cref="RefitToContent"/> at
-    /// <see cref="DispatcherPriority.Loaded"/>, which sits strictly below the layout job's Render
-    /// priority, and the one direct caller (<see cref="OnNoticeVisibilityChanged"/>) is a runtime
-    /// event long after the first layout pass. It would also not have argued against reading
-    /// <c>NavRailPane.Width</c>, which is a local styled-property value set by the XAML and reads back
-    /// its declared value whether or not a layout pass has run — only <c>Bounds</c> needs an arrange.
-    /// </para>
+    /// Everything BESIDE the page that still counts toward the window's own Width. It is <b>zero</b>,
+    /// and it has been since Round 8, Task 3: the shell's chrome runs horizontally now — a menu band
+    /// ABOVE the page — so nothing is laid out to the page's left or right and the window's width IS
+    /// the content pane's width.
     /// </summary>
-    private const double RailWidthDip = 160;
-
-    /// <summary>
-    /// The content pane's own left border, in DIP. The invariant this pair encodes: the chrome width
-    /// handed to <see cref="WindowHost.FitToContent"/> must equal the pane's width PLUS whatever left
-    /// border the 应用 pane carries — a <c>Border</c> draws its <c>BorderThickness</c> inside its own
-    /// bounds and arranges its child inside that, so a left border takes exactly that much away from
-    /// the page and the fit has to hand it back or <c>AppPage</c>'s horizontal scrollbar returns.
+    /// <remarks>
     /// <para>
-    /// Round 4, item 5 landed the border this term was reserved for: <c>Border.tm-page-pane.app</c>
-    /// (Launcher.axaml) gives the 应用 pane <c>BorderThickness="1,1,0,0"</c>, so the 1 DIP here is now
-    /// live rather than provisional. Its vertical twin is <c>WindowHost.ChromeHeightDip</c>, which adds
-    /// the same 1 DIP for the pane's TOP border.
+    /// It was <c>RailWidthDip + PaneBorderDip</c> = 160 + 1 = 161, two constants that are DELETED with
+    /// their subjects: the 160 DIP navigation pane, and the 1 DIP LEFT edge of the 应用 pane's
+    /// <c>BorderThickness="1,1,0,0"</c>, which existed to separate the page from that pane and which
+    /// <c>Border.tm-page-pane</c> (Themes/Shell/Launcher.axaml) no longer sets. The vertical twin of
+    /// that same border, the <c>+1</c> inside <c>WindowHost.ChromeHeightDip</c>, went in the same
+    /// commit for the same reason.
     /// </para>
     /// <para>
-    /// Round 8, Task 2 deleted the <c>:not(.app)</c> branch this remark used to have to reason about —
-    /// 设置 was its only subject and 设置 is a dialog now — and pinned the <c>app</c> class in the
-    /// markup, so the pane has exactly one look and this term describes it unconditionally. Round 8,
-    /// Task 3 deletes both the class and this constant, when the pane itself goes.
+    /// <b>Kept as a named constant rather than written as a literal <c>0</c> at the call site.</b> The
+    /// term is a real part of the fit contract — <c>WindowHost.FitToContent</c> takes it as a parameter
+    /// and every one of the 23 <c>WindowPlacementTests</c> parameterises it — and a bare zero there
+    /// would read as "no chrome exists" rather than as "this shell's chrome is above the page, and the
+    /// number that says so lives here". It is also the one place a future horizontal element would
+    /// have to be added back.
     /// </para>
-    /// </summary>
-    private const double PaneBorderDip = 1;
+    /// </remarks>
+    private const double ChromeWidthDip = 0;
 
     /// <summary>See the constructor's own remarks on subscribing to this — WindowHost.FitToContent's
     /// guards (maximized, already manually resized) decide whether this re-fit actually does anything.</summary>
@@ -455,7 +449,7 @@ public partial class MainWindow : Window
     protected override void OnClosed(EventArgs e)
     {
         _events.SettingsChanged -= ApplyWindowFont;
-        _events.SettingsChanged -= ApplyRailText;
+        _events.SettingsChanged -= ApplyMenuText;
         _appPage.ViewModel.PropertyChanged -= OnLauncherViewModelPropertyChanged;
         _appPage.ViewModel.ContentMetricsChanged -= OnLauncherContentMetricsChanged;
         _appPage.NoticeVisibilityChanged -= OnNoticeVisibilityChanged;
@@ -703,51 +697,59 @@ public partial class MainWindow : Window
     //   · A plain ListBox enforces "at most one selected item" only WITHIN itself, never across a
     //     second ListBox instance, which is why keeping 应用 and 设置 mutually exclusive took an
     //     explicit write to both.
-    //   · The "app" class on PagePane was flipped from ShowPageCore. It is a STATIC class in the
-    //     markup now (MainWindow.axaml), and Launcher.axaml's :not(.app) branch — whose only subject
-    //     was 设置 — is deleted. Task 3 collapses the remaining pair into one rule when the pane goes.
+    //   · The "app" class on PagePane was flipped from ShowPageCore. Round 8, Task 3 deleted the
+    //     class itself along with the pane, so Launcher.axaml has ONE Border.tm-page-pane rule and
+    //     the markup states no class at all.
     // ══════════════════════════════════════════════════════════════════════════════════════════
 
-    /// <summary>AppLanguage has no change notification, so the navigation pane is labelled imperatively
-    /// — the same approach the settings UI uses. Round 3, Task 2: also labels the command rows that used
-    /// to be the title strip's ⋯ overflow MenuItems — MenuOpenRoot/MenuRefresh/MenuExit are the SAME
-    /// language keys those MenuItems already used (AppLanguage.cs), unchanged by the move. Round 5,
-    /// item 2 took the 关于 row out of the pane altogether, so there are five rows and ten writes;
-    /// MenuAbout went with it and the key it left behind was renamed to "About" for the settings card
-    /// that replaced the row.
+    /// <summary>
+    /// Label the menu band's five items: five <c>Header</c>s and five <c>AutomationProperties.Name</c>s.
+    /// </summary>
+    /// <remarks>
     /// <para>
-    /// ROUND 7, TASK 8 KEPT THE COUNT AND CHANGED THE SHAPE: ten writes still, but five
-    /// <c>TextBlock.Text</c> where five <c>ToolTip.SetTip</c> used to be. The pane's rows carry visible
-    /// labels now, and Microsoft's own glossary
-    /// (https://learn.microsoft.com/en-us/windows/win32/uxguide/glossary) defines a tooltip as "a small
-    /// pop-up window that labels the UNLABELED control being pointed to" — a tooltip that repeats a
-    /// visible label is by that definition the wrong control. The five
-    /// <c>AutomationProperties.Name</c> writes STAY, and every row still has one: it is the
-    /// accessibility contract, and stating it costs less than reasoning about what Avalonia's automation
-    /// peer derives from a DockPanel of two TextBlocks.
-    /// </para></summary>
-    private void ApplyRailText()
+    /// <b>This is <c>ApplyRailText</c> renamed and re-aimed by Round 8, Task 3</b> — same subscription
+    /// (<c>AppEvents.SettingsChanged</c>, hooked in the constructor and released in
+    /// <see cref="OnClosed"/>), same ten writes, and the same reason it is imperative at all:
+    /// <c>AppLanguage</c> has no change notification, so nothing can bind to it. What changed is the
+    /// targets — five <c>MenuItem</c>s where five navigation-pane rows used to be — and the strings,
+    /// which now come in PAIRS.
+    /// </para>
+    /// <para>
+    /// <b>THE HEADER CARRIES THE ACCESS-KEY MARKER AND THE ACCESSIBLE NAME DOES NOT, and that split is
+    /// measured rather than assumed.</b> The vendored menu template opts into markers with
+    /// <c>RecognizesAccessKey="True"</c> on <c>PART_HeaderPresenter</c>
+    /// (Themes/Aero/ControlStyles/Menu.axaml), and Avalonia's <c>AccessText</c> strips the <c>_</c>
+    /// before it draws — but a UIA name derived from the raw header string keeps it. Round 8, Task 2
+    /// measured exactly that on the Options dialog's 应用 button, whose UIA <c>Name</c> read literally
+    /// "应用(_A)" until it was given an explicit name, and this method writes the same explicit pair for
+    /// the same reason. The two keys per item are separate <c>AppLanguage</c> entries rather than one
+    /// string with the marker spliced in by code, because WHERE the marker goes is a localisation
+    /// decision: English underlines a letter inside the word and Chinese appends the Latin letter in
+    /// parentheses, which is what Windows' own Chinese UI does.
+    /// </para>
+    /// <para>
+    /// Access keys: <b>O</b> = Options, <b>x</b> = Exit and <b>A</b> = About are PUBLISHED,
+    /// <c>inter-keyboard</c>'s standard table. <b>M</b> for 主目录 and <b>R</b> for 刷新 are
+    /// app-specific — the guide assigns neither — with M taken on its own stated preference for wide
+    /// letters "such as w, m". All five are distinct, which
+    /// <c>MenuBarTests.AccessKeysAreDistinct</c> holds.
+    /// </para>
+    /// </remarks>
+    private void ApplyMenuText()
     {
         var lang = App.Services.GetRequiredService<ConfigService>().Config.General.Language;
-        var appsText = AppLanguage.Text("NavApps", lang);
-        var settingsText = AppLanguage.Text("NavSettings", lang);
-        var openRootText = AppLanguage.Text("MenuOpenRoot", lang);
-        var refreshText = AppLanguage.Text("MenuRefresh", lang);
-        var exitText = AppLanguage.Text("MenuExit", lang);
 
-        // AutomationProperties.Name lives on the ROW (the ListBoxItem or, for the three command rows,
-        // the Button); the visible label lives on the TextBlock inside it. Both are written from the
-        // same string, so the two can never disagree — which is what Task 8's verification asserts.
-        NavAppsItem.SetValue(AutomationProperties.NameProperty, appsText);
-        NavSettingsItem.SetValue(AutomationProperties.NameProperty, settingsText);
-        NavOpenRootItem.SetValue(AutomationProperties.NameProperty, openRootText);
-        NavRefreshItem.SetValue(AutomationProperties.NameProperty, refreshText);
-        NavExitItem.SetValue(AutomationProperties.NameProperty, exitText);
-        NavAppsLabel.Text = appsText;
-        NavSettingsLabel.Text = settingsText;
-        NavOpenRootLabel.Text = openRootText;
-        NavRefreshLabel.Text = refreshText;
-        NavExitLabel.Text = exitText;
+        MenuOptions.Header = AppLanguage.Text("MenuOptionsWithAccessKey", lang);
+        MenuOpenRoot.Header = AppLanguage.Text("MenuOpenRootWithAccessKey", lang);
+        MenuRefresh.Header = AppLanguage.Text("MenuRefreshWithAccessKey", lang);
+        MenuExit.Header = AppLanguage.Text("MenuExitWithAccessKey", lang);
+        MenuAbout.Header = AppLanguage.Text("MenuAboutWithAccessKey", lang);
+
+        MenuOptions.SetValue(AutomationProperties.NameProperty, AppLanguage.Text("MenuOptions", lang));
+        MenuOpenRoot.SetValue(AutomationProperties.NameProperty, AppLanguage.Text("MenuOpenRoot", lang));
+        MenuRefresh.SetValue(AutomationProperties.NameProperty, AppLanguage.Text("MenuRefresh", lang));
+        MenuExit.SetValue(AutomationProperties.NameProperty, AppLanguage.Text("MenuExit", lang));
+        MenuAbout.SetValue(AutomationProperties.NameProperty, AppLanguage.Text("About", lang));
     }
 
     /// <summary>The 字体 setting used to reach the window through a DataContext binding. The shell has
@@ -760,20 +762,26 @@ public partial class MainWindow : Window
     }
 
     // ══════════════════════════════════════════════════════════════════════════════════════════
-    // Deferred search-box focus
+    // The search box, and the deferred focus that reaches it
     //
-    // Round 7, Task 1 moved the search CONTROL back into the 应用 page (Views/AppPage.axaml), where it
-    // lived before commit 6d00060, because Microsoft's rule for a window frame is verbatim "Don't add
-    // controls to a window frame. Put the controls within the window instead."
-    // (learn.microsoft.com/en-us/windows/win32/uxguide/win-window-frames) and Task 1's Aero caption IS
-    // that frame. Its width no longer tracks the window either — the Task-Manager-proportional
-    // ApplySearchFieldWidth, its three constants and the ClientSize subscription that drove it are all
-    // deleted with the strip, and AppPage gives the field one authored width instead.
+    // THE CONTROL IS BACK IN THIS CLASS AS OF ROUND 8, TASK 3, and that is not a revert of Round 7,
+    // Task 1. Task 1 removed the search box from the window's TITLE STRIP, because Microsoft's rule
+    // for a window frame is verbatim "Don't add controls to a window frame. Put the controls within
+    // the window instead." (learn.microsoft.com/en-us/windows/win32/uxguide/win-window-frames) and
+    // the Aero caption IS that frame. Task 3 puts the field in the MENU BAND, which is below the
+    // caption, inside the client area — i.e. exactly the "within the window" half of that same
+    // sentence. Item 5 asked for it there, immediately after 关于.
     //
-    // What stays HERE is only the PendingFocus contract: the view model raises "please focus the search
-    // box" from a fresh summon, from 清除筛选 and from Up off the top of the tile grid, and this class
-    // is the one place that owns the timing. The focus call itself is forwarded to
-    // AppPage.FocusSearchBox().
+    // What did NOT come back is the strip's Task-Manager-proportional width: ApplySearchFieldWidth,
+    // its three constants and the ClientSize subscription that drove it stay deleted, and the field
+    // keeps the one authored 320 DIP width Task 1 gave it. A proportional width would need a
+    // ClientSize subscription and therefore a re-fit trigger, and Round 8 has four, not five.
+    //
+    // Four members moved here verbatim with the markup — OnSearchFocusChanged, OnSearchClearPressed,
+    // OnSearchKeyDown and FocusSearchBox — plus the PendingFocus contract this class already owned:
+    // the view model raises "please focus the search box" from a fresh summon, from 清除筛选 and from
+    // Up off the top of the tile grid, and ConsumePendingFocus owns the timing. It calls
+    // FocusSearchBox() directly now instead of forwarding to AppPage.
     // ══════════════════════════════════════════════════════════════════════════════════════════
 
     /// <summary>Deferred focus: <see cref="LauncherViewModel.PendingFocus"/> is set on every summon (and
@@ -789,7 +797,7 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Consume a deferred focus request, if the page that owns the search box is actually hosted.
+    /// Consume a deferred focus request, if the page whose view model raised it is actually hosted.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -799,15 +807,20 @@ public partial class MainWindow : Window
     /// which raises <c>LauncherShown</c> and sets <c>PendingFocus</c> unconditionally.
     /// </para>
     /// <para>
-    /// <b>Round 8, Task 2 leaves the line alone and changes what it means</b>, exactly as it does for
-    /// <see cref="RefitToContent"/>'s twin: there is one page, so this is an ATTACHMENT test now.
-    /// Round 7, Task 1 had already made it literally one — a detached page's TextBox cannot take focus
-    /// at all (<c>FocusManager.CanFocus</c> is <c>Focusable &amp;&amp; IsEffectivelyEnabled &amp;&amp;
-    /// IsEffectivelyVisible</c>, decompiled) — and it is kept for the same reason as the other: one
-    /// reference comparison against a reproduced defect class. What is NO LONGER true, and is corrected
-    /// rather than left standing, is the sentence that said a deferred request would be retried "the
-    /// next time the rail switches back to 应用". There is no switch, so nothing retries it; the request
-    /// simply stays set until the next Loaded pass posts this again, which every summon does.
+    /// <b>Round 8, Task 2 left the line alone and changed what it means</b>, exactly as it did for
+    /// <see cref="RefitToContent"/>'s twin: there is one page, so this is an ATTACHMENT test now. It
+    /// is kept for the same reason as the other — one reference comparison against a reproduced defect
+    /// class.
+    /// </para>
+    /// <para>
+    /// <b>Round 8, Task 3 narrowed what it protects, and it is kept anyway.</b> The search box is a
+    /// child of this window's menu band now, not of <see cref="_appPage"/>, so it can take focus
+    /// whether or not the page is hosted, and the original argument (Round 7, Task 1's: a detached
+    /// page's TextBox fails <c>FocusManager.CanFocus</c>, which is <c>Focusable &amp;&amp;
+    /// IsEffectivelyEnabled &amp;&amp; IsEffectivelyVisible</c>, decompiled) no longer applies to the
+    /// BOX. It still applies to the REQUEST: every producer of <c>PendingFocus</c> is the page's own
+    /// view model, and focusing a filter box over a page that is not on screen is the same wrong thing
+    /// it always was. The guard is a statement about the requester now rather than about the target.
     /// </para>
     /// </remarks>
     private void ConsumePendingFocus()
@@ -819,21 +832,93 @@ public partial class MainWindow : Window
             return;
 
         _appPage.ViewModel.PendingFocus = false;
-        _appPage.FocusSearchBox();
+        FocusSearchBox();
+    }
+
+    /// <summary>Focus the search box. Called by <see cref="ConsumePendingFocus"/>, which owns the
+    /// decision of WHEN. Swallowing is deliberate and is carried over verbatim from both previous
+    /// homes: focus is a nicety and must never take startup down.</summary>
+    private void FocusSearchBox()
+    {
+        try
+        {
+            SearchBox.Focus();
+        }
+        catch
+        {
+            /* focus is a nicety; never let it take startup down */
+        }
+    }
+
+    /// <summary>Focus is drawn on the FIELD (the bordered box), not on the bare TextBox inside it, so
+    /// the outline frames the glyph too. The TextBox has no border of its own to light up — it is given
+    /// a local <c>BorderThickness="0"</c>, so Aero's own focus brush pair is applied to the field's
+    /// Border by <c>Border.tm-searchfield.focused</c> instead.</summary>
+    /// <remarks>Round 7, Task 9 added the <c>SelectAll</c>. PUBLISHED,
+    /// <c>https://learn.microsoft.com/en-us/windows/win32/uxguide/ctrl-search-boxes</c>: "On input
+    /// focus, automatically select any previously entered text." It is guarded on the box actually
+    /// being focused because this one handler serves both GotFocus and LostFocus.</remarks>
+    private void OnSearchFocusChanged(object? sender, RoutedEventArgs e)
+    {
+        var focused = SearchBox.IsFocused;
+        SearchField.Classes.Set("focused", focused);
+        if (focused)
+            SearchBox.SelectAll();
+    }
+
+    /// <summary>The right-end "x". PUBLISHED,
+    /// <c>https://learn.microsoft.com/en-us/windows/win32/uxguide/ctrl-search-boxes</c>: "a clear
+    /// button appears after the user starts typing … On hover, the 'x' gets a button look and can be
+    /// clicked." Clearing and then re-focusing is the same pair the empty state's 清除筛选 button does
+    /// (<c>AppPage.OnClearFilterClick</c>), through the same <c>PendingFocus</c> channel, so there is
+    /// one path for every "focus the box" request and <see cref="ConsumePendingFocus"/> still owns the
+    /// timing.</summary>
+    /// <remarks>Primary button only, for the same reason <c>AppPage.OnGroupTitlePressed</c> guards:
+    /// <c>PointerPressed</c> fires for every button, and a right-click here would otherwise wipe the
+    /// filter. The affordance is a Border rather than a Button because every Button theme in this app
+    /// carries a height floor that would hold the 23 DIP field open — see the
+    /// <c>Border.tm-search-affordance</c> rule.</remarks>
+    private void OnSearchClearPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (sender is not Control control ||
+            !e.GetCurrentPoint(control).Properties.IsLeftButtonPressed)
+            return;
+
+        _appPage.ViewModel.ClearFilter();
+        _appPage.ViewModel.PendingFocus = true;
+        e.Handled = true;
+    }
+
+    /// <summary>Enter launches the first match, Escape clears then hides, Down enters the tile grid.
+    /// The Down case is the one line that still reaches across into the page, because the grid is the
+    /// page's.</summary>
+    private void OnSearchKeyDown(object? sender, KeyEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case Key.Enter:
+                _appPage.ViewModel.HandleSearchEnter();
+                e.Handled = true;
+                break;
+            case Key.Escape:
+                _appPage.ViewModel.HandleSearchEscape();
+                e.Handled = true;
+                break;
+            case Key.Down:
+                e.Handled = _appPage.FocusFirstTile();
+                break;
+        }
     }
 
     // ══════════════════════════════════════════════════════════════════════════════════════════
-    // Navigation pane: FOUR commands. Three were relocated in Round 3, Task 2 — they used to be the
-    // title strip's ⋯ overflow MenuFlyout; MainWindow.axaml's pane comment explains why they are
-    // Buttons, not ListBoxItems, and why each is its own row rather than one row that opens a flyout.
-    // There were four then too until Round 5, item 2 moved 关于 into the 设置 page as a card and
-    // deleted the overlay it raised.
+    // The menu band's FIVE commands: 设置 · 主目录 · 刷新 · 退出 · 关于
     //
-    // ROUND 8, TASK 2 MADE 设置 THE FOURTH. It was a PAGE — a ListBoxItem in a second ListBox that the
-    // shell navigated to — and it is a modal dialog now, i.e. exactly what the other three already
-    // were: a one-shot action that leaves the page on screen alone. That is what the pane's own
-    // comment says a command row is, and a Button has no :selected pseudo-class, so "设置 must never
-    // look selected" holds by construction rather than by a rule a later edit could defeat.
+    // Every one is a direct command with no submenu. Three of them (主目录/刷新/退出) have been the
+    // same three handlers since Round 3, Task 2 moved them out of the title strip's ⋯ overflow
+    // MenuFlyout; 设置 joined them in Round 8, Task 2 when it stopped being a page; 关于 comes back in
+    // Round 8, Task 3 after Round 5, item 2 had folded it into the settings surface as a card.
+    // MainWindow.axaml's band block carries the published sentences for and against a menu bar of
+    // direct commands, and the ruling.
     // ══════════════════════════════════════════════════════════════════════════════════════════
 
     private void OnOpenRootClick(object? sender, RoutedEventArgs e) => _appPage.ViewModel.OpenRoot();
@@ -849,6 +934,29 @@ public partial class MainWindow : Window
         App.Services.GetRequiredService<ISettingsLauncher>().Open();
 
     private void OnExitClick(object? sender, RoutedEventArgs e) => _appPage.ViewModel.ExitApp();
+
+    /// <summary>
+    /// 关于. <b>PROVISIONAL, AND IT SAYS SO: this opens the Options dialog on its 关于 tab, because that
+    /// is where 关于 lives today.</b> Round 8, Task 4 gives it a real About box
+    /// (<c>Dialogs/AboutWindow</c>) and re-points this handler at it — PUBLISHED,
+    /// <c>win-property-win</c>: "Is the content solely an application's attributes? If so, use an About
+    /// box." Until then, sending 关于 to the same dialog as 设置 but on a DIFFERENT tab is the only
+    /// behaviour available that is not simply 设置 twice.
+    /// </summary>
+    /// <remarks>
+    /// The tab is selected AFTER <c>Open()</c> returns, and that ordering is sound rather than lucky:
+    /// <c>SettingsLauncher.OpenCoreAsync</c> is an async method whose first await is
+    /// <c>ShowDialog(owner)</c>, so <c>new OptionsWindow()</c> — which claims
+    /// <c>OptionsWindow.Current</c> as its constructor's last statement — has already run by the time
+    /// control comes back here. If the constructor threw, <c>Current</c> is null (that field is claimed
+    /// last precisely so a fault cannot leave it set) and this is a no-op over a failure the launcher
+    /// has already logged.
+    /// </remarks>
+    private void OnAboutClick(object? sender, RoutedEventArgs e)
+    {
+        App.Services.GetRequiredService<ISettingsLauncher>().Open();
+        OptionsWindow.Current?.ShowAboutTab();
+    }
 
     // ══════════════════════════════════════════════════════════════════════════════════════════
     // Alt+F4 (the system menu's Close command)

@@ -51,27 +51,60 @@ public sealed partial class WindowHost : IWindowHost
     /// ChromeHeightDip</c> is below <see cref="MinWindowHeightDip"/> at every content size this app
     /// produces, so any <c>ChromeHeightDip</c> up to 74 yields the identical 568 DIP window. The term
     /// that does move is the log line's own <c>chrome {w}x{h}</c>: it read 49x49 before Task 1, 49x31
-    /// after it, and 161x31 after Round 7, Task 8 widened the navigation pane — the height half of that
-    /// pair is this constant's only observable.
+    /// after it, 161x31 after Round 7, Task 8 widened the navigation pane, and <b>0x55</b> after
+    /// Round 8, Task 3 deleted that pane and put a menu band above the page instead — the height half
+    /// of that pair is this constant's only observable.
     /// </para>
     /// </remarks>
     private const double TitleStripHeightDip = 30;
 
     /// <summary>
-    /// Everything ABOVE the page that still counts toward the window's own Height, which
-    /// <see cref="FitToContent"/> adds back on top of the measured page size: the caption band, plus the
-    /// content pane's own 1 DIP TOP border. The +1 is the exact vertical counterpart of the
-    /// <c>chromeWidth</c> term the caller composes as <c>MainWindow.RailWidthDip + PaneBorderDip</c> —
-    /// a <c>Border</c> draws its <c>BorderThickness</c> inside its own bounds and arranges its child
-    /// inside that, so the 应用 pane's <c>BorderThickness="1,1,0,0"</c>
-    /// (<c>Border.tm-page-pane</c>, Themes/Shell/Launcher.axaml, Round 4 item 5) takes 1 DIP off the
-    /// page on each of those two axes and the fit has to hand both back. Change that thickness and this
-    /// constant and <c>MainWindow.PaneBorderDip</c> both have to change with it.
+    /// The classic menu band's height, in DIP — <c>MainWindow.axaml</c>'s <c>MenuBand</c>, which Round 8,
+    /// Task 3 put where the navigation pane used to be.
     /// </summary>
-    private const double ChromeHeightDip = TitleStripHeightDip + 1;
+    /// <remarks>
+    /// <para>
+    /// <b>25, and the number lands in THREE unlinked places</b>: the vendored
+    /// <c>Themes/Aero/ControlStyles/Menu.axaml</c>'s <c>&lt;x:Double x:Key="MenuBarHeight"&gt;</c> (which
+    /// is what the bar actually PAINTS, through the <c>{x:Type Menu}</c> theme's own <c>Height</c>
+    /// setter), <c>MainWindow.axaml</c>'s <c>MenuBand</c> <c>Height</c> (which is what the Auto row
+    /// RESERVES), and this constant (which is what the fit HANDS BACK).
+    /// <c>ShellConstantTests.MenuBandHeight_IsTheSameNumberInAllThreePlaces</c> ties all three, and it
+    /// needs all three: two can agree while the third drifts, and the only symptom of that drift is a
+    /// window fitted to a chrome height its own band does not have — silently.
+    /// </para>
+    /// <para>
+    /// WHERE THE 25 COMES FROM: the item strip is 23, which is PUBLISHED
+    /// (https://learn.microsoft.com/en-us/windows/win32/uxguide/vis-layout gives one height for the
+    /// whole family of text-line controls, and item 5 puts one of those — the search field — in this
+    /// bar), and the vendored template docks two 1 DIP bottom-border rules inside the same height. It
+    /// DEPARTS from the MEASURED <c>SM_CYMENU</c> of 20 by 5 DIP; that vendored file's own header
+    /// carries the departure, the measurement and the two alternatives that were rejected.
+    /// </para>
+    /// </remarks>
+    private const double MenuBandHeightDip = 25;
+
+    /// <summary>
+    /// Everything ABOVE the page that still counts toward the window's own Height, which
+    /// <see cref="FitToContent"/> adds back on top of the measured page size: the caption band plus the
+    /// menu band.
+    /// </summary>
+    /// <remarks>
+    /// <b>ROUND 8, TASK 3 REPLACED THE "+1" WITH A WHOLE BAND.</b> This was
+    /// <c>TitleStripHeightDip + 1</c>, where the 1 was the 应用 pane's own TOP border — the vertical
+    /// counterpart of the <c>chromeWidth</c> the caller composed as
+    /// <c>MainWindow.RailWidthDip + PaneBorderDip</c>. <c>Border.tm-page-pane</c>
+    /// (Themes/Shell/Launcher.axaml) no longer sets <c>BorderThickness</c> at all: its left edge
+    /// separated the page from a navigation pane that is deleted, and its top edge is redundant against
+    /// the two 1 DIP bottom rules the vendored Menu template draws directly above it. So both DIP left
+    /// the arithmetic in the same commit, and what arrived in their place is
+    /// <see cref="MenuBandHeightDip"/>. The caller's horizontal term is <c>MainWindow.ChromeWidthDip</c>
+    /// and it is zero.
+    /// </remarks>
+    private const double ChromeHeightDip = TitleStripHeightDip + MenuBandHeightDip;
 
     /// <summary>The app's own minimum window WIDTH, in DIP. Mirrors <c>MainWindow.axaml</c>'s
-    /// <c>MinWidth="872"</c>, which stays declared there and is still enforced by the platform against
+    /// <c>MinWidth="711"</c>, which stays declared there and is still enforced by the platform against
     /// an interactive resize; this constant is what the placement arithmetic clamps with, and the two
     /// have to be kept in step —
     /// <c>ShellConstantTests.MinWindowWidth_IsTheSameNumberInBothPlaces</c> is what catches a drift.
@@ -82,23 +115,33 @@ public sealed partial class WindowHost : IWindowHost
     /// declarability argument is unchanged by Round 7 — <c>ExtendClientAreaToDecorationsHint</c> is still
     /// on, and it is the vertical inset it distorts, not the horizontal one.</summary>
     /// <remarks>
-    /// ROUND 7, TASK 8 MOVED THIS FROM 760 TO 872, AND THE NUMBER IT PROTECTS IS NOT THIS ONE. At the
-    /// floor the content pane gets <c>MinWindowWidthDip − chromeWidth</c>. That was <c>760 − 49 = 711</c>
-    /// DIP. Task 8 took the navigation pane from 48 to 160, so <c>chromeWidth</c> is 161; leaving the
-    /// minimum at 760 would have handed the content pane 599 DIP, a 112 DIP loss, and falsified four
-    /// measurement records elsewhere in the tree that are all stated AT THE FLOOR —
-    /// <c>Launcher.axaml</c>'s <c>tm-card-value</c> and <c>tm-card-actions</c> blocks,
-    /// <c>Views/Settings/FoldersCard.axaml</c>'s wrap measurement, and this class's own callers.
-    /// <c>760 + (160 − 48) = 872</c> holds the content pane at exactly 711 DIP, so all four stay true in
-    /// substance and each needed only its premise line rewritten from "760 DIP window" to "872 DIP
-    /// window, 711 DIP content pane".
     /// <para>
-    /// A persisted window width below 872 now comes back CLAMPED UP to 872 by
+    /// <b>THE NUMBER THIS FLOOR PROTECTS HAS ALWAYS BEEN 711 DIP OF CONTENT PANE, AND ROUND 8, TASK 3
+    /// MADE THE TWO THE SAME NUMBER.</b> At the floor the content pane gets
+    /// <c>MinWindowWidthDip − chromeWidth</c>. It was <c>760 − 49 = 711</c> on the 48 DIP icon rail and
+    /// <c>872 − 161 = 711</c> on Round 7 Task 8's 160 DIP pane. Task 3 deleted the pane and its
+    /// hairline, so <c>chromeWidth</c> is <b>zero</b> (<c>MainWindow.ChromeWidthDip</c>) and the window's
+    /// own floor IS the content pane's: 711. That is a reversion of Task 8's arithmetic, not a new
+    /// number, which is why the measurement records that rest on it did not have to move again — this
+    /// class's own remark is rewritten from "872 DIP window, 711 DIP content pane" to "711 DIP window,
+    /// 711 DIP content pane", and <c>FoldersCard</c>'s wrap measurement became a statement about the
+    /// Options dialog's width in Round 8, Task 2 (that dialog is 711 wide too, and its own remarks say
+    /// why).
+    /// </para>
+    /// <para>
+    /// <b>THE 711 HAS ONE NEW FLOOR TO CLEAR THAT THE 872 DID NOT.</b> The menu band lays five items,
+    /// then the separator's whole 23 DIP footprint, then the 320 DIP search field, then 11 DIP of
+    /// trailing margin, end to end — and unlike the pane, that run is not a constant: it follows the UI
+    /// language and the configured font. It was MEASURED rather than estimated in Task 3; the report
+    /// carries the reading and the headroom.
+    /// </para>
+    /// <para>
+    /// A persisted window width below the floor comes back CLAMPED UP to it by
     /// <see cref="RestorePlacement"/>'s existing clamp. That is the clamp doing its job, not a
-    /// regression, and it is what happened the last time a minimum moved.
+    /// regression, and it is what happened the last two times this minimum moved.
     /// </para>
     /// </remarks>
-    private const double MinWindowWidthDip = 872;
+    private const double MinWindowWidthDip = 711;
 
     /// <summary>
     /// The app's own minimum window HEIGHT, in DIP — the floor <see cref="RestorePlacement"/> and
@@ -153,12 +196,15 @@ public sealed partial class WindowHost : IWindowHost
     /// position, because since Round 4, item 4 nothing does.
     /// <para>
     /// The width moved 1000 → 1112 in Round 7, Task 8, by the navigation pane's own 112 DIP growth, and
-    /// <c>MainWindow.axaml</c>'s declared <c>Width</c> moved with it. Keeping the two equal is the whole
-    /// point of the constant: the cold-start first frame is drawn at the XAML's width and this is what
-    /// the first placement re-applies, so a mismatch shows up as a visible jump before the real,
-    /// content-driven size lands. The height is unchanged — Task 8 moved nothing vertical.
+    /// <b>back to 1000 in Round 8, Task 3</b>, which deleted that pane; <c>MainWindow.axaml</c>'s
+    /// declared <c>Width</c> moved with it both times. Keeping the two equal is the whole point of the
+    /// constant: the cold-start first frame is drawn at the XAML's width and this is what the first
+    /// placement re-applies, so a mismatch shows up as a visible jump before the real, content-driven
+    /// size lands. The height is unchanged through both — neither task moved anything vertical that
+    /// reaches a PLACEHOLDER, because the menu band's 25 DIP is chrome the fit adds and the placeholder
+    /// is a whole-window size.
     /// </para></summary>
-    private const double PlaceholderWidthDip = 1112;
+    private const double PlaceholderWidthDip = 1000;
     private const double PlaceholderHeightDip = 688;
 
     private readonly ConfigService _config;
@@ -228,7 +274,7 @@ public sealed partial class WindowHost : IWindowHost
     /// null until one has run. <see cref="RestorePlacement"/> applies its SIZE as the PRE-SHOW size on
     /// every later summon, which is the whole point: the correction a fit makes only reaches the platform
     /// on the next layout pass, i.e. after <see cref="Window.Show"/> has already put the window on screen,
-    /// so without this every summon painted the 1112x688 placeholder for a frame and then snapped to the
+    /// so without this every summon painted the 1000x688 placeholder for a frame and then snapped to the
     /// real size — reintroducing, for SIZE, exactly the paint-then-jump this class already goes out of its
     /// way to avoid for POSITION (see <see cref="RestorePlacement"/>'s own remarks).</summary>
     /// <remarks>
@@ -285,7 +331,7 @@ public sealed partial class WindowHost : IWindowHost
     /// not, so the foreign resize has to be OBSERVED instead of inferred. This flag is that
     /// observation, kept deliberately separate from nulling the rectangle itself:
     /// <see cref="RestorePlacement"/> reads its size as the PRE-SHOW size on the next summon, and
-    /// clearing it would bring back the 1112x688 placeholder flash it exists to prevent.
+    /// clearing it would bring back the 1000x688 placeholder flash it exists to prevent.
     /// </para>
     /// <para>
     /// Set ONLY for <see cref="WindowResizeReason.Unspecified"/> (see <see cref="OnWindowResized"/> for
@@ -692,10 +738,10 @@ public sealed partial class WindowHost : IWindowHost
     /// above the work area's. Called on
     /// EVERY summon, not only a cold start (see the class remarks), and again on every other event that
     /// changes what the active page measures: a docked notice opening or closing, a 每列个数 / 字体 /
-    /// 语言 change, a switch back to 应用 from 设置, and the
-    /// Maximized→Normal transition. (The navigation pane expanding or collapsing was a sixth trigger
-    /// until Round 4, item 1 made it a single fixed width. Round 7, Task 8 widened that width from 48 to
-    /// 160 and did NOT bring the second one back, so the list is still five.)
+    /// 语言 change, and the Maximized→Normal transition. FOUR triggers, not five: Round 8, Task 2
+    /// deleted the 设置 → 应用 switch by making 设置 a modal dialog, and Round 8, Task 3 deleted the
+    /// pane whose expand/collapse had been a sixth until Round 4, item 1 replaced it with a single
+    /// fixed width. Nothing about the menu band is a trigger — it has one authored height and no state.
     /// It is a cheap, idempotent re-measure, not a one-time setup step, and
     /// a re-fit that computes the geometry the PREVIOUS fit already requested
     /// (<see cref="_lastFitPlacement"/>, compared with
@@ -745,15 +791,16 @@ public sealed partial class WindowHost : IWindowHost
     /// still clamps correctly: <see cref="WindowPlacement.ResolveBottomCentred"/> caps the RESULT to the
     /// work area regardless of how tall the probe reported — no special-case wrapping logic needed here
     /// either way.</param>
-    /// <param name="chromeWidth">Everything to the LEFT of the page that still counts toward the
-    /// window's own Width: the navigation pane's width plus whatever left border the content pane
-    /// carries. The caller composes it from literal constants that mirror the XAML
-    /// (<c>MainWindow.RailWidthDip</c>/<c>PaneBorderDip</c>) rather than measuring live elements — see
-    /// those constants' own remarks. Round 4, item 1: this used to be a pane width that varied with the
-    /// pane's persisted expand state (48 or 200) and had to be read from config rather than from the
-    /// pane, whose Width could be mid-animation; the pane has one width now and no animation. Round 7,
-    /// Task 8 changed what that one width IS — 48 → 160, so this term is 161 rather than 49 — without
-    /// changing anything about how it is composed.</param>
+    /// <param name="chromeWidth">Everything BESIDE the page that still counts toward the window's own
+    /// Width. <b>It is zero as of Round 8, Task 3</b>, and the parameter stays because the parameter is
+    /// the contract: this shell's chrome runs horizontally now — a menu band above the page — so nothing
+    /// is laid out to the page's left or right, and all 23 <c>WindowPlacementTests</c> parameterise this
+    /// term precisely so a future shell can put something back there. It was the navigation pane's width
+    /// plus the content pane's left hairline: 49 on the 48 DIP icon rail, 161 after Round 7, Task 8
+    /// widened the pane to 160, and both of those constants are deleted with the pane. The caller still
+    /// composes it from a literal constant that mirrors the XAML rather than measuring live elements —
+    /// <c>MainWindow.ChromeWidthDip</c>, whose own remarks say why it is named rather than written as a
+    /// bare 0 here.</param>
     /// <remarks>
     /// <para>
     /// Callable only after the window has been placed AND shown: unlike <see cref="RestorePlacement"/>,
@@ -787,7 +834,7 @@ public sealed partial class WindowHost : IWindowHost
     /// area's. It does not read the window's current top-left at all. Round 2's review finding 7 asked
     /// for a deliberate decision about moving on growth and got "move by exactly the overflow, never
     /// otherwise"; Round 4, item 4 supersedes that with a rule that has to move: an anchor that only
-    /// applied at restore would be undone by the very first fit (the cold-start placeholder is 1112x688
+    /// applied at restore would be undone by the very first fit (the cold-start placeholder is 1000x688
     /// and the fitted window is neither), so all five surviving re-fit triggers move the window as well
     /// as resizing it. A shrink now moves the window DOWN by exactly the height delta, keeping the
     /// bottom edge where it was; growth is symmetric about the centre and cannot overflow, because the

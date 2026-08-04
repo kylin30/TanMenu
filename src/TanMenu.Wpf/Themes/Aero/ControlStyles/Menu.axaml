@@ -1,0 +1,186 @@
+<!--
+    Copyright (c) 2026 Splitwirez
+    Licensed under the MIT License. See LICENSE-aero-theme-for-avalonia.txt in the Themes/Aero
+    directory for the full text of the copyright notice and permission notice.
+    Source: https://github.com/Splitwirez/aero-theme-for-avalonia at main = a705b7c0
+            src/AeroAvalonia/ControlStyles/Menu.axaml
+    Changes from upstream: THREE, each one line of markup and nothing else. Everything else below,
+    blank lines, trailing spaces and the author's own indentation included, is byte for byte
+    upstream at that revision.
+
+      1. MenuBarHeight 20 -> 25 (upstream line 4). Round 8, item 5 puts a SEARCH FIELD in this
+         bar, and a one-line text box is 23 relative pixels tall - PUBLISHED,
+         https://learn.microsoft.com/en-us/windows/win32/uxguide/vis-layout, the same cell Round 7
+         Task 9 already cited for Border.tm-searchfield's MinHeight. The template's two 1 DIP
+         bottom-border Rectangles are docked INSIDE this height, so 23 + 2 = 25 leaves an item
+         strip of exactly 23 DIP for the field to sit beside.
+         THE 25 DEPARTS FROM THE OS METRIC BY 5 DIP AND THAT IS STATED RATHER THAN HIDDEN:
+         SM_CYMENU MEASURED 20 at 96 dpi on this machine (SystemParametersInfoForDpi /
+         SPI_GETNONCLIENTMETRICS, on Windows 11, not Windows 7), and upstream's own value here was
+         20. Shrinking the field to 18 instead was rejected - 23 is the one published height for a
+         one-line text box and this app already ships it.
+
+      2. AeroTopLevelMenuItem's Foreground setter (upstream line 7): MenuFlyoutItemForeground ->
+         AeroForeground. The upstream value is a FluentTheme key; this app has no Fluent ink
+         anywhere else, and the four other Foreground setters in this file are state colours on a
+         popup that a bar of childless command items never opens.
+
+      3. The pressed block's selector (upstream line 65): "^[IsSubMenuOpen=True]" gains ", ^:pressed".
+         AN AERO TOP-LEVEL ITEM OTHERWISE HAS NO PRESSED LOOK AT ALL FOR A DIRECT COMMAND, which
+         is what all five of this app's items are. Upstream binds the pressed look to
+         IsSubMenuOpen, and Avalonia never sets that on a childless item: MenuItem.HasSubMenu is
+         !Classes.Contains(":empty") and DefaultMenuInteractionHandler.PointerPressed returns
+         early unless HasSubMenu (decompiled, Avalonia 12.1.0). What DOES fire is :pressed -
+         MenuItem's static constructor calls PressedMixin.Attach<MenuItem>() (decompiled, same
+         assembly) - and MBI_PUSHED is a real published state for the MENU class
+         (https://learn.microsoft.com/en-us/windows/win32/controls/parts-and-states). One selector,
+         no new values: the OR branch reuses the same two Setters upstream already wrote.
+         NOT EXERCISED ON THIS MACHINE. There is no mouse here and no synthetic path sets
+         :pressed, so the rule is asserted by construction and by the decompile, not by a capture.
+
+    WHAT THE TEMPLATE DRAWS, read out of the markup below rather than assumed. The Menu is a
+    DockPanel: two 1 DIP Rectangles docked Bottom (outer AeroMenuBarBottomOuterBorderBrush, then
+    inner AeroMenuBarBottomInnerBorderBrush), then a Panel holding the gradient Border
+    (AeroMenuBarBackground, side borders 1,0), a 7 DIP AeroMenuBarShine Rectangle pinned to the
+    top, and PART_ItemsPresenter. The presenter is a SIBLING of that Border, not its child, so it
+    starts at x = 0 of the Panel with no left inset of its own - which is what makes
+    MainWindow.axaml's MenuRunSpacer, whose Width binds MenuAbout.Bounds.Right, land the search
+    field's separator exactly where 关于 ends.
+
+    ONE INHERITED DARK-MODE DEFECT, DECLARED AND NOT FIXED. Variant/Dark.axaml carries upstream's
+    own "[TODO: Dark-ify AeroMenuBarItem* colours]" and its four item-state colours are
+    byte-identical to Light's, so a hover over the dark bar is close to invisible. Round 8 does not
+    change them: a hover state cannot be produced on this machine (no mouse), and authoring colours
+    into a vendored variant file without a measurement is exactly what this project's accuracy rule
+    forbids. COULD NOT VERIFY, inherited from upstream.
+-->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    x:ClassModifier="Internal">
+    <x:Double x:Key="MenuBarHeight">25</x:Double>
+
+    <ControlTheme x:Key="AeroTopLevelMenuItem" TargetType="MenuItem">
+        <Setter Property="Foreground" Value="{DynamicResource AeroForeground}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="3" />
+        <Setter Property="FontSize" Value="{DynamicResource AeroFontSizeNormal}" />
+        <Setter Property="Padding" Value="8,0" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Panel x:Name="PART_LayoutRoot">
+                    <Border x:Name="BackgroundBorder"
+                            Margin="1"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{TemplateBinding CornerRadius}" />
+                    <ContentPresenter x:Name="PART_HeaderPresenter"
+                                    Content="{TemplateBinding Header}"
+                                    VerticalAlignment="Center"
+                                    HorizontalAlignment="Stretch"
+                                    RecognizesAccessKey="True"
+                                    Margin="{TemplateBinding Padding}"/>
+                    <Popup x:Name="PART_Popup"
+                        WindowManagerAddShadowHint="True"
+                        MinWidth="{Binding Bounds.Width, RelativeSource={RelativeSource TemplatedParent}}"
+                        IsLightDismissEnabled="True"
+                        IsOpen="{TemplateBinding IsSubMenuOpen, Mode=TwoWay}"
+                        OverlayInputPassThroughElement="{Binding $parent[Menu]}">
+                        <Border Background="{DynamicResource MenuFlyoutPresenterBackground}"
+                                BorderBrush="{DynamicResource MenuFlyoutPresenterBorderBrush}"
+                                BorderThickness="{DynamicResource MenuFlyoutPresenterBorderThemeThickness}"
+                                Padding="{DynamicResource MenuFlyoutPresenterThemePadding}"
+                                MaxWidth="{DynamicResource FlyoutThemeMaxWidth}"
+                                MinHeight="{DynamicResource MenuFlyoutThemeMinHeight}"
+                                HorizontalAlignment="Stretch"
+                                CornerRadius="{DynamicResource OverlayCornerRadius}">
+                            <ScrollViewer Theme="{DynamicResource FluentMenuScrollViewer}">
+                                <ItemsPresenter x:Name="PART_ItemsPresenter"
+                                                ItemsPanel="{TemplateBinding ItemsPanel}"
+                                                Margin="{DynamicResource MenuFlyoutScrollerMargin}"
+                                                Grid.IsSharedSizeScope="True" />
+                            </ScrollViewer>
+                        </Border>
+                    </Popup>
+                </Panel>
+            </ControlTemplate>
+        </Setter>
+
+        <Style Selector="^[IsSubMenuOpen=False]:pointerover,
+                        ^[IsSubMenuOpen=False]:focus">
+            <Style Selector="^ /template/ Border#BackgroundBorder">
+                <Setter Property="Background" Value="{DynamicResource AeroMenuBarItemHoverBackground}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource AeroMenuBarItemHoverBorderBrush}" />
+                <Setter Property="BoxShadow" Value="inset 0 0 0 1 #40FFFFFF" />
+            </Style>
+            <Style Selector="^ /template/ ContentPresenter#PART_HeaderPresenter">
+                <Setter Property="Foreground" Value="{DynamicResource MenuFlyoutItemForegroundPointerOver}" />
+            </Style>
+        </Style>
+
+        <Style Selector="^[IsSubMenuOpen=True], ^:pressed">
+            <Style Selector="^ /template/ Border#BackgroundBorder">
+                <Setter Property="Background" Value="{DynamicResource AeroMenuBarItemSelectedBackground}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource AeroMenuBarItemSelectedBorderBrush}" />
+                <Setter Property="BoxShadow" Value="inset 2 2 2 0 #40000000" />
+            </Style>
+            <Style Selector="^ /template/ ContentPresenter#PART_HeaderPresenter">
+                <Setter Property="Foreground" Value="{DynamicResource MenuFlyoutItemForegroundPressed}" />
+            </Style>
+        </Style>
+
+        <Style Selector="^:disabled">
+            <Style Selector="^ /template/ Border#PART_LayoutRoot">
+                <Setter Property="Background" Value="{DynamicResource MenuFlyoutItemBackgroundDisabled}" />
+            </Style>
+            <Style Selector="^ /template/ ContentPresenter#PART_HeaderPresenter">
+                <Setter Property="Foreground" Value="{DynamicResource MenuFlyoutItemForegroundDisabled}" />
+            </Style>
+        </Style>
+    </ControlTheme>
+
+    <ControlTheme x:Key="{x:Type Menu}" TargetType="Menu">
+        <Setter Property="Background" Value="{DynamicResource AeroMenuBarBackground}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AeroMenuBarSideBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1,0" />
+        <Setter Property="Height" Value="{DynamicResource MenuBarHeight}" />
+        <Setter Property="ItemContainerTheme" Value="{DynamicResource AeroTopLevelMenuItem}" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <DockPanel>
+                    <Rectangle Classes="bottomBorder outer"
+                            DockPanel.Dock="Bottom" />
+                    <Rectangle Classes="bottomBorder"
+                            DockPanel.Dock="Bottom" />
+                        
+                    <Panel>
+                    <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{TemplateBinding CornerRadius}"
+                            HorizontalAlignment="Stretch"
+                            Padding="{TemplateBinding Padding}" />
+                    <Rectangle Classes="shine"
+                                Height="7"
+                                VerticalAlignment="Top"
+                                Fill="{DynamicResource AeroMenuBarShine}" />
+                    <ItemsPresenter x:Name="PART_ItemsPresenter"
+                                    ItemsPanel="{TemplateBinding ItemsPanel}"
+                                    VerticalAlignment="Stretch"
+                                    KeyboardNavigation.TabNavigation="Continue" />
+                    </Panel>
+                </DockPanel>
+            </ControlTemplate>
+        </Setter>
+
+        <Style Selector="^ /template/ Rectangle.bottomBorder">
+            <Setter Property="Height" Value="1" />
+        </Style>
+        <Style Selector="^ /template/ Rectangle.bottomBorder.outer">
+            <Setter Property="Fill" Value="{DynamicResource AeroMenuBarBottomOuterBorderBrush}" />
+        </Style>
+        <Style Selector="^ /template/ Rectangle.bottomBorder:not(.outer)">
+            <Setter Property="Fill" Value="{DynamicResource AeroMenuBarBottomInnerBorderBrush}" />
+        </Style>
+    </ControlTheme>
+</ResourceDictionary>

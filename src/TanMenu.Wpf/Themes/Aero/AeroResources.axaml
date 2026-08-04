@@ -45,17 +45,21 @@
     indeterminate machinery that was their only caller, and ROUND 8 TASK 2 VENDORED THE THIRD
     surviving one with the two tab dictionaries, because TabItem.axaml does not parse without it.
 
-    ── The control themes, added by Round 7 Tasks 3, 4, 5, 6 and 9 and Round 8 Task 2 ────────────
-    Sixteen ControlStyles dictionaries are merged below, VARIANT-INDEPENDENTLY: a control theme holds
-    geometry and {DynamicResource} brush references, never a colour, so the same dictionary serves
-    both variants and the brushes it names re-resolve when ActualThemeVariant changes. That is
-    upstream AVMAP/Controls.axaml's own arrangement.
+    ── The control themes, added by Round 7 Tasks 3, 4, 5, 6 and 9 and Round 8 Tasks 2 and 3 ─────
+    Seventeen ControlStyles dictionaries are merged below, VARIANT-INDEPENDENTLY: a control theme
+    holds geometry and {DynamicResource} brush references, never a colour, so the same dictionary
+    serves both variants and the brushes it names re-resolve when ActualThemeVariant changes. That
+    is upstream AVMAP/Controls.axaml's own arrangement.
 
-    Fifteen of the sixteen are keyed {x:Type X} and therefore auto-apply to every X that does not
-    set Theme= itself. HeaderedContentControl is the exception and is OPT-IN, keyed "GroupBox",
-    which is upstream's own choice rather than an adaptation: HeaderedContentControl is the base
-    class of TabItem and of several other headered controls, so a {x:Type} key there would repaint
-    things nobody asked for. Its consumers name it with Theme="{StaticResource GroupBox}".
+    Sixteen of the seventeen declare a {x:Type X} ControlTheme and therefore auto-apply to every X
+    that does not set Theme= itself. HeaderedContentControl is the exception and is OPT-IN, keyed
+    "GroupBox", which is upstream's own choice rather than an adaptation: HeaderedContentControl is
+    the base class of TabItem and of several other headered controls, so a {x:Type} key there would
+    repaint things nobody asked for. Its consumers name it with Theme="{StaticResource GroupBox}".
+    ControlStyles/Menu.axaml (Round 8, Task 3) declares TWO ControlThemes rather than one: a
+    {x:Type Menu} and a NAMED AeroTopLevelMenuItem which nothing in this app's markup references -
+    the Menu theme's own ItemContainerTheme setter resolves it, so it reaches the items of a Menu
+    and nothing else, and no MenuFlyout anywhere can pick it up by type.
     THAT CHOICE STOPPED BEING HYPOTHETICAL IN ROUND 8, TASK 2, which added a real
     {x:Type TabItem} theme: the two coexist precisely because GroupBox is not keyed by type, so the
     Options dialog's SIX tabs take TabItem.axaml and the six group boxes inside them - one per tab -
@@ -86,19 +90,32 @@
         container and a hand-built one pick up a {x:Type} ControlTheme the same way - neither can
         carry a Theme= - which is what makes the code-built rows and the markup-built combos one
         look rather than two. Task 6.
-      - ScrollViewer, TWO (AppPage and ToolsCard's per-tool list) plus the one inside this layer's
-        own ListBox template, and every ScrollBar those instantiate. It was three until Round 8,
-        Task 2 deleted Views/SettingsPage.axaml: a property page does not scroll (PUBLISHED,
+      - ScrollViewer, TWO (AppPage and ToolsCard's per-tool list) plus the one inside ComboBox's own
+        popup template, and every ScrollBar those instantiate. It was three until Round 8, Task 2
+        deleted Views/SettingsPage.axaml: a property page does not scroll (PUBLISHED,
         win-property-win, "Don't scroll property pages"), so the Options dialog has no scroller of
-        its own and the settings surface's scrolling ScrollViewer went with the page.
+        its own and the settings surface's scrolling ScrollViewer went with the page. (This bullet
+        named the ListBox template's scroller instead until Round 8, Task 3 deleted the app's last
+        ListBox with the navigation pane - a template that is never instantiated instantiates
+        nothing.)
       - TabControl, ONE, and TabItem, SIX - Dialogs/OptionsWindow.axaml:129-137, the whole of Round 8
         Task 2's reason for vendoring them. Neither carries a Theme=. SIX, not the FIVE this block
         said when Task 2 wrote it: five was the design's forward-looking count for after Round 8,
         Task 4 moves 关于 into an About box, and it was the one number in this block that was copied
         rather than re-derived against the tree.
-      - ListBox, ONE navigation rail in MainWindow.axaml. It was both until Round 8, Task 2 deleted
-        NavFooterRail: 设置 is a command that opens a dialog now, not a page the shell navigates to,
-        so its row is a Button like the three commands above it.
+      - ListBox, NONE, and ListBoxItem, NONE. Both had exactly one consumer - MainWindow.axaml's
+        navigation rail and the TmNavRowItem theme BasedOn {x:Type ListBoxItem} - until ROUND 8,
+        TASK 3 deleted the pane and replaced it with the classic menu band. Grepped rather than
+        assumed: after that task there is no <ListBox> and no <ListBoxItem> anywhere under src/, in
+        markup or in code, and ComboBox.axaml's drop-down is an ItemsPresenter inside its own popup
+        rather than a real ListBox. BOTH DICTIONARIES STAY MERGED AND STAY ON DISK: they are
+        vendored theme files, and this round's item 1 does not touch Themes/Aero/. Recorded as
+        consumerless, not deleted.
+      - Menu, ONE and MenuItem, FIVE - MainWindow.axaml's MainMenu and its 设置/主目录/刷新/退出/关于
+        items, the whole of Round 8 Task 3's reason for vendoring Menu.axaml. Neither carries a
+        Theme=: the Menu takes {x:Type Menu} and its five items take AeroTopLevelMenuItem through
+        that theme's ItemContainerTheme setter. There is no MenuFlyout anywhere in this app, so
+        AeroTopLevelMenuItem has exactly those five subjects.
       - TextBox, TWO: AppPage.axaml's SearchBox and BehaviorCard.axaml's HotkeyBox. Both carry a
         tm- CLASS rather than a Theme=, and a class does not stop a {x:Type} ControlTheme reaching
         them - it only adds rules on top. Added by Task 4.
@@ -154,23 +171,32 @@
     listed as not-vendored. HeaderedContentControl (Round 7, Task 9) is an ordinary
     copy and needs no note beyond its own header - but it brings the only vendored CONTROL in the
     tree with it, Controls/HeaderGapClipper.cs, without which its template draws the group label on
-    top of an unbroken outline instead of in a notch cut out of it. TabControl and TabItem, the last
-    two merges to land (Round 8, Task 2), are ordinary copies too - TabControl's header records
+    top of an unbroken outline instead of in a notch cut out of it. TabControl and TabItem
+    (Round 8, Task 2) are ordinary copies too - TabControl's header records
     "Changes from upstream: none.", TabItem's records the one re-pointed xmlns - and TabItem brings
     Converters/AdjustThicknessForTabsConverter.cs with it for the same kind of reason: without that
-    file its template does not parse.
+    file its template does not parse. ControlStyles/Menu.axaml (Round 8, Task 3) is an ordinary copy
+    as well, and its header enumerates THREE one-line changes rather than claiming none: the bar's
+    height, one Fluent ink key swapped for Aero's, and one selector that gains an OR branch so a
+    direct command gets a pressed look at all. It brings no code file with it.
 
     ── The keys here that are not Aero-prefixed ─────────────────────────────────────────────────
-    66 keys are merged below (comments stripped, Metrics plus the sixteen control-style
-    dictionaries). All but 35 are Aero-prefixed, and all 35 are wanted:
+    69 keys are merged below (comments stripped, Metrics plus the seventeen control-style
+    dictionaries). All but 37 are Aero-prefixed, and all 37 are wanted:
 
-      - the SEVENTEEN {x:Type X} ControlTheme keys - Button, RepeatButton, ToggleButton (the Button
+      - the EIGHTEEN {x:Type X} ControlTheme keys - Button, RepeatButton, ToggleButton (the Button
         file keys three), ButtonSpinner, CheckBox, ComboBox, ComboBoxItem, ListBox, ListBoxItem,
-        NumericUpDown, ProgressBar, ScrollBar, ScrollViewer, TabControl, TabItem, TextBox,
+        Menu, NumericUpDown, ProgressBar, ScrollBar, ScrollViewer, TabControl, TabItem, TextBox,
         ToggleSwitch. A {x:Type} key is how a ControlTheme auto-applies at all, so these are the
         reach listed above;
       - GroupBox (ControlStyles/HeaderedContentControl.axaml), the one opt-in theme, keyed by name
         upstream and kept that way here for the reason given above;
+      - MenuBarHeight (ControlStyles/Menu.axaml), an x:Double rather than a ControlTheme: it is the
+        band's painted height and the {x:Type Menu} theme's own Height setter reads it. Upstream's
+        name, kept, and raised 20 -> 25 in the same file (its header says why). It is one of the
+        THREE unlinked places that number lands - this key, WindowHost.MenuBandHeightDip and
+        MainWindow.axaml's MenuBand Height - which is what
+        ShellConstantTests.MenuBandHeight_IsTheSameNumberInAllThreePlaces exists to tie together;
       - ELEVEN inside ControlStyles/ButtonSpinner.axaml: two spinner arrow geometries, the
         ButtonSpinnerRightThickness margin converter and eight Spinner*Filter_Left/Right corner and
         thickness converters. All eleven are consumed by that one file's own template and by
@@ -230,6 +256,7 @@
         <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/HeaderedContentControl.axaml" />
         <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/ListBox.axaml" />
         <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/ListBoxItem.axaml" />
+        <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/Menu.axaml" />
         <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/NumericUpDown.axaml" />
         <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/ProgressBar.axaml" />
         <ResourceInclude Source="avares://TanMenu.Wpf/Themes/Aero/ControlStyles/ScrollBar.axaml" />
