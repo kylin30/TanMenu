@@ -21,15 +21,15 @@
          retired that: this project has its own ComboBoxItem theme now, its presenter is named
          ItemContentPresenter, and the captions' own ink is the same AeroDisabledForeground key.
          (b) THE CASE THAT IS NOT. "App-wide, not Aero-scoped" was the other half, and it is still
-         true. Avalonia.Themes.Fluent 12.1.0 registers the name PART_ContentPresenter in FORTY
-         template name-scopes (counted, not estimated: grep for
-         AvaloniaNameScope.Register("PART_ContentPresenter" over the decompiled assembly). Restoring
-         :is(TemplatedControl) would point an Aero brush at every one of them that this app ever
-         disables, and this machine has no mouse and no way to open a context menu, so most of that
-         set cannot be inspected here at all. Widening a selector into controls you cannot look at
-         is the same bet as leaving one dead, run the other way round. The rule keeps the reach the
-         app actually has; adding a type to it is one line, and is a decision someone makes on
-         purpose.
+         true. Avalonia.Themes.Fluent 12.1.0 contains SIXTY calls registering the name
+         PART_ContentPresenter into a template's namescope - counted over the whole decompiled
+         assembly with "AvaloniaNameScope.Register(\"PART_ContentPresenter\"", so it is 60 call
+         sites rather than 60 proven-distinct control types. Restoring :is(TemplatedControl) would
+         point an Aero brush at every one of them this app ever disables, and this machine has no
+         mouse and no way to open a context menu, so most of that set cannot be inspected here at
+         all. Widening a selector into controls you cannot look at is the same bet as leaving one
+         dead, run the other way round. The rule keeps the reach the app actually has; adding a
+         type to it is one line, and is a decision someone makes on purpose.
       5. DELETED the :not(:disabled) twin of that rule (upstream lines 43-45). Two independent
          reasons, either sufficient. First, it does not compile here: its value is
          "{Binding Foreground, RelativeSource={RelativeSource Mode=TemplatedParent}}", and this
