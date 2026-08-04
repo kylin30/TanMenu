@@ -1,80 +1,59 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="TanMenu.Wpf.Views.Settings.AboutCard">
-  <!-- One settings row: 关于. See the "row spec's shared classes" block in
-       Themes/Shell/Launcher.axaml for the anatomy, and AppearanceCard's code-behind for the full
-       ReloadFromConfig contract every settings card group follows.
+  <!-- ══ 关于 — the whole content of the About box ═══════════════════════════════════════════
+       WHERE THIS CARD LIVES. It is the entire content of Dialogs/AboutWindow.axaml, a modal About
+       box the menu band's 关于 item opens. PUBLISHED, win-property-win: "Is the content solely an
+       application's attributes? If so, use an About box." It is: this is the only settings group
+       with no interactive control at all, which is the same fact that used to justify its position
+       and now justifies its surface. (Round 5, item 2 — "关于集成到设置页中" — had folded it INTO the
+       settings surface as the last group of the 设置 page; Round 8, Task 2 turned that page into a
+       tabbed dialog and this card became its sixth tab; Task 4 took the tab out into a window.)
 
-       WHERE THIS CARD LIVES — ROUND 8, TASK 4 MOVED IT, and not one line of markup below changed
-       with it; this comment is the whole of that task's edit to this file. It
-       is the whole content of Dialogs/AboutWindow.axaml, a modal About box the menu band's 关于 item
-       opens. PUBLISHED, win-property-win: "Is the content solely an application's attributes? If so,
-       use an About box." It is: this is the only settings group with no interactive control at all,
-       which is the same fact that used to justify its position and now justifies its surface.
-       (Round 5, item 2 — "关于集成到设置页中" — had folded it INTO the settings surface, as the last
-       group of the 设置 page; Round 8, Task 2 turned that page into a tabbed dialog and this card
-       became its sixth tab; Task 4 took the tab out. Its original placement argument pointed at
-       Windows 11's own settings pages, which put identity at the end; Round 7 retired that reference
-       with the rest of the Windows 11 shell, and no Windows 7 UX Guide page states an equivalent
-       rule — recorded as provenance, not re-asserted.)
+       ── ROUND 8, TASK 6 DELETED THE GROUP BOX, AND WITH IT THE DOUBLED 关于 ────────────────────
+       Task 4 left the box exactly as the tab had it and said so in AboutWindow.axaml's own prose,
+       because re-cutting the card there would have put that task's markup and this one's in conflict
+       over one file. The cost, visible in Task 4's own capture, was that the word 关于 appeared
+       TWICE on a window whose whole content is four lines: once as the window's title (written by
+       AboutWindow.ApplyText from AppLanguage's "About") and once as the box's own header, written
+       from the very same key. A group box round the only group on a surface is what
+       ctrl-group-boxes says to indicate on the larger surface instead — "Are all the controls inside
+       the group? If so, indicate the relationship on the larger surface, such as the parent dialog
+       box or page" — and here that surface is a window with a caption. The header TextBlock and its
+       ReloadFromConfig assignment are both gone.
 
-       WHAT IT REPLACED. 关于 used to be a rail row that raised a full-page overlay over 应用 — the
-       startup splash card with its spinner swapped for a "点击任意处关闭" hint. The overlay was
-       DELETED, not hidden, and this card is where its content went. Nothing else in the app shows the
-       version or the copyright to the user except the startup splash's own footer, which is the same
-       two strings from the same place (Services/AppIdentity.cs).
+       THE 11 AT THE BOTTOM IS NOT DECORATION. The deleted box carried Margin="0,0,0,11" from
+       Themes/Shell/Launcher.axaml's HeaderedContentControl.tm-group-box, and AboutWindow's button
+       row deliberately states NO top margin because that 11 was already inside this card's desired
+       size (its own prose and AboutWindowTests both record the arithmetic). Deleting the box without
+       restating the 11 here would have put 确定 hard against the copyright line. 11 is PUBLISHED,
+       vis-layout: "Between unrelated controls — 7 / 11".
 
-       THE ONLY VARIANT-6 ROW ANYWHERE: column 2 has no child. The Grid is the standard
-       Auto,*,Auto anyway, because the header, the icon box and the expansion row are the same
-       everywhere and an absent trailing control is not a different shape, just an empty column.
+       THE ICON. The 16 DIP product tile rather than a Segoe glyph — this content is the app itself,
+       and the image is already compiled into the assembly for SplashPanel and for the Aero caption's
+       own icon (MainWindow.axaml's WindowDecorationsTheme). Width AND Height are stated here because
+       the :is(Control).tm-card-icon class that used to set the width went with the row grammar, and
+       an Image has no line box to supply a height. 7 to the text is PUBLISHED, "Between related
+       controls — 4 / 7": a mark and the label it marks are related.
 
-       ICON. The 16 DIP product tile rather than a Segoe glyph — this row is the app itself, and the
-       image is already compiled into the assembly for SplashPanel and for the Aero caption's own icon
-       (MainWindow.axaml's WindowDecorationsTheme). It
-       carries tm-card-icon like every other row's mark; that class is :is(Control)-scoped precisely so a
-       non-TextBlock leading mark needs no second rule. Height="16" is stated locally because the class
-       deliberately sets Width only (a glyph's line box supplies its own height; an Image has none).
+       THE TITLE IS A XAML LITERAL, and the one label anywhere on the settings surface that is not
+       localized: "TanMenu" is the product's name, identical in both languages. The publisher line
+       below it IS localized (AppLanguage's AboutPublisher).
 
-       THE TITLE IS A XAML LITERAL, and the one card title anywhere that is not localized: "TanMenu"
-       is the product's name, identical in both languages, exactly as the overlay had it. The publisher line
-       below it IS localized (AppLanguage's AboutPublisher) — the overlay's own "by TanSoft" was
-       untranslated English, which is acceptable inside a branded splash card and is not acceptable as a
-       settings-row subtitle.
-
-       NEITHER VALUE LINE SETS A ToolTip, and that is deliberate rather than an omission. tm-card-value's
-       rule in Launcher.axaml states that a value line whose text CAN outgrow the row it sits on and has
-       no ToolTip is a defect in the card. Neither of these can: both are fixed formats over fixed
-       content, not user data — and since Round 8, Task 4 the surface they sit on is a SizeToContent
-       window, so the row is as wide as the widest of them BY CONSTRUCTION. (The measurements that
-       argument used to rest on were taken at 150 % on the deleted 设置 page — 当前版本：0.12.0 at
-       91.33 DIP of ink and the copyright line at 186.00, against a 599.33 DIP expansion row at the
-       app's minimum window width. Kept as provenance, not re-asserted against a surface they were
-       never measured on.) It is the same reasoning FoldersCard's DataInfoText records for going without
-       one, and the opposite of its two path lines, which are user data and do set one. (An earlier
-       revision of this note put the test against tm-card-value's own "260 DIP measure-time bound";
-       that Setter was measured inert on a spanning expansion row and deleted — see the class's own
-       remark.) -->
-  <HeaderedContentControl Classes="tm-group-box" Theme="{StaticResource GroupBox}">
-    <HeaderedContentControl.Header>
-      <TextBlock x:Name="GroupHead" Classes="tm-group-head" />
-    </HeaderedContentControl.Header>
-    <StackPanel>
-
-      <Border Classes="tm-card">
-        <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
-          <Image Grid.Column="0" Classes="tm-card-icon" Height="16"
-                 Source="avares://TanMenu.Wpf/wwwroot/app-tile.png" />
-          <StackPanel Grid.Column="1" Classes="tm-card-text">
-            <TextBlock Text="TanMenu" Classes="tm-card-title" />
-            <TextBlock x:Name="PublisherText" Classes="tm-card-sub" />
-          </StackPanel>
-          <StackPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2"
-                      Classes="tm-card-expander tm-card-values">
-            <TextBlock x:Name="VersionLine" Classes="tm-card-sub tm-card-value" />
-            <TextBlock x:Name="CopyrightLine" Classes="tm-card-sub tm-card-value" />
-          </StackPanel>
-        </Grid>
-      </Border>
+       NEITHER VALUE LINE SETS A ToolTip, and that is deliberate rather than an omission. A value
+       line whose text can outgrow the surface it sits on and has no ToolTip is a defect; neither of
+       these can, because both are fixed formats over fixed content, not user data — and the window
+       they sit on is SizeToContent, so it is as wide as the widest of them BY CONSTRUCTION. It is
+       the same reasoning FoldersCard's DataInfoText records, and the opposite of its two path lines,
+       which are user data and do set one. -->
+  <Grid ColumnDefinitions="Auto,*" ColumnSpacing="7" Margin="0,0,0,11">
+    <Image Grid.Column="0" Width="16" Height="16" VerticalAlignment="Top"
+           Source="avares://TanMenu.Wpf/wwwroot/app-tile.png" />
+    <StackPanel Grid.Column="1" Spacing="3">
+      <TextBlock Text="TanMenu" />
+      <TextBlock x:Name="PublisherText" />
+      <TextBlock x:Name="VersionLine" />
+      <TextBlock x:Name="CopyrightLine" />
     </StackPanel>
-  </HeaderedContentControl>
+  </Grid>
 </UserControl>

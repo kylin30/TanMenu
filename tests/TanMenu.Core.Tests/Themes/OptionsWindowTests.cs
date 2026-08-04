@@ -26,13 +26,13 @@ namespace TanMenu.Core.Tests.Themes;
 /// nothing and both surface a whole dialog session later.
 /// </para>
 /// <para>
-/// The third is the one with a date on it. Round 8, Task 6 takes the group box off every tab whose
-/// controls are one homogeneous set, and each one it takes deletes that card's
-/// <c>x:Name="GroupHead"</c> <c>TextBlock</c> and the
-/// <c>GroupHead.Text = AppLanguage.Text(…)</c> line behind it. After that the <c>TabItem</c> header
-/// is the ONLY statement of a group's name, so a header that had quietly been given a literal — or
-/// dropped from <c>ApplyText</c> — would leave a tab unnamed in the other language with nothing else
-/// left to notice it.
+/// The third is the one that had a date on it, and the date has passed. Round 8, Task 6 took the
+/// group box off every tab whose controls are one homogeneous set, and each one it took deleted that
+/// card's <c>x:Name="GroupHead"</c> <c>TextBlock</c> and the
+/// <c>GroupHead.Text = AppLanguage.Text(…)</c> line behind it. The <c>TabItem</c> header is now the
+/// ONLY statement of a group's name — 文件夹 excepted, whose four INNER boxes carry heads of their
+/// own — so a header quietly given a literal, or dropped from <c>ApplyText</c>, would leave a tab
+/// unnamed in the other language with nothing else left to notice it.
 /// </para>
 /// </remarks>
 public class OptionsWindowTests

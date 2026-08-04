@@ -18,10 +18,17 @@ namespace TanMenu.Wpf.Views.Settings;
 /// reaches disk until 确定 / 应用 runs <see cref="SettingsCommit.ApplyAsync"/> (Round 8, Task 1), which
 /// raises <see cref="AppEvents.SettingsChanged"/> once — and <c>MenuService.BuildMenuAsync</c> rebuilds
 /// the launcher's tools category from the newly-saved config.
+/// <para>
+/// Round 8, Task 6 replaced the row grammar: this tab is a self-labelling master check box, one line
+/// of instruction, and the list — no card Border, no icon, no group box. The master's own
+/// <c>Content</c> is its label now, which is why <see cref="ReloadFromConfig"/> writes <c>Content</c>
+/// where it wrote a title TextBlock's <c>Text</c>.
+/// </para>
 /// </summary>
 public partial class ToolsCard : UserControl, ISettingsCard
 {
     private readonly SettingsDraft _draft;
+    private readonly ConfigService _config;
 
     /// <summary>Guards <see cref="OnShowToolsChanged"/> against the value <see cref="ReloadFromConfig"/>
     /// assigns while it repopulates the master box. Per-tool CheckBoxes need no such guard against
@@ -33,13 +40,18 @@ public partial class ToolsCard : UserControl, ISettingsCard
     /// initial IsChecked is set.</summary>
     private bool _loading;
 
-    private string UiLanguage => _draft.Working.General.Language;
+    /// <summary>The language every string this card writes is rendered in: <b>the COMMITTED one, never
+    /// the draft's</b> — see <see cref="AppearanceCard.UiLanguage"/>'s remarks. This card raises no
+    /// dialog, so the mismatch it prevents is not visible here; the rule is uniform across all six
+    /// cards so that no future prompt has to remember it.</summary>
+    private string UiLanguage => _config.Config.General.Language;
     private string L(string key, params object?[] args) => AppLanguage.Format(key, UiLanguage, args);
 
     public ToolsCard()
     {
         InitializeComponent();
         _draft = App.Services.GetRequiredService<SettingsDraft>();
+        _config = App.Services.GetRequiredService<ConfigService>();
     }
 
     /// <summary>Populate every control from the draft's working clone. Sets a guard so
@@ -51,13 +63,11 @@ public partial class ToolsCard : UserControl, ISettingsCard
         try
         {
             var g = _draft.Working.General;
-            var lang = g.Language;
+            var lang = UiLanguage;
 
-            GroupHead.Text = AppLanguage.Text("CommonTools", lang);
-
-            ShowToolsTitle.Text = AppLanguage.Text("ShowCommonTools", lang);
-            ShowToolsSub.Text = AppLanguage.Text("CommonToolsHint", lang);
+            ShowToolsToggle.Content = AppLanguage.Text("ShowCommonTools", lang);
             ShowToolsToggle.IsChecked = g.ShowDefaultTools;
+            ToolsListLabel.Text = AppLanguage.Text("CommonToolsHint", lang);
 
             BuildToolCheckboxes(g.DefaultTools, lang);
             ToolsPanel.IsEnabled = g.ShowDefaultTools; // disabled, not cleared — see the XAML remark

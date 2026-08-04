@@ -1,121 +1,141 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="TanMenu.Wpf.Views.Settings.FoldersCard">
-  <!-- Three settings rows: an icon, a title + secondary line, the controls trailing, and — on the two
-       folder rows — a live path (and, for 数据文件夹, its kind and size) on the expansion row below. See
-       the "row spec's shared classes" block in Themes/Shell/Launcher.axaml for the anatomy, and
-       AppearanceCard's code-behind for the full ReloadFromConfig contract every settings card group
-       follows (and for why every row here is a Grid and never a DockPanel).
+  <!-- ══ 文件夹 — the ONE tab that keeps group boxes ═════════════════════════════════════════
+       ROUND 8, TASK 6 REPLACED THE ROW GRAMMAR everywhere (see AppearanceCard.axaml's header for
+       the argument and the published citations), and this file is the exception the rule names.
 
-       WHY THE PATH LINES ARE NOT IN THE HEADER. They used to be a third (and, on 数据文件夹, a fourth)
-       TextBlock inside the Grid.Column="1" stack, which is what put that row's icon 28.33 DIP below
-       where every other row's icon sat: the icon centres on the header block, and that block was twice
-       the height it is anywhere else. They are value lines, so they go on the expansion row, and they
-       carry tm-card-value. The class is also what stopped them floating in mid-card, which is the defect
-       the user screenshotted: an unstated HorizontalAlignment plus a MaxWidth centres a line in Avalonia
-       (ArrangeCore runs Stretch through Center's arithmetic), and the two lines measured 384.67 and
-       456.67 DIP right of their own titles. They now start on their title's own x. The MaxWidth that
-       provoked it is GONE — re-measured on the spanning expansion row these lines now sit on and found
-       to bound nothing there, so it was deleted rather than inherited; see tm-card-value's own remark in
-       Launcher.axaml for the floor measurement that settled it. Trimming still applies when the row
-       genuinely runs out, and the code-behind sets a matching ToolTip on both path lines so the full
-       text stays one hover away.
+       WHY THE BOXES STAY HERE AND NOWHERE ELSE. PUBLISHED, ctrl-group-boxes: "Are all the controls
+       inside the group? If so, indicate the relationship on the larger surface, such as the parent
+       dialog box or page." On 外观, 行为, 常用工具 and 更新 the answer is yes — every control on the
+       tab belongs to one set, so the TabItem's own header is the group's name and the box is
+       redundant. On this tab it is no: there are FOUR distinct sets — 主文件夹, 数据文件夹, 缓存 and
+       备份 — which is the guide's other case, "Is there more than one control in the group?",
+       passing. So this tab has four boxes and its TabItem header names the tab, not a group.
 
-       WHY ALL THREE BUTTONS TRAIL, INCLUDING ON 数据文件夹 AND 维护. Until Round 5 they sat on their own
-       full-width row below, because three buttons sharing column 2 with a column 1 that ALSO held a
-       260 DIP NoWrap path line were measured to clip past the visible edge at the app's documented
-       minimum window width. With the path lines off the header that
-       premise is gone, and the measurement was retaken rather than inherited: the live window was shrunk
-       with SetWindowPos until the platform clamped it at its enforced minimum (then MainWindow.axaml's
-       MinWidth="760"; GetWindowRect 1162 px = 760 DIP client + the 22 px horizontal inset), and every
-       button on the page was read from its UIA rect. Nothing clips. Round 7, Task 8 widened the
-       navigation pane from 48 to 160 DIP and moved that MinWidth to 872 BY THE SAME 112 DIP, precisely so
-       this measurement would keep holding: what the buttons actually sit in is the CONTENT PANE, and
-       872 − 161 of chrome is the same 711 DIP as 760 − 49 was.
-       THE 711 IS THE ONE NUMBER THAT NEVER MOVED, AND IT IS THE ONLY ONE THIS CARD EVER DEPENDED ON.
-       Round 8, Task 2 took this card off the shell page entirely — it is a tab of Dialogs/OptionsWindow
-       now, which is Width="711" CanResize="False", i.e. the SAME 711 DIP, held fixed rather than
-       clamped. (Task 3 then moved the launcher's own MinWidth back to 711 as well, by deleting the
-       pane; that number is no longer this card's concern either way.) So every figure below, taken at
-       a 711 DIP content pane, is unchanged — but read "at the floor" below as "at 711", which is now
-       simply the dialog's width, and not as a claim about any window minimum.
-       On both rows the three-button strip ends exactly on the card's content right
-       edge, with the standard 12 DIP gutter to the text column, and it does so in English too — the
-       worse case, where 重置为默认 (104.67 DIP) becomes Reset to Default (133.33). So the row spec needs
-       no "three or more go below" exception: controls trail, full-width content goes below, and 主文件夹
-       and 数据文件夹 are finally the same shape.
+       THREE CARDS BECAME FOUR BOXES. 维护 held 清理缓存, 备份… and 恢复… together, which is two sets
+       under one heading: clearing the menu cache touches derived data and nothing else, while
+       备份/恢复 read and overwrite config.json itself. AppLanguage's Maintenance and
+       MaintenanceCardSub are deleted with that card, and Cache / BackupRestore / CacheHelp /
+       BackupHelp are new.
 
-       What 711 does cost is wrapping, and HOW MUCH IS A FUNCTION OF THE CONFIGURED FONT, not a
-       constant of the page. MEASURED at 150 % on the shipped build, UIA on DataFolderSub at the then
-       872 DIP window's 711 DIP content pane — the width this card has today as a dialog tab — WITH THE
-       APP'S DEFAULT FONT (general.fontFamily = "", i.e. AppFonts.UiStack): 数据文件夹's
-       subtitle takes TWO rendered lines in Chinese (410 DIP wide, 32.67 tall against a 25 px single-line
-       box) and TWO in English (364.67 wide, 32 tall against a 24 px line). With 字体 = Verdana the same
-       English line takes THREE (339.33 wide, 44 tall, 66 px against a 22 px line) — so no single count
-       belongs in this comment without the font it was taken at. That is not the buttons' doing and
-       moving them would not fix the page — at the same width, default font, English, 每列个数's subtitle
-       wraps to two lines with nothing but a 220 DIP ComboBox beside it (ColCountSub 393.33 DIP wide,
-       31.33 tall), and 主文件夹's wraps to two with only two buttons (MainFolderSub 480.67 wide, 32
-       tall). tm-card-sub wraps on purpose; a wrapped header is a property of the width the app actually
-       opens at and of the face it is set in, not of any button placement. -->
-  <HeaderedContentControl Classes="tm-group-box" Theme="{StaticResource GroupBox}">
-    <HeaderedContentControl.Header>
-      <TextBlock x:Name="GroupHead" Classes="tm-group-head" />
-    </HeaderedContentControl.Header>
-    <StackPanel>
+       THE BOXES TAKE THE VENDORED THEME'S OWN NUMBERS. Themes/Shell/Launcher.axaml's
+       HeaderedContentControl.tm-group-box overrode three of them (CornerRadius 5 -> 3, Padding
+       10 -> 11, Margin -> 0,0,0,11) and Task 6 deleted it: three Setters restating what a vendored
+       ControlTheme already sets for the same control type are exactly the cosmetic layer this round
+       strips. What that rule carried which the theme does not — the gap between one box and the
+       next — is the Spacing="11" on the stack below, PUBLISHED as "Between unrelated controls".
 
-      <Border Classes="tm-card">
-        <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
-          <TextBlock Grid.Column="0" Classes="tm-icon tm-card-icon" Text="&#xE8B7;" />
-          <StackPanel Grid.Column="1" Classes="tm-card-text">
-            <TextBlock x:Name="MainFolderTitle" Classes="tm-card-title" />
-            <TextBlock x:Name="MainFolderSub" Classes="tm-card-sub" />
-          </StackPanel>
-          <StackPanel Grid.Column="2" Classes="tm-card-actions">
+       THE PATH LINES ARE VALUE TEXT IN COLUMN 1, opposite a 位置 label in column 0, and they still
+       ellipsize with a ToolTip carrying the full path (set in the code-behind). TextTrimming is
+       stated locally now because Themes/Shell/Launcher.axaml's TextBlock.tm-card-value went with the
+       rest of the row grammar; there is nothing left to restate, and the class's own measurement
+       record — that a ~250-character path still ellipsizes rather than inflating the surface — held
+       because the dialog's Width is a literal on a CanResize="False" Window, which is still true.
+
+       THE BUTTON STRIPS ARE DOCKED RIGHT ON THE ROW THEY ACT ON, which is both where a Windows 7
+       property sheet puts a Browse/Reset strip and what makes this tab fit. Spacing 7 between them is
+       PUBLISHED, "Between buttons — 4 / 7"; the 7 to their left is "Between related controls".
+
+       THAT DOCKING IS A MEASURED DECISION, NOT A PREFERENCE. Built first with every strip on a row of
+       its own under the content it acts on, this tab measured 577.33 DIP of client height at 711 wide
+       (window temporarily switched to SizeToContent="Height", each tab selected through UIA's
+       SelectionItemPattern, the window's own UIA BoundingRectangle read after each — Round 8, Task 2's
+       method, re-run). The other four measured 246, 350.67, 294.67 and 198. A dialog sized to 577.33
+       is 614.67 DIP of OUTER window at this machine's measured 22 x 56 physical px frame, which
+       BREAKS the PUBLISHED floor — win-property-win, "Support the minimum Windows Vista screen
+       resolution of 800 x 600 pixels". The round's settled ruling for a tab that will not fit is to
+       split 文件夹 in two rather than accept a scrollbar; the published sentence itself offers a first
+       resort ahead of both — "Don't scroll property pages. Instead of using scrollbars, make the
+       property pages larger and lay out the pages efficiently" — and this is that. Docking the four
+       strips beside the content they act on takes four rows off the tab. The re-measured height is in
+       Dialogs/OptionsWindow.axaml.cs, with the whole table.
+
+       A DockPanel, not a third Grid column: the label-and-value pair inside each folder box stays the
+       same "Auto,*" template every other tab uses, so the two 位置 labels still share their x with
+       each other and the paths still share theirs, which is the invariant this task is verified on. -->
+  <StackPanel Spacing="11" Margin="11">
+
+    <!-- ── 主文件夹 ────────────────────────────────────────────────────────────────────────── -->
+    <HeaderedContentControl Theme="{StaticResource GroupBox}">
+      <HeaderedContentControl.Header>
+        <TextBlock x:Name="MainFolderHead" Classes="tm-group-head" />
+      </HeaderedContentControl.Header>
+      <StackPanel>
+        <TextBlock x:Name="MainFolderHelp" TextWrapping="Wrap" />
+        <DockPanel Margin="0,7,0,0">
+          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="7"
+                      VerticalAlignment="Center" Margin="7,0,0,0">
             <Button x:Name="OpenRootBtn" Theme="{StaticResource TmButton}" Click="OnOpenRootClick" />
             <Button x:Name="PickRootBtn" Theme="{StaticResource TmButton}" Click="OnPickRootClick" />
           </StackPanel>
-          <StackPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2"
-                      Classes="tm-card-expander tm-card-values">
-            <TextBlock x:Name="RootPathText" Classes="tm-card-sub tm-card-value" />
-          </StackPanel>
-        </Grid>
-      </Border>
+          <Grid ColumnDefinitions="Auto,*" ColumnSpacing="5">
+            <TextBlock Grid.Column="0" x:Name="RootLocationLabel" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="1" x:Name="RootPathText" VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis" />
+          </Grid>
+        </DockPanel>
+      </StackPanel>
+    </HeaderedContentControl>
 
-      <Border Classes="tm-card">
-        <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
-          <TextBlock Grid.Column="0" Classes="tm-icon tm-card-icon" Text="&#xE8B7;" />
-          <StackPanel Grid.Column="1" Classes="tm-card-text">
-            <TextBlock x:Name="DataFolderTitle" Classes="tm-card-title" />
-            <TextBlock x:Name="DataFolderSub" Classes="tm-card-sub" />
-          </StackPanel>
-          <StackPanel Grid.Column="2" Classes="tm-card-actions">
+    <!-- ── 数据文件夹 ──────────────────────────────────────────────────────────────────────── -->
+    <HeaderedContentControl Theme="{StaticResource GroupBox}">
+      <HeaderedContentControl.Header>
+        <TextBlock x:Name="DataFolderHead" Classes="tm-group-head" />
+      </HeaderedContentControl.Header>
+      <StackPanel>
+        <TextBlock x:Name="DataFolderHelp" TextWrapping="Wrap" />
+        <DockPanel Margin="0,7,0,0">
+          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="7"
+                      VerticalAlignment="Center" Margin="7,0,0,0">
             <Button x:Name="OpenDataBtn" Theme="{StaticResource TmButton}" Click="OnOpenDataClick" />
             <Button x:Name="ChangeDataBtn" Theme="{StaticResource TmButton}" Click="OnChangeDataClick" />
             <Button x:Name="ResetDataBtn" Theme="{StaticResource TmButton}" Click="OnResetDataClick" />
           </StackPanel>
-          <StackPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2"
-                      Classes="tm-card-expander tm-card-values">
-            <TextBlock x:Name="DataPathText" Classes="tm-card-sub tm-card-value" />
-            <TextBlock x:Name="DataInfoText" Classes="tm-card-sub tm-card-value" />
-          </StackPanel>
-        </Grid>
-      </Border>
+          <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" ColumnSpacing="5">
+            <TextBlock Grid.Row="0" Grid.Column="0" x:Name="DataLocationLabel"
+                       VerticalAlignment="Center" />
+            <TextBlock Grid.Row="0" Grid.Column="1" x:Name="DataPathText" VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis" />
+            <!-- The kind-and-size line carries its own "当前：" prefix, so it needs no label of its
+                 own; it sits under the path it describes, at the published 3. It sets NO ToolTip, and
+                 that is deliberate: its text is the fixed CurrentDataSize / CurrentDataPending format
+                 over one of four short kind literals plus a formatted byte count, so it cannot be
+                 trimmed and a ToolTip would only repeat the line already on screen. The two path
+                 lines DO set one — they are unbounded user data. -->
+            <TextBlock Grid.Row="1" Grid.Column="1" x:Name="DataInfoText" Margin="0,3,0,0" />
+          </Grid>
+        </DockPanel>
+      </StackPanel>
+    </HeaderedContentControl>
 
-      <Border Classes="tm-card">
-        <Grid ColumnDefinitions="Auto,*,Auto">
-          <TextBlock Grid.Column="0" Classes="tm-icon tm-card-icon" Text="&#xE74D;" />
-          <StackPanel Grid.Column="1" Classes="tm-card-text">
-            <TextBlock x:Name="MaintenanceTitle" Classes="tm-card-title" />
-            <TextBlock x:Name="MaintenanceSub" Classes="tm-card-sub" />
-          </StackPanel>
-          <StackPanel Grid.Column="2" Classes="tm-card-actions">
-            <Button x:Name="ClearCacheBtn" Theme="{StaticResource TmButton}" Click="OnClearCacheClick" />
-            <Button x:Name="BackupBtn" Theme="{StaticResource TmButton}" Click="OnBackupConfigClick" />
-            <Button x:Name="RestoreBtn" Theme="{StaticResource TmButton}" Click="OnRestoreConfigClick" />
-          </StackPanel>
-        </Grid>
-      </Border>
-    </StackPanel>
-  </HeaderedContentControl>
+    <!-- ── 缓存 ───────────────────────────────────────────────────────────────────────────── -->
+    <HeaderedContentControl Theme="{StaticResource GroupBox}">
+      <HeaderedContentControl.Header>
+        <TextBlock x:Name="CacheHead" Classes="tm-group-head" />
+      </HeaderedContentControl.Header>
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="7"
+                    VerticalAlignment="Center" Margin="7,0,0,0">
+          <Button x:Name="ClearCacheBtn" Theme="{StaticResource TmButton}" Click="OnClearCacheClick" />
+        </StackPanel>
+        <TextBlock x:Name="CacheHelp" TextWrapping="Wrap" VerticalAlignment="Center" />
+      </DockPanel>
+    </HeaderedContentControl>
+
+    <!-- ── 备份 ───────────────────────────────────────────────────────────────────────────── -->
+    <HeaderedContentControl Theme="{StaticResource GroupBox}">
+      <HeaderedContentControl.Header>
+        <TextBlock x:Name="BackupHead" Classes="tm-group-head" />
+      </HeaderedContentControl.Header>
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="7"
+                    VerticalAlignment="Center" Margin="7,0,0,0">
+          <Button x:Name="BackupBtn" Theme="{StaticResource TmButton}" Click="OnBackupConfigClick" />
+          <Button x:Name="RestoreBtn" Theme="{StaticResource TmButton}" Click="OnRestoreConfigClick" />
+        </StackPanel>
+        <TextBlock x:Name="BackupHelp" TextWrapping="Wrap" VerticalAlignment="Center" />
+      </DockPanel>
+    </HeaderedContentControl>
+  </StackPanel>
 </UserControl>

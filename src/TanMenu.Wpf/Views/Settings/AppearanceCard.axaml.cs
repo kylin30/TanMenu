@@ -10,12 +10,20 @@ using TanMenu.Wpf.Services;
 namespace TanMenu.Wpf.Views.Settings;
 
 /// <summary>
-/// 外观 card group: language, light/dark appearance, UI font, and (since Round 3, Task 4) items per
-/// column. Every handler here writes the shared <see cref="SettingsDraft"/>'s working clone and calls
-/// <see cref="SettingsDraft.Revalidate"/>; nothing reaches disk until 确定 / 应用 runs
+/// 外观, the Options dialog's first tab: language, light/dark appearance, UI font, and (since Round 3,
+/// Task 4) items per column. Every handler here writes the shared <see cref="SettingsDraft"/>'s working
+/// clone and calls <see cref="SettingsDraft.Revalidate"/>; nothing reaches disk until 确定 / 应用 runs
 /// <see cref="SettingsCommit.ApplyAsync"/> (Round 8, Task 1). (The 按钮大小 row this group used to
 /// carry — 小/中/大 button size — was removed in Round 3, Task 4; see
 /// <see cref="TanMenu.Core.Models.GeneralConfig.ButtonSize"/>'s own remarks for what replaced it.)
+/// <para>
+/// Round 8, Task 6 replaced the row grammar: four label-and-control rows on a two-column Grid instead
+/// of four <c>tm-card</c> Borders, no icons, no subtitles, no group box — the tab header carries the
+/// group's name. The XAML carries the published citation for every number and for what the subtitles
+/// were. This file is the reference for the <c>ReloadFromConfig</c> contract every settings card
+/// follows: populate from the draft under a <c>_loading</c> guard, label from
+/// <see cref="UiLanguage"/>, and never write anything back while doing it.
+/// </para>
 /// </summary>
 public partial class AppearanceCard : UserControl, ISettingsCard
 {
@@ -72,6 +80,7 @@ public partial class AppearanceCard : UserControl, ISettingsCard
     }
 
     private readonly SettingsDraft _draft;
+    private readonly ConfigService _config;
 
     /// <summary>Guards every SelectionChanged handler against the selections ReloadFromConfig makes
     /// while it repopulates the combos — without it, populating the Language combo would write the
@@ -82,44 +91,66 @@ public partial class AppearanceCard : UserControl, ISettingsCard
     private ComboBoxItem? _selectedFontRow;
     private bool _fontSelectionGuard;
 
+    /// <summary>
+    /// The language every string this card writes is rendered in: <b>the COMMITTED one, never the
+    /// draft's</b>. Round 8, Task 6 made that rule uniform across all six cards.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Nothing on this surface re-labels itself between a 语言 pick and the commit that lands it:
+    /// <see cref="ReloadFromConfig"/> is the only re-label path, and it runs from
+    /// <c>OptionsWindow.ApplyText</c> — on the constructor, and on <c>SettingsChanged</c>, which
+    /// <see cref="SettingsCommit.ApplyAsync"/> raises only AFTER re-seeding the draft onto what it
+    /// just wrote. So at every moment the draft's language differs from the committed one, the
+    /// committed one is what is actually on screen.
+    /// </para>
+    /// <para>
+    /// That matters because a card's strings do not all reach the screen through
+    /// <see cref="ReloadFromConfig"/>: <c>FoldersCard</c> and <c>BehaviorCard</c> hand some of them to
+    /// <see cref="TanMenu.Wpf.Dialogs.MessageBox"/>, which resolves its OWN 确定/取消 captions from
+    /// <see cref="ConfigService"/> and from nothing else (<c>MessageBox.ResolveLanguage</c>). Reading
+    /// the draft produced a genuinely mixed dialog the moment the pending edit WAS the language —
+    /// captured on this build for <c>OptionsWindow</c>'s discard prompt, fixed there in Task 2, and
+    /// left in every card until here.
+    /// </para>
+    /// </remarks>
+    private string UiLanguage => _config.Config.General.Language;
+
     public AppearanceCard()
     {
         InitializeComponent();
         _draft = App.Services.GetRequiredService<SettingsDraft>();
+        _config = App.Services.GetRequiredService<ConfigService>();
     }
 
     /// <summary>Populate every control from the draft's working clone. Sets a guard so the
-    /// SelectionChanged handlers do not write back the values they are being given.</summary>
+    /// SelectionChanged handlers do not write back the values they are being given. The VALUES come
+    /// from the draft; the TEXT comes from <see cref="UiLanguage"/> — see its remarks.</summary>
     public void ReloadFromConfig()
     {
         _loading = true;
         try
         {
             var g = _draft.Working.General;
-            var lang = g.Language;
+            var lang = UiLanguage;
 
-            GroupHead.Text = AppLanguage.Text("Appearance", lang);
-
-            LanguageTitle.Text = AppLanguage.Text("Language", lang);
-            LanguageSub.Text = AppLanguage.Text("LanguageCardSub", lang);
+            LanguageLabel.Text = AppLanguage.Text("Language", lang);
             LanguageCombo.ItemsSource = LanguageSettings.Select(s => AppLanguage.LanguageLabel(s, lang)).ToList();
             var langIdx = Array.FindIndex(LanguageSettings,
                 s => string.Equals(s, AppLanguage.NormalizeSetting(g.Language), StringComparison.OrdinalIgnoreCase));
             LanguageCombo.SelectedIndex = langIdx < 0 ? 0 : langIdx;
 
-            AppearanceTitle.Text = AppLanguage.Text("AppearanceMode", lang);
-            AppearanceSub.Text = AppLanguage.Text("AppearanceCardSub", lang);
+            AppearanceLabel.Text = AppLanguage.Text("AppearanceMode", lang);
             AppearanceCombo.ItemsSource = AppearanceSettings.Select(s => AppearanceLabelFor(s, lang)).ToList();
             var appearanceIdx = Array.FindIndex(AppearanceSettings,
                 s => string.Equals(s, g.Appearance, StringComparison.OrdinalIgnoreCase));
             AppearanceCombo.SelectedIndex = appearanceIdx < 0 ? 0 : appearanceIdx;
 
-            FontTitle.Text = AppLanguage.Text("Font", lang);
-            FontSub.Text = AppLanguage.Text("FontCardSub", lang);
+            FontLabel.Text = AppLanguage.Text("Font", lang);
             PopulateFontCombo(g.FontFamily ?? string.Empty, lang);
 
-            ColCountTitle.Text = AppLanguage.Text("ColButtonCount", lang);
-            ColCountSub.Text = AppLanguage.Text("ColButtonCountCardSub", lang);
+            ColCountLabel.Text = AppLanguage.Text("ColButtonCount", lang);
+            ColCountHelp.Text = AppLanguage.Text("ColButtonCountCardSub", lang);
             // Clamped for DISPLAY only — a hand-edited config.json can carry a value outside the
             // NumericUpDown's own [1, 30] range (see GeneralConfig.ColButtonCount's own remarks); this
             // does not write the clamped value back, only shows something sane until the user actually

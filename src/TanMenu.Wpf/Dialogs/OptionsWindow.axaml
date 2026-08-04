@@ -2,7 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:cards="using:TanMenu.Wpf.Views.Settings"
         x:Class="TanMenu.Wpf.Dialogs.OptionsWindow"
-        Width="711" Height="452"
+        Width="711" Height="479"
         CanResize="False"
         ShowInTaskbar="False"
         WindowStartupLocation="CenterOwner"
@@ -47,27 +47,33 @@
     control's own scroller, not a property page's — and it is Auto, so it shows no bar at the tool
     counts this app ships. OptionsWindowTests.NoTabHostsAScrollViewer holds the rule on this file.
 
-    SIZE — 711 x 452, MEASURED in Task 2, not the design's provisional 540 x 540. The full method and
-    every number are in the code-behind's ApplyText remarks. In short: with the window temporarily
-    switched to SizeToContent, each tab was selected through UIA and the window's own client
-    rectangle read, twice — once with the width free, once pinned to 711. 452 is the tallest tab
-    (行为) at 711 wide. The PUBLISHED floor it clears is win-property-win's "Support the minimum
-    Windows Vista screen resolution of 800 x 600 pixels": the OUTER window is 725.67 x 489.33 DIP,
-    measured as client + a 22 x 56 physical px frame at this machine's 150 %.
+    SIZE — 711 x 479, RE-MEASURED IN TASK 6. The full method and every number are in the code-behind's
+    ApplyText remarks. In short, and unchanged since Task 2: with the window temporarily switched to
+    SizeToContent="Height" at Width="711", each tab is selected through UIA's SelectionItemPattern and
+    the window's own UIA BoundingRectangle — which for an Avalonia window is the CLIENT rectangle —
+    is read after each. The Height is the maximum over the tabs and over both languages.
+
+    THE WIDTH DID NOT MOVE AND THE HEIGHT DID. 711 is the width the settings surface's content pane
+    has had since Round 4; Task 2 chose it over the widest tab's 784 DESIRED width for reasons the
+    code-behind states, and Task 6 changes nothing about that argument. The Height was 452 — 行为's,
+    the tallest under the row-card grammar. Task 6 took the icon, the subtitle and the group box off
+    four tabs and split 维护 into two boxes on the fifth, which made 文件夹 the tallest tab by a wide
+    margin, so 452 stopped describing this dialog and had to be re-derived rather than kept.
+
+    THE PUBLISHED FLOOR IS CLEARED WITH ROOM. win-property-win: "Support the minimum Windows Vista
+    screen resolution of 800 x 600 pixels". At this machine's measured 22 x 56 physical px frame
+    (150 %), 711 x 479 client is 725.67 x 516.33 DIP outer. The FIRST cut of Task 6's 文件夹 tab did
+    NOT clear it — 577.33 DIP of client is 614.67 outer — and the fix was the published first resort
+    rather than the round's fallback: "Don't scroll property pages. Instead of using scrollbars, make
+    the property pages larger and lay out the pages efficiently." Four button strips moved beside the
+    content they act on instead of onto rows of their own (see FoldersCard.axaml), which took 108.67
+    DIP off the tab. The fallback — split 文件夹 in two, six tabs, still under the seven-tab rule —
+    was therefore not needed and is still the answer if a later task makes this tab grow again.
+
     Explicit Width/Height rather than SizeToContent, because a tabbed dialog that resized per tab
     would break PUBLISHED, win-property-win: "Don't assign effects to changing tabs." The measurement
-    proves that is not hypothetical here — free, the tabs wanted 646, 584, 784, 305 and 582 DIP of
-    width and 345, 452, 357, 320 and 213 of height. NEITHER NUMBER MOVES IN TASK 4, and the reason is
-    that the tab that left held NEITHER MAXIMUM — not that it was small. 关于 measured 283 x 230 free:
-    the narrowest of the six, but only the SECOND-shortest, because 更新's 213 is shorter. (Task 4's
-    own commit message and an earlier draft of this comment said "smallest on both axes", which the
-    height list two lines up disproves; the conclusion was right for the wrong stated reason.) The
-    maxima are 行为's 452 of height — which is where the Height above comes from — and 文件夹's 784 of
-    width, which 711 deliberately does not adopt (see the code-behind); both tabs are still in the
-    strip. RE-MEASURED in the fix round by the same method, so this is not Task 2's number carried
-    forward: pinned to 711 the five remaining tabs are 外观 345.33, 行为 452, 文件夹 373.33, 常用工具 320
-    and 更新 212.67 DIP of client height. Reason from the maxima, not from size — of the five left,
-    only 行为 leaving moves 452, and it would move it to 文件夹's 373.
+    proves that is not hypothetical: the five tabs want 246 / 350.67 / 468.67 / 294.67 / 198 DIP of
+    height in Chinese and 263.33 / 345.33 / 478.67 / 289.33 / 214.67 in English.
 
     TABS: horizontal, top, FIVE of them, in the page's own order — Round 8, Task 4 took 关于 out into
     Dialogs/AboutWindow.axaml and this strip has held five since. PUBLISHED, win-property-win: "Use
@@ -78,14 +84,24 @@
     persist" is conditional and there is no evidence for its antecedent here.
 
     NOT ONE TabItem CARRIES A LITERAL Header. All five are written by ApplyText() from the same five
-    AppLanguage keys each card's own GroupHead already uses, and that is structural rather than
-    tidy: Round 8, Task 6 takes the group box off every tab whose controls are one homogeneous set
-    (文件夹 is the exception — its four INNER boxes stay and each grows a head of its own), and each
-    one it takes deletes that card's
-    GroupHead TextBlock and the assignment behind it — so the header text has to have moved off the
-    cards BEFORE then.
+    AppLanguage keys the cards' own group heads used to take, and since Round 8, Task 6 THAT IS THE
+    ONLY STATEMENT OF A GROUP'S NAME. Task 6 took the group box off every tab whose controls are one
+    homogeneous set — 外观, 行为, 常用工具, 更新 — because PUBLISHED, ctrl-group-boxes: "Are all the
+    controls inside the group? If so, indicate the relationship on the larger surface, such as the
+    parent dialog box or page." This strip IS that larger surface. 文件夹 is the exception: it holds
+    four distinct sets (主文件夹 / 数据文件夹 / 缓存 / 备份), so its four INNER boxes stay and each
+    carries a head of its own. Deleting a card's GroupHead deleted the assignment behind it, which is
+    why Task 2 had to move the header text here first, and
     OptionsWindowTests.EveryTabHeaderComesFromAppLanguage is what keeps a literal from creeping back
-    in and leaving a tab unnamed after that task.
+    in and leaving a tab unnamed now that nothing else names one.
+
+    WHICH TAB IS THE TALLEST CHANGED HANDS IN TASK 6, and that is the whole reason the Height moved.
+    Under the row-card grammar it was 行为 at 452, with 文件夹 at 373. Deleting the icon, the subtitle
+    and the group box took 外观 from 345.33 to 246, 行为 from 452 to 350.67, 常用工具 from 320 to
+    294.67 and 更新 from 212.67 to 198 — while 文件夹, the one tab that KEEPS its group boxes and gained
+    a fourth, went from 373.33 to 468.67. Every other tab therefore has empty space at the bottom now,
+    which is what a fixed-size property sheet has on every tab but its tallest, and what the published
+    "Don't assign effects to changing tabs" requires it to have.
   -->
   <DockPanel Margin="11">
 

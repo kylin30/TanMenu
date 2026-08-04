@@ -9,10 +9,12 @@ using TanMenu.Wpf.Services;
 namespace TanMenu.Wpf.Views.Settings;
 
 /// <summary>
-/// 更新 card group: one card carrying the update status, a channel-specific help line, the download
-/// progress and the check/download actions. Ported from <c>SettingsWindow</c>'s 更新 tab
-/// (<c>Updates_StateChanged</c>, <c>RenderUpdateState</c>, <c>CheckUpdate_Click</c>,
-/// <c>UpdateAction_Click</c>).
+/// 更新, the Options dialog's fifth tab: the update status as a labelled VALUE, the download progress
+/// under it, the check/download actions, and a channel-specific help line. Ported from
+/// <c>SettingsWindow</c>'s 更新 tab (<c>Updates_StateChanged</c>, <c>RenderUpdateState</c>,
+/// <c>CheckUpdate_Click</c>, <c>UpdateAction_Click</c>). Round 8, Task 6 replaced the row grammar —
+/// the status sentence is a value beside its label now, not a subtitle under a static title, which is
+/// what it always was in substance; the XAML says so at length.
 /// <para>
 /// Round 5, item 3 deleted this group's second card, 当前版本 — an information row with no control in an
 /// action group, whose version line would otherwise have been shown twice one card apart once 关于 moved
@@ -38,18 +40,26 @@ namespace TanMenu.Wpf.Views.Settings;
 public partial class UpdatesCard : UserControl, ISettingsCard
 {
     private readonly SettingsDraft _draft;
+    private readonly ConfigService _config;
     private readonly IAppUpdateService _updates;
 
-    /// <summary>Read off the draft rather than the live config, like every other card since Round 8,
-    /// Task 1 — this group writes nothing, but a pending 语言 change has to re-label it too when the
-    /// commit's SettingsChanged comes round.</summary>
-    private string UiLanguage => _draft.Working.General.Language;
+    /// <summary>The language every string this card writes is rendered in: <b>the COMMITTED one, never
+    /// the draft's</b> — see <see cref="AppearanceCard.UiLanguage"/>'s remarks. It read the draft from
+    /// Round 8, Task 1 until Task 6, on the argument that a pending 语言 change had to re-label this
+    /// card too when the commit came round; that is still true and is why the committed value is the
+    /// right one, because <see cref="SettingsCommit.ApplyAsync"/> writes the config BEFORE it raises
+    /// <c>SettingsChanged</c>. This card matters to the rule for a second reason: it re-labels itself
+    /// from <see cref="RenderUpdateState"/> on a background service event, at a moment no commit has
+    /// happened, so the draft's language here would show up on screen beside committed-language
+    /// labels rather than only in a dialog.</summary>
+    private string UiLanguage => _config.Config.General.Language;
     private string L(string key, params object?[] args) => AppLanguage.Format(key, UiLanguage, args);
 
     public UpdatesCard()
     {
         InitializeComponent();
         _draft = App.Services.GetRequiredService<SettingsDraft>();
+        _config = App.Services.GetRequiredService<ConfigService>();
         _updates = App.Services.GetRequiredService<IAppUpdateService>();
 
         // The StateChanged subscription itself is set up in OnAttachedToVisualTree, not here — see its
@@ -91,9 +101,7 @@ public partial class UpdatesCard : UserControl, ISettingsCard
     {
         var lang = UiLanguage;
 
-        GroupHead.Text = AppLanguage.Text("Updates", lang);
-
-        UpdateStatusTitle.Text = AppLanguage.Text("UpdateStatusTitle", lang);
+        UpdateStatusLabel.Text = AppLanguage.Text("UpdateStatusTitle", lang);
         UpdateHelpText.Text = _updates.State.Status switch
         {
             AppUpdateStatus.StoreManaged => L("UpdateStoreManaged"),

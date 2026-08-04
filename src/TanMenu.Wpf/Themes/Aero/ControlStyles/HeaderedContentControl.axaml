@@ -32,18 +32,27 @@
     THE KEY IS "GroupBox", NOT {x:Type HeaderedContentControl}, and that is upstream's choice rather
     than ours: a HeaderedContentControl is the base class of TabItem, Expander's header host and
     several others, so the library never auto-applies this theme. It is opt-in through
-    Theme="{StaticResource GroupBox}", and this app's five interactive settings groups plus 关于 are
-    its only consumers (Views/Settings/*.axaml, Round 7 Task 9).
+    Theme="{StaticResource GroupBox}". It had six consumers when it was vendored in Round 7 Task 9 —
+    one per settings card group — and has FOUR since Round 8 Task 6: the boxes
+    Views/Settings/FoldersCard.axaml keeps for 主文件夹 / 数据文件夹 / 缓存 / 备份, which are four
+    distinct sets of controls on one tab. The other five groups lost their box in that task, because a
+    tab whose controls are one homogeneous set states its name on its TabItem instead (PUBLISHED,
+    ctrl-group-boxes: "Are all the controls inside the group? If so, indicate the relationship on the
+    larger surface, such as the parent dialog box or page.").
 
     WHAT THE CLIPPER IS FOR. A Windows 7 group box draws its label ON the outline, with the outline
     interrupted behind it. Bd is the outline; HeaderGapClipper takes PART_HeaderPresenter's arranged
     rect and clips Bd to everything outside it, which is what cuts the notch. Nothing else in the
     template does that, so removing the clipper would draw the label on top of an unbroken line.
 
-    THE THREE METRICS BELOW ARE OVERRIDDEN BY US, in Themes/Shell/Launcher.axaml's
-    HeaderedContentControl.tm-group-box rule, and this file is left stating upstream's: a Style in
-    Application.Styles outranks a ControlTheme's own Setter in Avalonia, so the override is the
-    documented mechanism rather than a fight. See that rule for the numbers and their citations.
+    NOTHING OVERRIDES THE METRICS BELOW ANY MORE. Round 7 Task 9 layered a
+    HeaderedContentControl.tm-group-box rule over them in Themes/Shell/Launcher.axaml — CornerRadius
+    5 -> 3, Padding 10 -> 11, Margin -> 0,0,0,11 — on the documented precedence that a Style in
+    Application.Styles outranks a ControlTheme's own Setter. Round 8 Task 6 DELETED that rule: three
+    Setters restating numbers a vendored theme already sets for the same control type are exactly the
+    cosmetic layer that round's item 1 strips, and the one thing they carried that the theme does not
+    — the gap between one box and the next — is now FoldersCard's own Spacing="11" on the stack that
+    holds them. The four surviving boxes render at upstream's own radius and padding.
 -->
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"

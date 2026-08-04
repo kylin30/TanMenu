@@ -1,87 +1,60 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="TanMenu.Wpf.Views.Settings.ToolsCard">
-  <!-- One settings row — icon, title + secondary line, master CheckBox — with a bordered, scrolling
-       list of per-tool CheckBoxes on its expansion row, inside the same tm-card Border. See the "row
-       spec's shared classes" block in Themes/Shell/Launcher.axaml for the anatomy, and
-       AppearanceCard's code-behind for the full ReloadFromConfig contract every settings card group
-       follows.
+  <!-- ══ 常用工具 — a master check box and the list it governs ═══════════════════════════════
+       ROUND 8, TASK 6 REPLACED THE ROW GRAMMAR. See AppearanceCard.axaml's header for the argument
+       and the published citations for 3 / 7 / 11.
 
-       Round 5, item 3: the list used to hang below the row's Grid inside a wrapping StackPanel, indented
-       by a hand-written Margin="30,10,0,0". It is now the Grid's own second row spanning columns 1-2, so
-       its left edge comes from column 1 rather than from a constant that happened to equal the icon
-       column's width plus its margin, and its right edge reaches the card's content edge instead of
-       stopping wherever the widest tool name did.
+       THIS TAB HAS NO LABEL-AND-CONTROL PAIR AT ALL, so it has no two-column Grid. It has one
+       self-labelling check box, one line of instruction, and the list that line points at — which is
+       exactly the "all the controls are inside the group" case ctrl-group-boxes says to indicate on
+       the larger surface, so there is no group box either and the TabItem carries 常用工具.
 
-       The CheckBoxes inside the bordered list sit a little further in — the list Border's own Padding
-       and 1 px stroke, plus each CheckBox's own template padding. That padding was 8,4 and measured
-       9.33 DIP of total inset; Round 7, Task 7 re-derived it to 7,5 on vis-layout's published ladder
-       ("between related controls — 4 / 7", and 5 relative pixels as the minimum separation), which
-       moves the inset by 1 DIP and is not re-measured here. Either way it is the list control's
-       business, not the row spec's: the spec constrains where a row's expansion CONTENT starts, which
-       is this Border's left edge.
+       THE MASTER'S LABEL IS ON THE BOX. Round 8, Task 5 made it a CheckBox and took its accessible
+       name from ShowToolsTitle through AutomationProperties.LabeledBy, saying its own label would
+       move onto it "until Task 6 rewrites the row grammar". This is that move: the title TextBlock
+       and the LabeledBy are gone, the Content is the label, and the box names itself.
 
-       Round 7, Task 3 gave the CheckBox an Aero template, and this list is where that lands hardest.
-       Measured with UI Automation on the live page at 150 %, on the eight tools config.json ships with,
-       on a build with the change and a build without:
+       THE INSTRUCTION LINE IS NOT A SUBTITLE. It ends in a colon and it introduces the list below it
+       ("勾选要在该分类中显示的工具："), which is what keeps it when the four restating subtitles on 外观
+       and 行为 were deleted with their AppLanguage keys. It sits 7 below the master (related
+       controls) and 3 above the list it labels (the smallest space between a non-interactive control
+       and any other control) — both PUBLISHED, vis-layout.
+
+       THE LIST IS DISABLED, NOT HIDDEN, while the master is off — ported verbatim from
+       SettingsWindow.BuildToolCheckboxes ("Unchecking only disables the list; the individual states
+       stay and are still persisted"): the per-tool Show values keep whatever the user set, so
+       re-enabling the category does not silently reset which tools it contains.
+
+       THE LIST BORDER'S OWN 7,5 PADDING AND ITS MaxHeight ARE THE LIST CONTROL'S BUSINESS, not the
+       row grammar's, and neither moved in this task. MaxHeight="240" (ported verbatim from
+       SettingsWindow's 常用工具 tab) is what keeps a long DefaultTools list — config.json is
+       user-editable, see the code-behind — from pushing the tab past the dialog's fixed height.
+       Round 7, Task 3's Aero CheckBox template is what gave it room: measured with UI Automation on
+       the live surface at 150 %, on the eight tools config.json ships with, on a build with the
+       change and a build without —
 
          each CheckBox   237-339 x 48 physical  ->  1750 x 29   (Auto width -> stretched; 32 -> 19.33 DIP tall)
          row pitch       56 physical            ->  37          (the 3,3 code-set Margin is unchanged)
          list content    8 x 56 = 448 physical  ->  8 x 37 = 296  (299 DIP -> 197 DIP)
          element left    x = 3035 physical      ->  x = 3035    (UNCHANGED)
 
-       The left edge did not move, so the 9.33 DIP above still describes where a row starts; what the
-       Aero template drops is the leading inset INSIDE the control. A PrintWindow row scan across the
-       first checkbox puts the 13 DIP box's first ink column at exactly x = 3035, the element's own left
-       edge, where Fluent's template held it further in.
+       — so at 197 DIP the eight fit inside 240 with no scrollbar, and the clamp starts biting at
+       roughly twelve tools instead of roughly seven. Those figures were read on the pre-Task-6
+       surface and are kept as the LIST's own record; this task did not re-measure them, and the one
+       thing it changed around them is what is above the Border, not inside it. -->
+  <StackPanel Margin="11">
 
-       MaxHeight="240" on the ScrollViewer (ported verbatim from SettingsWindow's 常用工具 tab) is what
-       keeps a long DefaultTools list (config.json is user-editable — see the code-behind) from pushing
-       whatever settings groups come after this one off screen. It still does, but it no longer BINDS on
-       the shipped list: at 299 DIP of content the eight default tools used to overflow 240 and this
-       ScrollViewer showed a vertical bar (measured 24 x 360 physical); at 197 DIP they fit, the bar is
-       gone, and the clamp now starts biting at roughly twelve tools instead of roughly seven.
+    <CheckBox x:Name="ShowToolsToggle" IsCheckedChanged="OnShowToolsChanged" />
 
-       ROUND 8, TASK 5 made the MASTER a CheckBox too — it was a ToggleSwitch, a control Windows 7 does
-       not have — so this card now holds one vocabulary instead of two: a master box and the per-tool
-       boxes it enables, all on the same vendored Aero template. The master keeps its x:Name, its
-       handler and its event (IsCheckedChanged is ToggleButton's, which both types inherit), and it
-       takes its accessible name from ShowToolsTitle through AutomationProperties.LabeledBy because its
-       own label does not move onto it until Task 6 rewrites the row grammar — see BehaviorCard.axaml's
-       header block for that split and for the measurement behind it. The per-tool boxes are untouched:
-       they were already CheckBoxes, they carry their own Content, and they wire Click rather than
-       IsCheckedChanged for the reason the code-behind's _loading remark gives. -->
-  <HeaderedContentControl Classes="tm-group-box" Theme="{StaticResource GroupBox}">
-    <HeaderedContentControl.Header>
-      <TextBlock x:Name="GroupHead" Classes="tm-group-head" />
-    </HeaderedContentControl.Header>
-    <StackPanel>
+    <TextBlock x:Name="ToolsListLabel" TextWrapping="Wrap" Margin="0,7,0,0" />
 
-      <Border Classes="tm-card">
-        <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
-          <TextBlock Grid.Column="0" Classes="tm-icon tm-card-icon" Text="&#xE90F;" />
-          <StackPanel Grid.Column="1" Classes="tm-card-text">
-            <TextBlock x:Name="ShowToolsTitle" Classes="tm-card-title" />
-            <TextBlock x:Name="ShowToolsSub" Classes="tm-card-sub" />
-          </StackPanel>
-          <CheckBox Grid.Column="2" x:Name="ShowToolsToggle" VerticalAlignment="Center"
-                    AutomationProperties.LabeledBy="{Binding #ShowToolsTitle}"
-                    IsCheckedChanged="OnShowToolsChanged" />
-
-          <!-- Disabled (not hidden) while ShowToolsToggle is off — ported verbatim from
-               SettingsWindow.BuildToolCheckboxes ("Unchecking only disables the list; the individual
-               states stay and are still persisted"): the per-tool Show values keep whatever the user set
-               so re-enabling the category does not silently reset which tools it contains. -->
-          <Border Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Classes="tm-card-expander"
-                  Padding="7,5"
-                  BorderBrush="{DynamicResource StrokeControlBrush}" BorderThickness="1"
-                  CornerRadius="{DynamicResource RadiusControl}">
-            <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="240">
-              <StackPanel x:Name="ToolsPanel" />
-            </ScrollViewer>
-          </Border>
-        </Grid>
-      </Border>
-    </StackPanel>
-  </HeaderedContentControl>
+    <Border Margin="0,3,0,0" Padding="7,5"
+            BorderBrush="{DynamicResource StrokeControlBrush}" BorderThickness="1"
+            CornerRadius="{DynamicResource RadiusControl}">
+      <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="240">
+        <StackPanel x:Name="ToolsPanel" />
+      </ScrollViewer>
+    </Border>
+  </StackPanel>
 </UserControl>

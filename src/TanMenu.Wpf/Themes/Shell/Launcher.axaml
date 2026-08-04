@@ -901,267 +901,21 @@
        is stated as RadiusControl − 1 in Tokens.axaml. Both terms live on the 应用 page, so they move
        together or the inset breaks.
 
-       NOT Border.tm-card, though the anatomy looks similar. tm-card encodes a specific 设置 row — its
-       Border must wrap one Auto,*,Auto Grid holding exactly one tm-card-title and one tm-card-sub, and
-       SettingsRowTests enforces that over Views/Settings. A category panel has none of those parts, so
-       reusing the class would be a semantic collision that passes CI today only because that test's
-       CardsDir does not reach Views/AppPage.axaml — one careless widening away from failing four tests
-       at once. -->
+       THERE IS NO LONGER A Border.tm-card TO COLLIDE WITH, and that is worth recording rather than
+       simply dropping. This block used to warn that reusing tm-card here would be a semantic collision,
+       because tm-card encoded a specific 设置 row — a Border wrapping one Auto,*,Auto Grid with exactly
+       one title line and one subtitle line, guarded by four SettingsRowTests facts. Round 8, Task 6
+       deleted that class and its nine dependants outright: a Windows 7 property page has no "settings
+       row card", only a label-and-control grid on vis-layout's ladder, so there is nothing left for a
+       category panel to be confused with. What survives is this rule, which is the LAUNCHER's own and
+       always was — it paints a category on the 应用 page, not a settings row — and AppPageGroupTests,
+       which guards its visibility binding. -->
   <Style Selector="Border.tm-group-panel">
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderBrush" Value="{DynamicResource StrokeControlBrush}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="{DynamicResource RadiusControl}" />
     <Setter Property="Padding" Value="11,11,6,6" />
-  </Style>
-
-  <!-- ══ 设置 rows ════════════════════════════════════════════════════════════════════════════
-       A row on a property page: an icon, a title + secondary line, and the control itself trailing.
-       The INFORMATION ARCHITECTURE is Round 5 item 3's and survives the conversion untouched — it is
-       the most durable thing in this file, and SettingsRowTests holds the parts of it no style can.
-
-       WHAT ROUND 7, TASK 7 TOOK AWAY IS THE CARD. It was a Windows 11 row card: a translucent
-       SurfaceLayerBrush fill inside a hairline at the control radius. Windows 7 drew no such object —
-       a property page grouped rows inside a GROUP BOX and drew nothing at all around an individual
-       row — so the fill, the outline and the radius all go and the class keeps only its spacing. The
-       class NAME stays tm-card, because four SettingsRowTests facts and six card files are written
-       against it and renaming it would be churn with no pixels behind it.
-
-       ROUND 7, TASK 9 PUT THE GROUP BOX UNDER THEM, which is the other half of that sentence and the
-       reason the horizontal padding below is now 0. Between Task 7 and Task 9 a row sat directly on
-       the window's client surface (opaque AeroWindowBackground — see the content-pane block above)
-       and its own 11 DIP left inset was the only thing holding it off the page edge. The group box
-       supplies that inset now, as its Padding, and it is the same published 11; leaving a second one
-       here would have indented every row 22 DIP inside its box for no stated reason. The VERTICAL 7
-       stays and is the row's own, because the box has no opinion about the gap between two rows.
-
-       PADDING 16,12 became 11,7 in Task 7 and 11 became 0 in Task 9; MARGIN 0,0,0,4 became 0,0,0,5.
-       Everything still on the ladder is PUBLISHED by
-       https://learn.microsoft.com/en-us/windows/win32/uxguide/vis-layout: 11 relative pixels is the
-       dialog margin (now spent by the group box), 7 is "between related controls", and 5 is the
-       minimum separation two target regions may have without touching. -->
-  <Style Selector="Border.tm-card">
-    <Setter Property="Background" Value="Transparent" />
-    <Setter Property="BorderThickness" Value="0" />
-    <Setter Property="Padding" Value="0,7" />
-    <Setter Property="Margin" Value="0,0,0,5" />
-  </Style>
-  <!-- Round 5, item 3 pinned BOTH classes' LineHeight, so a title-over-subtitle header block always
-       measured exactly 20 + 16 = 36 DIP and one VerticalAlignment="Center" put the icon and the
-       trailing control on the same y on every row. ROUND 7, TASK 7 DELETED ALL THREE LineHeight
-       TOKENS and both setters with them: Windows 11's ramp publishes a line height beside every size
-       and Aero's does not — GDI text has one natural line box per face and size, and inventing a
-       second number for it would be a Fluent habit carried into a theme that has no opinion on it.
-       The invariant the pinning protected is unaffected, because it never depended on the block
-       being 36: it depends on every header being the SAME two lines, which is
-       SettingsRowTests.EveryCardHeader_IsOneTitleLineAndOneSubtitleLine's job and which no card
-       violates. What the block measures now is one FontSizeBody line over one FontSizeBody line at
-       60 % opacity, both at Segoe UI's own leading, and the Round 7 Task 7 report records the number.
-
-       The Round 5 measurement that justified the pinning — a title line box of 19.33 DIP against the
-       token's 20, a subtitle box of 16.67 against 16, 0.67 DIP of drift between an ASCII and a CJK
-       subtitle, and the four cards whose height moved by 1-2 physical px when the setters went in —
-       described a build with a 14/20 ramp and a 12/16 caption size. This one has neither. Those
-       numbers are archived in docs/superpowers/archive/2026-08-04-windows11-measurement-record.md.
-
-       A SUBTITLE IS THE TITLE'S INK AT 60 %, not a colour of its own. TextSecondaryBrush carried it
-       until Task 7 deleted it — Windows 7 published no secondary body colour, and inventing a third
-       grey beside AeroForeground and AeroDisabledForeground is worse than one opacity that follows
-       the variant for free (§3.2 #8). It is also the SAME size as the title now: FontSizeCaption is
-       deleted, because a Windows 7 property sheet uses one body size and gets its hierarchy from
-       colour, not from a fourth step on a ramp. -->
-  <Style Selector="TextBlock.tm-card-title">
-    <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
-  </Style>
-  <Style Selector="TextBlock.tm-card-sub">
-    <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
-    <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
-    <Setter Property="Opacity" Value="0.6" />
-    <!-- Wrap rather than overflow: the middle column is whatever is left after the leading icon and
-         the trailing control, which is narrower than several of these descriptions' natural width. -->
-    <Setter Property="TextWrapping" Value="Wrap" />
-  </Style>
-
-  <!-- ══ The row spec's shared classes ═════════════════════════════════════════════════════════
-       Round 5, item 3 (设置页每个设置项统一设计规范). One anatomy for every settings row: a 16 DIP icon,
-       a header of EXACTLY one title line and one subtitle line, the control trailing in column 2, and
-       an optional expansion row starting at column 1's own origin. Everything in that anatomy which
-       has an AvaloniaProperty behind it is a class here.
-
-       ONE PART OF THE ANATOMY CANNOT BE A STYLE. Grid exposes ShowGridLinesProperty, RowSpacingProperty,
-       ColumnSpacingProperty, ColumnProperty, RowProperty, ColumnSpanProperty, RowSpanProperty and
-       IsSharedSizeScopeProperty — and no ColumnDefinitionsProperty or RowDefinitionsProperty at all
-       (checked by reflection over the shipped Avalonia.Controls.dll 12.1.0). ColumnDefinitions and
-       RowDefinitions are plain CLR properties, and a Setter needs an AvaloniaProperty, so
-       ColumnDefinitions="Auto,*,Auto" is written literally in every card and guarded by a source test
-       instead (tests/TanMenu.Core.Tests/Themes/SettingsRowTests.cs).
-
-       RowSpacing IS a StyledProperty and could have carried the header-to-expansion gap. It deliberately
-       does not: a row gap is charged between row definitions even when the expansion row's only child is
-       IsVisible="False" (UpdatesCard's ProgressBar), which would leave 8 DIP of dead space on that card
-       in its normal state. The gap lives on the expansion child's own Margin instead (tm-card-expander),
-       and an invisible child contributes no margin at all.
-
-       These rules are declared AFTER the two they refine, the same ordering this file already relies on
-       for TextBlock.tm-icon.subtle overriding TextBlock.tm-icon's Opacity. -->
-
-  <!-- The icon box. :is(Control) rather than a TextBlock-scoped selector so the same class boxes a row
-       whose leading mark is not a glyph without a second rule — which part C then made real: the 关于
-       card's mark is the product tile, an Image (Views/Settings/AboutCard.axaml).
-       Width 16 fixes the column independently of the glyph: all fifteen
-       distinct glyphs the settings page carried when this was measured already measured exactly 16 DIP
-       wide (fourteen since part B deleted the 当前版本 card and with it the page's only E946), so this
-       changes nothing and stops a future glyph from moving the title. Height is deliberately NOT set — the 16 DIP box is
-       Segoe Fluent Icons' own line box at FontSize 16, and pinning a height would clip the glyph if the
-       Windows 10 fallback face (Segoe MDL2 Assets) measures taller. An Image has no line box to supply
-       one, so that ONE row states Height="16" locally; every glyph row still must not. -->
-  <Style Selector=":is(Control).tm-card-icon">
-    <Setter Property="Width" Value="16" />
-    <Setter Property="Margin" Value="0,0,7,0" />
-    <Setter Property="VerticalAlignment" Value="Center" />
-  </Style>
-
-  <!-- The header text column: title over subtitle, nothing else. Center is what pairs with the icon's
-       own Center so both land on one y, the header being always two lines.
-
-       The gutter to the trailing control was 12 and is 11, and the icon's own gutter above was 14 and
-       is 7. Both are PUBLISHED by
-       https://learn.microsoft.com/en-us/windows/win32/uxguide/vis-layout: an icon and the label it
-       marks are related controls (4 DLU / 7 relative pixels), a label and the control it governs are
-       further apart than that, and 11 is the guide's "between unrelated controls" step as well as its
-       dialog margin. Verification step 5 of the design's Task 7 reads exactly these two gaps off UI
-       Automation rects and expects 7 and 11 times the scale. -->
-  <Style Selector="StackPanel.tm-card-text">
-    <Setter Property="VerticalAlignment" Value="Center" />
-    <Setter Property="Margin" Value="0,0,11,0" />
-  </Style>
-
-  <!-- A value line — a path, a size, a version: a subtitle that is one ellipsized line rather than a
-       wrapping paragraph. Used WITH tm-card-sub (Classes="tm-card-sub tm-card-value") so it inherits
-       size, colour and line height and states only the three things that differ.
-
-       THERE IS NO MaxWidth HERE ANY MORE, AND RE-ADDING ONE NEEDS THIS PARAGRAPH READ FIRST. The class
-       shipped with MaxWidth="260" — a MEASURE-time bound, on the argument that a NoWrap +
-       CharacterEllipsis TextBlock reports its full untrimmed single-line advance as its desired width
-       (trimming is a paint-time concern), so one long path would inflate the card's desired width and
-       push the trailing controls past the visible edge. That mechanism was measured when a path line
-       lived in column 1, BESIDE those controls. Round 5 moved every value line onto a Grid.Row="1"
-       ColumnSpan="2" expansion row, and it does not reach there — re-measured rather than reasoned:
-       with the Setter deleted and DataPathText fed a ~250-character path, still ellipsized on the
-       widest row this page has, at the app's own floor. THE MECHANISM is what carried this, and Round
-       8, Task 2 REPLACED IT rather than letting the sentence stand: it used to be that SettingsPage's
-       ScrollViewer never enabled horizontal scrolling, so ScrollContentPresenter measured CardStack
-       against the real viewport width. There is no ScrollViewer and no CardStack — the settings
-       surface is a fixed-size modal dialog (Dialogs/OptionsWindow) whose TabControl arranges each
-       card into a PART_SelectedContentHost of the window's own width — and the conclusion is the
-       same one for a simpler reason, and a stronger one: the dialog's width is a LITERAL on the
-       Window with CanResize="False", so no child's desired width can move it at all. What a long path
-       can still do is be clipped rather than ellipsized, which is a paint question about the row it is
-       in and not about this Setter; Task 2 checked it on a capture of the 文件夹 tab and the real
-       data path ellipsized as it did on the page.
-
-       THE NUMBERS HAVE MOVED THREE TIMES AND ARE STATED WITH THE ROUND AND THE CONFIGURATION THAT
-       READ THEM, because two rounds re-derived the geometry around them and one of those left this
-       paragraph quoting figures its own build no longer produced.
-
-         Round 5, at MinWidth="760": GetWindowRect 1162 px = 760 DIP client, card 664.00 DIP,
-           content box 629.33, expansion span 599.33.
-         Round 7 Task 7 re-derived the padding (16,12 -> 11,7) and CardStack's margin (24 -> 22) and
-           did not re-read them; Round 7 Task 8 moved the floor to a 872 DIP WINDOW, which is the SAME
-           711 DIP content pane — that is exactly why the minimum moved by the pane's own 112 DIP
-           rather than staying at 760 — and inherited the three figures rather than re-reading them.
-         Round 7 Task 9, MEASURED on the shipped build at the 872 DIP floor, at the DEFAULT font
-           (general.fontFamily = "", which is what AppConfig ships and what a sandbox seeded from the
-           portable config does NOT have), in BOTH languages, with every element SCROLLED INTO VIEW
-           before its rect was read — Avalonia's UIA peers hand back a stale rect for anything outside
-           this ScrollViewer's viewport, and the first pass of this re-measurement reported four
-           different strings at one identical width because of it:
-             content pane 711 DIP · SettingsScroll 712 DIP · header cell (column 1) 393.33 DIP ·
-             EXPANSION SPAN 624 DIP · SettingsScroll HorizontallyScrollable=False,
-             VerticallyScrollable=True · the four trailing controls all 220 DIP and all ending on one
-             x (3874 zh / 3864 en).
-           The card itself has no UIA element of its own, so its outer width is read off the capture
-           instead: the group box's outline measures 1000 px = 666.67 DIP, which is CardStack's
-           711 − 2×22.
-
-       What the bound did cost was visible: DataPathText sat clamped at 259.33 DIP and already ellipsized
-       (258 DIP of ink) on a row measured at 1185.33 DIP at the app's fitted width — some 925 DIP of
-       empty space immediately right of a truncated path (Round 5's reading, at Round 5's geometry).
-       That same real path renders whole now, and it still ellipsizes when the row genuinely runs out:
-       at the floor DataPathText measures the full 624 DIP span on one 16 DIP line, in both languages,
-       which is what the trimming is for.
-
-       HorizontalAlignment="Left" STAYS, but its job changed with the bound's removal. It is no longer
-       what stops the accidental centring — Avalonia 12.1.0's Layoutable.ArrangeCore clamps the arranged
-       width to MaxWidth and then runs the Stretch case THROUGH Center's centring arithmetic (the two
-       labels share one switch case), so a MaxWidth with no stated alignment centres the line, which is
-       exactly what put the two folder rows' path lines 384.67 and 456.67 DIP right of their own titles
-       on the shipped build. With no MaxWidth there is nothing to centre. What Left does now is keep the
-       element's bounds equal to its TEXT: a Stretch line arranges to the whole span instead — measured
-       against UpdateHelpText, a plain tm-card-sub on the same kind of row, which reports the full
-       624 DIP span at the floor in both languages (Round 7 Task 9, default font, scrolled into view;
-       Round 5 read 1185.33 fitted and 599.33 at its own narrower floor) — which would spread the two
-       path lines' ToolTip across the empty width beside them. The centring mechanism used to be
-       separately load-bearing in SettingsPage.axaml, which centred CardStack at its own 1250 DIP cap;
-       Round 8, Task 2 deleted that file with the page, and the Options dialog has no capped column —
-       it has a fixed window width — so nothing in the tree relies on the mechanism any more. It is
-       still the reason THIS rule states an alignment.
-
-       THE ToolTip RULE SURVIVES THE BOUND, restated against the row rather than against 260: a value
-       line whose text CAN outgrow the row it sits on and has no ToolTip is a defect in that card, and
-       supplying one is the CONSUMER'S job, not this class's. FoldersCard's two path lines are unbounded
-       user data — a long one still ellipsizes at the floor — and set a matching ToolTip in code
-       (FoldersCard.axaml.cs:102, 138, 220). Its third value line, DataInfoText, sets none on purpose:
-       its text is the fixed CurrentDataSize / CurrentDataPending format over one of four short kind
-       literals plus a formatted byte count, and it measures 127.33 DIP Chinese / 135.33 English against
-       the floor's 624 DIP span, so it can never be trimmed and a ToolTip would only repeat the line
-       already on screen. AboutCard's two lines go without one for the same reason: 91.33 and 186 DIP
-       Chinese, 118 and 186 English. (All five figures are Round 7 Task 9's re-measurement at the
-       default font, scrolled into view; Round 5 read 124.67 / 142.00 for DataInfoText and 91.33 /
-       186.00 for AboutCard's pair against its own narrower floor.) -->
-  <Style Selector="TextBlock.tm-card-value">
-    <Setter Property="TextWrapping" Value="NoWrap" />
-    <Setter Property="TextTrimming" Value="CharacterEllipsis" />
-    <Setter Property="HorizontalAlignment" Value="Left" />
-  </Style>
-
-  <!-- The expansion row's own top gap, on the child rather than on the Grid — see the RowSpacing note
-       above. 7 rather than the 8 it shipped with, and 8 rather than the 10 three of the old below-row
-       blocks stated before that: 10 was on no ladder at all, 8 was Fluent's rung, and 7 is
-       vis-layout's PUBLISHED "Between related controls — 4 / 7". Part B put every action strip in
-       column 2, so what this class now spaces is full-width expansion content — FoldersCard's value
-       lines, ToolsCard's bordered list, UpdatesCard's help line and progress bar. -->
-  <Style Selector=":is(Control).tm-card-expander">
-    <Setter Property="Margin" Value="0,7,0,0" />
-  </Style>
-  <Style Selector="StackPanel.tm-card-expander">
-    <Setter Property="Spacing" Value="7" />
-  </Style>
-  <!-- Value lines stack tighter than blocks do. Declared after tm-card-expander so a panel carrying both
-       classes resolves to 2: at equal specificity the later rule wins, and a stack OF value lines is
-       what the smaller gap is for. The 2 is AUTHORED and is deliberately BELOW the published ladder,
-       which starts at 5: vis-layout's rungs separate CONTROLS, and these are consecutive lines inside
-       one block of text. Setting it to 5 would open the same gap between two lines of one value that
-       the ladder puts between a label and the control it governs. -->
-  <Style Selector="StackPanel.tm-card-values">
-    <Setter Property="Spacing" Value="2" />
-  </Style>
-
-  <!-- Every action strip on the page. Part B put them all in column 2, however many buttons they hold:
-       the old "three or more go below" rule rested on an overflow at the app's own width floor that was
-       re-measured once the value lines left column 1, and no longer exists (see FoldersCard's class
-       remark for the numbers, and for why Round 7, Task 8 moved that floor from a 760 DIP window to an
-       872 DIP one without moving the 711 DIP content pane it is really about).
-       HorizontalAlignment="Right" is therefore inert today — column 2 is Auto-sized to the strip — and
-       is kept because it is what would put a full-width expansion-row strip on the content edge, so the
-       one class satisfies "every control's right edge is the card's" in either position.
-       VerticalAlignment="Center" on the strip is what makes the per-button VerticalAlignment attributes
-       unnecessary: a horizontal StackPanel stretches its children to its own height. -->
-  <Style Selector="StackPanel.tm-card-actions">
-    <Setter Property="Orientation" Value="Horizontal" />
-    <Setter Property="Spacing" Value="7" />
-    <Setter Property="HorizontalAlignment" Value="Right" />
-    <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
 
   <!-- The hotkey capture box (BehaviorCard's HotkeyBox). It IS legitimately disabled whenever
@@ -1216,74 +970,36 @@
     <Setter Property="VerticalContentAlignment" Value="Center" />
   </Style>
 
-  <!-- ══ The 设置 group box ════════════════════════════════════════════════════════════════════
-       ROUND 7, TASK 9. Every group on the 设置 page is a real Aero group box now: the vendored
-       Themes/Aero/ControlStyles/HeaderedContentControl.axaml, opt-in under its "GroupBox" key, with
-       its label notched into the top of the outline by Themes/Aero/Controls/HeaderGapClipper.cs.
-       Before this the page was six bare headings over six stacks of rows, which is what Task 7 left
-       when it deleted the Windows 11 row card — a Windows 7 property page grouped rows inside a
-       group box and drew nothing at all around an individual row, and only half of that had landed.
-
-       THIS RULE EXISTS TO OVERRIDE THREE OF THE VENDORED THEME'S OWN SETTERS, and the mechanism is
-       Avalonia's documented precedence rather than a fight: a Style in Application.Styles outranks a
-       ControlTheme's Setter for the same property. The vendored file is therefore left stating
-       upstream's numbers and this rule states ours.
-
-         CornerRadius 5 -> RadiusControl (3). VENDORED: AeroControlCornerRadius is 3, and every other
-           bordered object in this app already takes it. Upstream's 5 is the one metric in that file
-           that does not come from its own metrics dictionary.
-         Padding 10 -> 11. PUBLISHED, vis-layout: "Dialog box margins — 7 DLU / 11 relative pixels on
-           all sides". A group box's inside edge is a dialog margin.
-         Margin -> 0,0,0,11. PUBLISHED, same page, "Between unrelated controls — 7 / 11": two
-           settings groups are as unrelated as two controls on one page get. It replaces the 22 the
-           HEADING used to carry above itself — with a visible outline round each group the gap does
-           less work and the ladder's next rung down is enough.
-
-       The FontSize setter is deliberately not overridden: the theme sets AeroFontSizeNormal (12),
-       which is FontSizeBody, and it is inherited by every row inside the box. -->
-  <Style Selector="HeaderedContentControl.tm-group-box">
-    <Setter Property="CornerRadius" Value="{DynamicResource RadiusControl}" />
-    <Setter Property="Padding" Value="11" />
-    <Setter Property="Margin" Value="0,0,0,11" />
-  </Style>
-
-  <!-- ══ The two headings ═════════════════════════════════════════════════════════════════════
-       The six card-group headings (外观 / 行为 / 文件夹 / 常用工具 / 更新 / 关于) and the page's own
-       title (设置). Round 3, Task 3 separated them because they shared one class at one size and the
-       page title read as just another subsection; the separation stands, and both sides of it are now
-       PUBLISHED rather than derived from a Task Manager capture.
+  <!-- ══ The group-box heading ════════════════════════════════════════════════════════════════
+       ONE heading class, not two. It labels the four group boxes 文件夹 keeps
+       (Views/Settings/FoldersCard.axaml: 主文件夹 / 数据文件夹 / 缓存 / 备份) and nothing else in the
+       app. It used to have a sibling, TextBlock.tm-page-title, and it used to label six card groups:
+       Round 8, Task 2 deleted Views/SettingsPage.axaml, which was tm-page-title's only consumer, and
+       Task 6 deleted the class with the rest of the row grammar and took five of the six group boxes
+       with it — a tab whose controls are one homogeneous set carries its name on its TabItem instead
+       (PUBLISHED, ctrl-group-boxes: "Are all the controls inside the group? If so, indicate the
+       relationship on the larger surface, such as the parent dialog box or page.").
 
        https://learn.microsoft.com/en-us/windows/win32/uxguide/vis-fonts gives Windows 7 exactly two
        text roles above body: a MAIN INSTRUCTION at 12 pt in blue, and GROUP HEADERS at 11 pt in the
-       same blue. 12 pt at 96 dpi is 16 DIP (FontSizeSubtitle, and the vendored AeroFontSizeLarge
-       agrees exactly); 11 pt is 14.667, rounded up to FontSizeGroupHead's 15. Both take HeadingBrush,
-       which is that blue — Tokens.axaml carries the value, because this file may not quote a hex
-       colour anywhere, prose included.
+       same blue. This is the second: 11 pt is 14.667, rounded up to FontSizeGroupHead's 15, in
+       HeadingBrush — Tokens.axaml carries the value, because this file may not quote a hex colour
+       anywhere, prose included. (The first, 12 pt = 16 DIP, is FontSizeSubtitle, still read by the
+       empty-state heading further up this file.)
 
-       WHAT THE ROUND 3 MEASUREMENT SAID, and why it is recorded rather than cited: live ink-height
-       sampling of Task Manager's settings page put its page title's ink at about 1.4x its section
-       headings', and the Fluent ramp's 20:14 = 1.43 matched it. Aero's published pair is 16:15 = 1.07,
-       so SIZE barely separates them any more and the separation is carried by weight and by one ladder
-       step instead. That is Aero's own answer rather than a compromise: a Windows 7 property sheet
-       takes its hierarchy from colour first, and it draws main instructions and group headers one
-       point apart on purpose.
-
-       THE GROUP HEADING CARRIES NO MARGIN AT ALL SINCE ROUND 7, TASK 9, and the two numbers it used
+       THE HEADING CARRIES NO MARGIN AT ALL SINCE ROUND 7, TASK 9, and the two numbers it used
        to carry (0,22,0,7 — before that 0,20,0,8) are not re-derived, they are gone. A group head is
-       the group box's Header now, arranged by the vendored template into a notch cut out of the
+       the group box's Header, arranged by the vendored template into a notch cut out of the
        outline: 7 DIP in from the left by that template's own Panel Margin="7,0" plus its
        ContentPresenter Padding="2,0", and vertically centred on the line by Border#Bd's own
        Margin="0,8,0,0". A local margin here would push the label off the notch the clipper cuts for
        it, because the clipper cuts to the header's ARRANGED RECT and the margin is inside that rect.
-       The 22 that separated one group from the next is now the group box's own Margin, above. -->
+       The gap between one box and the next is FoldersCard's own Spacing="11" now, not a Style
+       Setter: Round 8, Task 6 deleted HeaderedContentControl.tm-group-box, whose three overrides
+       (CornerRadius 5 -> 3, Padding 10 -> 11, Margin -> 0,0,0,11) were the file's cleanest cosmetic
+       item, so the surviving boxes take the vendored theme's own numbers. -->
   <Style Selector="TextBlock.tm-group-head">
     <Setter Property="FontSize" Value="{DynamicResource FontSizeGroupHead}" />
-    <Setter Property="FontWeight" Value="SemiBold" />
-    <Setter Property="Foreground" Value="{DynamicResource HeadingBrush}" />
-  </Style>
-
-  <Style Selector="TextBlock.tm-page-title">
-    <Setter Property="FontSize" Value="{DynamicResource FontSizeSubtitle}" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Foreground" Value="{DynamicResource HeadingBrush}" />
   </Style>

@@ -23,13 +23,17 @@
 
     THE CONTENT IS THAT CARD, UNMOVED ON DISK, and it is hosted rather than copied. It keeps its
     ISettingsCard implementation and its ReloadFromConfig, which is what this window calls to fill
-    it in (AboutWindow.axaml.cs); it reads the draft only for the UI language and writes nothing at
-    all, so hosting it outside the settings surface commits nothing and discards nothing. Its group
-    box is untouched IN THIS COMMIT and will not stay: Round 8, Task 6 owns the settings cards'
-    layout and its decision list already names AboutCard's own GroupHead among the ones it deletes.
-    Re-cutting the card here would put this window's markup and that task's in conflict over one
-    file, so the box is left exactly as the tab had it and this window is sized to whatever it asks
-    for — SizeToContent absorbs the change when Task 6 makes it.
+    it in (AboutWindow.axaml.cs); it writes nothing at all — since Round 8, Task 6 it does not even
+    read the settings draft, only ConfigService for the UI language — so hosting it outside the
+    settings surface commits nothing and discards nothing.
+
+    ROUND 8, TASK 4 LEFT THE CARD'S GROUP BOX IN PLACE AND TASK 6 DELETED IT, exactly as this
+    comment said it would. The cost while it stood was visible in Task 4's own capture: 关于 appeared
+    TWICE on a window whose whole content is four lines — once as this window's Title and once as the
+    box's header, both written from AppLanguage's "About". A box round the only group on a surface
+    is what PUBLISHED, ctrl-group-boxes, tells you to indicate on the larger surface instead, and
+    here that surface is a captioned window. SizeToContent absorbed the change, as predicted; the
+    measurements below were re-taken on the build that made it rather than carried forward.
 
     SizeToContent="WidthAndHeight" — the opposite choice from Dialogs/OptionsWindow.axaml, and for a
     reason that does not apply here. That window pins Width/Height because a TABBED dialog that
@@ -73,13 +77,13 @@
     <cards:AboutCard x:Name="About" />
 
     <!-- NO TOP MARGIN, and that is arithmetic rather than an omission. PUBLISHED, vis-layout:
-         "Between unrelated controls — 7 / 11", and the card above already carries exactly that 11:
-         Themes/Shell/Launcher.axaml's HeaderedContentControl.tm-group-box sets
-         Margin="0,0,0,11" (its "two settings groups are as unrelated as two controls on one page
-         get"), and that margin is inside AboutCard's own desired size. Stating a second 11 here
-         would render 22. MEASURED rather than reasoned: AboutCard's UIA rect is 345 x 212 physical
-         px = 230 x 141.33 DIP against a 251.33 x 186 client, i.e. 11 + 141.33 + 23 + 11 = 186.33 —
-         the button row sits 11 DIP below the group box's outline with nothing in between.
+         "Between unrelated controls — 7 / 11", and the card above already carries exactly that 11 as
+         its own bottom margin. WHERE THAT 11 LIVES CHANGED IN ROUND 8, TASK 6 and the arithmetic did
+         not: it used to come from Themes/Shell/Launcher.axaml's
+         HeaderedContentControl.tm-group-box (Margin="0,0,0,11", "two settings groups are as
+         unrelated as two controls on one page get"); that rule and the box it styled are both
+         deleted, and Views/Settings/AboutCard.axaml states the same 11 on its own root Grid so this
+         row still has nothing to state. Stating a second 11 here would render 22.
          The row itself is right-aligned and the button is PUBLISHED at
          "Command buttons — 75x23"; 11 on every side of the window is the PUBLISHED dialog margin
          ("Dialog box margins — 7 DLU / 11 relative pixels on all sides"), on the StackPanel above.

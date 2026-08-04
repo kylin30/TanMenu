@@ -1,103 +1,101 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="TanMenu.Wpf.Views.Settings.AppearanceCard">
-  <!-- Four rows inside one Aero group box: an icon, a title + secondary line, and the control
-       trailing. The row SHAPE is Round 5, item 3's spec and is unchanged; the CONTAINER stopped
-       being a Windows 11 setting card at Round 7, Task 7 (which deleted the card's fill and
-       hairline) and became a Windows 7 property-page group at Task 9. This comment said "Four
-       Windows 11 Settings-style rows" until Round 7, Task 10. Populated by ReloadFromConfig — see
-       the code-behind for the ReloadFromConfig contract every settings card group follows.
+  <!-- ══ 外观 — four label-and-control rows on the DLU grid ═══════════════════════════════════
+       ROUND 8, TASK 6 REPLACED THE ROW GRAMMAR. Until this task every settings row was a
+       Border Classes="tm-card" wrapping an Auto,*,Auto Grid: a 16 DIP icon, a title line over a
+       60 %-ink subtitle line, and the control trailing. That is Windows 11 Settings' row card, and
+       Windows 7 has no such object — a property page is a LABEL AND A CONTROL on vis-layout's
+       ladder. So the icon, the card Border and the subtitle are gone, together with the twelve
+       Themes/Shell/Launcher.axaml rules that carried them, and what is left is a two-column Grid.
 
-       Each row is a Grid (Auto,*,Auto), not a DockPanel. Built first with a DockPanel per row (icon
-       docked left, control docked right, a plain StackPanel as the fill child), the longest subtitle
-       of the day — at the time, 按钮大小's (that row, and its even-longer English wording, is gone
-       since Round 3, Task 4; the CURRENT longest is 每列个数's English subtitle,
-       "Set how many shortcuts each column shows on the Apps page before wrapping to a new one" —
-       AppLanguage's ColButtonCountCardSub — longer than 按钮大小's ever was, but the Grid fix below
-       still applies to it exactly the same way) — clipped mid-glyph against the ComboBox's left edge
-       instead of wrapping onto a second line — confirmed by screenshot, not by inspection. The exact
-       DockPanel measure/arrange interaction that produced the clipping was not isolated, so no claim
-       is made about it here. Switching to a Grid fixed it: a Grid's star column is guaranteed to
-       resolve to the same width at both measure and arrange time, so the middle TextBlock always
-       wraps against the width it is actually given, regardless of column order or which sibling is
-       docked where. Re-verified by screenshot in both Chinese and English after the change.
+       THE COLUMN TEMPLATE IS "Auto,*" AND IT IS WRITTEN LITERALLY IN EVERY CARD, for the reason
+       SettingsRowTests has always recorded: Grid has no ColumnDefinitionsProperty, so a Setter
+       cannot carry it and only a source test can. Column 0 holds the label, column 1 the control.
 
-       Round 5, item 3: these four rows were already the shape the row spec generalised, so all that
-       changed here is that the icon's and the header stack's literal attributes became the shared
-       classes tm-card-icon / tm-card-text (Themes/Shell/Launcher.axaml). No pixel moves. -->
-  <HeaderedContentControl Classes="tm-group-box" Theme="{StaticResource GroupBox}">
-    <HeaderedContentControl.Header>
-      <TextBlock x:Name="GroupHead" Classes="tm-group-head" />
-    </HeaderedContentControl.Header>
-    <StackPanel>
+       EVERY NUMBER BELOW IS PUBLISHED by
+       https://learn.microsoft.com/en-us/windows/win32/uxguide/vis-layout (relative pixels, 9 pt
+       Segoe UI at 96 dpi): ColumnSpacing 5 is "label to control"; the 7 each row carries as its own
+       top Margin is "Between related controls — 4 / 7"; the 11 on this Grid is "Dialog box margins
+       — 7 DLU / 11 relative pixels on all sides", which the group box used to supply as its Padding
+       and which the property page has to supply itself now that five of the six boxes are gone
+       (PUBLISHED, ctrl-group-boxes: "Are all the controls inside the group? If so, indicate the
+       relationship on the larger surface, such as the parent dialog box or page." — the tab IS that
+       larger surface, and OptionsWindow.ApplyText writes 外观 onto its TabItem).
 
-      <Border Classes="tm-card">
-        <Grid ColumnDefinitions="Auto,*,Auto">
-          <TextBlock Grid.Column="0" Classes="tm-icon tm-card-icon" Text="&#xE774;" />
-          <StackPanel Grid.Column="1" Classes="tm-card-text">
-            <TextBlock x:Name="LanguageTitle" Classes="tm-card-title" />
-            <TextBlock x:Name="LanguageSub" Classes="tm-card-sub" />
-          </StackPanel>
-          <ComboBox Grid.Column="2" x:Name="LanguageCombo" Width="220" VerticalAlignment="Center"
-                    SelectionChanged="OnLanguageChanged" />
-        </Grid>
-      </Border>
+       THE RHYTHM IS PER-ROW Margin RATHER THAN Grid.RowSpacing, and that is deliberate. RowSpacing
+       is charged between row definitions even when a row's only child is IsVisible="False", which
+       would leave dead space on the two cards that have such a row (BehaviorCard's portable-only
+       help line, UpdatesCard's ProgressBar); a collapsed child contributes no margin at all, because
+       Layoutable.MeasureCore returns an empty size for it before the margin is ever added.
 
-      <Border Classes="tm-card">
-        <Grid ColumnDefinitions="Auto,*,Auto">
-          <TextBlock Grid.Column="0" Classes="tm-icon tm-card-icon" Text="&#xE793;" />
-          <StackPanel Grid.Column="1" Classes="tm-card-text">
-            <TextBlock x:Name="AppearanceTitle" Classes="tm-card-title" />
-            <TextBlock x:Name="AppearanceSub" Classes="tm-card-sub" />
-          </StackPanel>
-          <ComboBox Grid.Column="2" x:Name="AppearanceCombo" Width="220" VerticalAlignment="Center"
-                    SelectionChanged="OnAppearanceChanged" />
-        </Grid>
-      </Border>
+       THE SUBTITLES ARE GONE AND THE STRINGS WENT WITH THEM. 语言 / 外观 / 字体 each had one, and
+       each said what its own label already said ("应用界面显示所使用的语言" under 语言). AppLanguage's
+       LanguageCardSub, AppearanceCardSub and FontCardSub are deleted rather than orphaned. 每列个数's
+       is the one that survives, as the static line below the spinner: it describes a BEHAVIOUR the
+       label cannot ("超出后另起一列"), not a restatement of the label.
 
-      <Border Classes="tm-card">
-        <Grid ColumnDefinitions="Auto,*,Auto">
-          <TextBlock Grid.Column="0" Classes="tm-icon tm-card-icon" Text="&#xE8D2;" />
-          <StackPanel Grid.Column="1" Classes="tm-card-text">
-            <TextBlock x:Name="FontTitle" Classes="tm-card-title" />
-            <TextBlock x:Name="FontSub" Classes="tm-card-sub" />
-          </StackPanel>
-          <!-- IsTextSearchEnabled restores the WPF list's type-ahead: with hundreds of installed
-               families, typing the first letters is how the list is actually navigated. The rows are
-               ComboBoxItems whose Content is the display name, so no TextSearch.TextPath is needed, and
-               the disabled group-header rows are skipped because they are not selectable. -->
-          <ComboBox Grid.Column="2" x:Name="FontCombo" Width="220" MaxDropDownHeight="320"
-                    IsTextSearchEnabled="True" VerticalAlignment="Center"
-                    SelectionChanged="OnFontChanged" />
-        </Grid>
-      </Border>
+       EACH CONTROL TAKES ITS ACCESSIBLE NAME FROM ITS OWN LABEL through
+       AutomationProperties.LabeledBy — Avalonia's ControlAutomationPeer.GetNameCore falls back to
+       the LabeledBy peer's name when AutomationProperties.Name is unset. That is a name GAINED, not
+       preserved: on the card grammar these four controls had no accessible name at all (a ComboBox
+       peer has no fallback and the title beside it was an unrelated TextBlock), and only the four
+       check boxes on 行为 were wired this way. -->
+  <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto"
+        ColumnSpacing="5" Margin="11">
 
-      <!-- Round 3, Task 4: replaces the removed 按钮大小 (小/中/大) row. Nothing on this page names a
-           tile width any more — Task 4 fixed every tile at the width that row had called "小" (168 DIP),
-           and Round 4, item 3 removed that fixed width too, so a tile is as wide as its own
-           icon-plus-label content (see GeneralConfig.ButtonSize's remarks, and TmTileButton in
-           Themes/Shell/Launcher.axaml, which carries no Width Setter). This row governs how many
-           shortcuts a column holds before wrapping, not how big a tile is. A
-           NumericUpDown, not a ComboBox like the other rows here: the value is an integer the user
-           picks from a small range, not one of a short list of named choices, and Avalonia ships
-           NumericUpDown as a plain control (no extra NuGet package) that already gives a spinner AND
-           type-in for exactly that. Range 1–30 matches the pre-Avalonia Blazor build's own numeric input
-           for this same setting (docs/plans/2026-06-22-tanmenu-wpf-blazor.md: `min="1" max="30"`) —
-           below 1 a "column" is not a column, and 30 comfortably covers even a large 常用工具/folder
-           group without inviting a single, absurdly tall column. ClipValueToMinMax keeps a typed
-           out-of-range value inside that band rather than accepting it verbatim. -->
-      <Border Classes="tm-card">
-        <Grid ColumnDefinitions="Auto,*,Auto">
-          <TextBlock Grid.Column="0" Classes="tm-icon tm-card-icon" Text="&#xE80A;" />
-          <StackPanel Grid.Column="1" Classes="tm-card-text">
-            <TextBlock x:Name="ColCountTitle" Classes="tm-card-title" />
-            <TextBlock x:Name="ColCountSub" Classes="tm-card-sub" />
-          </StackPanel>
-          <NumericUpDown Grid.Column="2" x:Name="ColCountUpDown" Width="220" VerticalAlignment="Center"
-                         Minimum="1" Maximum="30" Increment="1" FormatString="0"
-                         ClipValueToMinMax="True" ValueChanged="OnColCountChanged" />
-        </Grid>
-      </Border>
-    </StackPanel>
-  </HeaderedContentControl>
+    <TextBlock Grid.Row="0" Grid.Column="0" x:Name="LanguageLabel" VerticalAlignment="Center" />
+    <ComboBox Grid.Row="0" Grid.Column="1" x:Name="LanguageCombo" Width="220"
+              HorizontalAlignment="Left" VerticalAlignment="Center"
+              AutomationProperties.LabeledBy="{Binding #LanguageLabel}"
+              SelectionChanged="OnLanguageChanged" />
+
+    <TextBlock Grid.Row="1" Grid.Column="0" x:Name="AppearanceLabel" VerticalAlignment="Center"
+               Margin="0,7,0,0" />
+    <ComboBox Grid.Row="1" Grid.Column="1" x:Name="AppearanceCombo" Width="220"
+              HorizontalAlignment="Left" VerticalAlignment="Center" Margin="0,7,0,0"
+              AutomationProperties.LabeledBy="{Binding #AppearanceLabel}"
+              SelectionChanged="OnAppearanceChanged" />
+
+    <TextBlock Grid.Row="2" Grid.Column="0" x:Name="FontLabel" VerticalAlignment="Center"
+               Margin="0,7,0,0" />
+    <!-- IsTextSearchEnabled restores the WPF list's type-ahead: with hundreds of installed
+         families, typing the first letters is how the list is actually navigated. The rows are
+         ComboBoxItems whose Content is the display name, so no TextSearch.TextPath is needed, and
+         the disabled group-header rows are skipped because they are not selectable. -->
+    <ComboBox Grid.Row="2" Grid.Column="1" x:Name="FontCombo" Width="220" MaxDropDownHeight="320"
+              IsTextSearchEnabled="True" HorizontalAlignment="Left" VerticalAlignment="Center"
+              Margin="0,7,0,0"
+              AutomationProperties.LabeledBy="{Binding #FontLabel}"
+              SelectionChanged="OnFontChanged" />
+
+    <!-- Round 3, Task 4: replaces the removed 按钮大小 (小/中/大) row. Nothing on this surface names
+         a tile width any more — Task 4 fixed every tile at the width that row had called "小"
+         (168 DIP), and Round 4, item 3 removed that fixed width too, so a tile is as wide as its own
+         icon-plus-label content (see GeneralConfig.ButtonSize's remarks, and TmTileButton in
+         Themes/Shell/Launcher.axaml, which carries no Width Setter). This row governs how many
+         shortcuts a column holds before wrapping, not how big a tile is. A NumericUpDown, not a
+         ComboBox like the other rows here: the value is an integer the user picks from a small
+         range, not one of a short list of named choices, and Avalonia ships NumericUpDown as a plain
+         control (no extra NuGet package) that already gives a spinner AND type-in for exactly that.
+         Range 1–30 matches the pre-Avalonia Blazor build's own numeric input for this same setting
+         (docs/plans/2026-06-22-tanmenu-wpf-blazor.md: `min="1" max="30"`) — below 1 a "column" is not
+         a column, and 30 comfortably covers even a large 常用工具/folder group without inviting a
+         single, absurdly tall column. ClipValueToMinMax keeps a typed out-of-range value inside that
+         band rather than accepting it verbatim. -->
+    <TextBlock Grid.Row="3" Grid.Column="0" x:Name="ColCountLabel" VerticalAlignment="Center"
+               Margin="0,7,0,0" />
+    <NumericUpDown Grid.Row="3" Grid.Column="1" x:Name="ColCountUpDown" Width="220"
+                   HorizontalAlignment="Left" VerticalAlignment="Center" Margin="0,7,0,0"
+                   Minimum="1" Maximum="30" Increment="1" FormatString="0"
+                   ClipValueToMinMax="True"
+                   AutomationProperties.LabeledBy="{Binding #ColCountLabel}"
+                   ValueChanged="OnColCountChanged" />
+
+    <!-- 3 is PUBLISHED on the same page: "the smallest space between a non-interactive control and
+         any other control". This line is static text describing the spinner directly above it, not a
+         new row, so it sits one rung below the 7 that separates two rows. -->
+    <TextBlock Grid.Row="4" Grid.Column="1" x:Name="ColCountHelp" TextWrapping="Wrap"
+               Margin="0,3,0,0" />
+  </Grid>
 </UserControl>

@@ -91,9 +91,11 @@ public class AboutWindowTests
     /// <remarks>
     /// ONE button, and it carries BOTH <c>IsDefault</c> and <c>IsCancel</c>: there is nothing here to
     /// commit, so Enter and Esc mean the same thing and a one-button dialog is what says so. The row
-    /// deliberately has NO top margin — the hosted card's group box already carries the published 11 as
-    /// its own bottom margin (<c>Themes/Shell/Launcher.axaml</c>'s
-    /// <c>HeaderedContentControl.tm-group-box</c>), so stating a second would render 22.
+    /// deliberately has NO top margin — the hosted card already carries the published 11 as its own
+    /// bottom margin, so stating a second would render 22. That 11 came from
+    /// <c>Themes/Shell/Launcher.axaml</c>'s <c>HeaderedContentControl.tm-group-box</c> until Round 8,
+    /// Task 6 deleted both the rule and the group box it styled; <c>AboutCard.axaml</c>'s own root
+    /// Grid states it now, which is why this assertion did not have to move with it.
     /// </remarks>
     [Fact]
     public void AboutBox_HostsTheAboutCardAndOneOkButton()

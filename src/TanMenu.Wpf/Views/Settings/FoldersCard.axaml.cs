@@ -14,8 +14,12 @@ using TanMenu.Wpf.Services;
 namespace TanMenu.Wpf.Views.Settings;
 
 /// <summary>
-/// 文件夹 card group: the main folder (whose subfolders become launcher groups), the data folder
-/// (config + caches + logs), and a maintenance row (清理缓存 / 备份… / 恢复…).
+/// 文件夹, the Options dialog's third tab and the ONLY one that keeps group boxes: 主文件夹 (whose
+/// subfolders become launcher groups), 数据文件夹 (config + caches + logs), 缓存 (清理缓存) and 备份
+/// (备份… / 恢复…). Round 8, Task 6 split the old 维护 card into the last two — clearing derived data
+/// and overwriting <c>config.json</c> are two sets, not one — and kept the boxes here because four
+/// distinct sets on one tab is the case <c>ctrl-group-boxes</c> sanctions a box for; the XAML carries
+/// the published sentence.
 /// <para>
 /// 主文件夹 is the group's one PROPERTY, and since Round 8, Task 1 it is buffered like every other:
 /// picking a folder writes the draft and 确定 / 应用 commits it. Everything else here is a COMMAND —
@@ -66,7 +70,21 @@ public partial class FoldersCard : UserControl, ISettingsCard
     /// (e.g. quick nav-rail clicks) could start a second walk before an in-flight one returns.</summary>
     private bool _dataInfoRefreshing;
 
-    private string UiLanguage => _draft.Working.General.Language;
+    /// <summary>
+    /// The language every string this card writes is rendered in: <b>the COMMITTED one, never the
+    /// draft's</b> — see <see cref="AppearanceCard.UiLanguage"/>'s remarks for the whole argument.
+    /// </summary>
+    /// <remarks>
+    /// This card is where the mismatch it fixes was worst: nine of its strings go to
+    /// <see cref="TanMenu.Wpf.Dialogs.MessageBox"/>, whose own 确定/取消/是/否 captions come from
+    /// <see cref="ConfigService"/> (<c>MessageBox.ResolveLanguage</c>) and cannot be told otherwise.
+    /// Staging English on 外观 and then clicking 恢复… produced an English question over Chinese
+    /// buttons. Round 8, Task 2 had already special-cased ONE of them —
+    /// <see cref="OnBackupConfigClick"/>'s pending-changes warning, which read
+    /// <c>_config.Config.General.Language</c> explicitly with a comment explaining exactly this — and
+    /// Task 6 made the rule uniform instead, so that call site now reads like every other.
+    /// </remarks>
+    private string UiLanguage => _config.Config.General.Language;
     private string L(string key, params object?[] args) => AppLanguage.Format(key, UiLanguage, args);
 
     public FoldersCard()
@@ -109,30 +127,33 @@ public partial class FoldersCard : UserControl, ISettingsCard
     {
         var lang = UiLanguage;
 
-        GroupHead.Text = AppLanguage.Text("Folders", lang);
-
-        MainFolderTitle.Text = AppLanguage.Text("MainFolder", lang);
-        MainFolderSub.Text = AppLanguage.Text("MainFolderHelp", lang);
+        MainFolderHead.Text = AppLanguage.Text("MainFolder", lang);
+        MainFolderHelp.Text = AppLanguage.Text("MainFolderHelp", lang);
+        RootLocationLabel.Text = AppLanguage.Text("Location", lang);
         OpenRootBtn.Content = AppLanguage.Text("Open", lang);
         PickRootBtn.Content = AppLanguage.Text("Choose", lang);
         RootPathText.Text = _draft.Working.RootFolder;
         ToolTip.SetTip(RootPathText, _draft.Working.RootFolder); // full path on hover; the label itself ellipsizes
 
-        DataFolderTitle.Text = AppLanguage.Text("DataFolder", lang);
-        DataFolderSub.Text = _isPortable
+        DataFolderHead.Text = AppLanguage.Text("DataFolder", lang);
+        DataFolderHelp.Text = _isPortable
             ? AppLanguage.Text("DataFolderPortableHelp", lang)
             : _isPackaged
                 ? AppLanguage.Text("DataFolderPackagedHelp", lang)
                 : AppLanguage.Text("DataFolderHelp", lang);
+        DataLocationLabel.Text = AppLanguage.Text("Location", lang);
         OpenDataBtn.Content = AppLanguage.Text("Open", lang);
         ChangeDataBtn.Content = AppLanguage.Text("Change", lang);
         ChangeDataBtn.IsEnabled = !_isPortable && !_isPackaged;
         ResetDataBtn.Content = AppLanguage.Text("ResetDefault", lang);
         ApplyDataInfoLabel(); // re-label from the last measurement; ResetDataBtn.IsEnabled is set inside
 
-        MaintenanceTitle.Text = AppLanguage.Text("Maintenance", lang);
-        MaintenanceSub.Text = AppLanguage.Text("MaintenanceCardSub", lang);
+        CacheHead.Text = AppLanguage.Text("Cache", lang);
+        CacheHelp.Text = AppLanguage.Text("CacheHelp", lang);
         ClearCacheBtn.Content = AppLanguage.Text("ClearCache", lang);
+
+        BackupHead.Text = AppLanguage.Text("BackupRestore", lang);
+        BackupHelp.Text = AppLanguage.Text("BackupHelp", lang);
         BackupBtn.Content = AppLanguage.Text("Backup", lang);
         RestoreBtn.Content = AppLanguage.Text("Restore", lang);
     }
@@ -391,19 +412,17 @@ public partial class FoldersCard : UserControl, ISettingsCard
         // one they took by restoring it later. The command itself stays IMMEDIATE — the design's
         // command list keeps it so — and nothing here writes the draft.
         //
-        // The other two rows around it need no such warning and neither is an omission: 恢复 and
+        // The other two commands around it need no such warning and neither is an omission: 恢复 and
         // 更改数据文件夹 REPLACE the config underneath the surface, so they re-seed the draft when they
         // complete, which is a stronger answer than a warning. 备份 only reads, so there is nothing to
         // re-seed and nothing to undo — only something to say.
-        // The COMMITTED language, not this card's own L() — which reads the draft. Everything a card
-        // DISPLAYS comes from the draft and should; a prompt ABOUT the draft appears over a window
-        // whose labels are still in the committed language (ApplyText only re-labels on a commit), and
-        // MessageBox resolves its own 确定/取消 from ConfigService regardless. Reading the draft here
-        // would produce a half-English, half-Chinese box the moment the pending edit IS the language.
-        if (_draft.IsDirty &&
-            !await ConfirmAsync(
-                AppLanguage.Text("BackupPendingChanges", _config.Config.General.Language),
-                MessageBoxIcon.Warning))
+        //
+        // ROUND 8, TASK 6: this call site used to spell out AppLanguage.Text(…,
+        // _config.Config.General.Language) because it was the one prompt on this card that had been
+        // caught reading the DRAFT's language, and L() read the draft. L() reads the committed
+        // language now — for every string on every card — so the special case is gone and this line
+        // says what it means. See UiLanguage's remarks.
+        if (_draft.IsDirty && !await ConfirmAsync(L("BackupPendingChanges"), MessageBoxIcon.Warning))
             return;
 
         var path = await PickSaveFileAsync(new FilePickerSaveOptions

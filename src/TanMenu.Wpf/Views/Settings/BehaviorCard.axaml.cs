@@ -24,10 +24,19 @@ namespace TanMenu.Wpf.Views.Settings;
 /// the incoherence delayed commit exists to remove. 固定到任务栏 stays immediate — it is a command, not a
 /// property.
 /// </para>
+/// <para>
+/// Round 8, Task 6 replaced the row grammar: four self-labelling check boxes and two
+/// label-and-control rows on one two-column Grid, instead of six <c>tm-card</c> Borders with icons
+/// and subtitles. The four <c>…Title</c> TextBlocks the check boxes used to sit beside are gone — each
+/// box's <c>Content</c> IS its label now (PUBLISHED, <c>ctrl-check-boxes</c>) — so
+/// <see cref="ReloadFromConfig"/> writes <c>Content</c> where it wrote <c>Text</c>. Nothing else about
+/// the handlers, the guards or the draft reads and writes moved.
+/// </para>
 /// </summary>
 public partial class BehaviorCard : UserControl, ISettingsCard
 {
     private readonly SettingsDraft _draft;
+    private readonly ConfigService _config;
     private readonly IWindowHost _host;
     private readonly IAutoStartService _autoStart;
     private readonly TaskbarPinService _taskbarPin;
@@ -50,13 +59,20 @@ public partial class BehaviorCard : UserControl, ISettingsCard
     /// <c>GetStateAsync</c> COM call returns.</summary>
     private bool _taskbarPinRefreshing;
 
-    private string UiLanguage => _draft.Working.General.Language;
+    /// <summary>The language every string this card writes is rendered in: <b>the COMMITTED one, never
+    /// the draft's</b> — see <see cref="AppearanceCard.UiLanguage"/>'s remarks for the whole argument.
+    /// It matters more here than anywhere except <see cref="FoldersCard"/>, because
+    /// <see cref="ShowErrorAsync"/> hands one of these strings to
+    /// <see cref="TanMenu.Wpf.Dialogs.MessageBox"/>, which resolves its own 确定 caption from
+    /// <see cref="ConfigService"/> and from nothing else.</summary>
+    private string UiLanguage => _config.Config.General.Language;
     private string L(string key, params object?[] args) => AppLanguage.Format(key, UiLanguage, args);
 
     public BehaviorCard()
     {
         InitializeComponent();
         _draft = App.Services.GetRequiredService<SettingsDraft>();
+        _config = App.Services.GetRequiredService<ConfigService>();
         _host = App.Services.GetRequiredService<IWindowHost>();
         _autoStart = App.Services.GetRequiredService<IAutoStartService>();
         _taskbarPin = App.Services.GetRequiredService<TaskbarPinService>();
@@ -138,32 +154,29 @@ public partial class BehaviorCard : UserControl, ISettingsCard
         try
         {
             var g = _draft.Working.General;
-            var lang = g.Language;
+            var lang = UiLanguage;
 
-            GroupHead.Text = AppLanguage.Text("Behavior", lang);
-
-            AutoCloseTitle.Text = AppLanguage.Text("AutoClose", lang);
-            AutoCloseSub.Text = AppLanguage.Text("AutoCloseCardSub", lang);
+            AutoCloseToggle.Content = AppLanguage.Text("AutoClose", lang);
             AutoCloseToggle.IsChecked = g.AutoClose;
 
-            TopMostTitle.Text = AppLanguage.Text("TopMost", lang);
-            TopMostSub.Text = AppLanguage.Text("TopMostCardSub", lang);
+            TopMostToggle.Content = AppLanguage.Text("TopMost", lang);
             TopMostToggle.IsChecked = g.TopMost;
 
-            AutoStartTitle.Text = AppLanguage.Text("AutoStart", lang);
-            AutoStartSub.Text = _isPortable
-                ? AppLanguage.Text("AutoStartPortableHelp", lang)
-                : AppLanguage.Text("AutoStartCardSub", lang);
+            AutoStartToggle.Content = AppLanguage.Text("AutoStart", lang);
+            // The portable build's help line is the ONLY thing this row says beyond its own label, so
+            // it is shown only where it is true: on every other build there is nothing to explain and
+            // an empty, collapsed line costs the layout nothing (see the XAML).
+            AutoStartHelp.IsVisible = _isPortable;
+            AutoStartHelp.Text = _isPortable ? AppLanguage.Text("AutoStartPortableHelp", lang) : string.Empty;
             ApplyAutoStartRow();
 
-            PinTaskbarTitle.Text = AppLanguage.Text("PinToTaskbar", lang);
+            PinTaskbarLabel.Text = AppLanguage.Text("PinToTaskbar", lang);
             ApplyTaskbarPinState(_taskbarPinState); // re-label the button/status text; never re-query here
 
-            HotkeyEnabledTitle.Text = AppLanguage.Text("EnableHotkey", lang);
-            HotkeyEnabledSub.Text = AppLanguage.Text("HotkeyEnabledCardSub", lang);
+            HotkeyEnabledToggle.Content = AppLanguage.Text("EnableHotkey", lang);
             HotkeyEnabledToggle.IsChecked = g.GlobalHotkeyEnabled;
 
-            HotkeyTitle.Text = AppLanguage.Text("Hotkey", lang);
+            HotkeyLabel.Text = AppLanguage.Text("Hotkey", lang);
             HotkeyHelpText.Text = AppLanguage.Text("HotkeyHelp", lang);
             ToolTip.SetTip(HotkeyBox, AppLanguage.Text("HotkeyTooltip", lang));
             HotkeyClearBtn.Content = AppLanguage.Text("Clear", lang);

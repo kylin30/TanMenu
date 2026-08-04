@@ -88,12 +88,16 @@ public static class AppLanguage
             // as its own icon-plus-label content — so no string here names a tile size at all any
             // more. See GeneralConfig.ButtonSize's own remarks.
             ["ColButtonCount"] = ("每列个数", "Items per column"),
-            // Secondary lines for the 设置 page's 外观 cards (Task 8). The old TabItem-based dialog
-            // never had room for a description under each row, so these are new wording rather than
-            // ported text.
-            ["LanguageCardSub"] = ("应用界面显示所使用的语言", "The language used across the app interface"),
-            ["AppearanceCardSub"] = ("选择浅色、深色，或跟随系统设置", "Choose light or dark, or match the system setting"),
-            ["FontCardSub"] = ("应用界面使用的字体", "The font used across the app interface"),
+            // THREE 外观 SUBTITLES WERE DELETED IN ROUND 8, TASK 6, not orphaned: LanguageCardSub,
+            // AppearanceCardSub and FontCardSub. They were written in Round 7 Task 8 for the Windows
+            // 11 row card, whose anatomy REQUIRED a second line under every title, and each of them
+            // restated the label above it — "应用界面显示所使用的语言" under 语言. Task 6 replaced that
+            // anatomy with Windows 7's label-and-control grid, which has no such slot, so the strings
+            // had no consumer and no place to go back to.
+            //
+            // THIS ONE SURVIVED, and the difference is the test that kept it: it describes a
+            // BEHAVIOUR the label cannot ("超出后另起一列"), rather than restating 每列个数. It is the
+            // static line below the spinner on AppearanceCard.
             ["ColButtonCountCardSub"] = ("设置“应用”页面每一列最多显示的快捷方式数量，超出后另起一列", "Set how many shortcuts each column shows on the Apps page before wrapping to a new one"),
             // "BuiltInFonts" went with the four embedded TTFs — every selectable family is installed
             // now, so there is no second group to caption.
@@ -113,19 +117,25 @@ public static class AppLanguage
             ["PinToTaskbarHelp"] = ("固定后，点击任务栏图标即可显示主界面。系统支持时由 Windows 确认，否则打开快捷方式供手动固定。", "Once pinned, click the taskbar icon to show TanMenu. Windows confirms when supported; otherwise TanMenu opens its shortcut for manual pinning."),
             ["PinnedToTaskbarHelp"] = ("TanMenu 已永久固定。点击任务栏图标可随时显示主界面。", "TanMenu is permanently pinned. Click its taskbar icon whenever you want to show the launcher."),
             ["PinToTaskbarWorking"] = ("正在请求 Windows 固定 TanMenu…", "Asking Windows to pin TanMenu…"),
-            // 右侧按钮 / "the button on the right", not 上方 / "above": Round 5, item 3 made these two
-            // strings the 固定到任务栏 row's own SUBTITLE, beside PinTaskbarBtn in the trailing column,
-            // instead of a line hanging below the whole row. The row spec's invariant I3 puts every
-            // interactive control on the card's right edge, so the direction is stable.
+            // 右侧按钮 / "the button on the right", not 上方 / "above", and the direction survived the
+            // row grammar that first made it true. Round 5, item 3 put PinTaskbarBtn in the card's
+            // trailing column, to the right of the text these strings land in. Round 8, Task 6
+            // replaced the card with a two-column DLU grid: 固定到任务栏 is the label in column 0 and
+            // the button is in column 1, i.e. still to its right, with this status line spanning
+            // underneath. What changed is that "right" is now measured from the row's LABEL rather
+            // than from its subtitle; what did not change is where the user has to look.
             ["PinToTaskbarNotAllowed"] = ("Windows 当前不允许应用发起固定。点击右侧按钮打开 TanMenu 快捷方式，再右键选择“固定到任务栏”。", "Windows is not allowing an app-initiated pin. Use the button on the right to open the TanMenu shortcut, then right-click it and choose Pin to taskbar."),
             ["PinToTaskbarUnsupported"] = ("当前 Windows（包括部分 Windows 10 环境）不支持应用内固定。点击右侧按钮打开 TanMenu 快捷方式，再右键选择“固定到任务栏”。", "This Windows environment, including some Windows 10 systems, does not support in-app pinning. Use the button on the right to open the TanMenu shortcut, then right-click it and choose Pin to taskbar."),
             // NO HARD LINE BREAK, unlike every other {0}-carrying error string in this file. This one is
             // the third member of the set above — ApplyTaskbarPinState writes it into the 固定到任务栏
-            // row's SUBTITLE, and a tm-card-sub renders "\n" as a real second line at EVERY window width,
-            // which pushes that row's header past the two lines invariant I1 fixes the icon and the button
-            // on. The other seven strings that can land in that subtitle are plain sentences which only
-            // wrap when the window is narrow; this one used to break unconditionally, in a state that is
-            // both reachable and persistent. The error is parenthesised rather than
+            // row's status line, which renders "\n" as a real second line at EVERY window width. The
+            // CONSTRAINT OUTLIVED ITS FIRST REASON: under Round 5's card grammar a break took the row's
+            // header past the two lines invariant I1 centred its icon and control on; under Round 8 Task
+            // 6's DLU grid there is no icon and no two-line header, and what a break costs instead is
+            // that 启用全局热键 and everything below it move down by a whole line, on a dialog whose
+            // Height is a literal. The other seven strings that can land in this line are plain sentences
+            // which only wrap when the surface is narrow; this one used to break unconditionally, in a
+            // state that is both reachable and persistent. The error is parenthesised rather than
             // separated by punctuation because {0} is an arbitrary Exception.Message that may or may not
             // end in a full stop of its own. It is still unbounded, so a long enough message wraps — but
             // it wraps, the same way a long 数据文件夹 subtitle does, instead of breaking by construction.
@@ -142,17 +152,30 @@ public static class AppLanguage
             ["HotkeyTooltip"] = ("点击后按下组合键来设置（需包含 Ctrl/Alt/Shift/Win）", "Click and press a key combo including Ctrl/Alt/Shift/Win"),
             ["Clear"] = ("清除", "Clear"),
             // 右侧输入框 / "the box on the right" for the same reason as PinToTaskbarNotAllowed above:
-            // this line is now the 热键 row's subtitle and HotkeyBox sits beside it, not above it.
+            // HotkeyBox is in column 1 of the 热键 row, to the right of that row's label, and this help
+            // line spans underneath the pair. It said 上方 / "above" until Round 5 moved the box.
             ["HotkeyHelp"] = ("默认无热键。点击右侧输入框并按下组合键来自定义。", "No hotkey by default. Click the box on the right and press a key combo to customize it."),
             ["None"] = ("(无)", "(None)"),
-            // Secondary lines for the 设置 page's 行为 cards (Task 9) — same rationale as the 外观
-            // cards' *CardSub keys: the old TabItem-based dialog had no room for a description under
-            // each row, so this wording is new rather than ported text.
-            ["AutoCloseCardSub"] = ("窗口失去焦点时自动隐藏", "Hide the window automatically when it loses focus"),
-            ["TopMostCardSub"] = ("使窗口始终显示在其它窗口之上", "Keep the window above other windows"),
-            ["AutoStartCardSub"] = ("随 Windows 启动自动运行 TanMenu", "Launch TanMenu automatically when Windows starts"),
-            ["HotkeyEnabledCardSub"] = ("开启后可通过下方的组合键呼出或隐藏窗口", "When enabled, use the shortcut below to show or hide the window"),
+            // THE FOUR 行为 SUBTITLES WERE DELETED IN ROUND 8, TASK 6 — AutoCloseCardSub,
+            // TopMostCardSub, AutoStartCardSub, HotkeyEnabledCardSub — for the same reason as the
+            // three 外观 ones above, and with one extra: all four rows are CHECK BOXES, and Task 6
+            // moved each label ONTO its box (PUBLISHED, ctrl-check-boxes). A restating subtitle under
+            // a self-labelling control is the label printed twice. AutoStartPortableHelp, three lines
+            // up, is what a 行为 row's second line looks like when it is NOT a restatement: it says
+            // why the box above it is disabled, and it survives.
             ["MainFolder"] = ("主文件夹", "Main Folder"),
+            // Round 8, Task 6: the 文件夹 tab is four group boxes, and 位置 labels the path line inside
+            // the two folder ones. It is deliberately generic — one key for both boxes, because the
+            // box's own head already says WHICH folder.
+            //
+            // IT ENDS IN A COLON AND THE FOUR 外观 LABELS DO NOT, which is a distinction rather than an
+            // inconsistency: this label is followed by another run of TEXT (the path), 5 relative
+            // pixels away, and without the colon the two read as one sentence — seen in Task 6's own
+            // first capture of the 更新 tab, where "更新状态" ran straight into "应用内更新未启用。".
+            // A label followed by a CONTROL has the control's own frame as its boundary and needs no
+            // punctuation to supply one. UpdateStatusTitle is the only other label of this kind and it
+            // carries a colon for the same reason.
+            ["Location"] = ("位置：", "Location:"),
             ["MainFolderHelp"] = ("显示该文件夹下的子文件夹（例如设为桌面，桌面上的文件夹就会成为分组）。", "Shows subfolders under this folder. For example, use Desktop to turn desktop folders into groups."),
             ["Open"] = ("打开", "Open"),
             ["Choose"] = ("选择…", "Choose..."),
@@ -165,11 +188,18 @@ public static class AppLanguage
             ["ClearCache"] = ("清理缓存", "Clear Cache"),
             ["Backup"] = ("备份…", "Back Up..."),
             ["Restore"] = ("恢复…", "Restore..."),
-            // The 设置 page's 文件夹 group (Task 10) gives 清理缓存/备份/恢复 their own labelled card —
-            // the old TabItem-based dialog just floated these three buttons at the bottom of its 文件夹
-            // tab with no heading, so this pair is new wording rather than ported text.
-            ["Maintenance"] = ("维护", "Maintenance"),
-            ["MaintenanceCardSub"] = ("清理菜单缓存，或备份、恢复配置文件", "Clear the menu cache, or back up and restore your config file"),
+            // ROUND 8, TASK 6 SPLIT 维护 IN TWO. Round 7 Task 10 had given 清理缓存/备份/恢复 one
+            // labelled card ("Maintenance" + "MaintenanceCardSub", both deleted here) because the
+            // pre-0.12 dialog just floated the three buttons at the bottom of its 文件夹 tab with no
+            // heading at all. One heading over three buttons was still one heading too few: clearing
+            // the menu cache throws away DERIVED data and can be undone by doing nothing, while
+            // 备份/恢复 read and overwrite config.json itself. They are two sets, so they are two group
+            // boxes — which is the case ctrl-group-boxes sanctions a box for ("Is there more than one
+            // control in the group?"), and it is why 文件夹 is the one tab that keeps its boxes.
+            ["Cache"] = ("缓存", "Cache"),
+            ["CacheHelp"] = ("清理后，菜单会重新解析快捷方式并重新提取图标。", "After clearing, TanMenu re-resolves every shortcut and re-extracts its icon."),
+            ["BackupRestore"] = ("备份", "Backup"),
+            ["BackupHelp"] = ("把当前配置保存为文件，或用备份文件覆盖当前配置。", "Save the current config to a file, or overwrite the current config from a backup file."),
             ["DataKindApp"] = ("应用数据", "App data"),
             ["DataKindPortable"] = ("绿色版", "Portable"),
             ["DataKindDefault"] = ("默认", "Default"),
@@ -186,11 +216,16 @@ public static class AppLanguage
             ["UpdatePortableHelp"] = ("绿色版会自动检查 GitHub Releases；发现新版本后会在主界面提示，只有确认后才会下载和安装。", "The portable edition checks GitHub Releases automatically. New versions appear in the launcher and are downloaded and installed only after confirmation."),
             ["UpdateStoreManaged"] = ("Microsoft Store 版本由 Microsoft Store 管理更新。", "Updates for the Microsoft Store edition are managed by Microsoft Store."),
             ["UpdateUnavailable"] = ("当前运行方式不支持应用内更新。请使用 Microsoft Store 版，或从 GitHub Release 下载绿色版。", "This build cannot update itself. Use the Microsoft Store edition or download the portable edition from GitHub Releases."),
-            // The update-status card's STATIC title. Round 5, item 3: that card used to have no title at
-            // all — the dynamic status sentence itself wore tm-card-title, so the row read as a
-            // paragraph with a button under it rather than as a settings row. The sentence is now the
-            // subtitle and this is the title above it.
-            ["UpdateStatusTitle"] = ("更新状态", "Update status"),
+            // The 更新 row's LABEL, and the sentence beside it is its value. Round 5, item 3 minted this
+            // string because the row had no title at all — the dynamic status sentence itself was the
+            // row's title, and "正在等待检查更新。" is not a heading — and demoted the sentence to the
+            // row's subtitle. Round 8, Task 6 finished the correction: on a two-column DLU grid the
+            // sentence is a VALUE in column 1 opposite this label in column 0, which is what it always
+            // was in substance.
+            // The colon is load-bearing here for the reason Location's remark records: this label is
+            // followed by a run of TEXT rather than by a control, and without it the row read as one
+            // sentence ("更新状态 应用内更新未启用。") in Task 6's first capture of this tab.
+            ["UpdateStatusTitle"] = ("更新状态：", "Update status:"),
             ["UpdateStoreManagedStatus"] = ("无需在这里操作，请在 Microsoft Store 中检查更新。", "No action is needed here. Check for updates in Microsoft Store."),
             ["UpdateDisabledStatus"] = ("应用内更新未启用。", "In-app updates are not enabled."),
             ["UpdateIdle"] = ("正在等待检查更新。", "Ready to check for updates."),

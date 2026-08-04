@@ -133,67 +133,102 @@ public partial class OptionsWindow : Window
     /// <b>The five tab headers take the five keys the cards' own group heads take, and this method owns
     /// the writes.</b> No <c>Binding</c>: <c>AppLanguage</c> has no change notification, which is the
     /// same reason <c>MainWindow.ApplyMenuText</c> exists (it was <c>ApplyRailText</c> until Round 8,
-    /// Task 3 replaced the navigation pane with the menu band). Round 8, Task 6 takes the group box off
-    /// every tab whose controls are one homogeneous set, and each one it takes deletes that card's
-    /// <c>GroupHead</c> <c>TextBlock</c> and the <c>GroupHead.Text</c> assignment behind it, at which
-    /// point the <c>TabItem</c> header is the only remaining statement of a group's name — so the text
-    /// had to move here first.
+    /// Task 3 replaced the navigation pane with the menu band). Round 8, Task 6 took the group box off
+    /// every tab whose controls are one homogeneous set, and each one it took deleted that card's
+    /// <c>GroupHead</c> <c>TextBlock</c> and the <c>GroupHead.Text</c> assignment behind it, so the
+    /// <c>TabItem</c> header is now the ONLY statement of a group's name — which is why the text had to
+    /// move here first, one task earlier.
     /// </para>
     /// <para>
-    /// <b>THE DIALOG'S SIZE WAS MEASURED IN ROUND 8, TASK 2</b>, rather than inherited from the design's
-    /// provisional 540 x 540 (the pre-<c>28158a8</c> <c>SettingsWindow</c>'s own figures). The build
-    /// was launched with the window temporarily switched to <c>SizeToContent</c>, every tab was
-    /// selected in turn through UI Automation's <c>SelectionItemPattern</c>, and the window's UIA
-    /// <c>BoundingRectangle</c> — which for an Avalonia window is the CLIENT rectangle, confirmed
-    /// against <c>GetWindowRect</c>/<c>GetClientRect</c> on the same HWND — was read after each. At
-    /// 150 % scale, in Chinese, with the app's default font, with the 关于 tab Task 4 has since removed
-    /// still in the strip (it is listed because it is what shows that removing it moved neither number
-    /// — it held NEITHER maximum: 283 DIP is the narrowest of the six widths, and its 230 of height is
-    /// only the second-shortest, above 更新's 213. Task 4 wrote "the smallest tab on both axes" here,
-    /// which the 更新 row of the very table below disproves; the conclusion stands, the reason did not):
+    /// <b>THE DIALOG'S SIZE IS MEASURED, NEVER GUESSED</b>, and Round 8 has measured it three times by
+    /// one method. Task 2 established it against the design's provisional 540 x 540 (the
+    /// pre-<c>28158a8</c> <c>SettingsWindow</c>'s figures); the Task 4 fix round re-derived it; Task 6
+    /// re-derived it again because Task 6 changed what the tabs contain. THE METHOD, unchanged: launch
+    /// the build with the window temporarily switched to <c>SizeToContent="Height"</c> at
+    /// <c>Width="711"</c>, select every tab in turn through UI Automation's
+    /// <c>SelectionItemPattern</c>, and read the window's UIA <c>BoundingRectangle</c> after each —
+    /// which for an Avalonia window is the CLIENT rectangle, confirmed against
+    /// <c>GetWindowRect</c>/<c>GetClientRect</c> on the same HWND. Then restore the markup and pin the
+    /// maximum. All figures below are at 150 % scale with the app's default font.
     /// </para>
     /// <list type="table">
-    ///   <item><description>free width: 外观 646x345, 行为 584x452, 文件夹 784x357, 常用工具 305x320,
-    ///   更新 582x213, 关于 283x230 DIP</description></item>
-    ///   <item><description>width pinned to 711: 外观 x345, 行为 x452, 文件夹 x373, 常用工具 x320,
-    ///   更新 x213, 关于 x230 DIP</description></item>
+    ///   <item><description><b>Task 2, free width, six tabs:</b> 外观 646x345, 行为 584x452,
+    ///   文件夹 784x357, 常用工具 305x320, 更新 582x213, 关于 283x230 DIP. 关于 is listed because it is
+    ///   what shows that Task 4 removing it moved NEITHER number — it held neither maximum: the
+    ///   narrowest of the six widths, but only the second-shortest height, above 更新's 213. (Task 4
+    ///   wrote "the smallest tab on both axes" here, which the 更新 row disproves; the conclusion stood,
+    ///   the reason did not.)</description></item>
+    ///   <item><description><b>Task 4 fix round, pinned to 711, five tabs, Chinese:</b> 外观 345.33,
+    ///   行为 452, 文件夹 373.33, 常用工具 320, 更新 212.67 DIP of client height. 452 was 行为's and
+    ///   nothing else's, and that is where the old <c>Height</c> came from.</description></item>
+    ///   <item><description><b>Task 6, pinned to 711, five tabs, BOTH languages:</b> Chinese 外观 246,
+    ///   行为 350.67, 文件夹 468.67, 常用工具 294.67, 更新 198; English 263.33, 345.33, 478.67, 289.33,
+    ///   214.67. The maximum is 文件夹's 478.67, and <c>Height="479"</c> is that rounded up to the next
+    ///   whole DIP.</description></item>
     /// </list>
     /// <para>
-    /// The second row was RE-MEASURED in the Task 4 fix round — the window switched back to
-    /// <c>SizeToContent="Height"</c> at <c>Width="711"</c>, each tab selected through
-    /// <c>SelectionItemPattern</c>, the client rectangle read after each, then the markup restored —
-    /// because the fix round's subject was a false claim ABOUT that row and re-deriving it was cheaper
-    /// than trusting it. It came back identical for the five surviving tabs: 345.33, 452, 373.33, 320,
-    /// 212.67 DIP at 1066 physical px of width. 452 is 行为's and nothing else's.
+    /// <b>Task 6 moved the maximum from 行为 to 文件夹</b> — it deleted the icon column, the subtitle
+    /// line and the group box from the four tabs whose controls are one homogeneous set, and split
+    /// 维护 into 缓存 and 备份 on the one tab that keeps boxes. Four tabs shrank and one grew.
     /// </para>
     /// <para>
-    /// <b>711 is chosen over the widest tab's 784, and that is a deviation from the design's literal
-    /// instruction ("take the maximum over the six"), taken for a stated reason.</b> 784 is 文件夹's
-    /// DESIRED width, and what wants it is one wrapping subtitle: <c>tm-card-sub</c> carries
-    /// <c>TextWrapping="Wrap"</c> and <c>FoldersCard</c>'s own remarks record it wrapping to two and
-    /// three lines on the page it came from, at the app's floor, as intended behaviour. Adopting 784
-    /// would put the OUTER window at 798.67 DIP against the PUBLISHED 800 x 600 floor — compliant by
-    /// 1.33 DIP, i.e. a dialog that exactly fills an 800-pixel screen. 711 is the width the settings
-    /// surface's CONTENT PANE has had since Round 4 and that four measurement records in this tree
-    /// rest on, and it gives each card MORE room than the page did, not less: the page inset
-    /// <c>CardStack</c> by 22 a side (667 DIP of card), this dialog insets 11 a side and the vendored
-    /// <c>TabControl</c> template takes 4 more (685 DIP of card). Nothing that fitted before can clip
-    /// now. The cost is the 16 DIP of extra height 文件夹 takes to wrap — 357 becomes 373 — which is
-    /// below 行为's 452 and therefore costs nothing at all.
+    /// <b>The 文件夹 tab's own wording was measured rather than reasoned about, because it is the tab
+    /// with no slack left.</b> Its 数据文件夹 help line has three build-dependent wordings — portable,
+    /// packaged and plain — and only the portable one is reachable on this machine's sandbox. So the
+    /// longest, <c>DataFolderPackagedHelp</c>, was forced into the row for one throwaway build and the
+    /// tab re-measured in both languages: 468.67 / 478.67 DIP, IDENTICAL to the portable wording,
+    /// because at 685 DIP of content width all three still render on one line. The build was restored.
+    /// The plain wording (<c>DataFolderHelp</c>) is shorter than the packaged one and was not measured
+    /// separately.
     /// </para>
     /// <para>
-    /// The ruling for a maximum that did NOT fit inside 800 x 600 was to SPLIT the 文件夹 tab rather
-    /// than accept a scrollbar. It was not needed: 711 x 452 client is 725.67 x 489.33 DIP outer, the
-    /// frame measured as 22 x 56 physical px on this machine.
+    /// <b>The first cut of Task 6's 文件夹 tab did not fit, and the fix is recorded here because the
+    /// round has a settled ruling for that case.</b> With each of the four boxes' button strips on a
+    /// row of its own the tab measured 577.33 DIP of client, i.e. 614.67 DIP of outer window, which
+    /// breaks the PUBLISHED 800 x 600 floor. The ruling was to split the tab in two rather than accept
+    /// a scrollbar; the published sentence offers a first resort ahead of both — "Don't scroll property
+    /// pages. Instead of using scrollbars, make the property pages larger and lay out the pages
+    /// efficiently" — and docking the four strips beside the content they act on took 108.67 DIP off
+    /// the tab, which is more than the 14.67 the floor was breached by. The split stays available and
+    /// stays the answer if this tab grows again.
     /// </para>
     /// <para>
-    /// The language read is the DRAFT's, not the live config's: it is what the cards themselves label
-    /// from, and a committed 语言 change has already landed in both by the time this runs.
+    /// <b>711 was chosen over the widest tab's 784, and that was a deviation from the design's literal
+    /// instruction ("take the maximum over the six"), taken for a stated reason.</b> 784 was 文件夹's
+    /// DESIRED width in Task 2, and what wanted it was one wrapping description line — the row cards'
+    /// subtitle class carried <c>TextWrapping="Wrap"</c>, and <c>FoldersCard</c>'s remarks recorded it
+    /// wrapping to two and three lines on the page the card came from, at the app's floor, as intended
+    /// behaviour. (That class was deleted in Task 6 with the rest of the row grammar; the wrapping
+    /// lines it describes are stated locally on the two folder help lines now, and the argument is
+    /// recorded rather than re-asserted.) Adopting 784 would have put the OUTER window at 798.67 DIP
+    /// against the PUBLISHED 800 x 600 floor — compliant by 1.33 DIP, i.e. a dialog that exactly fills
+    /// an 800-pixel screen. 711 is the width the settings surface's CONTENT PANE has had since Round 4
+    /// and that four measurement records in this tree rest on, and it gives each card MORE room than
+    /// the page did, not less: the page inset <c>CardStack</c> by 22 a side (667 DIP of card), this
+    /// dialog insets 11 a side and the vendored <c>TabControl</c> template takes 4 more (685 DIP of
+    /// card). Nothing that fitted before can clip now.
+    /// </para>
+    /// <para>
+    /// 711 x 479 client is 725.67 x 516.33 DIP outer, the frame measured as 22 x 56 physical px on this
+    /// machine — 83.67 DIP of headroom under the PUBLISHED 600.
+    /// </para>
+    /// <para>
+    /// <b>The language read is the COMMITTED one, and since Round 8, Task 6 that is true of every card
+    /// on this surface too.</b> It read the draft's until then, on the argument that the cards labelled
+    /// from the draft and a committed 语言 change lands in both before this runs — the second half is
+    /// still true (<see cref="SettingsCommit.ApplyAsync"/> writes and re-seeds BEFORE it raises
+    /// <c>SettingsChanged</c>), which is exactly why the committed value is the safe one. The first
+    /// half was the defect: between a 语言 pick and the commit that lands it, nothing on this surface
+    /// re-labels, so the draft's language is never what is on screen — and a card that generated a
+    /// string from it mid-edit handed it to <see cref="MessageBox"/>, which resolves its own
+    /// 确定/取消 captions from <see cref="ConfigService"/> and cannot be told otherwise.
+    /// <see cref="ConfirmDiscardAsync"/> was corrected for that in Task 2 and was the only call site
+    /// that had been; Task 6 made the rule uniform instead of case by case.
     /// </para>
     /// </remarks>
     public void ApplyText()
     {
-        var lang = _draft.Working.General.Language;
+        var lang = _config.Config.General.Language;
 
         Title = AppLanguage.Text("Options", lang);
 
