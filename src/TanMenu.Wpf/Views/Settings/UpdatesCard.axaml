@@ -1,65 +1,23 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="TanMenu.Wpf.Views.Settings.UpdatesCard"
-             FontSize="{DynamicResource FontSizeBody}">
-  <!-- ══ 更新 — one label, one value, and the actions under it ═══════════════════════════════
-       ROUND 8, TASK 6 REPLACED THE ROW GRAMMAR. See AppearanceCard.axaml's header for the argument,
-       the published citations for 5 / 7 / 11 / 3, and why every card root states the FontSize above.
-
-       THIS TAB IS THE CLEANEST FIT THE NEW GRAMMAR HAS. 更新状态 is a label and the status sentence is
-       its VALUE — a read-only value beside a label is exactly what a Windows 7 property sheet's
-       two-column grid is for, and it is what the card grammar could not express: the sentence used
-       to be the row's SUBTITLE under a static title, i.e. a paragraph in the place where a
-       description goes. Round 5 had already had to invent that static title (AppLanguage's
-       UpdateStatusTitle) because the previous build wore the dynamic sentence itself as the card's
-       TITLE — "正在等待检查更新。" is not a heading. Both problems are the same problem, and a
-       label-and-value row is its answer.
-
-       THE PROGRESS BAR SITS UNDER THE VALUE, in column 1, IsVisible="False" except while
-       downloading. That is why the vertical rhythm on this tab is a per-element Margin rather than
-       Grid.RowSpacing: RowSpacing is charged between row definitions even when a row's only child is
-       collapsed, and a collapsed child contributes no margin at all. Its Height was 4 until Round 7,
-       Task 5 gave ProgressBar an Aero theme whose shape 4 DIP cannot hold — two nested 1 px frames
-       (radius 3 outside, radius 2 inside) eat two rows top and bottom, leaving exactly 0 for the
-       indicator between them. 15 is PUBLISHED rather than chosen: vis-layout gives a progress bar as
-       "160 or 355 x 15 relative pixels". The local value is still needed even though 15 is above the
-       theme's own MinHeight of 13, because column 1 stretches it and it would otherwise sit at 13.
-
-       THE CHANNEL HELP LINE SPANS BOTH COLUMNS at the bottom, 11 below the buttons — PUBLISHED,
-       "Between unrelated controls — 7 / 11". It explains the update CHANNEL (portable / Store /
-       unavailable), not the status above it, which is why it is a separate block rather than a third
-       line of the value. It arrived here in Round 5, when 当前版本 was deleted from this group: that
-       was an information card with no control sitting in an action group, and its version line would
-       have been shown a second time one card apart once 关于 joined the settings surface, so the
-       version moved to AboutCard (now Dialogs/AboutWindow) and the help line moved here.
-
-       THE PAGE'S ONLY &#xE946; WENT WITH THAT CARD, and Round 8, Task 6 removed this tab's remaining
-       glyph too — the row icons are gone with the card grammar. Controls/InfoBar.axaml still ships
-       both glyphs; do not re-use them here. -->
-  <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="5"
-        Margin="11">
-
-    <TextBlock Grid.Row="0" Grid.Column="0" x:Name="UpdateStatusLabel" VerticalAlignment="Center" />
-    <TextBlock Grid.Row="0" Grid.Column="1" x:Name="UpdateStatusText" TextWrapping="Wrap"
-               VerticalAlignment="Center" />
-
-    <ProgressBar Grid.Row="1" Grid.Column="1" x:Name="UpdateProgress" Height="15"
-                 Minimum="0" Maximum="100" IsVisible="False" Margin="0,3,0,0" />
-
-    <!-- CheckUpdateBtn (检查更新) is a neutral, idempotent check; UpdateActionBtn (下载更新/重启更新)
-         is the forward-moving action once an update is available, and used to carry TmAccentButton
-         to say so. Round 7, Task 3 deleted that theme — Aero has one command button, not a neutral
-         one and an accent one — so both are TmButton now. What still separates them is that
-         UpdateActionBtn is IsVisible="False" until there is something to do, which was always the
-         stronger of the two signals. -->
-    <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Spacing="7"
-                Margin="0,7,0,0">
-      <Button x:Name="CheckUpdateBtn" Theme="{StaticResource TmButton}" Click="OnCheckUpdateClick" />
-      <Button x:Name="UpdateActionBtn" Theme="{StaticResource TmButton}"
-              Click="OnUpdateActionClick" IsVisible="False" />
-    </StackPanel>
-
-    <TextBlock Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" x:Name="UpdateHelpText"
-               TextWrapping="Wrap" Margin="0,11,0,0" />
-  </Grid>
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             HorizontalContentAlignment="Stretch"
+             x:Class="TanMenu.Wpf.Views.Settings.UpdatesCard">
+  <ui:FASettingsExpander x:Name="UpdateStatusRow" IconSource="Sync">
+    <ui:FASettingsExpander.Header>
+      <TextBlock x:Name="UpdateStatusLabel" />
+    </ui:FASettingsExpander.Header>
+    <ui:FASettingsExpander.Footer>
+      <StackPanel Spacing="8" HorizontalAlignment="Right">
+        <ProgressBar x:Name="UpdateProgress"
+                     Width="220"
+                     Minimum="0" Maximum="100"
+                     IsVisible="False" />
+        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+          <Button x:Name="CheckUpdateBtn" Click="OnCheckUpdateClick" />
+          <Button x:Name="UpdateActionBtn" Click="OnUpdateActionClick" IsVisible="False" />
+        </StackPanel>
+      </StackPanel>
+    </ui:FASettingsExpander.Footer>
+  </ui:FASettingsExpander>
 </UserControl>

@@ -61,13 +61,25 @@ public static class WindowPlacement
         PlacementRect workArea,
         double minWidth,
         double minHeight,
-        double bottomGap)
+        double bottomGap,
+        double frameWidth = 0,
+        double frameHeight = 0)
     {
-        var w = Clamp(width, Math.Min(minWidth, workArea.Width), workArea.Width);
-        var h = Clamp(height, Math.Min(minHeight, workArea.Height), workArea.Height);
+        frameWidth = Math.Clamp(frameWidth, 0, workArea.Width);
+        frameHeight = Math.Clamp(frameHeight, 0, workArea.Height);
 
-        var left = workArea.Left + (workArea.Width - w) / 2;
-        var top = Clamp(workArea.Bottom - bottomGap - h, workArea.Top, workArea.Bottom - h);
+        var maxClientWidth = workArea.Width - frameWidth;
+        var maxClientHeight = workArea.Height - frameHeight;
+        var w = Clamp(width, Math.Min(minWidth, maxClientWidth), maxClientWidth);
+        var h = Clamp(height, Math.Min(minHeight, maxClientHeight), maxClientHeight);
+
+        var outerWidth = w + frameWidth;
+        var outerHeight = h + frameHeight;
+        var left = workArea.Left + (workArea.Width - outerWidth) / 2;
+        var top = Clamp(
+            workArea.Bottom - bottomGap - outerHeight,
+            workArea.Top,
+            workArea.Bottom - outerHeight);
 
         return new PlacementRect(left, top, w, h);
     }
@@ -93,7 +105,7 @@ public static class WindowPlacement
     /// 23 <c>WindowPlacementTests</c> pass both terms in as parameters.</param>
     /// <param name="chromeHeight">Everything above the content that still counts toward the window's own
     /// Height: the caption band plus the classic menu band
-    /// (<c>WindowHost.ChromeHeightDip</c>, which is <c>TitleStripHeightDip + MenuBandHeightDip</c>).
+    /// (<c>WindowHost.ChromeHeightDip</c>, which is the title strip, menu band and Aero bottom edge).
     /// "Title strip" is what this said until Round 7 — that was a client-side element Task 1 deleted
     /// outright — and "plus whatever top border the content pane carries" is what it said until
     /// Round 8, Task 3 deleted that border with the pane it separated from.</param>
@@ -112,10 +124,12 @@ public static class WindowPlacement
         PlacementRect workArea,
         double minWidth,
         double minHeight,
-        double bottomGap) =>
+        double bottomGap,
+        double frameWidth = 0,
+        double frameHeight = 0) =>
         ResolveBottomCentred(
             contentWidth + chromeWidth, contentHeight + chromeHeight,
-            workArea, minWidth, minHeight, bottomGap);
+            workArea, minWidth, minHeight, bottomGap, frameWidth, frameHeight);
 
     /// <summary>
     /// True when two resolved placements describe the same window rectangle to within

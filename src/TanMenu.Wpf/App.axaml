@@ -1,78 +1,8 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:sty="using:FluentAvalonia.Styling"
              x:Class="TanMenu.Wpf.App">
-
-  <!--
-    Four style layers, in this order:
-
-      1. FluentTheme        — whatever layer 2 has NOT templated, which since Round 7 Task 9 means:
-                              the PathIcon this app's spinner and combo chevrons are drawn with, the
-                              MenuFlyout presenter every text box's context menu is drawn in,
-                              MessageBoxWindow's own Window chrome (MainWindow's caption is
-                              hand-drawn since Round 7 Task 1 and is therefore NOT Fluent's any
-                              more), tooltips, IME, and the app-wide AdornerLayer focus adorner
-                              Control.OnGotFocus falls back to when a template declares no
-                              FocusAdorner of its own. Checkboxes, scroll bars, toggle switches,
-                              lists and buttons left this list in Task 3; the two text boxes, the
-                              每列个数 NumericUpDown and the ButtonSpinner inside it left it in Task 4;
-                              the two progress bars in Task 5; the three 外观 ComboBoxes and their
-                              drop-down rows in Task 6; the 设置 page's six group boxes in Task 9.
-                              Avalonia's own theme is Fluent 1 vocabulary, which layers 2 and 3
-                              re-proportion.
-      2. Aero/AeroResources — the vendored Windows 7 Aero layer. Task 2 put in the colours: 168
-                              <Color> keys per variant and the 110-key brush dictionary built from
-                              them, plus the metrics, referenced by nothing, so that a mistake in it
-                              would surface as a build error rather than as a silently odd-looking
-                              app. Tasks 3 to 6 and Task 9 spent them: fourteen control-theme
-                              dictionaries are merged in now, plus one StyleInclude for the AVMAP
-                              style sheet. 64 keys, of which 33 are not Aero-prefixed — fifteen
-                              {x:Type X} ControlTheme keys, which is how a ControlTheme auto-applies
-                              at all, the one opt-in "GroupBox" key Task 9's group boxes name
-                              explicitly, eleven ButtonSpinner geometry-and-converter keys, and six
-                              Fluent key names redefined. That file is the authority on its own
-                              contents, on exactly which controls those fifteen keys reach, and on
-                              why it sits at this position in the list.
-      3. Shell/Tokens       — TanMenu's design tokens, Light + Dark, plus the Aero caption brushes
-                              MainWindow's replaced WindowDrawnDecorations template reads. Also
-                              overrides the three FluentTheme keys this app redefines for Avalonia's
-                              own templates: ControlCornerRadius, OverlayCornerRadius and
-                              ContentControlThemeFontFamily, which pull the standard controls into
-                              this app's proportions and typography. That seam works because this
-                              file is listed AFTER FluentTheme below and Application.Styles is
-                              searched last-first — Tokens.axaml is the authority on it and carries
-                              the measurements; do not re-derive it here.
-      4. Shell/Launcher     — the launcher's own dialect. Every rule but one is an x:Key'd
-                              ControlTheme or a .tm-* class selector, so it is opt-in: what asks for
-                              it by class gets it and nothing else does. Application.Styles reaches
-                              every window, so "opt-in" is the whole mechanism rather than a scoping
-                              one — the Options dialog and the About box (Round 8, Tasks 2 and 4)
-                              host the settings cards and DO carry tm- classes.
-                              THE ONE EXCEPTION IS THE FOCUS RECTANGLE, added in Round 8's review
-                              round: a bare Selector="Button" setting FocusAdorner and nothing else.
-                              Opt-in was exactly what was wrong with it — the three dialogs' command
-                              buttons opt into no ControlTheme, so they kept falling back to layer
-                              1's Windows 11 two-ring adorner, measured. That file's own header
-                              carries the account. Dialogs/MessageBoxWindow asks for nothing else
-                              here and is otherwise still untouched by this entry.
-
-    THE ORDER OF 2 AND 3 IS THE POINT, not incidental. Application.Styles is searched last-first
-    (Avalonia.Styling.Styles.TryGetResource counts DOWN from Count-1), so a key defined in a LATER
-    entry wins. Aero after Fluent means Aero beats Fluent; Tokens after Aero means this app's own
-    overrides still beat Aero. ContentControlThemeFontFamily is the one that would bite: the
-    upstream Aero metrics file set it to a bundled font with no CJK coverage, which would render
-    this app's Chinese item names as tofu. That line is deleted on vendoring AND this ordering keeps
-    Tokens' value on top of it.
-
-    RequestedThemeVariant is deliberately NOT pinned here any more. The retro theme was a fixed
-    light palette, so the old build had to force Light or the OS could put dark Fluent chrome around
-    a light launcher. Both the token layer and the vendored Aero layer have both variants, so the
-    variant is a user setting (general.appearance) applied at startup by Services/AppTheme.
-  -->
   <Application.Styles>
-    <FluentTheme />
-    <StyleInclude Source="avares://TanMenu.Wpf/Themes/Aero/AeroResources.axaml" />
-    <StyleInclude Source="avares://TanMenu.Wpf/Themes/Shell/Tokens.axaml" />
-    <StyleInclude Source="avares://TanMenu.Wpf/Themes/Shell/Launcher.axaml" />
+    <sty:FluentAvaloniaTheme />
   </Application.Styles>
-
 </Application>

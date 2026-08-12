@@ -60,8 +60,8 @@ public partial class AboutCard : UserControl, ISettingsCard
         // box printed 关于 a second time, two lines under the caption that already said it. Round 8,
         // Task 6 deleted the box and this line with it; the window's title is the one statement of
         // the name now. See the XAML.
-        PublisherText.Text = AppLanguage.Text("AboutPublisher", lang);
-        VersionLine.Text = AppLanguage.Format("CurrentVersion", lang, AppIdentity.Version);
-        CopyrightLine.Text = AppIdentity.Copyright;
+        var publisher = AppLanguage.Text("AboutPublisher", lang);
+        var version = AppLanguage.Format("CurrentVersion", lang, AppIdentity.Version);
+        AboutRow.Description = $"{publisher}\n{version}\n{AppIdentity.Copyright}";
     }
 }

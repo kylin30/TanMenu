@@ -11,6 +11,7 @@ using TanMenu.Wpf.Dialogs;
 using TanMenu.Wpf.Services;
 using TanMenu.Wpf.ViewModels;
 using TanMenu.Wpf.Views.Settings;
+using FluentAvalonia.UI.Controls;
 
 namespace TanMenu.Wpf.Views;
 
@@ -70,6 +71,7 @@ public partial class AppPage : UserControl, IDisposable
         // is resolved by an async call (a COM query here, an HTTP check for the update banner) that can
         // easily outlast it.
         PinNotice.PropertyChanged += OnPinNoticePropertyChanged;
+        PinNotice.CloseButtonClick += OnPinNoticeDismissed;
         _viewModel.PropertyChanged += OnViewModelPropertyChangedForNotice;
     }
 
@@ -90,7 +92,7 @@ public partial class AppPage : UserControl, IDisposable
 
     private void OnPinNoticePropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
     {
-        if (e.Property == InfoBar.IsOpenProperty)
+        if (e.Property == FAInfoBar.IsOpenProperty)
             NoticeVisibilityChanged?.Invoke();
     }
 
@@ -126,6 +128,7 @@ public partial class AppPage : UserControl, IDisposable
         _disposed = true;
         _events.LauncherShown -= OnLauncherShown;
         PinNotice.PropertyChanged -= OnPinNoticePropertyChanged;
+        PinNotice.CloseButtonClick -= OnPinNoticeDismissed;
         _viewModel.PropertyChanged -= OnViewModelPropertyChangedForNotice;
         _viewModel.Dispose();
     }
@@ -174,10 +177,10 @@ public partial class AppPage : UserControl, IDisposable
 
             var lang = cfg.Config.General.Language;
 
+            PinNotice.Title = AppLanguage.Text("TaskbarPinTitle", lang);
             PinNotice.Message = AppLanguage.Text("TaskbarPinRequiredPrompt", lang);
             PinNowButton.Content = AppLanguage.Text("PinNow", lang);
             PinNeverButton.Content = AppLanguage.Text("PinDontAskAgain", lang);
-            PinNotice.CloseButtonAutomationName = AppLanguage.Text("Dismiss", lang);
             PinNotice.IsOpen = state.Status != TaskbarPinStatus.Pinned;
         }
         catch (Exception ex)
@@ -190,7 +193,7 @@ public partial class AppPage : UserControl, IDisposable
         }
     }
 
-    private void OnPinNoticeDismissed(object? sender, EventArgs e) => PinNotice.IsOpen = false;
+    private void OnPinNoticeDismissed(FAInfoBar sender, EventArgs e) => PinNotice.IsOpen = false;
 
     /// <summary>不再提示 is an immediate config write, and since Round 8, Task 1 it is the ONLY caller
     /// of <see cref="SettingsWrite.CommitAsync"/> left — the settings card groups moved to a delayed
@@ -441,15 +444,9 @@ public partial class AppPage : UserControl, IDisposable
             _viewModel.PlayHoverSound();
     }
 
-    private void OnGroupTitlePressed(object? sender, PointerPressedEventArgs e)
+    private void OnGroupTitleClick(object? sender, RoutedEventArgs e)
     {
-        // Primary button only. PointerPressed fires for EVERY button, so without this guard a
-        // right-click on a section heading opened Explorer.
-        if (sender is not Control control ||
-            !e.GetCurrentPoint(control).Properties.IsLeftButtonPressed)
-            return;
-
-        if (control.DataContext is MenuGroupVm group)
+        if ((sender as Control)?.DataContext is MenuGroupVm group)
             _viewModel.OpenGroupFolder(group);
     }
 

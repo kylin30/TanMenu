@@ -23,7 +23,7 @@ namespace TanMenu.Wpf.Views.Settings;
 /// </para>
 /// <para>
 /// <b><see cref="IsDirty"/> is COMPUTED, never flagged.</b> <see cref="Revalidate"/> walks the same
-/// eleven named properties <see cref="CopyOnto"/> writes and compares <see cref="Working"/> against the
+/// thirteen named properties <see cref="CopyOnto"/> writes and compares <see cref="Working"/> against the
 /// live config, then ORs in the one non-config desire (<see cref="AutoStartDesired"/>). That is why the
 /// cards call <see cref="Revalidate"/> rather than a <c>MarkDirty()</c>: flipping a check box and
 /// flipping it back re-disables 应用, and there is no second source of truth to get out of step.
@@ -70,7 +70,7 @@ internal sealed class SettingsDraft
     /// <summary>What <see cref="IAutoStartService.IsEnabled"/> reported when this draft was seeded, or
     /// null if that read threw (locked hive, policy). <see cref="IsDirty"/> compares
     /// <see cref="AutoStartDesired"/> against this, so toggling the row and toggling it back re-disables
-    /// 应用 exactly as it does for the ten config-backed rows.</summary>
+    /// 应用 exactly as it does for the twelve config-backed rows.</summary>
     public bool? AutoStartAtSeed { get; private set; }
 
     /// <summary>Whether anything on the surface differs from what is committed. Recomputed by
@@ -80,6 +80,10 @@ internal sealed class SettingsDraft
     /// <summary>Raised when <see cref="IsDirty"/> MOVES (not on every <see cref="Revalidate"/>). It
     /// exists because 应用 lives in a different visual tree from the cards that dirty the draft.</summary>
     public event Action? DirtyChanged;
+
+    /// <summary>Raised after every settings edit, including edits made while the draft is already
+    /// dirty. The single-window settings page uses this to debounce immediate persistence.</summary>
+    public event Action? Changed;
 
     private SettingsDraft(ConfigService live, IAutoStartService autoStart)
     {
@@ -121,15 +125,17 @@ internal sealed class SettingsDraft
     {
         var dirty = DiffersFrom(_live.Config)
                     || (AutoStartDesired is { } desired && desired != AutoStartAtSeed);
-        if (dirty == IsDirty)
-            return;
+        if (dirty != IsDirty)
+        {
+            IsDirty = dirty;
+            DirtyChanged?.Invoke();
+        }
 
-        IsDirty = dirty;
-        DirtyChanged?.Invoke();
+        Changed?.Invoke();
     }
 
     /// <summary>
-    /// Copy the eleven named properties onto <paramref name="live"/> and return the undo actions that
+    /// Copy the thirteen named properties onto <paramref name="live"/> and return the undo actions that
     /// put the previous values back, in case the save that follows throws.
     /// </summary>
     /// <remarks>
@@ -154,6 +160,8 @@ internal sealed class SettingsDraft
         Capture(undo, lg.ColButtonCount, wg.ColButtonCount, v => lg.ColButtonCount = v);
         Capture(undo, lg.AutoClose, wg.AutoClose, v => lg.AutoClose = v);
         Capture(undo, lg.TopMost, wg.TopMost, v => lg.TopMost = v);
+        Capture(undo, lg.HoverSoundEnabled, wg.HoverSoundEnabled, v => lg.HoverSoundEnabled = v);
+        Capture(undo, lg.ClickSoundEnabled, wg.ClickSoundEnabled, v => lg.ClickSoundEnabled = v);
         Capture(undo, lg.GlobalHotkeyEnabled, wg.GlobalHotkeyEnabled, v => lg.GlobalHotkeyEnabled = v);
         Capture(undo, lg.GlobalHotkey, wg.GlobalHotkey, v => lg.GlobalHotkey = v);
         Capture(undo, lg.ShowDefaultTools, wg.ShowDefaultTools, v => lg.ShowDefaultTools = v);
@@ -177,7 +185,7 @@ internal sealed class SettingsDraft
         undo.Add(() => assign(previous));
     }
 
-    /// <summary>The eleven-property comparison <see cref="Revalidate"/> runs, in the same order and over
+    /// <summary>The thirteen-property comparison <see cref="Revalidate"/> runs, in the same order and over
     /// the same properties <see cref="CopyOnto"/> writes.</summary>
     private bool DiffersFrom(AppConfig live)
     {
@@ -190,6 +198,8 @@ internal sealed class SettingsDraft
             lg.ColButtonCount != wg.ColButtonCount ||
             lg.AutoClose != wg.AutoClose ||
             lg.TopMost != wg.TopMost ||
+            lg.HoverSoundEnabled != wg.HoverSoundEnabled ||
+            lg.ClickSoundEnabled != wg.ClickSoundEnabled ||
             lg.GlobalHotkeyEnabled != wg.GlobalHotkeyEnabled ||
             !string.Equals(lg.GlobalHotkey, wg.GlobalHotkey, StringComparison.Ordinal) ||
             lg.ShowDefaultTools != wg.ShowDefaultTools ||

@@ -52,6 +52,19 @@ public class WindowPlacementTests
     }
 
     [Fact]
+    public void ResolveBottomCentred_IncludesTheThemeWindowFrameInTheAnchor()
+    {
+        var r = WindowPlacement.ResolveBottomCentred(
+            1000, 640, Work, 760, 520, Gap,
+            frameWidth: 14, frameHeight: 37);
+
+        Assert.Equal(453, r.Left);
+        Assert.Equal(355, r.Top);
+        Assert.Equal(Work.Left + Work.Width / 2, r.Left + (r.Width + 14) / 2);
+        Assert.Equal(Work.Bottom - Gap, r.Top + r.Height + 37);
+    }
+
+    [Fact]
     public void ResolveBottomCentred_ZeroGap_SitsFlushOnTheWorkAreaBottom()
     {
         // Not what the app ships (see WindowHost.BottomGapDip for why 8 and not 0), but the degenerate

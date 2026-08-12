@@ -1,0 +1,75 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:settings="using:TanMenu.Wpf.Views.Settings"
+             x:Class="TanMenu.Wpf.Views.SettingsPage">
+  <ScrollViewer x:Name="SettingsScroll"
+                MinWidth="680"
+                MaxWidth="820"
+                MaxHeight="700"
+                Margin="24,8,24,24"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Top"
+                HorizontalScrollBarVisibility="Disabled"
+                VerticalScrollBarVisibility="Auto">
+    <Grid Width="{Binding #SettingsScroll.Viewport.Width}"
+          ColumnDefinitions="*,16">
+      <StackPanel Grid.Column="0"
+                  HorizontalAlignment="Stretch"
+                  Spacing="20">
+      <StackPanel HorizontalAlignment="Stretch"
+                  Spacing="8">
+        <TextBlock x:Name="AppearanceHeading"
+                   FontSize="18"
+                   FontWeight="SemiBold" />
+        <settings:AppearanceCard x:Name="AppearanceSettings"
+                                 HorizontalAlignment="Stretch" />
+      </StackPanel>
+
+      <StackPanel HorizontalAlignment="Stretch"
+                  Spacing="8">
+        <TextBlock x:Name="BehaviorHeading"
+                   FontSize="18"
+                   FontWeight="SemiBold" />
+        <settings:BehaviorCard x:Name="BehaviorSettings"
+                               HorizontalAlignment="Stretch" />
+      </StackPanel>
+
+      <StackPanel HorizontalAlignment="Stretch"
+                  Spacing="8">
+        <TextBlock x:Name="FoldersHeading"
+                   FontSize="18"
+                   FontWeight="SemiBold" />
+        <settings:FoldersCard x:Name="FolderSettings"
+                              HorizontalAlignment="Stretch" />
+      </StackPanel>
+
+      <StackPanel HorizontalAlignment="Stretch"
+                  Spacing="8">
+        <TextBlock x:Name="ToolsHeading"
+                   FontSize="18"
+                   FontWeight="SemiBold" />
+        <settings:ToolsCard x:Name="ToolSettings"
+                            HorizontalAlignment="Stretch" />
+      </StackPanel>
+
+      <StackPanel HorizontalAlignment="Stretch"
+                  Spacing="8">
+        <TextBlock x:Name="UpdatesHeading"
+                   FontSize="18"
+                   FontWeight="SemiBold" />
+        <settings:UpdatesCard x:Name="UpdateSettings"
+                              HorizontalAlignment="Stretch" />
+      </StackPanel>
+
+      <StackPanel HorizontalAlignment="Stretch"
+                  Spacing="8">
+        <TextBlock x:Name="AboutHeading"
+                   FontSize="18"
+                   FontWeight="SemiBold" />
+        <settings:AboutCard x:Name="AboutSettings"
+                            HorizontalAlignment="Stretch" />
+      </StackPanel>
+      </StackPanel>
+    </Grid>
+  </ScrollViewer>
+</UserControl>

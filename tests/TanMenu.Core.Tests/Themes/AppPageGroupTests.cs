@@ -6,83 +6,170 @@ using Xunit;
 
 namespace TanMenu.Core.Tests.Themes;
 
-/// <summary>
-/// Guards the one thing Round 6, item 4 (应用页面每个分类增加一个面板样式) can get silently wrong.
-/// </summary>
-/// <remarks>
-/// <para>
-/// Item 4 wrapped each category on the 应用 page in a <c>Border Classes="tm-group-panel"</c> and moved
-/// <c>IsVisible="{Binding HasVisibleItems}"</c> from the inner <c>StackPanel Classes="tm-group"</c>
-/// onto that Border. The move is not tidying. The reconnaissance MEASURED what happens when a filter
-/// hides a category: the <c>ItemsControl</c>'s generated container stays visible at zero size and only
-/// the bound child collapses — with the search box set to "Steam", four of the five group containers
-/// reported an empty UIA rect while the items panel still measured 187.33 DIP, the surviving group's
-/// 91.33 plus four inter-category gaps. So a Border added OUTSIDE a binding that stayed on the
-/// StackPanel would paint its fill, its hairline and its 12/8 padding around nothing at all: every
-/// filtered-out category would render as an empty bordered box 22 DIP wide.
-/// </para>
-/// <para>
-/// A source test, for the same reason <see cref="ShellTokenTests"/> and <see cref="SettingsRowTests"/>
-/// are: the failure is invisible until somebody types in the search box, no capture taken on a resting
-/// page would show it, and nothing under <c>tests/</c> can drive Avalonia layout (every test here runs
-/// off the UI thread). Item 4 is the only one of Round 6's four items that adds a test, and this is why.
-/// </para>
-/// </remarks>
+/// <summary>Guards the responsive, vertically scrolling launcher layout.</summary>
 public class AppPageGroupTests
 {
-    private const string PanelClass = "tm-group-panel";
-    private const string GroupClass = "tm-group";
-    private const string VisibilityBinding = "{Binding HasVisibleItems}";
+    private static readonly XName XamlName =
+        XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml");
 
-    private static XDocument AppPage()
-    {
-        var path = Path.Combine(RepoRoot(), "src", "TanMenu.Wpf", "Views", "AppPage.axaml");
-        Assert.True(File.Exists(path), "Views/AppPage.axaml is missing: " + path);
-        return XDocument.Load(path);
-    }
-
-    /// <summary>Walk up from the test assembly until the solution file appears.</summary>
     private static string RepoRoot()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
         while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "TanMenu.slnx")))
             dir = dir.Parent;
-
-        Assert.True(dir is not null, "Could not locate the repository root (TanMenu.slnx) from " +
-                                     AppContext.BaseDirectory);
+        Assert.NotNull(dir);
         return dir!.FullName;
     }
 
-    private static bool HasClass(XElement e, string cls) =>
-        ((string?)e.Attribute("Classes") ?? string.Empty)
-            .Split(' ', StringSplitOptions.RemoveEmptyEntries)
-            .Contains(cls, StringComparer.Ordinal);
+    private static XDocument AppPage() => XDocument.Load(Path.Combine(
+        RepoRoot(), "src", "TanMenu.Wpf", "Views", "AppPage.axaml"));
 
     [Fact]
-    public void GroupPanel_CarriesTheVisibilityBinding()
+    public void GroupsUseHorizontalThemeCardsThatCollapseWhenFilteredOut()
     {
         var doc = AppPage();
+        var section = Assert.Single(doc.Descendants(), e =>
+            e.Name.LocalName == "Border" &&
+            (string?)e.Attribute("IsVisible") == "{Binding HasVisibleItems}");
+        Assert.Null(section.Attribute("MinWidth"));
+        Assert.Null(section.Attribute("Width"));
+        Assert.Equal("{DynamicResource CardBackgroundFillColorDefaultBrush}",
+            (string?)section.Attribute("Background"));
+        Assert.Equal("{DynamicResource CardStrokeColorDefaultBrush}",
+            (string?)section.Attribute("BorderBrush"));
+        Assert.Equal("12", (string?)section.Attribute("CornerRadius"));
+        Assert.Equal("0,0,0,12", (string?)section.Attribute("Padding"));
 
-        var panels = doc.Descendants()
-            .Where(e => e.Name.LocalName == "Border" && HasClass(e, PanelClass))
-            .ToList();
+        var header = Assert.Single(section.Descendants(), e =>
+            e.Name.LocalName == "Border" &&
+            (string?)e.Attribute("Background") == "{DynamicResource CardBackgroundFillColorSecondaryBrush}");
+        Assert.Equal("0,0,0,1", (string?)header.Attribute("BorderThickness"));
+        Assert.Equal("12,12,0,0", (string?)header.Attribute("CornerRadius"));
 
-        Assert.True(panels.Count == 1,
-            $"AppPage.axaml must declare exactly one <Border Classes=\"{PanelClass}\"> — the category " +
-            $"panel inside the MenuGroupVm DataTemplate — but it declares {panels.Count}.");
+        var groups = doc.Descendants().Single(e =>
+            e.Name.LocalName == "ItemsControl" &&
+            (string?)e.Attribute("ItemsSource") == "{Binding Groups}");
+        var panel = groups.Descendants().First(e =>
+            e.Name.LocalName == "StackPanel" &&
+            (string?)e.Attribute("Spacing") == "16");
+        Assert.Equal("Horizontal", (string?)panel.Attribute("Orientation"));
+    }
 
-        Assert.Equal(VisibilityBinding, (string?)panels[0].Attribute("IsVisible"));
+    [Fact]
+    public void TilesBindConfiguredColumnsIntoHorizontalGroupsOfVerticalLists()
+    {
+        var doc = AppPage();
+        var columns = Assert.Single(doc.Descendants(), e =>
+            e.Name.LocalName == "ItemsControl" &&
+            (string?)e.Attribute("ItemsSource") == "{Binding Columns}");
+        var columnPanel = columns.Descendants().First(e =>
+            e.Name.LocalName == "StackPanel" &&
+            (string?)e.Attribute("Orientation") == "Horizontal");
+        Assert.Equal("8", (string?)columnPanel.Attribute("Spacing"));
 
-        var groupsWithVisibility = doc.Descendants()
-            .Where(e => e.Name.LocalName == "StackPanel"
-                        && HasClass(e, GroupClass)
-                        && e.Attribute("IsVisible") is not null)
-            .ToList();
+        var tiles = Assert.Single(columns.Descendants(), e =>
+            e.Name.LocalName == "ItemsControl" &&
+            (string?)e.Attribute("ItemsSource") == "{Binding Items}");
+        Assert.Null(tiles.Attribute("Width"));
+        var tilePanel = Assert.Single(tiles.Descendants(), e =>
+            e.Name.LocalName == "StackPanel" &&
+            (string?)e.Attribute("Orientation") == "Vertical");
+        Assert.Equal("6", (string?)tilePanel.Attribute("Spacing"));
 
-        Assert.True(groupsWithVisibility.Count == 0,
-            $"IsVisible must live on the <Border Classes=\"{PanelClass}\">, never on the " +
-            $"<StackPanel Classes=\"{GroupClass}\"> inside it. A filtered-out category whose Border stays " +
-            "visible renders as an empty bordered box, because the ItemsControl's generated container " +
-            "stays visible at zero size — measured, not hypothetical.");
+        var tile = Assert.Single(tiles.Descendants(), e => e.Name.LocalName == "Button");
+        Assert.Equal("{DynamicResource TransparentButton}", (string?)tile.Attribute("Theme"));
+        Assert.Equal("48", (string?)tile.Attribute("MinHeight"));
+        Assert.Equal("8,6", (string?)tile.Attribute("Padding"));
+        Assert.Equal("{Binding Name}", (string?)tile.Attribute("ToolTip.Tip"));
+        Assert.Equal("{Binding Name}", (string?)tile.Attribute("AutomationProperties.Name"));
+        Assert.Null(tile.Attribute("Width"));
+        Assert.Equal("Stretch", (string?)tile.Attribute("HorizontalAlignment"));
+        Assert.Equal("Left", (string?)tile.Attribute("HorizontalContentAlignment"));
+        var content = Assert.Single(tile.Descendants(), e => e.Name.LocalName == "Grid");
+        Assert.Equal("36,Auto", (string?)content.Attribute("ColumnDefinitions"));
+        var icon = Assert.Single(tile.Descendants(), e => e.Name.LocalName == "Image");
+        Assert.Equal("28", (string?)icon.Attribute("Width"));
+        Assert.Equal("28", (string?)icon.Attribute("Height"));
+        var iconPlate = icon.Parent!;
+        Assert.Equal("Border", iconPlate.Name.LocalName);
+        Assert.Equal("36", (string?)iconPlate.Attribute("Width"));
+        Assert.Equal("36", (string?)iconPlate.Attribute("Height"));
+        Assert.Equal("{DynamicResource ControlFillColorSecondaryBrush}",
+            (string?)iconPlate.Attribute("Background"));
+    }
+
+    [Fact]
+    public void ClickableGroupTitlesUseAnAccessibleButton()
+    {
+        var doc = AppPage();
+        var titleButton = Assert.Single(doc.Descendants(), e =>
+            e.Name.LocalName == "Button" &&
+            (string?)e.Attribute("Click") == "OnGroupTitleClick");
+
+        Assert.Equal("{Binding IsDirectoryClickable}", (string?)titleButton.Attribute("IsVisible"));
+        Assert.Equal("{Binding TitleTooltip}", (string?)titleButton.Attribute("AutomationProperties.Name"));
+        Assert.Equal("32", (string?)titleButton.Attribute("Width"));
+        Assert.Equal("32", (string?)titleButton.Attribute("Height"));
+        Assert.Contains(titleButton.Descendants(), e =>
+            e.Name.LocalName == "FASymbolIcon" && (string?)e.Attribute("Symbol") == "ChevronRight");
+        Assert.DoesNotContain(titleButton.Descendants(), e =>
+            e.Name.LocalName == "FASymbolIcon" && (string?)e.Attribute("Symbol") == "OpenFolder");
+        Assert.DoesNotContain(doc.Descendants(), e =>
+            (string?)e.Attribute("PointerPressed") == "OnGroupTitlePressed");
+    }
+
+    [Fact]
+    public void GroupTitlesUseCompactHeadingSize()
+    {
+        var doc = AppPage();
+        var titles = doc.Descendants().Where(e =>
+            e.Name.LocalName == "TextBlock" &&
+            (string?)e.Attribute("Text") == "{Binding DirectoryName}");
+
+        var title = Assert.Single(titles);
+        Assert.Equal("16", (string?)title.Attribute("FontSize"));
+        Assert.Equal("Left", (string?)title.Attribute("HorizontalAlignment"));
+    }
+
+    [Fact]
+    public void GroupHeadersUseThemeTokenIconPlatesForFolderAndBuiltInGroups()
+    {
+        var doc = AppPage();
+        var folder = Assert.Single(doc.Descendants(), e =>
+            e.Name.LocalName == "FASymbolIcon" && (string?)e.Attribute("Symbol") == "Folder");
+        var allApps = Assert.Single(doc.Descendants(), e =>
+            e.Name.LocalName == "FASymbolIcon" && (string?)e.Attribute("Symbol") == "AllApps");
+        Assert.Equal("{Binding IsDirectoryClickable}", (string?)folder.Attribute("IsVisible"));
+        Assert.Equal("{Binding !IsDirectoryClickable}", (string?)allApps.Attribute("IsVisible"));
+        var iconPlate = folder.Parent!.Parent!;
+        Assert.Equal("Border", iconPlate.Name.LocalName);
+        Assert.Equal("{DynamicResource ControlFillColorSecondaryBrush}",
+            (string?)iconPlate.Attribute("Background"));
+        Assert.Equal("8", (string?)iconPlate.Attribute("CornerRadius"));
+    }
+
+    [Fact]
+    public void GroupHeaderShowsTheFilteredItemCountAsAThemeTokenBadge()
+    {
+        var doc = AppPage();
+        var count = Assert.Single(doc.Descendants(), e =>
+            e.Name.LocalName == "TextBlock" &&
+            (string?)e.Attribute("Text") == "{Binding VisibleItemCount}");
+        Assert.Equal("12", (string?)count.Attribute("FontSize"));
+        var badge = count.Parent!;
+        Assert.Equal("Border", badge.Name.LocalName);
+        Assert.Equal("{DynamicResource ControlFillColorSecondaryBrush}",
+            (string?)badge.Attribute("Background"));
+        Assert.Equal("10", (string?)badge.Attribute("CornerRadius"));
+    }
+
+    [Fact]
+    public void PageScrollsAcrossHorizontalGroupsAndLongVerticalLists()
+    {
+        var doc = AppPage();
+        var body = doc.Descendants().Single(e =>
+            e.Name.LocalName == "ScrollViewer" && (string?)e.Attribute(XamlName) == "Body");
+        Assert.Equal("Auto", (string?)body.Attribute("VerticalScrollBarVisibility"));
+        Assert.Equal("Auto", (string?)body.Attribute("HorizontalScrollBarVisibility"));
     }
 }

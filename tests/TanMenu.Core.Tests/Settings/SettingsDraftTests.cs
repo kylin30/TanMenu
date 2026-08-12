@@ -169,13 +169,15 @@ public class SettingsDraftTests
         wg.ThemeName = "SomethingElse";
         draft.Working.Folders.Clear();
 
-        // …and move every NAMED one, so the test also proves the eleven do land.
+        // …and move every NAMED one, so the test also proves the thirteen do land.
         wg.Language = AppLanguage.EnUs;
         wg.Appearance = AppAppearance.Dark;
         wg.FontFamily = "Consolas";
         wg.ColButtonCount = 17;
         wg.AutoClose = true;
         wg.TopMost = true;
+        wg.HoverSoundEnabled = false;
+        wg.ClickSoundEnabled = false;
         wg.GlobalHotkeyEnabled = true;
         wg.GlobalHotkey = "Ctrl+Alt+T";
         wg.ShowDefaultTools = false;
@@ -184,13 +186,15 @@ public class SettingsDraftTests
 
         draft.CopyOnto(live);
 
-        // The eleven.
+        // The thirteen.
         Assert.Equal(AppLanguage.EnUs, live.General.Language);
         Assert.Equal(AppAppearance.Dark, live.General.Appearance);
         Assert.Equal("Consolas", live.General.FontFamily);
         Assert.Equal(17, live.General.ColButtonCount);
         Assert.True(live.General.AutoClose);
         Assert.True(live.General.TopMost);
+        Assert.False(live.General.HoverSoundEnabled);
+        Assert.False(live.General.ClickSoundEnabled);
         Assert.True(live.General.GlobalHotkeyEnabled);
         Assert.Equal("Ctrl+Alt+T", live.General.GlobalHotkey);
         Assert.False(live.General.ShowDefaultTools);
@@ -257,6 +261,8 @@ public class SettingsDraftTests
         live.General.Language = AppLanguage.ZhHans;
         live.General.ColButtonCount = 10;
         live.General.GlobalHotkey = "Ctrl+Space";
+        live.General.HoverSoundEnabled = true;
+        live.General.ClickSoundEnabled = true;
         live.General.DefaultTools[0].Show = true;
 
         var draft = SettingsDraft.From(config, new FakeAutoStart());
@@ -264,6 +270,8 @@ public class SettingsDraftTests
         draft.Working.General.Language = AppLanguage.EnUs;
         draft.Working.General.ColButtonCount = 3;
         draft.Working.General.GlobalHotkey = "";
+        draft.Working.General.HoverSoundEnabled = false;
+        draft.Working.General.ClickSoundEnabled = false;
         draft.Working.General.DefaultTools[0].Show = false;
 
         var undo = draft.CopyOnto(live);
@@ -276,6 +284,8 @@ public class SettingsDraftTests
         Assert.Equal(AppLanguage.ZhHans, live.General.Language);
         Assert.Equal(10, live.General.ColButtonCount);
         Assert.Equal("Ctrl+Space", live.General.GlobalHotkey);
+        Assert.True(live.General.HoverSoundEnabled);
+        Assert.True(live.General.ClickSoundEnabled);
         Assert.True(live.General.DefaultTools[0].Show);
 
         // The draft is untouched by the undo — 应用 stays enabled and the user can retry.
@@ -312,6 +322,25 @@ public class SettingsDraftTests
     }
 
     [Fact]
+    public void SoundSwitches_AreDraftedCommittedAndCanReturnToClean()
+    {
+        var config = NewConfig();
+        var draft = SettingsDraft.From(config, new FakeAutoStart());
+
+        draft.Working.General.HoverSoundEnabled = false;
+        draft.Working.General.ClickSoundEnabled = false;
+        draft.Revalidate();
+        Assert.True(draft.IsDirty);
+
+        draft.CopyOnto(config.Config);
+        Assert.False(config.Config.General.HoverSoundEnabled);
+        Assert.False(config.Config.General.ClickSoundEnabled);
+
+        draft.Reseed();
+        Assert.False(draft.IsDirty);
+    }
+
+    [Fact]
     public void AutoStartDesired_IsDirtyOnlyWhenItDiffersFromTheSeed()
     {
         var config = NewConfig();
@@ -327,7 +356,7 @@ public class SettingsDraftTests
         draft.Revalidate();
         Assert.True(draft.IsDirty);
 
-        draft.AutoStartDesired = false; // flipped back — exactly as for the ten config-backed rows
+        draft.AutoStartDesired = false; // flipped back — exactly as for the twelve config-backed rows
         draft.Revalidate();
         Assert.False(draft.IsDirty);
     }

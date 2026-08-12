@@ -1,0 +1,9 @@
+Alibaba PuHuiTi 2.0 font notice
+
+Copyright (c) 2020-2021 Alibaba (China) Co., Ltd. All rights reserved.
+
+TanMenu embeds the unmodified Regular, Medium, SemiBold and Bold TTF files supplied by the project owner.
+Official font information and current terms:
+https://www.alibabafonts.com/
+
+The font files are third-party assets and are not covered by TanMenu's MIT license.

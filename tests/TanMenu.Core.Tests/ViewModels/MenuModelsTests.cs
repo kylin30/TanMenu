@@ -77,6 +77,18 @@ public class MenuModelsTests
 
         g.ApplyFilter("");
         Assert.Equal(3, g.VisibleItems.Count);
+        Assert.Equal(3, g.VisibleItemCount);
+    }
+
+    [Fact]
+    public void VisibleItemCount_FollowsTheFilteredCommands()
+    {
+        var g = Group("Visual Studio Code", "Notepad", "Paint");
+        g.ApplyFilter("");
+        Assert.Equal(3, g.VisibleItemCount);
+
+        g.ApplyFilter("pa");
+        Assert.Equal(2, g.VisibleItemCount);
     }
 
     [Fact]

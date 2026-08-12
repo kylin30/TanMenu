@@ -50,6 +50,15 @@ public class GeneralConfig
     /// <see cref="AutoClose"/>: an ordinary app window does not float over everything.</summary>
     public bool TopMost { get; set; } = false;
 
+    /// <summary>Play the bundled hover sound when the pointer enters an enabled launcher button.
+    /// Default ON to preserve the behaviour of existing installations whose config predates this
+    /// setting.</summary>
+    public bool HoverSoundEnabled { get; set; } = true;
+
+    /// <summary>Play the bundled click sound when an enabled launcher button is invoked. Default ON
+    /// to preserve the behaviour of existing installations whose config predates this setting.</summary>
+    public bool ClickSoundEnabled { get; set; } = true;
+
     /// <summary>Schema this config was last normalized to. MUST default to 0, not
     /// <see cref="AppConfig.CurrentSchemaVersion"/>: System.Text.Json leaves an absent property at its
     /// initializer value, so a non-zero default would make a pre-0.12 file — which has no

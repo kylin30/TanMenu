@@ -1,67 +1,9 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="TanMenu.Wpf.Views.Settings.AboutCard"
-             FontSize="{DynamicResource FontSizeBody}">
-  <!-- ══ 关于 — the whole content of the About box ═══════════════════════════════════════════
-       WHERE THIS CARD LIVES. It is the entire content of Dialogs/AboutWindow.axaml, a modal About
-       box the menu band's 关于 item opens. PUBLISHED, win-property-win: "Is the content solely an
-       application's attributes? If so, use an About box." It is: this is the only settings group
-       with no interactive control at all, which is the same fact that used to justify its position
-       and now justifies its surface. (Round 5, item 2 — "关于集成到设置页中" — had folded it INTO the
-       settings surface as the last group of the 设置 page; Round 8, Task 2 turned that page into a
-       tabbed dialog and this card became its sixth tab; Task 4 took the tab out into a window.)
-
-       ── ROUND 8, TASK 6 DELETED THE GROUP BOX, AND WITH IT THE DOUBLED 关于 ────────────────────
-       Task 4 left the box exactly as the tab had it and said so in AboutWindow.axaml's own prose,
-       because re-cutting the card there would have put that task's markup and this one's in conflict
-       over one file. The cost, visible in Task 4's own capture, was that the word 关于 appeared
-       TWICE on a window whose whole content is four lines: once as the window's title (written by
-       AboutWindow.ApplyText from AppLanguage's "About") and once as the box's own header, written
-       from the very same key. A group box round the only group on a surface is what
-       ctrl-group-boxes says to indicate on the larger surface instead — "Are all the controls inside
-       the group? If so, indicate the relationship on the larger surface, such as the parent dialog
-       box or page" — and here that surface is a window with a caption. The header TextBlock and its
-       ReloadFromConfig assignment are both gone.
-
-       THE 11 AT THE BOTTOM IS NOT DECORATION. The deleted box carried Margin="0,0,0,11" from
-       Themes/Shell/Launcher.axaml's HeaderedContentControl.tm-group-box, and AboutWindow's button
-       row deliberately states NO top margin because that 11 was already inside this card's desired
-       size (its own prose and AboutWindowTests both record the arithmetic). Deleting the box without
-       restating the 11 here would have put 确定 hard against the copyright line. 11 is PUBLISHED,
-       vis-layout: "Between unrelated controls — 7 / 11".
-
-       THE FontSize ON THIS ROOT IS THE SAME ONE THE OTHER FIVE CARDS STATE, and this card needs it
-       for the same reason and one extra: deleting the group box above also deleted the last thing
-       on this window that set a FontSize at all. AboutWindow is an Avalonia Window, so FluentTheme's
-       {x:Type Window} ControlTheme gives it ControlContentThemeFontSize = 14, and every one of the
-       four lines below is a bare TextBlock. AppearanceCard.axaml's header carries the whole
-       mechanism and the measurements.
-
-       THE ICON. The 16 DIP product tile rather than a Segoe glyph — this content is the app itself,
-       and the image is already compiled into the assembly for SplashPanel and for the Aero caption's
-       own icon (MainWindow.axaml's WindowDecorationsTheme). Width AND Height are stated here because
-       the :is(Control).tm-card-icon class that used to set the width went with the row grammar, and
-       an Image has no line box to supply a height. 7 to the text is PUBLISHED, "Between related
-       controls — 4 / 7": a mark and the label it marks are related.
-
-       THE TITLE IS A XAML LITERAL, and the one label anywhere on the settings surface that is not
-       localized: "TanMenu" is the product's name, identical in both languages. The publisher line
-       below it IS localized (AppLanguage's AboutPublisher).
-
-       NEITHER VALUE LINE SETS A ToolTip, and that is deliberate rather than an omission. A value
-       line whose text can outgrow the surface it sits on and has no ToolTip is a defect; neither of
-       these can, because both are fixed formats over fixed content, not user data — and the window
-       they sit on is SizeToContent, so it is as wide as the widest of them BY CONSTRUCTION. It is
-       the same reasoning FoldersCard's DataInfoText records, and the opposite of its two path lines,
-       which are user data and do set one. -->
-  <Grid ColumnDefinitions="Auto,*" ColumnSpacing="7" Margin="0,0,0,11">
-    <Image Grid.Column="0" Width="16" Height="16" VerticalAlignment="Top"
-           Source="avares://TanMenu.Wpf/wwwroot/app-tile.png" />
-    <StackPanel Grid.Column="1" Spacing="3">
-      <TextBlock Text="TanMenu" />
-      <TextBlock x:Name="PublisherText" />
-      <TextBlock x:Name="VersionLine" />
-      <TextBlock x:Name="CopyrightLine" />
-    </StackPanel>
-  </Grid>
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             HorizontalContentAlignment="Stretch"
+             x:Class="TanMenu.Wpf.Views.Settings.AboutCard">
+  <ui:FASettingsExpander x:Name="AboutRow"
+                         Header="TanMenu"
+                         IconSource="Info" />
 </UserControl>

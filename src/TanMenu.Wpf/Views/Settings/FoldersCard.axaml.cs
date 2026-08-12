@@ -65,6 +65,7 @@ public partial class FoldersCard : UserControl, ISettingsCard
     /// every 确定/应用 re-fires) would walk the data folder far more often
     /// than its size could plausibly change.</summary>
     private long _dataSizeBytes = -1;
+    private string _dataFolderHelp = string.Empty;
 
     /// <summary>Guards <see cref="RefreshDataInfoAsync"/> against stacking: a fast detach/re-attach
     /// (e.g. quick nav-rail clicks) could start a second walk before an in-flight one returns.</summary>
@@ -128,20 +129,16 @@ public partial class FoldersCard : UserControl, ISettingsCard
         var lang = UiLanguage;
 
         MainFolderHead.Text = AppLanguage.Text("MainFolder", lang);
-        MainFolderHelp.Text = AppLanguage.Text("MainFolderHelp", lang);
-        RootLocationLabel.Text = AppLanguage.Text("Location", lang);
+        ApplyMainFolderDescription();
         OpenRootBtn.Content = AppLanguage.Text("Open", lang);
         PickRootBtn.Content = AppLanguage.Text("Choose", lang);
-        RootPathText.Text = _draft.Working.RootFolder;
-        ToolTip.SetTip(RootPathText, _draft.Working.RootFolder); // full path on hover; the label itself ellipsizes
 
         DataFolderHead.Text = AppLanguage.Text("DataFolder", lang);
-        DataFolderHelp.Text = _isPortable
+        _dataFolderHelp = _isPortable
             ? AppLanguage.Text("DataFolderPortableHelp", lang)
             : _isPackaged
                 ? AppLanguage.Text("DataFolderPackagedHelp", lang)
                 : AppLanguage.Text("DataFolderHelp", lang);
-        DataLocationLabel.Text = AppLanguage.Text("Location", lang);
         OpenDataBtn.Content = AppLanguage.Text("Open", lang);
         ChangeDataBtn.Content = AppLanguage.Text("Change", lang);
         ChangeDataBtn.IsEnabled = !_isPortable && !_isPackaged;
@@ -149,13 +146,20 @@ public partial class FoldersCard : UserControl, ISettingsCard
         ApplyDataInfoLabel(); // re-label from the last measurement; ResetDataBtn.IsEnabled is set inside
 
         CacheHead.Text = AppLanguage.Text("Cache", lang);
-        CacheHelp.Text = AppLanguage.Text("CacheHelp", lang);
+        CacheRow.Description = AppLanguage.Text("CacheHelp", lang);
         ClearCacheBtn.Content = AppLanguage.Text("ClearCache", lang);
 
         BackupHead.Text = AppLanguage.Text("BackupRestore", lang);
-        BackupHelp.Text = AppLanguage.Text("BackupHelp", lang);
+        BackupRow.Description = AppLanguage.Text("BackupHelp", lang);
         BackupBtn.Content = AppLanguage.Text("Backup", lang);
         RestoreBtn.Content = AppLanguage.Text("Restore", lang);
+    }
+
+    private void ApplyMainFolderDescription()
+    {
+        var lang = UiLanguage;
+        MainFolderRow.Description = $"{AppLanguage.Text("MainFolderHelp", lang)}\n" +
+                                    $"{AppLanguage.Text("Location", lang)} {_draft.Working.RootFolder}";
     }
 
     /// <summary>Re-render the data-folder path/kind/size lines from <see cref="_dataSizeBytes"/> (the
@@ -172,11 +176,12 @@ public partial class FoldersCard : UserControl, ISettingsCard
                 : isDefault ? AppLanguage.Text("DataKindDefault", lang) : AppLanguage.Text("DataKindCustom", lang);
 
         ResetDataBtn.IsEnabled = !_isPackaged && !_isPortable && !isDefault;
-        DataPathText.Text = root;
-        ToolTip.SetTip(DataPathText, root); // full path on hover; the label itself ellipsizes
-        DataInfoText.Text = _dataSizeBytes < 0
+        var dataInfo = _dataSizeBytes < 0
             ? AppLanguage.Format("CurrentDataPending", lang, kind)
             : AppLanguage.Format("CurrentDataSize", lang, kind, FormatSize(_dataSizeBytes));
+        DataFolderRow.Description = $"{_dataFolderHelp}\n" +
+                                    $"{AppLanguage.Text("Location", lang)} {root}\n" +
+                                    dataInfo;
     }
 
     /// <summary>Re-measure the data folder's on-disk size and re-apply the path/kind/size lines. The
@@ -256,8 +261,7 @@ public partial class FoldersCard : UserControl, ISettingsCard
         // Buffered like every other property on this surface: AppPage rebuilds its categories when
         // SettingsChanged fires, and that is now 确定 / 应用, not this click.
         _draft.Working.RootFolder = picked;
-        RootPathText.Text = picked; // the picker has closed; show the pending choice straight away
-        ToolTip.SetTip(RootPathText, picked);
+        ApplyMainFolderDescription();
         _draft.Revalidate();
     });
 

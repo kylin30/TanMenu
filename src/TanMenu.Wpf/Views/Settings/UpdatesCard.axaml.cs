@@ -50,6 +50,7 @@ public partial class UpdatesCard : UserControl, ISettingsCard
 {
     private readonly ConfigService _config;
     private readonly IAppUpdateService _updates;
+    private string _helpText = string.Empty;
 
     /// <summary>The language every string this card writes is rendered in: <b>the COMMITTED one, never
     /// the draft's</b> — see <see cref="AppearanceCard.UiLanguage"/>'s remarks. It read the draft from
@@ -109,7 +110,7 @@ public partial class UpdatesCard : UserControl, ISettingsCard
         var lang = UiLanguage;
 
         UpdateStatusLabel.Text = AppLanguage.Text("UpdateStatusTitle", lang);
-        UpdateHelpText.Text = _updates.State.Status switch
+        _helpText = _updates.State.Status switch
         {
             AppUpdateStatus.StoreManaged => L("UpdateStoreManaged"),
             AppUpdateStatus.Disabled => L("UpdateUnavailable"),
@@ -137,7 +138,7 @@ public partial class UpdatesCard : UserControl, ISettingsCard
     private void RenderUpdateState()
     {
         var state = _updates.State;
-        UpdateStatusText.Text = state.Status switch
+        var statusText = state.Status switch
         {
             AppUpdateStatus.StoreManaged => L("UpdateStoreManagedStatus"),
             AppUpdateStatus.Disabled => L("UpdateDisabledStatus"),
@@ -149,6 +150,9 @@ public partial class UpdatesCard : UserControl, ISettingsCard
             AppUpdateStatus.Failed => L("UpdateFailed", state.Error ?? L("UnknownError")),
             _ => L("UpdateIdle"),
         };
+        UpdateStatusRow.Description = string.IsNullOrWhiteSpace(_helpText)
+            ? statusText
+            : $"{statusText}\n{_helpText}";
 
         UpdateProgress.IsVisible = state.Status == AppUpdateStatus.Downloading;
         UpdateProgress.Value = state.Progress;

@@ -176,6 +176,10 @@ public sealed class MenuGroupVm : ObservableObject
     /// because its fixed grid could not afford to re-measure on each keystroke.)</summary>
     public IReadOnlyList<MenuItemVm> VisibleItems => _visibleItems;
 
+    /// <summary>Number shown in the category header badge. It follows filtering, so the badge always
+    /// describes the commands that are actually visible inside the card.</summary>
+    public int VisibleItemCount => _visibleItems.Count;
+
     /// <summary><see cref="VisibleItems"/> chunked into columns of at most
     /// <see cref="TanMenu.Core.Models.GeneralConfig.ColButtonCount"/> each — what AppPage.axaml's
     /// per-category tile grid actually binds to. See <see cref="MenuLayout.ChunkIntoColumns{T}"/> for
@@ -200,9 +204,12 @@ public sealed class MenuGroupVm : ObservableObject
             ? (IReadOnlyList<MenuItemVm>)Items
             : Items.Where(i => i.Matches(trimmedFilter)).ToList();
 
-        var had = _visibleItems.Count > 0;
+        var previousCount = _visibleItems.Count;
+        var had = previousCount > 0;
         _visibleItems = next;
         RaisePropertyChanged(nameof(VisibleItems));
+        if (previousCount != next.Count)
+            RaisePropertyChanged(nameof(VisibleItemCount));
         if (had != (next.Count > 0))
             RaisePropertyChanged(nameof(HasVisibleItems));
 

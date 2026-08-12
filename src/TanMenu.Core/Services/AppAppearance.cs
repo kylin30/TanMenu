@@ -36,8 +36,7 @@ public static class AppAppearance
     /// nothing. A config still carrying one is normalized to "" (= the app default) rather than being
     /// left to render in whatever the text stack silently substitutes.
     /// </summary>
-    public static readonly string[] RetiredFontNames =
-        ["Alibaba PuHuiTi", "Pixel", "Press Start 2P"];
+    public static readonly string[] RetiredFontNames = ["Pixel", "Press Start 2P"];
 
     public static bool IsRetiredFontName(string? family) =>
         !string.IsNullOrWhiteSpace(family) &&

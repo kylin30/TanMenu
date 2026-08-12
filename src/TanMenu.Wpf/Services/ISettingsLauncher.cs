@@ -1,29 +1,11 @@
-using Avalonia.Controls;
 using Avalonia.Threading;
-using TanMenu.Wpf.Dialogs;
 
 namespace TanMenu.Wpf.Services;
 
-/// <summary>Shows the 选项 dialog. Round 8, Task 2 made it a modal window again — Task 13 had absorbed
-/// the old standalone settings window into the shell as a page, and a page cannot carry the delayed
-/// commit's 确定/取消 (PUBLISHED, <c>win-property-win</c>: "Properties for an application are displayed
-/// in a modal dialog box").</summary>
+/// <summary>Navigates the existing launcher window to its full-page settings surface.</summary>
 public interface ISettingsLauncher
 {
-    /// <summary>Completes when the dialog CLOSES, not when it opens. Every call site is
-    /// fire-and-forget (<see cref="Open"/>), so nothing waits on it today; the signature is kept
-    /// because it is what lets a caller wait if one ever wants to, and because changing it would touch
-    /// the tray menu and the empty state for no gain.</summary>
     Task OpenAsync();
-
-    /// <summary>Fire-and-forget form for the call sites that only want the dialog on screen and have no
-    /// result to wait for. THREE of them, grepped rather than remembered: the tray menu
-    /// (<c>App.OnLauncherOpened</c>), the 应用 page's empty-state 打开设置… button
-    /// (<c>LauncherViewModel.OpenSettings</c>), and the menu band's 设置 item
-    /// (<c>MainWindow.OnOptionsClick</c>). The band replaced the navigation pane this list used to name,
-    /// in Round 8, Task 3, which briefly added a fourth — 关于, which opened this dialog and then
-    /// selected its 关于 tab. Round 8, Task 4 gave 关于 a window of its own (<c>Dialogs/AboutWindow</c>)
-    /// and took that caller away again.</summary>
     void Open();
 }
 
@@ -36,133 +18,41 @@ public sealed class SettingsLauncher : ISettingsLauncher
         _host = host;
     }
 
-    /// <summary>Fire-and-forget, but NOT fault-and-forget. <c>_ = OpenAsync()</c> on its own drops any
-    /// exception into an unobserved Task, and the whole of this path — a XAML load, five card
-    /// constructors, a DI resolve, <c>ShowDialog</c> — is code that can throw at run time and produce
-    /// nothing but a dialog that silently does not appear. Round 8, Task 2 hit exactly that while
-    /// building this method and added the continuation rather than the log line it needed once.</summary>
     public void Open() =>
         _ = OpenAsync().ContinueWith(
-            t => Serilog.Log.Error(t.Exception, "打开选项对话框失败"),
+            task => Serilog.Log.Error(task.Exception, "打开设置页面失败"),
             CancellationToken.None,
             TaskContinuationOptions.OnlyOnFaulted,
             TaskScheduler.Default);
 
-    /// <summary>Marshalled to the UI thread — the tray menu calls this from a shell thread — and then
-    /// awaited to the dialog's close, so a fault inside <see cref="OpenCoreAsync"/> surfaces on the
-    /// returned Task instead of on an async void.</summary>
     public Task OpenAsync()
     {
         if (Dispatcher.UIThread.CheckAccess())
-            return OpenCoreAsync();
+        {
+            OpenCore();
+            return Task.CompletedTask;
+        }
 
-        var marshalled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        Dispatcher.UIThread.Post(async () =>
+        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        Dispatcher.UIThread.Post(() =>
         {
             try
             {
-                await OpenCoreAsync();
-                marshalled.TrySetResult();
+                OpenCore();
+                completion.TrySetResult();
             }
             catch (Exception ex)
             {
-                marshalled.TrySetException(ex);
+                completion.TrySetException(ex);
             }
         });
-        return marshalled.Task;
+        return completion.Task;
     }
 
-    /// <summary>
-    /// Bring the launcher forward, then run the Options dialog modally on it.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// <b>SuppressHide brackets the dialog's WHOLE lifetime</b>, exactly as the pre-<c>28158a8</c>
-    /// <c>OpenCoreAsync</c> did before settings became a page. Without it a user with 失焦自动隐藏 on
-    /// loses the launcher the instant the dialog takes focus — and the dialog is modal ON the launcher,
-    /// so hiding its owner is not a cosmetic problem. The count is reference-based
-    /// (<c>WindowHost.SuppressHide</c>), so every picker, message box and hotkey warning raised from
-    /// inside the dialog nests safely under this one.
-    /// </para>
-    /// <para>
-    /// <b>The hidden-owner fallback is not optional.</b> <c>ShowDialog</c> throws
-    /// <c>InvalidOperationException("Cannot show window with non-visible owner.")</c> and the launcher
-    /// is routinely hidden — closed to the tray, toggled off by the hotkey. <c>ShowAndActivate</c> above
-    /// normally fixes that, but it is a no-op when no window has been attached yet, so the same test
-    /// <c>MessageBox.ShowCoreAsync</c> makes is made here and a null owner falls back to a standalone,
-    /// centred window.
-    /// </para>
-    /// <para>
-    /// <b>Single instance is <c>OptionsWindow.Current</c></b> — a static field the window sets as the
-    /// LAST statement of its constructor and clears in <c>OnClosed</c>. A second call while one is up
-    /// activates the one that exists instead of stacking a second modal on the same owner. That same
-    /// field is what <c>App.WarnHotkeyRegistrationFailedAsync</c> re-owners its warning to. The
-    /// ordering inside that constructor is this branch's business: if the field were claimed before the
-    /// XAML load and the five <c>ReloadFromConfig</c>s — the very code the <see cref="Open"/> remark
-    /// above records throwing once — a constructor that faulted would leave <c>Current</c> pointing at
-    /// a window that never opens and therefore never reaches <c>OnClosed</c>, and this branch would
-    /// then <c>Activate()</c> that dead window, silently, for the rest of the session.
-    /// </para>
-    /// <para>
-    /// <b>THE SILENT DEATH THE PARAGRAPH ABOVE PREDICTS WAS REACHED IN THE ROUND 8 REVIEW, BY A ROUTE
-    /// THE CONSTRUCTOR'S ORDERING CANNOT COVER</b>, so this branch now tests the window rather than the
-    /// field. The dialog was not dead, it was OFF SCREEN: hiding the launcher while it owns a modal
-    /// takes the modal with it without closing it (<c>WindowHost.Hide</c> carries the measurement and
-    /// the fix that stops it happening), leaving a live window that never reaches <c>OnClosed</c>, a
-    /// <c>Current</c> that is ACCURATE and useless, and an <c>Activate()</c> nobody can see. The
-    /// liveness test is defence in depth behind that fix, and it covers the other way here — a
-    /// <c>ShowDialog</c> that throws after the constructor has claimed the field.
-    /// </para>
-    /// <para>
-    /// <b>The field is NOT also cleared in <c>OptionsWindow.OnClosing</c>,</b> which the review offered
-    /// as the alternative hardening. It would be wrong: <c>OnClosing</c> is cancellable and IS
-    /// cancelled on two of its paths — the discard prompt (which cancels, asks, and closes again) and a
-    /// commit in flight — so clearing it there would null <c>Current</c> while the dialog is still on
-    /// screen, and a 设置 during either would stack a second modal on the same owner. It would also
-    /// point <c>App.WarnHotkeyRegistrationFailedAsync</c> at the launcher, which this dialog has
-    /// disabled. <c>OnClosed</c> stays the one place, and this branch stops trusting it blindly.
-    /// </para>
-    /// </remarks>
-    private async Task OpenCoreAsync()
+    private void OpenCore()
     {
-        if (OptionsWindow.Current is { } existing)
-        {
-            if (existing.IsVisible)
-            {
-                existing.Activate();
-                return;
-            }
-
-            // Non-visible and still holding the field. Say so — the defect this replaces was silent,
-            // and a warning in the log is the difference between "设置 does nothing" and a diagnosis.
-            Serilog.Log.Warning(
-                "The 选项 dialog still owns the single-instance field but is not visible; releasing it and opening a fresh one");
-            OptionsWindow.ReleaseCurrent(existing);
-        }
-
         _host.ShowAndActivate();
-        _host.SuppressHide(true);
-        try
-        {
-            var dialog = new OptionsWindow();
-            var owner = _host.Window is { IsVisible: true } window ? window : null;
-
-            if (owner is not null)
-            {
-                await dialog.ShowDialog(owner);
-                return;
-            }
-
-            // No usable owner: nothing to be modal to, so show it standalone and wait for it to close.
-            dialog.WindowStartupLocation = WindowStartupLocation.CenterScreen;
-            var closed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-            dialog.Closed += (_, _) => closed.TrySetResult();
-            dialog.Show();
-            await closed.Task;
-        }
-        finally
-        {
-            _host.SuppressHide(false);
-        }
+        if (_host.Window is MainWindow window)
+            window.ShowSettingsPage();
     }
 }

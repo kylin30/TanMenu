@@ -42,6 +42,8 @@ public class JsonContractTests
         Assert.Contains($"\"themeName\": \"{AppConfig.CanonicalTheme}\"", json);
         Assert.Contains($"\"appearance\": \"{AppAppearance.System}\"", json);
         Assert.Contains("\"colButtonCount\": 10", json);
+        Assert.Contains("\"hoverSoundEnabled\": true", json);
+        Assert.Contains("\"clickSoundEnabled\": true", json);
         Assert.Contains("\"defaultTools\": [", json);
         Assert.Contains("\n", json);
 
@@ -92,6 +94,8 @@ public class JsonContractTests
             Assert.Equal("zh-Hans", svc.Config.General.Language);
             Assert.False(svc.Config.General.AutoClose);
             Assert.False(svc.Config.General.TopMost);
+            Assert.True(svc.Config.General.HoverSoundEnabled);
+            Assert.True(svc.Config.General.ClickSoundEnabled);
             Assert.True(svc.Config.General.GlobalHotkeyEnabled);
             Assert.Equal("Ctrl+Alt+Space", svc.Config.General.GlobalHotkey);
             // "positionOffset" is a real key from a pre-0.12 file (GeneralConfig.PositionOffset was

@@ -85,8 +85,6 @@ public class ConfigServiceTests
     }
 
     [Theory]
-    [InlineData("Alibaba PuHuiTi")]
-    [InlineData("alibaba puhuiti")]  // stored case is not guaranteed
     [InlineData("Pixel")]
     [InlineData("Press Start 2P")]
     public async Task LoadAsync_RetiredBundledFont_CoercedToTheAppDefault(string stored)
@@ -94,9 +92,8 @@ public class ConfigServiceTests
         var paths = NewPaths(out var root);
         try
         {
-            // These three named TTFs that shipped inside the executable. The Fluent 2 rebuild deleted
-            // them, so the stored name now resolves to nothing and the text stack would silently
-            // substitute an arbitrary family. "" means "the app's own default", which is the truth.
+            // These named TTFs no longer ship. Coercing them to the app default prevents an arbitrary
+            // system fallback. Alibaba PuHuiTi is bundled again and therefore is not retired here.
             await File.WriteAllTextAsync(
                 paths.ConfigFilePath, $"{{\"general\":{{\"fontFamily\":\"{stored}\"}}}}");
 
@@ -104,6 +101,26 @@ public class ConfigServiceTests
             await svc.LoadAsync();
 
             Assert.Equal("", svc.Config.General.FontFamily);
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task LoadAsync_BundledAlibabaFontName_IsPreserved()
+    {
+        var paths = NewPaths(out var root);
+        try
+        {
+            await File.WriteAllTextAsync(
+                paths.ConfigFilePath, "{\"general\":{\"fontFamily\":\"Alibaba PuHuiTi\"}}");
+
+            var svc = new ConfigService(paths, NullLogger<ConfigService>.Instance);
+            await svc.LoadAsync();
+
+            Assert.Equal("Alibaba PuHuiTi", svc.Config.General.FontFamily);
         }
         finally
         {

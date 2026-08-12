@@ -48,7 +48,7 @@
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="12.1.0" />
     <PackageReference Include="Avalonia.Desktop" Version="12.1.0" />
-    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.0" />
+    <PackageReference Include="FluentAvaloniaUI" Version="3.0.2" />
     <!-- No Avalonia.Diagnostics: it has not been published for the 12.x line (11.3.18 is its latest),
          and it is a debug-only DevTools overlay, not something the app needs. -->
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
@@ -71,17 +71,20 @@
     <InternalsVisibleTo Include="TanMenu.Core.Tests" />
   </ItemGroup>
 
-  <!-- No fonts are embedded, and nothing below adds one: the two AvaloniaResource entries are an icon
-       and a tile image. The Fluent 2 rebuild removed the four bundled TTFs and the 22.7 MB they cost —
-       a third of the shipped payload — by taking the system UI face instead. It named that face
-       "Segoe UI Variable Text → Segoe UI" until Round 7, Task 7, which dropped the Variable optical
-       sizes (a Windows 11 mechanism; Windows 7 had one face) and left plain
-       "Segoe UI, Microsoft YaHei UI" — Services/AppFonts.UiStack, and Themes/Shell/Tokens.axaml's
-       AppFontFamily. Round 7 Task 2 also declined to vendor the Aero theme's own seven bundled TTFs,
-       for the same payload reason plus two more: no font licence upstream and no CJK coverage. -->
+  <!-- Alibaba PuHuiTi Regular, Medium, SemiBold and Bold are embedded inside the executable so the UI does not depend
+       on fonts installed on the customer machine. Services/AppFonts registers this collection before
+       any text is measured. -->
   <ItemGroup>
+    <AvaloniaResource Include="wwwroot\fonts\AlibabaPuHuiTi2-Regular.ttf" />
+    <AvaloniaResource Include="wwwroot\fonts\AlibabaPuHuiTi2-Medium.ttf" />
+    <AvaloniaResource Include="wwwroot\fonts\AlibabaPuHuiTi2-SemiBold.ttf" />
+    <AvaloniaResource Include="wwwroot\fonts\AlibabaPuHuiTi2-Bold.ttf" />
     <AvaloniaResource Include="wwwroot\app.ico" />
     <AvaloniaResource Include="wwwroot\app-tile.png" />
+    <None Update="wwwroot\fonts\NOTICE.txt"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest"
+          TargetPath="FONT-NOTICE.txt" />
   </ItemGroup>
 
   <!-- The tray icon is handed to Win32/Velopack as a real file, and Velopack's own shortcut creation

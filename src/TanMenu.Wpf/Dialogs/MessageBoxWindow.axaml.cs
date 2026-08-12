@@ -2,7 +2,9 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
+using Microsoft.Extensions.DependencyInjection;
 using TanMenu.Core.Services;
+using TanMenu.Wpf.Services;
 
 namespace TanMenu.Wpf.Dialogs;
 
@@ -19,6 +21,8 @@ public partial class MessageBoxWindow : Window
     public MessageBoxWindow()
     {
         AvaloniaXamlLoader.Load(this);
+        var configured = App.Services?.GetService<ConfigService>()?.Config.General.FontFamily;
+        FontFamily = AppFonts.Resolve(configured);
     }
 
     internal void Configure(string message, string title, MessageBoxButtons buttons, MessageBoxIcon icon,

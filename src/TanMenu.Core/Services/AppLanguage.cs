@@ -88,32 +88,30 @@ public static class AppLanguage
             // as its own icon-plus-label content — so no string here names a tile size at all any
             // more. See GeneralConfig.ButtonSize's own remarks.
             ["ColButtonCount"] = ("每列个数", "Items per column"),
-            // THREE 外观 SUBTITLES WERE DELETED IN ROUND 8, TASK 6, not orphaned: LanguageCardSub,
-            // AppearanceCardSub and FontCardSub. They were written in Round 7 Task 8 for the Windows
-            // 11 row card, whose anatomy REQUIRED a second line under every title, and each of them
-            // restated the label above it — "应用界面显示所使用的语言" under 语言. Task 6 replaced that
-            // anatomy with Windows 7's label-and-control grid, which has no such slot, so the strings
-            // had no consumer and no place to go back to.
-            //
-            // THIS ONE SURVIVED, and the difference is the test that kept it: it describes a
-            // BEHAVIOUR the label cannot ("超出后另起一列"), rather than restating 每列个数. It is the
-            // static line below the spinner on AppearanceCard.
+            ["LanguageCardSub"] = ("选择 TanMenu 使用的界面语言。", "Choose the language used by TanMenu."),
+            ["AppearanceCardSub"] = ("使用 Windows 设置，或选择浅色、深色模式。", "Use the Windows setting, or choose light or dark mode."),
+            ["FontCardSub"] = ("选择启动器和设置页面使用的字体。", "Choose the font used by the launcher and settings."),
             ["ColButtonCountCardSub"] = ("设置“应用”页面每一列最多显示的快捷方式数量，超出后另起一列", "Set how many shortcuts each column shows on the Apps page before wrapping to a new one"),
             // "BuiltInFonts" went with the four embedded TTFs — every selectable family is installed
             // now, so there is no second group to caption.
-            ["DefaultFont"] = ("默认（系统字体）", "Default (system font)"),
+            ["DefaultFont"] = ("默认（阿里巴巴普惠体）", "Default (Alibaba PuHuiTi)"),
             ["SystemFonts"] = ("系统字体", "System fonts"),
             ["AutoClose"] = ("失焦自动隐藏", "Auto-hide when focus is lost"),
+            ["AutoCloseCardSub"] = ("切换到其他窗口时自动隐藏 TanMenu。", "Hide TanMenu when you switch to another window."),
             ["TopMost"] = ("窗口置顶", "Always on top"),
+            ["TopMostCardSub"] = ("让 TanMenu 保持在其他窗口上方。", "Keep TanMenu above other windows."),
+            ["ButtonSounds"] = ("按钮音效", "Button sounds"),
+            ["ButtonSoundsCardSub"] = ("分别控制应用按钮的悬停和点击提示音。", "Control hover and click sounds for app buttons separately."),
+            ["HoverSound"] = ("按钮悬停音效", "Button hover sound"),
+            ["HoverSoundCardSub"] = ("指针移入可用的应用按钮时播放提示音。", "Play a sound when the pointer enters an enabled app button."),
+            ["ClickSound"] = ("按钮点击音效", "Button click sound"),
+            ["ClickSoundCardSub"] = ("点击可用的应用按钮时播放提示音。", "Play a sound when an enabled app button is clicked."),
             ["PinToTaskbar"] = ("固定到任务栏", "Pin to taskbar"),
             ["PinToTaskbarManual"] = ("打开固定位置", "Open pin location"),
             ["PinnedToTaskbar"] = ("已固定到任务栏", "Pinned to taskbar"),
-            // The in-page InfoBar's message (AppPage.RefreshPinNoticeAsync). Its buttons are 固定 /
-            // 不再提示 plus a close glyph — there is no 确定, because this stopped being a modal
-            // MessageBox in 0.12 — and the window no longer hides on blur unless the user opts in, so
-            // neither claim may appear here. Kept to two short sentences: an InfoBar sits above the
-            // categories and a wall of text pushes the launcher's own content off screen.
-            ["TaskbarPinRequiredPrompt"] = ("TanMenu 尚未固定到任务栏。固定后，点击任务栏图标即可显示主界面。\n点击“固定”开始：系统支持时请在 Windows 提示中确认，否则将打开 TanMenu 快捷方式，请右键选择“固定到任务栏”。", "TanMenu is not pinned to the taskbar yet. Once pinned, click its taskbar icon to show the launcher.\nSelect Pin to start: approve the Windows confirmation when it appears, otherwise TanMenu opens its shortcut so you can right-click it and choose Pin to taskbar."),
+            // Keep the in-page InfoBar concise so its action buttons stay on the same visual row.
+            ["TaskbarPinTitle"] = ("将 TanMenu 固定到任务栏", "Pin TanMenu to the taskbar"),
+            ["TaskbarPinRequiredPrompt"] = ("固定后，单击任务栏图标即可随时显示 TanMenu。", "Once pinned, click the taskbar icon to show TanMenu at any time."),
             ["PinToTaskbarHelp"] = ("固定后，点击任务栏图标即可显示主界面。系统支持时由 Windows 确认，否则打开快捷方式供手动固定。", "Once pinned, click the taskbar icon to show TanMenu. Windows confirms when supported; otherwise TanMenu opens its shortcut for manual pinning."),
             ["PinnedToTaskbarHelp"] = ("TanMenu 已永久固定。点击任务栏图标可随时显示主界面。", "TanMenu is permanently pinned. Click its taskbar icon whenever you want to show the launcher."),
             ["PinToTaskbarWorking"] = ("正在请求 Windows 固定 TanMenu…", "Asking Windows to pin TanMenu…"),
@@ -146,8 +144,10 @@ public static class AppLanguage
             ["PinDontAskAgain"] = ("不再提示", "Don't ask again"),
             ["Dismiss"] = ("关闭", "Dismiss"),
             ["AutoStart"] = ("开机自启", "Start with Windows"),
+            ["AutoStartCardSub"] = ("登录 Windows 后自动启动 TanMenu。", "Start TanMenu automatically after you sign in to Windows."),
             ["AutoStartPortableHelp"] = ("绿色版不会写入注册表，因此不提供开机自启。", "The portable edition does not write to the registry, so startup is unavailable."),
             ["EnableHotkey"] = ("启用全局热键（呼出 / 隐藏）", "Enable global hotkey (show / hide)"),
+            ["HotkeyEnabledCardSub"] = ("允许使用全局快捷键显示或隐藏 TanMenu。", "Allow a global shortcut to show or hide TanMenu."),
             ["Hotkey"] = ("热键", "Hotkey"),
             ["HotkeyTooltip"] = ("点击后按下组合键来设置（需包含 Ctrl/Alt/Shift/Win）", "Click and press a key combo including Ctrl/Alt/Shift/Win"),
             ["Clear"] = ("清除", "Clear"),
@@ -156,25 +156,12 @@ public static class AppLanguage
             // line spans underneath the pair. It said 上方 / "above" until Round 5 moved the box.
             ["HotkeyHelp"] = ("默认无热键。点击右侧输入框并按下组合键来自定义。", "No hotkey by default. Click the box on the right and press a key combo to customize it."),
             ["None"] = ("(无)", "(None)"),
-            // THE FOUR 行为 SUBTITLES WERE DELETED IN ROUND 8, TASK 6 — AutoCloseCardSub,
-            // TopMostCardSub, AutoStartCardSub, HotkeyEnabledCardSub — for the same reason as the
-            // three 外观 ones above, and with one extra: all four rows are CHECK BOXES, and Task 6
-            // moved each label ONTO its box (PUBLISHED, ctrl-check-boxes). A restating subtitle under
-            // a self-labelling control is the label printed twice. AutoStartPortableHelp, three lines
-            // up, is what a 行为 row's second line looks like when it is NOT a restatement: it says
-            // why the box above it is disabled, and it survives.
             ["MainFolder"] = ("主文件夹", "Main Folder"),
             // Round 8, Task 6: the 文件夹 tab is four group boxes, and 位置 labels the path line inside
             // the two folder ones. It is deliberately generic — one key for both boxes, because the
             // box's own head already says WHICH folder.
             //
-            // IT ENDS IN A COLON AND THE FOUR 外观 LABELS DO NOT, which is a distinction rather than an
-            // inconsistency: this label is followed by another run of TEXT (the path), 5 relative
-            // pixels away, and without the colon the two read as one sentence — seen in Task 6's own
-            // first capture of the 更新 tab, where "更新状态" ran straight into "应用内更新未启用。".
-            // A label followed by a CONTROL has the control's own frame as its boundary and needs no
-            // punctuation to supply one. UpdateStatusTitle is the only other label of this kind and it
-            // carries a colon for the same reason.
+            // This ends in a colon because it is followed directly by path text inside the card footer.
             ["Location"] = ("位置：", "Location:"),
             ["MainFolderHelp"] = ("显示该文件夹下的子文件夹（例如设为桌面，桌面上的文件夹就会成为分组）。", "Shows subfolders under this folder. For example, use Desktop to turn desktop folders into groups."),
             ["Open"] = ("打开", "Open"),
@@ -225,7 +212,7 @@ public static class AppLanguage
             // The colon is load-bearing here for the reason Location's remark records: this label is
             // followed by a run of TEXT rather than by a control, and without it the row read as one
             // sentence ("更新状态 应用内更新未启用。") in Task 6's first capture of this tab.
-            ["UpdateStatusTitle"] = ("更新状态：", "Update status:"),
+            ["UpdateStatusTitle"] = ("更新状态", "Update status"),
             ["UpdateStoreManagedStatus"] = ("无需在这里操作，请在 Microsoft Store 中检查更新。", "No action is needed here. Check for updates in Microsoft Store."),
             ["UpdateDisabledStatus"] = ("应用内更新未启用。", "In-app updates are not enabled."),
             ["UpdateIdle"] = ("正在等待检查更新。", "Ready to check for updates."),
@@ -245,9 +232,11 @@ public static class AppLanguage
             ["UpdateRestartPrompt"] = ("新版本 {0} 已下载。是否立即重启并完成更新？", "Version {0} has been downloaded. Restart now to finish updating?"),
             ["UnknownError"] = ("未知错误", "Unknown error"),
             ["ShowCommonTools"] = ("显示“常用工具”分类", "Show the Common Tools group"),
-            ["CommonToolsHint"] = ("勾选要在该分类中显示的工具：", "Choose the tools to show in this group:"),
+            ["ShowCommonToolsCardSub"] = ("在应用页面中显示内置的常用工具。", "Show the built-in Common Tools group on the Apps page."),
+            ["CommonToolsHint"] = ("选择常用工具", "Choose common tools"),
+            ["CommonToolsHintSub"] = ("选择要在该分类中显示的内置工具。", "Choose the built-in tools to show in this group."),
             ["ToolCommand"] = ("启动命令：{0}", "Launch command: {0}"),
-            ["ToolCheckbox"] = ("{0}   （{1}）", "{0}   ({1})"),
+            ["ToolCheckbox"] = ("{0}", "{0}"),
 
             ["SelectRootFolder"] = ("选择主文件夹", "Choose Main Folder"),
             ["SelectDataFolder"] = ("选择数据文件夹", "Choose Data Folder"),
@@ -374,6 +363,11 @@ public static class AppLanguage
             // a line in the About box is not the place for one, so it is localized here.
             ["About"] = ("关于", "About"),
             ["AboutPublisher"] = ("由 TanSoft 出品", "by TanSoft"),
+            ["NavApps"] = ("应用", "Apps"),
+            ["NavSettings"] = ("设置", "Settings"),
+            ["NavExit"] = ("彻底退出", "Exit TanMenu"),
+            ["StateOn"] = ("开", "On"),
+            ["StateOff"] = ("关", "Off"),
             // "NavApps" ("应用"/"Apps") and "NavSettings" ("设置"/"Settings") were here until Round 8,
             // Task 3 deleted the navigation pane. They labelled its two page rows, MainWindow's
             // ApplyRailText was their only reader, and that method is ApplyMenuText now — a band of
@@ -449,8 +443,8 @@ public static class AppLanguage
     public static string LanguageLabel(string setting, string? displayLanguage) =>
         NormalizeSetting(setting) switch
         {
-            ZhHans => Text("LanguageZhHans", displayLanguage),
-            EnUs => Text("LanguageEnUs", displayLanguage),
+            ZhHans => Text("LanguageZhHans", ZhHans),
+            EnUs => Text("LanguageEnUs", EnUs),
             _ => Text("LanguageAuto", displayLanguage),
         };
 

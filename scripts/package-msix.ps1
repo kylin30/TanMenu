@@ -130,17 +130,6 @@ Remove-Item -LiteralPath (Join-Path $stageDir "config.json") -Force -ErrorAction
 # Still required under AOT: ILC emits a NATIVE TanMenu.Wpf.pdb next to the executable.
 Get-ChildItem -Path $stageDir -Recurse -File -Filter "*.pdb" | Remove-Item -Force
 
-# MIT obligation for the vendored aero-theme-for-avalonia files under Themes\Aero: the copyright
-# notice and the permission notice must travel with the copies, and a notice that exists only in the
-# source tree does not travel with the binary. The binary is what users get, so the licence ships
-# beside the executable. Fails the release rather than submitting a package without it.
-$aeroLicense = Resolve-RepoPath "src\TanMenu.Wpf\Themes\Aero\LICENSE-aero-theme-for-avalonia.txt"
-if (!(Test-Path -LiteralPath $aeroLicense)) {
-    throw "Missing third-party licence '$aeroLicense'. Themes\Aero vendors MIT-licensed files and the package must carry their notice."
-}
-Copy-Item -LiteralPath $aeroLicense `
-    -Destination (Join-Path $stageDir "THIRD-PARTY-NOTICES.txt") -Force
-
 $assets = Join-Path $stageDir "Assets"
 New-Item -ItemType Directory -Force -Path $assets | Out-Null
 $sourceLogo = Resolve-RepoPath "src\TanMenu.Wpf\wwwroot\app-tile.png"

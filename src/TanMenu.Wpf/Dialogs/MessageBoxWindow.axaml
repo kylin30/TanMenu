@@ -5,8 +5,7 @@
         SizeToContent="WidthAndHeight"
         CanResize="False"
         ShowInTaskbar="False"
-        MinWidth="300"
-        Background="{DynamicResource SurfaceBaseBrush}">
+        MinWidth="300">
 
   <!--
     Deliberately styled by the app-wide DEFAULT control set, not by Themes/Shell/Launcher.axaml,
@@ -44,8 +43,8 @@
        relative pixels on all sides"); 11 again between the icon and the message, which are unrelated
        controls; 11 above the button row; and 7 between buttons ("Between buttons — 4 / 7"). Round 7,
        Task 7 re-derived all four from the Fluent values 22,20 / 14 / 0,22,0,0 / 8. -->
-  <StackPanel Margin="11">
-    <StackPanel Orientation="Horizontal" Spacing="11">
+  <StackPanel Margin="16">
+    <StackPanel Orientation="Horizontal" Spacing="12">
       <!-- The 30×30 icon plate. It carried CornerRadius="15" until Round 8, Task 8 — half of 30, i.e.
            a disc, which is WinUI's badge form and not a Windows 7 one. The attribute is DELETED rather
            than rewritten as "0": 0 IS Border's own default, and this tree already treats a restatement
@@ -77,8 +76,8 @@
 
     <StackPanel Name="ButtonRow"
                 Orientation="Horizontal"
-                Spacing="7"
-                Margin="0,11,0,0"
+                Spacing="8"
+                Margin="0,16,0,0"
                 HorizontalAlignment="Right" />
   </StackPanel>
 

@@ -1,146 +1,74 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="TanMenu.Wpf.Views.Settings.BehaviorCard"
-             FontSize="{DynamicResource FontSizeBody}">
-  <!-- ══ 行为 — four check boxes and two label-and-control rows on the DLU grid ═══════════════
-       ROUND 8, TASK 6 REPLACED THE ROW GRAMMAR. See AppearanceCard.axaml's header for the whole
-       argument, the published citations for 5 / 7 / 11 / 3, why the rhythm is a per-row Margin
-       rather than Grid.RowSpacing, and why every card root states the FontSize above. This file is
-       where two consequences of the grammar land, and it is also where the missing body size was
-       most visible: the vendored CheckBox theme sets no FontSize, so the four boxes below and the
-       固定到任务栏 label all drew at 14 while the button beside that label drew at the Aero Button
-       theme's 12.
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             HorizontalContentAlignment="Stretch"
+             x:Class="TanMenu.Wpf.Views.Settings.BehaviorCard">
+  <StackPanel Spacing="4">
+    <ui:FASettingsExpander x:Name="AutoCloseRow" IconSource="BackToWindow">
+      <ui:FASettingsExpander.Header><TextBlock x:Name="AutoCloseLabel" /></ui:FASettingsExpander.Header>
+      <ui:FASettingsExpander.Footer>
+        <ToggleSwitch x:Name="AutoCloseToggle" IsCheckedChanged="OnAutoCloseChanged" />
+      </ui:FASettingsExpander.Footer>
+    </ui:FASettingsExpander>
 
-       ── THE CHECK BOXES CARRY THEIR OWN LABELS NOW ────────────────────────────────────────────
-       Round 8, Task 5 turned four ToggleSwitches into CheckBoxes and said, in this very comment
-       block, that the label would move ONTO the box in Task 6 "together with the row grammar it
-       belongs to". This is that move. PUBLISHED, ctrl-check-boxes: a check box's label is its
-       Content, and a row whose only control is a check box is not a label-and-control pair — it is
-       one self-labelling control. So each of the four spans both columns and starts on the label
-       column's own x, and the four AutomationProperties.LabeledBy attributes Task 5 added are gone
-       with the four title TextBlocks they pointed at: a CheckBox with Content has an accessible name
-       of its own (ContentControlAutomationPeer's presenter/Content fallback), which is what Task 5's
-       LabeledBy was standing in for while the label was still a separate element.
+    <ui:FASettingsExpander x:Name="TopMostRow" IconSource="Pin">
+      <ui:FASettingsExpander.Header><TextBlock x:Name="TopMostLabel" /></ui:FASettingsExpander.Header>
+      <ui:FASettingsExpander.Footer>
+        <ToggleSwitch x:Name="TopMostToggle" IsCheckedChanged="OnTopMostChanged" />
+      </ui:FASettingsExpander.Footer>
+    </ui:FASettingsExpander>
 
-       Their four subtitles are deleted with them, and so are AppLanguage's AutoCloseCardSub,
-       TopMostCardSub, AutoStartCardSub and HotkeyEnabledCardSub: every one of them restated its own
-       label ("窗口失去焦点时自动隐藏" under 失焦自动隐藏). The two lines that are NOT restatements stay,
-       as static text under the control they describe — AutoStartHelp, which explains why the box
-       above it is disabled on a portable build, and HotkeyHelpText, which explains how to work the
-       capture box beside it.
+    <ui:FASettingsExpander x:Name="ButtonSoundsRow" IconSource="Volume" IsExpanded="True">
+      <ui:FASettingsExpander.Header><TextBlock x:Name="ButtonSoundsLabel" /></ui:FASettingsExpander.Header>
+      <ui:FASettingsExpander.Items>
+        <ui:FASettingsExpanderItem x:Name="HoverSoundItem">
+          <ui:FASettingsExpanderItem.Content><TextBlock x:Name="HoverSoundLabel" /></ui:FASettingsExpanderItem.Content>
+          <ui:FASettingsExpanderItem.Footer>
+            <ToggleSwitch x:Name="HoverSoundToggle" IsCheckedChanged="OnHoverSoundChanged" />
+          </ui:FASettingsExpanderItem.Footer>
+        </ui:FASettingsExpanderItem>
 
-       ── THE TWO REMAINING PAIRS ARE REAL ROWS ─────────────────────────────────────────────────
-       固定到任务栏 and 热键 have a label in column 0 and their control in column 1, and each has a
-       line below it that belongs to the row rather than to the grid: the live pin state (eight
-       AppLanguage strings, five in ApplyTaskbarPinState's switch and three in the click handlers)
-       and the hotkey help. Both span both columns, 3 below their control.
+        <ui:FASettingsExpanderItem x:Name="ClickSoundItem">
+          <ui:FASettingsExpanderItem.Content><TextBlock x:Name="ClickSoundLabel" /></ui:FASettingsExpanderItem.Content>
+          <ui:FASettingsExpanderItem.Footer>
+            <ToggleSwitch x:Name="ClickSoundToggle" IsCheckedChanged="OnClickSoundChanged" />
+          </ui:FASettingsExpanderItem.Footer>
+        </ui:FASettingsExpanderItem>
+      </ui:FASettingsExpander.Items>
+    </ui:FASettingsExpander>
 
-       NONE OF THE EIGHT PIN STRINGS MAY CONTAIN A HARD "\n", and that constraint SURVIVES the row
-       grammar it was written for even though its old reason does not. It used to be invariant I1 —
-       a break took the header past two lines and moved the row's icon and control off the y every
-       other row centred on. There is no icon and no two-line header now; what a break costs today is
-       that the status line pushes 启用全局热键 and everything below it down by a whole line at every
-       window width, on a dialog whose height is a literal. PinToTaskbarFailed carries the comment
-       saying why it may not, and SettingsRowTests guards the labels.
+    <ui:FASettingsExpander x:Name="AutoStartRow" IconSource="Play">
+      <ui:FASettingsExpander.Header><TextBlock x:Name="AutoStartLabel" /></ui:FASettingsExpander.Header>
+      <ui:FASettingsExpander.Footer>
+        <ToggleSwitch x:Name="AutoStartToggle" IsCheckedChanged="OnAutoStartChanged" />
+      </ui:FASettingsExpander.Footer>
+    </ui:FASettingsExpander>
 
-       ── WHAT TASK 5 MEASURED, KEPT BECAUSE IT IS STILL THE CHECK BOX'S GEOMETRY ────────────────
-       Measured on this machine at 150 % on a build with Task 5 and a build without — UIA
-       BoundingRectangle for the bounds, a PrintWindow row scan across each control's centre for the
-       ink — on all four rows, when the boxes were still contentless and still trailing:
+    <ui:FASettingsExpander x:Name="PinTaskbarRow" IconSource="Pin">
+      <ui:FASettingsExpander.Header><TextBlock x:Name="PinTaskbarLabel" /></ui:FASettingsExpander.Header>
+      <ui:FASettingsExpander.Footer>
+        <Button x:Name="PinTaskbarBtn" Click="OnPinTaskbarClick" />
+      </ui:FASettingsExpander.Footer>
+    </ui:FASettingsExpander>
 
-         element bounds   102 x 51 physical  ->  20 x 20   (68 x 34 DIP -> 13.33 x 13.33)
-         element RIGHT    x = 4365           ->  x = 4347
-         last INK column  x = 4346           ->  x = 4346  (UNCHANGED)
+    <ui:FASettingsExpander x:Name="HotkeyEnabledRow" IconSource="Keyboard">
+      <ui:FASettingsExpander.Header><TextBlock x:Name="HotkeyEnabledLabel" /></ui:FASettingsExpander.Header>
+      <ui:FASettingsExpander.Footer>
+        <ToggleSwitch x:Name="HotkeyEnabledToggle" IsCheckedChanged="OnHotkeyEnabledChanged" />
+      </ui:FASettingsExpander.Footer>
+    </ui:FASettingsExpander>
 
-       That is why Themes/Shell/Launcher.axaml's ToggleSwitch.tm-card-toggle could be deleted without
-       moving a pixel: the toggle only reached that column by overhanging its own bounds by 12 DIP of
-       empty presenter. The numbers describe a trailing, contentless box and are NOT re-asserted for
-       the labelled, left-aligned boxes below — this task moved them. -->
-  <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto"
-        ColumnSpacing="5" Margin="11">
-
-    <CheckBox Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" x:Name="AutoCloseToggle"
-              IsCheckedChanged="OnAutoCloseChanged" />
-
-    <CheckBox Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" x:Name="TopMostToggle"
-              Margin="0,7,0,0" IsCheckedChanged="OnTopMostChanged" />
-
-    <CheckBox Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" x:Name="AutoStartToggle"
-              Margin="0,7,0,0" IsCheckedChanged="OnAutoStartChanged" />
-    <!-- Portable builds only, and IsVisible is set from the code-behind rather than bound: this line
-         says why the box above it is disabled, and there is nothing to say when it is not. A
-         collapsed child contributes neither height nor margin, so the 7 below still measures from
-         the check box. -->
-    <TextBlock Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" x:Name="AutoStartHelp"
-               TextWrapping="Wrap" IsVisible="False" Margin="0,3,0,0" />
-
-    <TextBlock Grid.Row="4" Grid.Column="0" x:Name="PinTaskbarLabel" VerticalAlignment="Center"
-               Margin="0,7,0,0" />
-    <!-- The only button on this row. Its Theme is now STATIC, and Round 7, Task 3 is what made it
-         so: TmAccentButton was deleted with the arrival of the Aero control themes (Windows 7 had
-         no accent-filled default button), and the run-time Theme swap in ApplyTaskbarPinState went
-         with it, because both of its branches had become TmButton.
-
-         What the swap existed for still holds, and is still delivered — by IsEnabled alone. Round
-         3, Task 3 (user item 8): once pinned there is no affirmative action left to offer, only a
-         completed state to report, and a disabled TmAccentButton still painted a dimmed BLUE
-         swatch (its ^:disabled rule only lowers Opacity; it never repainted Background off
-         AccentDefaultBrush), which read as a live call to action, just quieter. A disabled
-         TmButton has no accent fill to dim, so "done" now falls out of IsEnabled="false" — set by
-         ApplyTaskbarPinState from the live COM pin query — instead of out of a second theme.
-
-         The static Theme is also what makes the first frame of a process defensible.
-         OptionsWindow's constructor calls ReloadFromConfig (hence ApplyTaskbarPinState) through
-         ApplyText while this card tree is still detached from the logical tree — a TabControl only
-         realises the selected tab's content and this card sits on the second tab — and there
-         FindResource cannot reach Application.Styles at all; a Button with no Theme and no Classes
-         would have rendered as stock Fluent for that frame. -->
-    <!-- NO AutomationProperties.LabeledBy here, unlike 外观's four controls and unlike HotkeyBox
-         below, and that is deliberate: this button's Content is already its own name and it is the
-         MORE informative one — ApplyTaskbarPinState rewrites it between 固定到任务栏 / 打开固定位置 /
-         已固定到任务栏 as the live COM query moves. A LabeledBy would win over the content fallback
-         in ControlAutomationPeer.GetNameCore and freeze the name at the static label beside it. -->
-    <Button Grid.Row="4" Grid.Column="1" x:Name="PinTaskbarBtn" Theme="{StaticResource TmButton}"
-            HorizontalAlignment="Left" VerticalAlignment="Center" Margin="0,7,0,0"
-            Click="OnPinTaskbarClick" />
-    <TextBlock Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2" x:Name="PinTaskbarStatusText"
-               TextWrapping="Wrap" Margin="0,3,0,0" />
-
-    <CheckBox Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="2" x:Name="HotkeyEnabledToggle"
-              Margin="0,7,0,0" IsCheckedChanged="OnHotkeyEnabledChanged" />
-
-    <TextBlock Grid.Row="7" Grid.Column="0" x:Name="HotkeyLabel" VerticalAlignment="Center"
-               Margin="0,7,0,0" />
-    <StackPanel Grid.Row="7" Grid.Column="1" Orientation="Horizontal" Spacing="7"
-                VerticalAlignment="Center" Margin="0,7,0,0">
-      <!-- Key capture is wired in code with a TUNNELING KeyDown handler (see the ctor): a
-           bubbling handler would run after the TextBox has already consumed the key.
-
-           tm-keycap carries only this box's SIZE and PADDING; its paint is the theme's. It was
-           once the ONE control on the whole settings surface with no Classes and no Theme, so in
-           every state it fell through to the stock text box — Fluent's then — whose disabled fill
-           was a different grey from the one every disabled button beside it used, i.e. two disabled
-           vocabularies on one surface. Four TextBox.tm-keycap /template/ rules in
-           Themes/Shell/Launcher.axaml existed to fix exactly that, and Round 7 Task 7 DELETED all
-           four: every control here is a vendored Aero theme now, so "one disabled vocabulary" is
-           true by construction, and re-pointing the rules would have repainted a part with the
-           value it already had. The box shows Themes/Aero/ControlStyles/TextBox.axaml's own four
-           states, and the focus signal that says "I am listening" changed hands from a hand-painted
-           accent hairline to Aero's own focus border over its focus fill. -->
-      <TextBox x:Name="HotkeyBox" Classes="tm-keycap" IsReadOnly="True"
-               AutomationProperties.LabeledBy="{Binding #HotkeyLabel}" />
-      <!-- Clearing a hotkey is a reset, not a forward-moving action, so this button never
-           qualified for the accent treatment even though it is the row's only button. The
-           criterion is moot now: Round 7, Task 3 deleted TmAccentButton along with the rest of
-           the accent-filled default button (Windows 7 had none), leaving TmButton the only
-           settings button theme there is. Kept because it records WHY this row never changed when
-           the two buttons that did carry the accent were moved. -->
-      <Button x:Name="HotkeyClearBtn" Theme="{StaticResource TmButton}" Click="OnHotkeyClearClick" />
-    </StackPanel>
-    <!-- 右侧 / "on the right" is still the truth this line tells: HotkeyBox sits in column 1, beside
-         the 热键 label, not above this sentence. AppLanguage's HotkeyHelp was reworded from 上方 to
-         右侧 when Round 5 moved the box; Task 6 did not move it back. -->
-    <TextBlock Grid.Row="8" Grid.Column="0" Grid.ColumnSpan="2" x:Name="HotkeyHelpText"
-               TextWrapping="Wrap" Margin="0,3,0,0" />
-  </Grid>
+    <ui:FASettingsExpander x:Name="HotkeyRow" IconSource="Keyboard">
+      <ui:FASettingsExpander.Header><TextBlock x:Name="HotkeyLabel" /></ui:FASettingsExpander.Header>
+      <ui:FASettingsExpander.Footer>
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <TextBox x:Name="HotkeyBox"
+                   Width="180"
+                   IsReadOnly="True"
+                   AutomationProperties.LabeledBy="{Binding #HotkeyLabel}" />
+          <Button x:Name="HotkeyClearBtn" Click="OnHotkeyClearClick" />
+        </StackPanel>
+      </ui:FASettingsExpander.Footer>
+    </ui:FASettingsExpander>
+  </StackPanel>
 </UserControl>

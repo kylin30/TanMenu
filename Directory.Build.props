@@ -5,14 +5,13 @@
          instead of the default 1.0.0.0.
 
          0.13.0 -> 0.14.0 (Round 8, Task 9), which the round's design asks for in as many words.
-         0.14.0 is the classic main-menu shell: the navigation pane deleted for a menu band, 设置 moved
-         into a modal Options dialog with 确定/取消/应用, 关于 into a real About box, the settings
-         toggles turned into check boxes and their rows onto the published DLU grid.
+         0.14.0 is the Windows 11 Fluent shell: an adaptive NavigationView, horizontally arranged
+         launcher group panels, and a full-window Settings page whose changes are saved immediately.
 
          A MINOR bump, not a patch one, because the shell changed shape again — but NOT a 1.0: nothing
          in this repository has been PACKAGED OR TAGGED since v0.9.6, and the release workflow runs on
          a tag. 0.10.0, 0.11.0, 0.12.0 and 0.13.0 all exist only as this file's history, so 0.14.0 is
-         still the first release of the Aero shell whenever one is cut, and packaging/portable/
+         still the first release of this redesigned shell whenever one is cut, and packaging/portable/
          RELEASE-NOTES.md is written for a user coming from 0.9.x rather than from 0.13.0. Nothing was
          packaged, tagged or pushed by the task that made this edit either. -->
     <Version>0.14.0</Version>

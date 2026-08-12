@@ -23,12 +23,14 @@ public class AppConfigTests
         Assert.False(general.AutoClose);
         Assert.Equal("Auto", general.Language);
         Assert.False(general.TopMost);
+        Assert.True(general.HoverSoundEnabled);
+        Assert.True(general.ClickSoundEnabled);
         Assert.False(general.ShowInTaskbar);
         Assert.Equal(10, general.ColButtonCount);
         Assert.Equal(AppConfig.CanonicalTheme, general.ThemeName);
         Assert.Equal(AppAppearance.System, general.Appearance);
-        // "" = the app's own default (the system UI face). No font ships inside the executable any
-        // more, so a non-empty default here would name a family that may not be installed.
+        // "" = the app's embedded Alibaba PuHuiTi default. The blank sentinel keeps the config stable
+        // even if the internal family name differs by locale.
         Assert.Equal("", general.FontFamily);
         Assert.True(general.ShowDefaultTools);
         Assert.NotEmpty(general.DefaultTools);

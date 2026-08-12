@@ -78,6 +78,7 @@ public static partial class Program
     public static AppBuilder BuildAvaloniaApp() =>
         AppBuilder.Configure<App>()
             .UsePlatformDetect()
+            .WithBundledFonts()
             .LogToTrace();
 
     /// <summary>Broadcast message a second instance posts to resurface the first.

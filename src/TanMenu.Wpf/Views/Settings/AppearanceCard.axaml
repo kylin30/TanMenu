@@ -1,156 +1,61 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="TanMenu.Wpf.Views.Settings.AppearanceCard"
-             FontSize="{DynamicResource FontSizeBody}">
-  <!-- ══ 外观 — four label-and-control rows on the DLU grid ═══════════════════════════════════
-       ROUND 8, TASK 6 REPLACED THE ROW GRAMMAR. Until this task every settings row was a
-       Border Classes="tm-card" wrapping an Auto,*,Auto Grid: a 16 DIP icon, a title line over a
-       60 %-ink subtitle line, and the control trailing. That is Windows 11 Settings' row card, and
-       Windows 7 has no such object — a property page is a LABEL AND A CONTROL on vis-layout's
-       ladder. So the icon, the card Border and the subtitle are gone, together with the twelve
-       Themes/Shell/Launcher.axaml rules that carried them, and what is left is a two-column Grid.
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             HorizontalContentAlignment="Stretch"
+             x:Class="TanMenu.Wpf.Views.Settings.AppearanceCard">
+  <StackPanel Spacing="4">
+    <ui:FASettingsExpander x:Name="LanguageRow" IconSource="Globe">
+      <ui:FASettingsExpander.Header>
+        <TextBlock x:Name="LanguageLabel" />
+      </ui:FASettingsExpander.Header>
+      <ui:FASettingsExpander.Footer>
+        <ComboBox x:Name="LanguageCombo"
+                  Width="240"
+                  AutomationProperties.LabeledBy="{Binding #LanguageLabel}"
+                  SelectionChanged="OnLanguageChanged" />
+      </ui:FASettingsExpander.Footer>
+    </ui:FASettingsExpander>
 
-       THE COLUMN TEMPLATE IS "Auto,*" AND IT IS WRITTEN LITERALLY IN EVERY CARD, for the reason
-       SettingsRowTests has always recorded: Grid has no ColumnDefinitionsProperty, so a Setter
-       cannot carry it and only a source test can. Column 0 holds the label, column 1 the control.
+    <ui:FASettingsExpander x:Name="AppearanceRow" IconSource="View">
+      <ui:FASettingsExpander.Header>
+        <TextBlock x:Name="AppearanceLabel" />
+      </ui:FASettingsExpander.Header>
+      <ui:FASettingsExpander.Footer>
+        <ComboBox x:Name="AppearanceCombo"
+                  Width="240"
+                  AutomationProperties.LabeledBy="{Binding #AppearanceLabel}"
+                  SelectionChanged="OnAppearanceChanged" />
+      </ui:FASettingsExpander.Footer>
+    </ui:FASettingsExpander>
 
-       ── THE FontSize ON THIS ROOT IS THE SETTINGS SURFACE'S BODY SIZE, AND IT IS A FIX ─────────
-       Every one of the six cards states it, and the review of Task 6's first commit (7e9bee6) is
-       why. Deleting TextBlock.tm-card-title and TextBlock.tm-card-sub deleted the ONLY statement
-       this surface had of its own body size — both carried FontSize="{DynamicResource
-       FontSizeBody}" — and nothing replaced it, so the bare TextBlocks fell back to what they
-       inherit. MEASURED, by UIA at 150 %, on that build's captures and again on this one — same
-       method, same scale, element bounds in physical px:
+    <ui:FASettingsExpander x:Name="FontRow" IconSource="Font">
+      <ui:FASettingsExpander.Header>
+        <TextBlock x:Name="FontLabel" />
+      </ui:FASettingsExpander.Header>
+      <ui:FASettingsExpander.Footer>
+        <ComboBox x:Name="FontCombo"
+                  Width="240"
+                  MaxDropDownHeight="320"
+                  IsTextSearchEnabled="True"
+                  AutomationProperties.LabeledBy="{Binding #FontLabel}"
+                  SelectionChanged="OnFontChanged" />
+      </ui:FASettingsExpander.Footer>
+    </ui:FASettingsExpander>
 
-         每列个数 (外观)      83 x 30  ->  71 x 25       更新状态： (更新)   105 x 29  ->  89 x 25
-         固定到任务栏 (行为)  126 x 29  ->  108 x 25      位置： (文件夹)      53 x 25  ->  53 x 25
-
-       The left column is 14 DIP and the right is 12: at 150 % a CJK glyph advances one em, so six
-       characters are 6 x 12 x 1.5 = 108 exactly. 位置： did not move BECAUSE IT NEVER LEFT 12, which
-       is the whole shape of the defect — one dialog with two body sizes, and on 行为 a label one
-       step LARGER than the button beside it. Every body line box on the surface is 24-26 px now
-       (the ±1 is UIA rounding on a wrapping block) and only the four group heads on 文件夹 are 31.
-
-       THE MECHANISM, decompiled rather than assumed (ilspycmd over
-       Avalonia.Themes.Fluent 12.1.0): FluentTheme declares a ControlTheme whose TargetType is
-       Window with a Setter on TemplatedControl.FontSizeProperty bound to
-       {DynamicResource ControlContentThemeFontSize}, and its own resource dictionary adds that key
-       as 14.0. Themes/Aero/AVMAP/Metrics.axaml's change #2 DELETED upstream's re-point of that key
-       onto AeroFontSizeNormal (12) and Themes/Shell/Tokens.axaml does not redefine it, so an
-       Avalonia Window in this app is 14 unless it says otherwise — MainWindow says 14 on purpose
-       (its own type ramp), and the two dialogs said nothing. Nearly every vendored Aero ControlTheme
-       sets 12 on the control it themes, which is why the themed controls never moved, and why 文件夹
-       alone stayed at 12: its content sits inside HeaderedContentControl.axaml's group box, which
-       sets FontSize AeroFontSizeNormal (:68). What was left over is the set the design's §1 names —
-       "Nothing themes a Border, a TextBlock, a StackPanel, an Image or a Panel" — PLUS the one
-       vendored theme that is the exception to "nearly every": CheckBox.axaml sets no FontSize at
-       all (grepped — the word does not appear in the file), so the five self-labelling boxes and
-       ToolsCard's code-built
-       per-tool list drew their labels at 14 too.
-
-       THE ROOT CAUSE IS ONE KEY AND IT IS DELIBERATELY NOT TOUCHED HERE. Re-pointing
-       ControlContentThemeFontSize onto AeroFontSizeNormal in Tokens.axaml — the file that already
-       redefines three FluentTheme keys for exactly this reason — would fix this surface AND
-       Dialogs/MessageBoxWindow and every Fluent-templated popup in one line. It is not done in a
-       review round because it moves type on surfaces no task owns and nobody has measured, and
-       MessageBoxWindow's own remarks carry a size record that would go stale unread. Recorded here
-       so the next task that owns the message box has the finding rather than the symptom.
-
-       WHY THE CARD ROOT AND NOT THE TWO WINDOWS. The card is the unit that gets re-hosted — Task 4
-       moved AboutCard out of a tab and into a window of its own — so the size travels with the
-       thing that needs it. A UserControl's FontSize is TextElement.FontSize, which INHERITS, and an
-       inherited value is the lowest priority Avalonia has: a ControlTheme Setter still wins, so
-       this can never fight the vendored themes (they set the same 12 anyway) and it reaches only
-       the primitives nothing themes. TextBlock.tm-group-head's FontSizeGroupHead (15) likewise
-       still wins on 文件夹's four heads. Tokens.axaml states the rule this restores: "a Windows 7
-       property sheet uses ONE BODY size and gets its separation from ink colour and from the two
-       LARGER published roles" — 11 pt group headers and 12 pt main instructions. (That quote ended
-       "from colour and weight" in both files until Round 8, Task 8's review; vis-fonts states a
-       weight on none of the three rows, and after Task 8 no app .axaml states one either.)
-
-       EVERY NUMBER BELOW IS PUBLISHED by
-       https://learn.microsoft.com/en-us/windows/win32/uxguide/vis-layout (relative pixels, 9 pt
-       Segoe UI at 96 dpi): ColumnSpacing 5 is "label to control"; the 7 each row carries as its own
-       top Margin is "Between related controls — 4 / 7"; the 11 on this Grid is "Dialog box margins
-       — 7 DLU / 11 relative pixels on all sides", which the group box used to supply as its Padding
-       and which the property page has to supply itself now that five of the six boxes are gone
-       (PUBLISHED, ctrl-group-boxes: "Are all the controls inside the group? If so, indicate the
-       relationship on the larger surface, such as the parent dialog box or page." — the tab IS that
-       larger surface, and OptionsWindow.ApplyText writes 外观 onto its TabItem).
-
-       THE RHYTHM IS PER-ROW Margin RATHER THAN Grid.RowSpacing, and that is deliberate. RowSpacing
-       is charged between row definitions even when a row's only child is IsVisible="False", which
-       would leave dead space on the two cards that have such a row (BehaviorCard's portable-only
-       help line, UpdatesCard's ProgressBar); a collapsed child contributes no margin at all, because
-       Layoutable.MeasureCore returns an empty size for it before the margin is ever added.
-
-       THE SUBTITLES ARE GONE AND THE STRINGS WENT WITH THEM. 语言 / 外观 / 字体 each had one, and
-       each said what its own label already said ("应用界面显示所使用的语言" under 语言). AppLanguage's
-       LanguageCardSub, AppearanceCardSub and FontCardSub are deleted rather than orphaned. 每列个数's
-       is the one that survives, as the static line below the spinner: it describes a BEHAVIOUR the
-       label cannot ("超出后另起一列"), not a restatement of the label.
-
-       EACH CONTROL TAKES ITS ACCESSIBLE NAME FROM ITS OWN LABEL through
-       AutomationProperties.LabeledBy — Avalonia's ControlAutomationPeer.GetNameCore falls back to
-       the LabeledBy peer's name when AutomationProperties.Name is unset. That is a name GAINED, not
-       preserved: on the card grammar these four controls had no accessible name at all (a ComboBox
-       peer has no fallback and the title beside it was an unrelated TextBlock), and only the four
-       check boxes on 行为 were wired this way. -->
-  <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto"
-        ColumnSpacing="5" Margin="11">
-
-    <TextBlock Grid.Row="0" Grid.Column="0" x:Name="LanguageLabel" VerticalAlignment="Center" />
-    <ComboBox Grid.Row="0" Grid.Column="1" x:Name="LanguageCombo" Width="220"
-              HorizontalAlignment="Left" VerticalAlignment="Center"
-              AutomationProperties.LabeledBy="{Binding #LanguageLabel}"
-              SelectionChanged="OnLanguageChanged" />
-
-    <TextBlock Grid.Row="1" Grid.Column="0" x:Name="AppearanceLabel" VerticalAlignment="Center"
-               Margin="0,7,0,0" />
-    <ComboBox Grid.Row="1" Grid.Column="1" x:Name="AppearanceCombo" Width="220"
-              HorizontalAlignment="Left" VerticalAlignment="Center" Margin="0,7,0,0"
-              AutomationProperties.LabeledBy="{Binding #AppearanceLabel}"
-              SelectionChanged="OnAppearanceChanged" />
-
-    <TextBlock Grid.Row="2" Grid.Column="0" x:Name="FontLabel" VerticalAlignment="Center"
-               Margin="0,7,0,0" />
-    <!-- IsTextSearchEnabled restores the WPF list's type-ahead: with hundreds of installed
-         families, typing the first letters is how the list is actually navigated. The rows are
-         ComboBoxItems whose Content is the display name, so no TextSearch.TextPath is needed, and
-         the disabled group-header rows are skipped because they are not selectable. -->
-    <ComboBox Grid.Row="2" Grid.Column="1" x:Name="FontCombo" Width="220" MaxDropDownHeight="320"
-              IsTextSearchEnabled="True" HorizontalAlignment="Left" VerticalAlignment="Center"
-              Margin="0,7,0,0"
-              AutomationProperties.LabeledBy="{Binding #FontLabel}"
-              SelectionChanged="OnFontChanged" />
-
-    <!-- Round 3, Task 4: replaces the removed 按钮大小 (小/中/大) row. Nothing on this surface names
-         a tile width any more — Task 4 fixed every tile at the width that row had called "小"
-         (168 DIP), and Round 4, item 3 removed that fixed width too, so a tile is as wide as its own
-         icon-plus-label content (see GeneralConfig.ButtonSize's remarks, and TmTileButton in
-         Themes/Shell/Launcher.axaml, which carries no Width Setter). This row governs how many
-         shortcuts a column holds before wrapping, not how big a tile is. A NumericUpDown, not a
-         ComboBox like the other rows here: the value is an integer the user picks from a small
-         range, not one of a short list of named choices, and Avalonia ships NumericUpDown as a plain
-         control (no extra NuGet package) that already gives a spinner AND type-in for exactly that.
-         Range 1–30 matches the pre-Avalonia Blazor build's own numeric input for this same setting
-         (docs/plans/2026-06-22-tanmenu-wpf-blazor.md: `min="1" max="30"`) — below 1 a "column" is not
-         a column, and 30 comfortably covers even a large 常用工具/folder group without inviting a
-         single, absurdly tall column. ClipValueToMinMax keeps a typed out-of-range value inside that
-         band rather than accepting it verbatim. -->
-    <TextBlock Grid.Row="3" Grid.Column="0" x:Name="ColCountLabel" VerticalAlignment="Center"
-               Margin="0,7,0,0" />
-    <NumericUpDown Grid.Row="3" Grid.Column="1" x:Name="ColCountUpDown" Width="220"
-                   HorizontalAlignment="Left" VerticalAlignment="Center" Margin="0,7,0,0"
-                   Minimum="1" Maximum="30" Increment="1" FormatString="0"
-                   ClipValueToMinMax="True"
-                   AutomationProperties.LabeledBy="{Binding #ColCountLabel}"
-                   ValueChanged="OnColCountChanged" />
-
-    <!-- 3 is PUBLISHED on the same page: "the smallest space between a non-interactive control and
-         any other control". This line is static text describing the spinner directly above it, not a
-         new row, so it sits one rung below the 7 that separates two rows. -->
-    <TextBlock Grid.Row="4" Grid.Column="1" x:Name="ColCountHelp" TextWrapping="Wrap"
-               Margin="0,3,0,0" />
-  </Grid>
+    <ui:FASettingsExpander x:Name="ColumnCountRow" IconSource="Bullets">
+      <ui:FASettingsExpander.Header>
+        <TextBlock x:Name="ColumnCountLabel" />
+      </ui:FASettingsExpander.Header>
+      <ui:FASettingsExpander.Footer>
+        <NumericUpDown x:Name="ColumnCountInput"
+                       Width="120"
+                       Minimum="1"
+                       Maximum="30"
+                       Increment="1"
+                       FormatString="0"
+                       AutomationProperties.LabeledBy="{Binding #ColumnCountLabel}"
+                       ValueChanged="OnColumnCountChanged" />
+      </ui:FASettingsExpander.Footer>
+    </ui:FASettingsExpander>
+  </StackPanel>
 </UserControl>

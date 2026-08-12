@@ -2,378 +2,237 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:TanMenu.Wpf.ViewModels"
              xmlns:ctl="using:TanMenu.Wpf.Controls"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
              x:Class="TanMenu.Wpf.Views.AppPage"
              x:DataType="vm:LauncherViewModel">
 
-  <!-- The launcher proper. The window shell owns the Aero caption, the classic menu band and the
-       search field that sits in it; everything here is the 应用 page's own content: the two docked
-       notices, the categories, and the three non-menu states (loading, nothing configured, nothing
-       matched).
-
-       ROUND 8, TASK 3 TOOK THE SEARCH HEADER OUT OF THIS FILE. The field spent Rounds 2-6 in the
-       window's title strip, Round 7 Task 1 through Round 8 Task 2 here, and now lives in the menu
-       band, immediately after 关于 (item 5: 放在"关于"后面). What went with it: the Border.tm-header
-       wrapper — which is deleted outright, because the band IS the header now — the field's own
-       Border, its two affordance faces, the SearchBox TextBox, and the four handlers in this file's
-       code-behind (OnSearchFocusChanged, OnSearchClearPressed, OnSearchKeyDown, FocusSearchBox).
-       This page keeps the OTHER half of the search contract, and it has to: LauncherViewModel is
-       still the page's, the filter is still its property, FocusFirstTile is still this grid's, and
-       OnClearFilterClick below still belongs to the "nothing matched" empty state.
-
-       Nothing about that move is a revert of Round 7, Task 1. That task removed a control from the
-       window FRAME, which https://learn.microsoft.com/en-us/windows/win32/uxguide/win-window-frames
-       forbids verbatim — "Don't add controls to a window frame. Put the controls within the window
-       instead." The menu band is inside the client area, which is the "within the window" that same
-       sentence asks for. The ⋯ overflow button and the page-close glyph that shared the old title
-       strip do NOT come back either way: 主目录/刷新/退出 are menu items now and 关于 is one too. -->
-
-
-  <!-- Round 3, Task 4 removed the 小/中/大 button-size setting, so the Classes.size-* bindings this
-       Panel used to carry (each wired to LauncherViewModel.IsSmallButtons/IsMediumButtons/
-       IsLargeButtons — bindings and properties alike since deleted) went with it. Task 4 left every
-       tile at the single fixed width that setting had called "小" (a 168 DIP Width Setter on
-       TmTileButton); Round 4, item 3 deleted that Setter in turn, so TmTileButton
-       (Themes/Shell/Launcher.axaml) now sets no Width at all and a tile is as wide as its own
-       icon-plus-label content. Its header comment has the chrome arithmetic (43 DIP since Round 7,
-       Task 9 re-derived the tile's padding and this file's icon margin onto Aero's published ladder;
-       it was 48) and the reason columns still come out uniform — the ABSENCE of a HorizontalAlignment
-       on the tile Button further down this file. -->
-  <Panel x:Name="Root"
-         Background="Transparent">
-
-    <!-- First child (the main content) is what the overlays measure against; every later child is an
-         overlay that contributes no layout size of its own (the splash, the two non-menu states and the
-         toast never affect the page, which simply fills whatever space the shell's page host gives
-         it). -->
+  <Panel x:Name="Root" Background="Transparent">
     <ctl:OverlayPanel>
-
       <DockPanel>
+        <ui:FAInfoBar x:Name="PinNotice"
+                      DockPanel.Dock="Top"
+                      Margin="24,8,24,0"
+                      IsOpen="False"
+                      IsClosable="True"
+                      Severity="Informational">
+          <ui:FAInfoBar.ActionButton>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Button x:Name="PinNowButton" Classes="accent" Click="OnPinNowClick" />
+              <Button x:Name="PinNeverButton" Click="OnPinNeverClick" />
+            </StackPanel>
+          </ui:FAInfoBar.ActionButton>
+        </ui:FAInfoBar>
 
-        <!-- Taskbar-pin notice. An inline InfoBar rather than the modal dialog the app used to throw
-             up on every reveal: RefreshPinNoticeAsync (AppPage.axaml.cs) opens it whenever the app is
-             not yet pinned and 不再提示 has not been chosen, and closes it the moment the pin succeeds
-             or the user dismisses it. Docked below the search header and above the update notice.
+        <ui:FAInfoBar DockPanel.Dock="Top"
+                      Margin="24,8,24,0"
+                      IsOpen="{Binding ShowUpdateNotice}"
+                      IsClosable="False"
+                      Severity="Informational"
+                      Message="{Binding UpdateNoticeText}">
+          <ui:FAInfoBar.ActionButton>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <ProgressBar IsVisible="{Binding IsUpdateDownloading}"
+                           Width="96"
+                           Minimum="0" Maximum="100"
+                           Value="{Binding UpdateProgressPercent}" />
+              <Button Content="{Binding UpdateActionText}"
+                      IsEnabled="{Binding !IsUpdateDownloading}"
+                      Click="OnUpdateNoticeClick" />
+            </StackPanel>
+          </ui:FAInfoBar.ActionButton>
+        </ui:FAInfoBar>
 
-             PinNowButton/PinNeverButton were still default Avalonia Fluent-1 buttons — a scope gap Task
-             3 introduced (its own plan scoped "buttons are wrong" to settings-card buttons, but the
-             user's complaint was blanket). The local Padding="14,5" is removed from both, same as every
-             settings-card button in that task: a local value would outrank the theme's own Padding
-             setter and defeat it.
-
-             Both are on TmButton since Round 7, Task 3. PinNowButton used to carry TmAccentButton, on
-             the criterion "the one button on its row, and it does the useful thing", so that 固定到任务栏
-             looked the same here as it did on BehaviorCard's row. That criterion did not survive the
-             Aero conversion: Windows 7 had no accent-filled default button, so TmAccentButton was
-             deleted rather than restyled, and the pair now differ by position and label alone. Nothing
-             else about this InfoBar changed. -->
-        <!-- Margin re-derived onto Aero's published ladder by Round 7, Task 7: 11 on the two sides
-             (vis-layout's dialog margin) and 7 below (its "between related controls"). It was
-             12,0,12,8. -->
-        <ctl:InfoBar x:Name="PinNotice" DockPanel.Dock="Top" Margin="11,0,11,7"
-                     IsOpen="False" Dismissed="OnPinNoticeDismissed">
-          <StackPanel Orientation="Horizontal" Spacing="7">
-            <Button x:Name="PinNowButton" Theme="{StaticResource TmButton}" Click="OnPinNowClick" />
-            <Button x:Name="PinNeverButton" Theme="{StaticResource TmButton}" Click="OnPinNeverClick" />
-          </StackPanel>
-        </ctl:InfoBar>
-
-        <!-- Update notice. Docked above the body rather than inside its scrolling StackPanel: the
-             notice is a page-wide banner, not a category, so it must not become a sibling in the
-             horizontal row of groups. Only for Available / Downloading / ReadyToRestart. MinWidth is
-             deliberate anti-jitter: without it the page's width would change as the "…42%" text grows
-             and shrinks during a download. The bottom margin is 0 because the body ScrollViewer's own
-             content margin (SurfacePadding) supplies the gap to whatever renders below.
-
-             THE TOP MARGIN IS 7, NOT 11, SINCE ROUND 7 TASK 9. It was 16 while the search field lived
-             in the window's title strip and this banner was the first thing in the page; Task 7 put
-             it on the ladder at 11 and Task 9 re-derived WHICH rung, because there is a header above
-             it now and this is a gap between two things on one page rather than a page's top margin.
-             PUBLISHED, vis-layout: 11 is the dialog margin (kept on the two sides, where this banner
-             really is against the page edge) and 7 is "Between related controls". -->
-        <Button Classes="tm-update"
-                DockPanel.Dock="Top"
-                Margin="11,7,11,0"
-                IsVisible="{Binding ShowUpdateNotice}"
-                IsEnabled="{Binding !IsUpdateDownloading}"
-                MinWidth="360"
-                Click="OnUpdateNoticeClick">
-          <DockPanel>
-            <TextBlock DockPanel.Dock="Left" Classes="tm-icon small"
-                       Text="&#xE896;" Margin="0,0,7,0" />
-            <!-- A REAL ProgressBar since Round 7, Task 5. It was a hand-drawn Border-in-Border at
-                 Height="4", the outer one on SubtleFillTertiaryBrush and the inner one on
-                 AccentDefaultBrush, with the inner width bound to a view-model property that did the
-                 percentage arithmetic itself. Two reasons it could not stay: the round's Task 7
-                 deletes SubtleFillTertiaryBrush outright, and a hand-drawn Fluent 2 bar sitting one
-                 page away from the 设置 page's real Aero one is the incoherence this conversion
-                 exists to remove. The DoubleTransition on the fill's width goes with it — Avalonia's
-                 ProgressBar sets its indicator's Width from OnApplyTemplate/UpdateIndicator rather
-                 than through a styled binding, so a transition here would animate nothing.
-
-                 84 x 15. The 84 is unchanged and is what the banner's MinWidth="360" anti-jitter was
-                 measured around; 15 is the height the Aero shape needs and is PUBLISHED, same
-                 vis-layout citation as UpdatesCard's bar. MinWidth is a LOCAL value on purpose: the
-                 vendored theme's ^:horizontal rule sets MinWidth="100", layout clamps Width up into
-                 [MinWidth, MaxWidth], and a style setter cannot be beaten by a local value on a
-                 DIFFERENT property — only by a local value on the same one. -->
-            <ProgressBar DockPanel.Dock="Right"
-                         IsVisible="{Binding IsUpdateDownloading}"
-                         Width="84" MinWidth="84" Height="15" Margin="7,0,0,0"
-                         VerticalAlignment="Center"
-                         Minimum="0" Maximum="100"
-                         Value="{Binding UpdateProgressPercent}" />
-            <TextBlock Text="{Binding UpdateNoticeText}"
-                       TextWrapping="NoWrap" VerticalAlignment="Center" />
-          </DockPanel>
-        </Button>
-
-        <!-- ══ Body ═════════════════════════════════════════════════════════════════════════
-             Horizontal-only: categories run left to right and the window scrolls sideways when
-             they overflow, not up and down. -->
         <ScrollViewer x:Name="Body"
                       HorizontalScrollBarVisibility="Auto"
-                      VerticalScrollBarVisibility="Disabled">
-          <!-- No Spacing on this panel. It has exactly ONE child — the categories ItemsControl below —
-               so the Spacing="14" it carried until Round 6, item 4 never applied to anything; it was
-               removed rather than left, because the very next edit to add a second child here would
-               have silently activated a 14 DIP gap nobody chose. -->
-          <StackPanel Orientation="Horizontal"
-                      Margin="{DynamicResource SurfacePadding}">
-
-            <!-- 1. The categories, running left to right. Each is a PANEL (Border.tm-group-panel,
-                 Round 6, item 4 — that style carries the outline, the radius and the padding
-                 derivation, and why the page draws a container around a labelled group where the old
-                 reference drew none. It said "fill/radius/padding measurements" until Round 7,
-                 Task 10; there has been no fill since Task 7 made the panel an Aero group box, and the
-                 measurement that picked the old one is archived) wrapping a heading plus columns of tiles that fill
-                 top-to-bottom, wrapping into a new column once a column reaches ColButtonCount items
-                 (设置 → 外观 → 每列个数, default 10); a category with no visible items after filtering
-                 removes itself.
-
-                 SPACING 11, PUBLISHED, and it was 12 (Windows 11's gutter between its large
-                 side-by-side tiles) until Round 7, Task 9. https://learn.microsoft.com/en-us/windows/
-                 win32/uxguide/vis-layout gives "Between unrelated controls — 7 / 11", and two
-                 categories are exactly that: 常用工具 and 工具 have nothing to do with each other. It
-                 was 24 before Round 6 item 4 put the panels in; the panels' own outlines supply the
-                 separation the wider gap used to do alone, which is why halving it then did not read
-                 as crowding and why one more DIP off it does not either.
-
-                 WHAT ITEM 4'S OWN ARITHMETIC MEASURED, kept because the mechanism is still live: a
-                 1 DIP stroke LAYS OUT as 2 physical px = 1.3333 DIP at 150 % (the rounding
-                 Launcher.axaml's tm-page-pane border block records), so a panel's chrome costs
-                 1.3333 per side rather than 1, and the five panels' arrival grew the page by
-                 +65.3333 rather than the authored +62 — measured then as page 1643.3333 -> 1708.6667.
-                 Re-derive with the authored 1, not the 1.3333, at another scale. Task 9 moved every
-                 term in that sum (panel padding 12,12,8,8 -> 11,11,6,6, this gap 12 -> 11, the tile's
-                 own chrome 48 -> 43), so the 1708.6667 is history. THE FIT LINE AFTER TASK 9, on the
-                 same 74-item folder at 150 % and at the DEFAULT font, is
-                 "page 1486.6666666666667x508.6666666666667 + chrome 161x31" in Chinese and
-                 "page 1500x508.6666666666667 + chrome 161x31" in English; the window resolves to
-                 1647.6666666666667x568 and 1661x568 DIP. Launcher.axaml's tm-group-panel block carries
-                 the new inset. -->
-
-            <ItemsControl IsVisible="{Binding HasVisibleItems}" ItemsSource="{Binding Groups}">
-              <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate>
-                  <StackPanel Orientation="Horizontal" Spacing="11" />
-                </ItemsPanelTemplate>
-              </ItemsControl.ItemsPanel>
-              <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="vm:MenuGroupVm">
-                  <!-- A plain vertical StackPanel is enough now: the column cap is enforced by DATA
-                       (MenuGroupVm.Columns, chunked from VisibleItems by
-                       TanMenu.Core.Services.MenuLayout.ChunkIntoColumns at GeneralConfig.ColButtonCount
-                       items per column — Round 3, Task 4), not by handing an inner panel a real,
-                       finite height budget the way the DockPanel-plus-vertical-WrapPanel this replaced
-                       had to (that panel needed the trick because WindowHost.FitToContent measures the
-                       whole page with an UNBOUNDED height probe: an item-count cap decided in the data
-                       survives that probe unchanged, whereas a height-based wrap would never wrap at
-                       all under an infinite budget — see that method's own remarks). -->
-                  <!-- Round 6, item 4 puts every category in a panel. The wrapping Border is what carries
-                       IsVisible, and MOVING the binding off the StackPanel onto it is load-bearing rather
-                       than cosmetic: the recon measured that when a filter hides a category, the generated
-                       ItemsControl CONTAINER stays visible at zero size and only the bound child collapses
-                       (with the box set to "Steam", four of five group containers reported an empty UIA
-                       rect while the items panel still measured 187.33 DIP = the surviving group's 91.33
-                       plus 4 x the inter-category gap). Leave the binding on the inner StackPanel and every
-                       filtered-out category renders as an empty bordered box 22 DIP wide.
-                       AppPageGroupTests guards exactly that, because nothing else would see it until
-                       somebody types in the search box. -->
-                  <Border Classes="tm-group-panel" IsVisible="{Binding HasVisibleItems}">
-                    <StackPanel Classes="tm-group">
-
-                      <!-- A null tooltip shows nothing, which is how the inert 常用工具 heading
-                           stays inert. The folder glyph only fades in for a real directory. -->
-                      <Border Classes="tm-section-head"
-                              Classes.clickable="{Binding IsDirectoryClickable}"
-                              ToolTip.Tip="{Binding TitleTooltip}"
-                              PointerPressed="OnGroupTitlePressed"
-                              Margin="0,0,0,5"
-                              HorizontalAlignment="Left">
-                        <StackPanel Orientation="Horizontal" Spacing="5">
-                          <TextBlock Classes="tm-section" Text="{Binding DirectoryName}"
-                                     MaxWidth="320" TextTrimming="CharacterEllipsis" />
-                          <TextBlock Classes="tm-icon subtle small tm-folder"
-                                     IsVisible="{Binding IsDirectoryClickable}"
-                                     Text="&#xE8B7;" />
-                        </StackPanel>
-                      </Border>
-
-                      <!-- Columns, left to right; each holds at most ColButtonCount items, top to
-                           bottom — the pre-Avalonia layout's own shape, restored. The outer ItemsControl
-                           below walks MenuGroupVm.Columns (one MenuColumnVm per column); the inner one
-                           walks that column's own Items. Two levels, not one WrapPanel, because
-                           compiled bindings (required for the NativeAOT publish) need a concrete
-                           x:DataType per DataTemplate, and a bare IReadOnlyList&lt;MenuItemVm&gt; has no
-                           name of its own to bind against — see MenuColumnVm's own remarks. -->
-                      <ItemsControl ItemsSource="{Binding Columns}">
-                        <ItemsControl.ItemsPanel>
-                          <ItemsPanelTemplate>
-                            <StackPanel Orientation="Horizontal" />
-                          </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                          <DataTemplate x:DataType="vm:MenuColumnVm">
-                            <ItemsControl ItemsSource="{Binding Items}">
-                              <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                  <StackPanel Orientation="Vertical" />
-                                </ItemsPanelTemplate>
-                              </ItemsControl.ItemsPanel>
-                              <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="vm:MenuItemVm">
-                                  <!-- The tile grid's own gutter. 4 became 5 in Round 7, Task 9, and
-                                       it moves as one with Border.tm-group-panel's Padding — that
-                                       rule's remark carries the pair and the reason (the visible
-                                       inset stays a uniform 11 on all four sides only if
-                                       padding.right + this = padding.left). PUBLISHED, vis-layout:
-                                       "target regions … should either be touching or have at least
-                                       3 DLUs (5 relative pixels) of space between them". Two tiles
-                                       are two target regions, and 4 was on no ladder at all. -->
-                                  <Button Classes="tm-tile"
-                                          Theme="{StaticResource TmTileButton}"
-                                          Margin="0,0,5,5"
-                                          IsEnabled="{Binding !IsDisabled}"
-                                          Click="OnItemClick"
-                                          PointerEntered="OnItemPointerEntered">
-                                    <DockPanel>
-                                      <!-- The icon slot is always occupied (the build always assigns at
-                                           least a fallback), which is why the async icon fill never
-                                           reflows the grid. -->
-                                      <!-- 7, not the 10 this carried until Round 7 Task 9. PUBLISHED,
-                                           vis-layout's "Between related controls — 4 / 7"; an icon
-                                           and the label it belongs to are as related as two things
-                                           on one control get. It is a term in the tile's width —
-                                           TmTileButton's header states the whole sum. -->
-                                      <Image Classes="tm-tile-icon"
-                                             DockPanel.Dock="Left"
-                                             Source="{Binding Icon}"
-                                             Margin="0,0,7,0"
-                                             Stretch="Uniform"
+                      VerticalScrollBarVisibility="Auto">
+          <ItemsControl Margin="24,8,24,32"
+                        IsVisible="{Binding HasVisibleItems}"
+                        ItemsSource="{Binding Groups}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <StackPanel Orientation="Horizontal" Spacing="16" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:MenuGroupVm">
+                <Border Padding="0,0,0,12"
+                        VerticalAlignment="Top"
+                        IsVisible="{Binding HasVisibleItems}"
+                        Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="1"
+                        CornerRadius="12">
+                  <Grid RowDefinitions="Auto,Auto">
+                    <Border Grid.Row="0"
+                            Padding="16,12"
+                            Background="{DynamicResource CardBackgroundFillColorSecondaryBrush}"
+                            BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                            BorderThickness="0,0,0,1"
+                            CornerRadius="12,12,0,0">
+                      <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="10">
+                        <Border Grid.Column="0"
+                                Width="32"
+                                Height="32"
+                                Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                                CornerRadius="8">
+                          <Panel>
+                            <ui:FASymbolIcon Symbol="Folder"
+                                             IsVisible="{Binding IsDirectoryClickable}"
+                                             HorizontalAlignment="Center"
                                              VerticalAlignment="Center" />
-                                      <!-- NoWrap and NO TextTrimming: Round 4, item 3 sizes the tile to
-                                           this label instead of trimming the label to the tile, so
-                                           there is nothing left for a trimmer to do — RE-MEASURED at
-                                           Round 7 Task 9's tile padding on the same 74-item folder,
-                                           at the DEFAULT font (general.fontFamily = "", the value
-                                           AppConfig ships; a label advance follows the configured
-                                           face, so this reading is void at another one). UI
-                                           Automation, every tile Button's rect against the first Text
-                                           descendant inside it: 74 of 74 labels' ink ends inside their
-                                           tile's padding box, none crosses it, and the tightest slack
-                                           is 0.00 DIP on 计算器 — which is the widest label in its
-                                           column and therefore the one that DEFINES the column's
-                                           width, so 0.00 is the expected reading rather than a near
-                                           miss. Item 3's own reading was 0.67 DIP at the 8 DIP
-                                           padding this task took to 7. NoWrap is
-                                           load-bearing twice: it is what makes the label's desired
-                                           width a single-line advance, and it keeps every tile the
-                                           same height, which is what FindAdjacentTile's sameRow test
-                                           keys off (code-behind, current.Bounds.Height / 2). -->
-                                      <TextBlock Text="{Binding Name}"
-                                                 TextWrapping="NoWrap"
-                                                 VerticalAlignment="Center" />
-                                    </DockPanel>
-                                  </Button>
-                                </DataTemplate>
-                              </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                          </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                      </ItemsControl>
+                            <ui:FASymbolIcon Symbol="AllApps"
+                                             IsVisible="{Binding !IsDirectoryClickable}"
+                                             HorizontalAlignment="Center"
+                                             VerticalAlignment="Center" />
+                          </Panel>
+                        </Border>
 
-                    </StackPanel>
-                  </Border>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding DirectoryName}"
+                                   HorizontalAlignment="Left"
+                                   VerticalAlignment="Center"
+                                   FontSize="16"
+                                   FontWeight="SemiBold"
+                                   MaxWidth="220"
+                                   TextTrimming="CharacterEllipsis" />
 
-          </StackPanel>
+                        <Border Grid.Column="2"
+                                Padding="8,2"
+                                VerticalAlignment="Center"
+                                Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                                CornerRadius="10">
+                          <TextBlock Text="{Binding VisibleItemCount}"
+                                     FontSize="12"
+                                     Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                        </Border>
+
+                        <Button Grid.Column="3"
+                                Theme="{DynamicResource TransparentButton}"
+                                Width="32"
+                                Height="32"
+                                Padding="0"
+                                HorizontalContentAlignment="Center"
+                                VerticalContentAlignment="Center"
+                                IsVisible="{Binding IsDirectoryClickable}"
+                                ToolTip.Tip="{Binding TitleTooltip}"
+                                AutomationProperties.Name="{Binding TitleTooltip}"
+                                Click="OnGroupTitleClick">
+                          <ui:FASymbolIcon Symbol="ChevronRight" />
+                        </Button>
+                      </Grid>
+                    </Border>
+
+                    <ItemsControl Grid.Row="1"
+                                  Margin="12,12,12,0"
+                                  ItemsSource="{Binding Columns}">
+                      <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                          <StackPanel Orientation="Horizontal" Spacing="8" />
+                        </ItemsPanelTemplate>
+                      </ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:MenuColumnVm">
+                          <ItemsControl ItemsSource="{Binding Items}">
+                            <ItemsControl.ItemsPanel>
+                              <ItemsPanelTemplate>
+                                <StackPanel Orientation="Vertical" Spacing="6" />
+                              </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate x:DataType="vm:MenuItemVm">
+                                <Button Theme="{DynamicResource TransparentButton}"
+                                        MinHeight="48"
+                                        Padding="8,6"
+                                        HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Left"
+                                        ToolTip.Tip="{Binding Name}"
+                                        AutomationProperties.Name="{Binding Name}"
+                                        IsEnabled="{Binding !IsDisabled}"
+                                        Click="OnItemClick"
+                                        PointerEntered="OnItemPointerEntered">
+                                  <Grid ColumnDefinitions="36,Auto" ColumnSpacing="10">
+                                    <Border Grid.Column="0"
+                                            Width="36" Height="36"
+                                            Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                                            CornerRadius="8">
+                                      <Image Width="28" Height="28"
+                                             Source="{Binding Icon}"
+                                             Stretch="Uniform"
+                                             HorizontalAlignment="Center"
+                                             VerticalAlignment="Center" />
+                                    </Border>
+                                    <TextBlock Grid.Column="1"
+                                               Text="{Binding Name}"
+                                               FontWeight="Medium"
+                                               MaxWidth="220"
+                                               TextTrimming="CharacterEllipsis"
+                                               TextWrapping="NoWrap"
+                                               VerticalAlignment="Center" />
+                                  </Grid>
+                                </Button>
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
         </ScrollViewer>
-
       </DockPanel>
 
-      <!-- ══ Non-menu states (no layout size) ═════════════════════════════════════════════════
-           Loading, "nothing configured" and "nothing matched" are page-wide states, not categories,
-           so they are NOT siblings inside the horizontal row above — they are centred overlays here,
-           measured against the main content's size the same way the toast below is. -->
+      <StackPanel IsVisible="{Binding ShowSplash}"
+                  HorizontalAlignment="Center"
+                  VerticalAlignment="Center"
+                  Spacing="12">
+        <Image Width="64" Height="64"
+               Source="avares://TanMenu.Wpf/wwwroot/app-tile.png" />
+        <ui:FAProgressRing Width="32" Height="32"
+                           IsActive="{Binding ShowSplash}"
+                           IsIndeterminate="True"
+                           HorizontalAlignment="Center" />
+        <TextBlock Text="{Binding VersionText}" HorizontalAlignment="Center" />
+      </StackPanel>
 
-      <!-- 2. Loading. ShowLoading tracks visibility so the spinner's infinite animation stops for
-           the rest of the (tray-resident) session once the menu arrives. -->
-      <ctl:SplashPanel IsVisible="{Binding ShowSplash}"
-                       HorizontalAlignment="Center"
-                       VerticalAlignment="Center"
-                       ShowLoading="{Binding ShowSplash}"
-                       VersionText="{Binding VersionText}"
-                       CopyrightText="{Binding CopyrightText}" />
-
-      <!-- 3. Loaded, but there is genuinely nothing configured. Both recovery buttons were still
-           default Avalonia Fluent-1 buttons — found while auditing the app for Task 3's scope gap (see
-           the PinNotice comment above); neither is named in that gap's own brief, but they are the same
-           kind of miss. Two peer actions, neither a single obvious default — plain TmButton for both,
-           same criterion FoldersCard's own peer-action rows use. -->
-      <StackPanel Classes="tm-empty" IsVisible="{Binding ShowEmpty}"
-                  HorizontalAlignment="Center" VerticalAlignment="Center">
-        <TextBlock Classes="title" Text="{Binding EmptyTitleText}"
+      <StackPanel IsVisible="{Binding ShowEmpty}"
+                  HorizontalAlignment="Center"
+                  VerticalAlignment="Center"
+                  Spacing="8">
+        <TextBlock Text="{Binding EmptyTitleText}"
+                   FontSize="28"
+                   FontWeight="SemiBold"
                    FontFamily="{Binding TitleFontFamily}" />
-        <TextBlock Text="{Binding EmptyHelpText}" MaxWidth="360" />
-        <StackPanel Orientation="Horizontal" Spacing="7"
-                    HorizontalAlignment="Center" Margin="0,11,0,0">
-          <Button Theme="{StaticResource TmButton}" Content="{Binding OpenOptionsText}" Click="OnOpenSettingsClick" />
-          <Button Theme="{StaticResource TmButton}" Content="{Binding MenuRefreshText}" Click="OnRefreshClick" />
+        <TextBlock Text="{Binding EmptyHelpText}" MaxWidth="420" TextWrapping="Wrap" />
+        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+          <Button Classes="accent" Content="{Binding OpenOptionsText}" Click="OnOpenSettingsClick" />
+          <Button Content="{Binding MenuRefreshText}" Click="OnRefreshClick" />
         </StackPanel>
       </StackPanel>
 
-      <!-- 4. There ARE shortcuts, but the filter matched none of them. The clear-filter button is the
-           other button this Task's brief names explicitly (the PinNotice comment above covers the
-           other scope-gap fix). It is a reset, the same category as the settings page's HotkeyClearBtn
-           (Task 3 kept that one plain rather than accented "because clearing is a reset, not an
-           affirmative action") — plain TmButton here for the identical reason. -->
-      <StackPanel Classes="tm-empty" IsVisible="{Binding ShowNoMatches}"
-                  HorizontalAlignment="Center" VerticalAlignment="Center">
-        <TextBlock Classes="title" Text="{Binding NoMatchTitleText}"
+      <StackPanel IsVisible="{Binding ShowNoMatches}"
+                  HorizontalAlignment="Center"
+                  VerticalAlignment="Center"
+                  Spacing="8">
+        <TextBlock Text="{Binding NoMatchTitleText}"
+                   FontSize="28"
+                   FontWeight="SemiBold"
                    FontFamily="{Binding TitleFontFamily}" />
-        <TextBlock Text="{Binding NoMatchHelpText}" MaxWidth="360" />
-        <Button Theme="{StaticResource TmButton}" Content="{Binding ClearFilterText}" Click="OnClearFilterClick"
-                HorizontalAlignment="Center" Margin="0,11,0,0" />
+        <TextBlock Text="{Binding NoMatchHelpText}" MaxWidth="420" TextWrapping="Wrap" />
+        <Button Content="{Binding ClearFilterText}"
+                Click="OnClearFilterClick"
+                HorizontalAlignment="Center" />
       </StackPanel>
 
-      <!-- Transient error. Click anywhere on it to dismiss; otherwise it self-clears. -->
-      <Border Classes="tm-toast"
-              IsVisible="{Binding HasToast}"
-              PointerPressed="OnToastPressed">
-        <TextBlock Text="{Binding ToastText}"
-                   TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
-      </Border>
-
-      <!-- The "关于" overlay used to be the last child here: the same SplashPanel with ShowLoading
-           false, covering the page, dismissed by a click anywhere. Round 5, item 2 ("关于集成到设置页中")
-           deleted it outright rather than hiding it — 关于 is a card at the bottom of the 设置 page now
-           (Views/Settings/AboutCard.axaml). Its rail row, OnAboutClick, LauncherViewModel's
-           ShowAbout/OpenAbout/CloseAbout, this file's OnAboutPressed, SplashPanel's dismiss hint and the
-           ClickToDismiss language key went with it, and Tokens.axaml's RadiusOverlay lost its only
-           consumer. -->
-
+      <ui:FAInfoBar IsOpen="{Binding HasToast}"
+                    IsClosable="False"
+                    Message="{Binding ToastText}"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Bottom"
+                    Margin="24"
+                    PointerPressed="OnToastPressed" />
     </ctl:OverlayPanel>
   </Panel>
 </UserControl>

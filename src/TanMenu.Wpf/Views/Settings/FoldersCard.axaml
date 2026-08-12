@@ -1,150 +1,45 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="TanMenu.Wpf.Views.Settings.FoldersCard"
-             FontSize="{DynamicResource FontSizeBody}">
-  <!-- ══ 文件夹 — the ONE tab that keeps group boxes ═════════════════════════════════════════
-       ROUND 8, TASK 6 REPLACED THE ROW GRAMMAR everywhere (see AppearanceCard.axaml's header for
-       the argument, the published citations and why every card root states the FontSize above),
-       and this file is the exception the rule names.
-
-       THIS IS THE TAB THAT NEVER LOST ITS BODY SIZE, which is how the review found that the other
-       four had. Its content sits inside HeaderedContentControl.axaml's group box, and that
-       vendored ControlTheme sets FontSize AeroFontSizeNormal (12) on itself (:68), so everything
-       under a box inherited 12 while the four boxless tabs inherited the Window's 14. The FontSize
-       above restates on this root what the boxes were already supplying, so the tab reads the same
-       as the other four rather than the other four reading like this one.
-
-       WHY THE BOXES STAY HERE AND NOWHERE ELSE. PUBLISHED, ctrl-group-boxes: "Are all the controls
-       inside the group? If so, indicate the relationship on the larger surface, such as the parent
-       dialog box or page." On 外观, 行为, 常用工具 and 更新 the answer is yes — every control on the
-       tab belongs to one set, so the TabItem's own header is the group's name and the box is
-       redundant. On this tab it is no: there are FOUR distinct sets — 主文件夹, 数据文件夹, 缓存 and
-       备份 — which is the guide's other case, "Is there more than one control in the group?",
-       passing. So this tab has four boxes and its TabItem header names the tab, not a group.
-
-       THREE CARDS BECAME FOUR BOXES. 维护 held 清理缓存, 备份… and 恢复… together, which is two sets
-       under one heading: clearing the menu cache touches derived data and nothing else, while
-       备份/恢复 read and overwrite config.json itself. AppLanguage's Maintenance and
-       MaintenanceCardSub are deleted with that card, and Cache / BackupRestore / CacheHelp /
-       BackupHelp are new.
-
-       THE BOXES TAKE THE VENDORED THEME'S OWN NUMBERS. Themes/Shell/Launcher.axaml's
-       HeaderedContentControl.tm-group-box overrode three of them (CornerRadius 5 -> 3, Padding
-       10 -> 11, Margin -> 0,0,0,11) and Task 6 deleted it: three Setters restating what a vendored
-       ControlTheme already sets for the same control type are exactly the cosmetic layer this round
-       strips. What that rule carried which the theme does not — the gap between one box and the
-       next — is the Spacing="11" on the stack below, PUBLISHED as "Between unrelated controls".
-
-       THE PATH LINES ARE VALUE TEXT IN COLUMN 1, opposite a 位置 label in column 0, and they still
-       ellipsize with a ToolTip carrying the full path (set in the code-behind). TextTrimming is
-       stated locally now because Themes/Shell/Launcher.axaml's TextBlock.tm-card-value went with the
-       rest of the row grammar; there is nothing left to restate, and the class's own measurement
-       record — that a ~250-character path still ellipsizes rather than inflating the surface — held
-       because the dialog's Width is a literal on a CanResize="False" Window, which is still true.
-
-       THE BUTTON STRIPS ARE DOCKED RIGHT ON THE ROW THEY ACT ON, which is both where a Windows 7
-       property sheet puts a Browse/Reset strip and what makes this tab fit. Spacing 7 between them is
-       PUBLISHED, "Between buttons — 4 / 7"; the 7 to their left is "Between related controls".
-
-       THAT DOCKING IS A MEASURED DECISION, NOT A PREFERENCE. Built first with every strip on a row of
-       its own under the content it acts on, this tab measured 577.33 DIP of client height at 711 wide
-       (window temporarily switched to SizeToContent="Height", each tab selected through UIA's
-       SelectionItemPattern, the window's own UIA BoundingRectangle read after each — Round 8, Task 2's
-       method, re-run). The other four measured 246, 350.67, 294.67 and 198. A dialog sized to 577.33
-       is 614.67 DIP of OUTER window at this machine's measured 22 x 56 physical px frame, which
-       BREAKS the PUBLISHED floor — win-property-win, "Support the minimum Windows Vista screen
-       resolution of 800 x 600 pixels". The round's settled ruling for a tab that will not fit is to
-       split 文件夹 in two rather than accept a scrollbar; the published sentence itself offers a first
-       resort ahead of both — "Don't scroll property pages. Instead of using scrollbars, make the
-       property pages larger and lay out the pages efficiently" — and this is that. Docking the four
-       strips beside the content they act on takes four rows off the tab. The re-measured height is in
-       Dialogs/OptionsWindow.axaml.cs, with the whole table.
-
-       A DockPanel, not a third Grid column: the label-and-value pair inside each folder box stays the
-       same "Auto,*" template every other tab uses, so the two 位置 labels still share their x with
-       each other and the paths still share theirs, which is the invariant this task is verified on. -->
-  <StackPanel Spacing="11" Margin="11">
-
-    <!-- ── 主文件夹 ────────────────────────────────────────────────────────────────────────── -->
-    <HeaderedContentControl Theme="{StaticResource GroupBox}">
-      <HeaderedContentControl.Header>
-        <TextBlock x:Name="MainFolderHead" Classes="tm-group-head" />
-      </HeaderedContentControl.Header>
-      <StackPanel>
-        <TextBlock x:Name="MainFolderHelp" TextWrapping="Wrap" />
-        <DockPanel Margin="0,7,0,0">
-          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="7"
-                      VerticalAlignment="Center" Margin="7,0,0,0">
-            <Button x:Name="OpenRootBtn" Theme="{StaticResource TmButton}" Click="OnOpenRootClick" />
-            <Button x:Name="PickRootBtn" Theme="{StaticResource TmButton}" Click="OnPickRootClick" />
-          </StackPanel>
-          <Grid ColumnDefinitions="Auto,*" ColumnSpacing="5">
-            <TextBlock Grid.Column="0" x:Name="RootLocationLabel" VerticalAlignment="Center" />
-            <TextBlock Grid.Column="1" x:Name="RootPathText" VerticalAlignment="Center"
-                       TextTrimming="CharacterEllipsis" />
-          </Grid>
-        </DockPanel>
-      </StackPanel>
-    </HeaderedContentControl>
-
-    <!-- ── 数据文件夹 ──────────────────────────────────────────────────────────────────────── -->
-    <HeaderedContentControl Theme="{StaticResource GroupBox}">
-      <HeaderedContentControl.Header>
-        <TextBlock x:Name="DataFolderHead" Classes="tm-group-head" />
-      </HeaderedContentControl.Header>
-      <StackPanel>
-        <TextBlock x:Name="DataFolderHelp" TextWrapping="Wrap" />
-        <DockPanel Margin="0,7,0,0">
-          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="7"
-                      VerticalAlignment="Center" Margin="7,0,0,0">
-            <Button x:Name="OpenDataBtn" Theme="{StaticResource TmButton}" Click="OnOpenDataClick" />
-            <Button x:Name="ChangeDataBtn" Theme="{StaticResource TmButton}" Click="OnChangeDataClick" />
-            <Button x:Name="ResetDataBtn" Theme="{StaticResource TmButton}" Click="OnResetDataClick" />
-          </StackPanel>
-          <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" ColumnSpacing="5">
-            <TextBlock Grid.Row="0" Grid.Column="0" x:Name="DataLocationLabel"
-                       VerticalAlignment="Center" />
-            <TextBlock Grid.Row="0" Grid.Column="1" x:Name="DataPathText" VerticalAlignment="Center"
-                       TextTrimming="CharacterEllipsis" />
-            <!-- The kind-and-size line carries its own "当前：" prefix, so it needs no label of its
-                 own; it sits under the path it describes, at the published 3. It sets NO ToolTip, and
-                 that is deliberate: its text is the fixed CurrentDataSize / CurrentDataPending format
-                 over one of four short kind literals plus a formatted byte count, so it cannot be
-                 trimmed and a ToolTip would only repeat the line already on screen. The two path
-                 lines DO set one — they are unbounded user data. -->
-            <TextBlock Grid.Row="1" Grid.Column="1" x:Name="DataInfoText" Margin="0,3,0,0" />
-          </Grid>
-        </DockPanel>
-      </StackPanel>
-    </HeaderedContentControl>
-
-    <!-- ── 缓存 ───────────────────────────────────────────────────────────────────────────── -->
-    <HeaderedContentControl Theme="{StaticResource GroupBox}">
-      <HeaderedContentControl.Header>
-        <TextBlock x:Name="CacheHead" Classes="tm-group-head" />
-      </HeaderedContentControl.Header>
-      <DockPanel>
-        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="7"
-                    VerticalAlignment="Center" Margin="7,0,0,0">
-          <Button x:Name="ClearCacheBtn" Theme="{StaticResource TmButton}" Click="OnClearCacheClick" />
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             HorizontalContentAlignment="Stretch"
+             x:Class="TanMenu.Wpf.Views.Settings.FoldersCard">
+  <StackPanel Spacing="4">
+    <ui:FASettingsExpander x:Name="MainFolderRow" IconSource="Folder">
+      <ui:FASettingsExpander.Header><TextBlock x:Name="MainFolderHead" /></ui:FASettingsExpander.Header>
+      <ui:FASettingsExpander.Footer>
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <Button x:Name="OpenRootBtn" Click="OnOpenRootClick" />
+          <Button x:Name="PickRootBtn" Click="OnPickRootClick" />
         </StackPanel>
-        <TextBlock x:Name="CacheHelp" TextWrapping="Wrap" VerticalAlignment="Center" />
-      </DockPanel>
-    </HeaderedContentControl>
+      </ui:FASettingsExpander.Footer>
+    </ui:FASettingsExpander>
 
-    <!-- ── 备份 ───────────────────────────────────────────────────────────────────────────── -->
-    <HeaderedContentControl Theme="{StaticResource GroupBox}">
-      <HeaderedContentControl.Header>
-        <TextBlock x:Name="BackupHead" Classes="tm-group-head" />
-      </HeaderedContentControl.Header>
-      <DockPanel>
-        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="7"
-                    VerticalAlignment="Center" Margin="7,0,0,0">
-          <Button x:Name="BackupBtn" Theme="{StaticResource TmButton}" Click="OnBackupConfigClick" />
-          <Button x:Name="RestoreBtn" Theme="{StaticResource TmButton}" Click="OnRestoreConfigClick" />
+    <ui:FASettingsExpander x:Name="DataFolderRow" IconSource="SaveLocal">
+      <ui:FASettingsExpander.Header><TextBlock x:Name="DataFolderHead" /></ui:FASettingsExpander.Header>
+      <ui:FASettingsExpander.Footer>
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <Button x:Name="OpenDataBtn" Click="OnOpenDataClick" />
+          <Button x:Name="ChangeDataBtn" Click="OnChangeDataClick" />
+          <Button x:Name="ResetDataBtn" Click="OnResetDataClick" />
         </StackPanel>
-        <TextBlock x:Name="BackupHelp" TextWrapping="Wrap" VerticalAlignment="Center" />
-      </DockPanel>
-    </HeaderedContentControl>
+      </ui:FASettingsExpander.Footer>
+    </ui:FASettingsExpander>
+
+    <ui:FASettingsExpander x:Name="CacheRow" IconSource="Delete">
+      <ui:FASettingsExpander.Header><TextBlock x:Name="CacheHead" /></ui:FASettingsExpander.Header>
+      <ui:FASettingsExpander.Footer>
+        <Button x:Name="ClearCacheBtn" Click="OnClearCacheClick" />
+      </ui:FASettingsExpander.Footer>
+    </ui:FASettingsExpander>
+
+    <ui:FASettingsExpander x:Name="BackupRow" IconSource="Save">
+      <ui:FASettingsExpander.Header><TextBlock x:Name="BackupHead" /></ui:FASettingsExpander.Header>
+      <ui:FASettingsExpander.Footer>
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <Button x:Name="BackupBtn" Click="OnBackupConfigClick" />
+          <Button x:Name="RestoreBtn" Click="OnRestoreConfigClick" />
+        </StackPanel>
+      </ui:FASettingsExpander.Footer>
+    </ui:FASettingsExpander>
   </StackPanel>
 </UserControl>

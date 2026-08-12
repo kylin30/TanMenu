@@ -57,10 +57,10 @@ public partial class AppearanceCard : UserControl, ISettingsCard
     /// <see cref="PopulateFontCombo"/> happens to run.
     /// </para>
     /// </remarks>
-    private const string GroupHeaderForegroundKey = "AeroDisabledForeground";
+    private const string GroupHeaderForegroundKey = "ThemeForegroundLowBrush";
 
-    /// <summary>The default sentinel, then every installed system font family, sorted. The 内置字体
-    /// group is gone with the bundled TTFs — every selectable family is now an installed one.</summary>
+    /// <summary>The embedded Alibaba PuHuiTi default, then every installed system font family,
+    /// sorted. The bundled default is represented by an empty config value.</summary>
     private static List<FontItem> BuildFontItems(string? language)
     {
         var items = new List<FontItem>
@@ -135,27 +135,27 @@ public partial class AppearanceCard : UserControl, ISettingsCard
             var lang = UiLanguage;
 
             LanguageLabel.Text = AppLanguage.Text("Language", lang);
+            LanguageRow.Description = AppLanguage.Text("LanguageCardSub", lang);
             LanguageCombo.ItemsSource = LanguageSettings.Select(s => AppLanguage.LanguageLabel(s, lang)).ToList();
             var langIdx = Array.FindIndex(LanguageSettings,
                 s => string.Equals(s, AppLanguage.NormalizeSetting(g.Language), StringComparison.OrdinalIgnoreCase));
             LanguageCombo.SelectedIndex = langIdx < 0 ? 0 : langIdx;
 
             AppearanceLabel.Text = AppLanguage.Text("AppearanceMode", lang);
+            AppearanceRow.Description = AppLanguage.Text("AppearanceCardSub", lang);
             AppearanceCombo.ItemsSource = AppearanceSettings.Select(s => AppearanceLabelFor(s, lang)).ToList();
             var appearanceIdx = Array.FindIndex(AppearanceSettings,
                 s => string.Equals(s, g.Appearance, StringComparison.OrdinalIgnoreCase));
             AppearanceCombo.SelectedIndex = appearanceIdx < 0 ? 0 : appearanceIdx;
 
             FontLabel.Text = AppLanguage.Text("Font", lang);
+            FontRow.Description = AppLanguage.Text("FontCardSub", lang);
             PopulateFontCombo(g.FontFamily ?? string.Empty, lang);
 
-            ColCountLabel.Text = AppLanguage.Text("ColButtonCount", lang);
-            ColCountHelp.Text = AppLanguage.Text("ColButtonCountCardSub", lang);
-            // Clamped for DISPLAY only — a hand-edited config.json can carry a value outside the
-            // NumericUpDown's own [1, 30] range (see GeneralConfig.ColButtonCount's own remarks); this
-            // does not write the clamped value back, only shows something sane until the user actually
-            // changes it (at which point OnColCountChanged persists whatever they picked).
-            ColCountUpDown.Value = Math.Clamp(g.ColButtonCount, 1, 30);
+            ColumnCountLabel.Text = AppLanguage.Text("ColButtonCount", lang);
+            ColumnCountRow.Description = AppLanguage.Text("ColButtonCountCardSub", lang);
+            ColumnCountInput.Value = Math.Clamp(g.ColButtonCount, 1, 30);
+
         }
         finally
         {
@@ -258,23 +258,13 @@ public partial class AppearanceCard : UserControl, ISettingsCard
         _draft.Revalidate();
     }
 
-    /// <summary>每列个数 (GeneralConfig.ColButtonCount). Re-fitting the window is not this handler's
-    /// job: <see cref="SettingsCommit.ApplyAsync"/> raises <see cref="AppEvents.SettingsChanged"/> once
-    /// per commit, which <c>LauncherViewModel.OnSettingsChanged</c> turns into a rebuild (re-chunking
-    /// every group's columns — see <c>LauncherViewModel.ApplyGroupSettings</c>) that ends by raising
-    /// <c>ContentMetricsChanged</c>, which <c>MainWindow</c> turns into a re-fit — the same chain every
-    /// other 外观 setting here already rides, now fired on 确定/应用 rather than on every keystroke of
-    /// the spinner.</summary>
-    private void OnColCountChanged(object? sender, NumericUpDownValueChangedEventArgs e)
+    private void OnColumnCountChanged(object? sender, NumericUpDownValueChangedEventArgs e)
     {
-        if (_loading || e.NewValue is not { } value)
-            return; // an emptied/unparsable box reports null; leave the stored setting alone
-
-        var next = (int)Math.Clamp(value, 1, 30);
-        if (next == _draft.Working.General.ColButtonCount)
+        if (_loading || ColumnCountInput.Value is not decimal value)
             return;
 
-        _draft.Working.General.ColButtonCount = next;
+        _draft.Working.General.ColButtonCount = (int)value;
         _draft.Revalidate();
     }
+
 }

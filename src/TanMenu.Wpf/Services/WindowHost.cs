@@ -33,7 +33,7 @@ namespace TanMenu.Wpf.Services;
 public sealed partial class WindowHost : IWindowHost
 {
     /// <summary>
-    /// MainWindow.axaml's own <c>ExtendClientAreaTitleBarHeightHint</c> — the caption band's fixed
+    /// The global Aero Window theme's <c>ExtendClientAreaTitleBarHeightHint</c> — the caption band's fixed
     /// height, which sits ABOVE the page host and is therefore not part of what a page's own content
     /// measures. Duplicated here as a constant rather than read off the live window because nothing on
     /// <c>Window</c> exposes it as a public property.
@@ -42,9 +42,8 @@ public sealed partial class WindowHost : IWindowHost
     /// Round 7, Task 1 moved this from 48 (the Windows 11 caption height) to 30, which is the Aero
     /// caption band MEASURED on Microsoft's own published Windows 7 screenshot — see
     /// <c>MainWindow.axaml</c>'s <c>Window.WindowDecorationsTheme</c> block for the capture, the URL and
-    /// the coordinates. The number lives in three unlinked places (that hint, the root Grid's row 0, and
-    /// here) and nothing tied them together until this task added
-    /// <c>ShellConstantTests.CaptionHeight_IsTheSameNumberInAllThreePlaces</c>, which is now what
+    /// the coordinates. The number lives in the decoration theme, the Window padding and here; the
+    /// source test <c>CaptionHeight_IsTheSameNumberInTheThemeAndFitTerm</c> is what
     /// catches a drift between them.
     /// <para>
     /// A CHANGE HERE IS NOT VISIBLE IN THE FIT LOG'S HEIGHT, and that is not a bug. <c>Ph +
@@ -56,8 +55,6 @@ public sealed partial class WindowHost : IWindowHost
     /// of that pair is this constant's only observable.
     /// </para>
     /// </remarks>
-    private const double TitleStripHeightDip = 30;
-
     /// <summary>
     /// The classic menu band's height, in DIP — <c>MainWindow.axaml</c>'s <c>MenuBand</c>, which Round 8,
     /// Task 3 put where the navigation pane used to be.
@@ -82,12 +79,14 @@ public sealed partial class WindowHost : IWindowHost
     /// carries the departure, the measurement and the two alternatives that were rejected.
     /// </para>
     /// </remarks>
-    private const double MenuBandHeightDip = 25;
+    private const double TitleBarHeightDip = 32;
 
+    /// <summary>The bottom edge of the managed Aero frame. The 8 DIP left/right pair is supplied by
+    /// <c>MainWindow.ChromeWidthDip</c>; this is the matching vertical edge below the page.</summary>
     /// <summary>
     /// Everything ABOVE the page that still counts toward the window's own Height, which
     /// <see cref="FitToContent"/> adds back on top of the measured page size: the caption band plus the
-    /// menu band.
+    /// menu band plus the bottom edge of the Aero frame.
     /// </summary>
     /// <remarks>
     /// <b>ROUND 8, TASK 3 REPLACED THE "+1" WITH A WHOLE BAND.</b> This was
@@ -98,13 +97,13 @@ public sealed partial class WindowHost : IWindowHost
     /// separated the page from a navigation pane that is deleted, and its top edge is redundant against
     /// the two 1 DIP bottom rules the vendored Menu template draws directly above it. So both DIP left
     /// the arithmetic in the same commit, and what arrived in their place is
-    /// <see cref="MenuBandHeightDip"/>. The caller's horizontal term is <c>MainWindow.ChromeWidthDip</c>
-    /// and it is zero.
+    /// <see cref="TitleBarHeightDip"/>. The caller's horizontal term is the compact navigation pane,
+    /// now 16 DIP for the matching left and right frame edges.
     /// </remarks>
-    private const double ChromeHeightDip = TitleStripHeightDip + MenuBandHeightDip;
+    private const double ChromeHeightDip = TitleBarHeightDip;
 
     /// <summary>The app's own minimum window WIDTH, in DIP. Mirrors <c>MainWindow.axaml</c>'s
-    /// <c>MinWidth="711"</c>, which stays declared there and is still enforced by the platform against
+    /// <c>MinWidth="727"</c>, which stays declared there and is still enforced by the platform against
     /// an interactive resize; this constant is what the placement arithmetic clamps with, and the two
     /// have to be kept in step —
     /// <c>ShellConstantTests.MinWindowWidth_IsTheSameNumberInBothPlaces</c> is what catches a drift.
@@ -116,17 +115,10 @@ public sealed partial class WindowHost : IWindowHost
     /// on, and it is the vertical inset it distorts, not the horizontal one.</summary>
     /// <remarks>
     /// <para>
-    /// <b>THE NUMBER THIS FLOOR PROTECTS HAS ALWAYS BEEN 711 DIP OF CONTENT PANE, AND ROUND 8, TASK 3
-    /// MADE THE TWO THE SAME NUMBER.</b> At the floor the content pane gets
-    /// <c>MinWindowWidthDip − chromeWidth</c>. It was <c>760 − 49 = 711</c> on the 48 DIP icon rail and
-    /// <c>872 − 161 = 711</c> on Round 7 Task 8's 160 DIP pane. Task 3 deleted the pane and its
-    /// hairline, so <c>chromeWidth</c> is <b>zero</b> (<c>MainWindow.ChromeWidthDip</c>) and the window's
-    /// own floor IS the content pane's: 711. That is a reversion of Task 8's arithmetic, not a new
-    /// number, which is why the measurement records that rest on it did not have to move again — this
-    /// class's own remark is rewritten from "872 DIP window, 711 DIP content pane" to "711 DIP window,
-    /// 711 DIP content pane", and <c>FoldersCard</c>'s wrap measurement became a statement about the
-    /// Options dialog's width in Round 8, Task 2 (that dialog is 711 wide too, and its own remarks say
-    /// why).
+    /// <b>THE NUMBER THIS FLOOR PROTECTS IS 711 DIP OF CONTENT PANE.</b> At the floor it gets
+    /// <c>727 − 16 = 711</c>: 16 DIP is the global Aero frame's two side edges. Earlier shell layouts
+    /// protected the same content width with navigation-pane terms; the visible content floor has not
+    /// changed.
     /// </para>
     /// <para>
     /// <b>THE 711 HAS ONE NEW FLOOR TO CLEAR THAT THE 872 DID NOT.</b> The menu band lays five items,
@@ -141,7 +133,7 @@ public sealed partial class WindowHost : IWindowHost
     /// regression, and it is what happened the last two times this minimum moved.
     /// </para>
     /// </remarks>
-    private const double MinWindowWidthDip = 711;
+    private const double MinWindowWidthDip = 640;
 
     /// <summary>
     /// The app's own minimum window HEIGHT, in DIP — the floor <see cref="RestorePlacement"/> and
@@ -169,7 +161,7 @@ public sealed partial class WindowHost : IWindowHost
     /// comes back at the fitted size), and the window renders 30 DIP shorter than before at the same
     /// content.
     /// </remarks>
-    private const double MinWindowHeightDip = 568;
+    private const double MinWindowHeightDip = 520;
 
     /// <summary>DIPs left between the placement rectangle's bottom edge and the work area's bottom edge
     /// (i.e. the top of the taskbar). The app's own precedent: the 0.11 flyout placed itself at
@@ -183,6 +175,10 @@ public sealed partial class WindowHost : IWindowHost
     /// any error in the non-client estimate then becomes a real taskbar overlap. 8 DIP never overlaps.
     /// </para></summary>
     private const double BottomGapDip = 8;
+
+    /// <summary>Physical-pixel headroom added to a content fit so DIP-to-pixel truncation cannot make
+    /// a ScrollViewer one pixel shorter than the extent it just reported.</summary>
+    private const double FitRoundingSlackPixels = 2;
 
     /// <summary>Placeholder Width/Height <see cref="RestorePlacement"/> applies on the very FIRST show
     /// of the process, before the launcher's startup build — an async disk scan — has produced anything
@@ -201,11 +197,11 @@ public sealed partial class WindowHost : IWindowHost
     /// constant: the cold-start first frame is drawn at the XAML's width and this is what the first
     /// placement re-applies, so a mismatch shows up as a visible jump before the real, content-driven
     /// size lands. The height is unchanged through both — neither task moved anything vertical that
-    /// reaches a PLACEHOLDER, because the menu band's 25 DIP is chrome the fit adds and the placeholder
+    /// reaches a PLACEHOLDER, because the menu band's 29 DIP is chrome the fit adds and the placeholder
     /// is a whole-window size.
     /// </para></summary>
-    private const double PlaceholderWidthDip = 1000;
-    private const double PlaceholderHeightDip = 688;
+    private const double PlaceholderWidthDip = 1100;
+    private const double PlaceholderHeightDip = 760;
 
     private readonly ConfigService _config;
     private readonly AppEvents _events;
@@ -596,6 +592,23 @@ public sealed partial class WindowHost : IWindowHost
     }
 
     /// <summary>
+    /// Return the themed window frame outside Avalonia's client size. Width/Height on Window size the
+    /// client, while Position addresses the outer frame; the bottom-centred placement therefore has to
+    /// include this overhead or a standard title bar pushes the visible bottom behind the taskbar.
+    /// Before the first platform frame exists FrameSize is null and the pre-show placement uses zero;
+    /// MainWindow re-applies placement at Loaded priority, once the real frame metrics are available.
+    /// </summary>
+    private (double Width, double Height) CurrentFrameOverhead()
+    {
+        if (_window?.FrameSize is not { } frame)
+            return (0, 0);
+
+        return (
+            Math.Max(0, frame.Width - _window.ClientSize.Width),
+            Math.Max(0, frame.Height - _window.ClientSize.Height));
+    }
+
+    /// <summary>
     /// Defer to the next dispatcher cycle instead of calling <see cref="SavePlacement"/> inline from
     /// the property-changed handler above.
     /// </summary>
@@ -662,9 +675,11 @@ public sealed partial class WindowHost : IWindowHost
             var height = _userResized ? _lastNormalHeightDip : _lastFitPlacement?.Height ?? PlaceholderHeightDip;
 
             var (work, scale) = PrimaryScreen();
+            var (frameWidth, frameHeight) = CurrentFrameOverhead();
 
             var placement = WindowPlacement.ResolveBottomCentred(
-                width, height, work, MinWindowWidthDip, MinWindowHeightDip, BottomGapDip);
+                width, height, work, MinWindowWidthDip, MinWindowHeightDip, BottomGapDip,
+                frameWidth, frameHeight);
 
             // NOTE (Round 3 residual review): this deliberately does NOT update _lastFitPlacement,
             // even though it changes the window's size. That is safe, and the
@@ -742,11 +757,10 @@ public sealed partial class WindowHost : IWindowHost
     /// <see cref="RestorePlacement"/> uses: horizontally centred, bottom edge <see cref="BottomGapDip"/>
     /// above the work area's. Called on
     /// EVERY summon, not only a cold start (see the class remarks), and again on every other event that
-    /// changes what the active page measures: a docked notice opening or closing, a 每列个数 / 字体 /
-    /// 语言 change, and the Maximized→Normal transition. FOUR triggers, not five: Round 8, Task 2
-    /// deleted the 设置 → 应用 switch by making 设置 a modal dialog, and Round 8, Task 3 deleted the
-    /// pane whose expand/collapse had been a sixth until Round 4, item 1 replaced it with a single
-    /// fixed width. Nothing about the menu band is a trigger — it has one authored height and no state.
+    /// changes what the active page measures: switching between 应用 and 设置, a docked notice opening
+    /// or closing, a 每列个数 / 字体 / 语言 change, a navigation-pane layout change, and the
+    /// Maximized→Normal transition. Page switches force a fresh fit because a page change replaces the
+    /// user's sizing context; ordinary content changes still respect a manual resize.
     /// It is a cheap, idempotent re-measure, not a one-time setup step, and
     /// a re-fit that computes the geometry the PREVIOUS fit already requested
     /// (<see cref="_lastFitPlacement"/>, compared with
@@ -855,10 +869,17 @@ public sealed partial class WindowHost : IWindowHost
     /// here because the same one-frame skew already applied to the horizontal re-clamp this replaces.
     /// </para>
     /// </remarks>
-    public void FitToContent(Layoutable pageContent, double chromeWidth)
+    /// <param name="forcePageFit">True only for an explicit page transition. It clears a previous
+    /// manual-size override and bypasses the request-basis shortcut so the newly visible page always
+    /// receives its own content size.</param>
+    public void FitToContent(Layoutable pageContent, double chromeWidth, bool forcePageFit = false)
     {
-        if (_window is null || _window.WindowState != WindowState.Normal || _userResized)
+        if (_window is null || _window.WindowState != WindowState.Normal ||
+            (_userResized && !forcePageFit))
             return;
+
+        if (forcePageFit)
+            _userResized = false;
 
         _restoring = true;
         try
@@ -866,20 +887,38 @@ public sealed partial class WindowHost : IWindowHost
             var screen = CurrentScreen();
             var work = screen is null ? UnknownWorkArea : WorkAreaOf(screen);
             var scale = screen is null ? 1.0 : SafeScale(screen);
+            var (frameWidth, frameHeight) = CurrentFrameOverhead();
 
             // Unbounded on BOTH axes — see this method's own <param> remarks on pageContent for why an
             // unbounded height (not a fixed reference, not the work area) is what makes every category,
             // not only the tallest, report its true single-column extent.
             pageContent.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-            var desired = pageContent.DesiredSize;
+            var naturalDesired = pageContent.DesiredSize;
+            var contentHeight = naturalDesired.Height;
+
+            // When the natural width is wider than the monitor, the final ScrollViewer gains a
+            // horizontal scrollbar. Re-measuring at the actual available page width makes that bar's
+            // height part of the fitted height instead of discovering it only after the window opens.
+            var availableContentWidth = Math.Max(0, work.Width - frameWidth - chromeWidth);
+            if (naturalDesired.Width > availableContentWidth + 0.5)
+            {
+                pageContent.Measure(new Size(availableContentWidth, double.PositiveInfinity));
+                contentHeight = Math.Max(contentHeight, pageContent.DesiredSize.Height);
+            }
+
+            // Avalonia converts the requested DIP size to physical pixels using truncation. Exact-fit
+            // ScrollViewers can therefore lose a fractional pixel and unnecessarily enable vertical
+            // scrolling. Two physical pixels cover that conversion without a DPI-dependent DIP guess.
+            contentHeight += FitRoundingSlackPixels / scale;
 
             // No current position is read: since Round 4, item 4 the placement is a pure function of the
             // resolved size and the work area (centred, bottom-anchored), so a re-fit re-places as well
             // as resizes. See this method's own POSITION remark.
             var placement = WindowPlacement.ResolveContentFit(
-                desired.Width, desired.Height,
+                naturalDesired.Width, contentHeight,
                 chromeWidth, ChromeHeightDip,
-                work, MinWindowWidthDip, MinWindowHeightDip, BottomGapDip);
+                work, MinWindowWidthDip, MinWindowHeightDip, BottomGapDip,
+                frameWidth, frameHeight);
 
             // Compare against the whole RECTANGLE the previous fit requested, NOT the window's live
             // geometry. Round 3's reason for a request-based basis: a platform that clamps a request
@@ -911,7 +950,7 @@ public sealed partial class WindowHost : IWindowHost
             // null (nothing has fit yet this process) always counts as "different", so the very first fit
             // of a process is never skipped. _fitBasisStale additionally forces "different" when
             // something outside this class has RESIZED the window since — see that field's own remarks.
-            if (!_fitBasisStale && _lastFitPlacement is { } previous &&
+            if (!forcePageFit && !_fitBasisStale && _lastFitPlacement is { } previous &&
                 WindowPlacement.IsSamePlacement(placement, previous))
             {
                 // Several triggers can fire for one user action (see IsSamePlacement's own remarks).
@@ -954,7 +993,7 @@ public sealed partial class WindowHost : IWindowHost
                 "{ContentWidth}x{ContentHeight} + chrome {ChromeWidth}x{ChromeHeight}) on work area " +
                 "{WorkLeft},{WorkTop} {WorkWidth}x{WorkHeight} at scale {Scale}",
                 placement.Left, placement.Top, placement.Width, placement.Height,
-                desired.Width, desired.Height, chromeWidth,
+                naturalDesired.Width, contentHeight, chromeWidth,
                 ChromeHeightDip, work.Left, work.Top, work.Width, work.Height, scale);
         }
         catch (Exception ex)

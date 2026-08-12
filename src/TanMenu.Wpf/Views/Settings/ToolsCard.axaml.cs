@@ -3,6 +3,7 @@ using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using FluentAvalonia.UI.Controls;
 using Microsoft.Extensions.DependencyInjection;
 using TanMenu.Core.Models;
 using TanMenu.Core.Services;
@@ -65,12 +66,16 @@ public partial class ToolsCard : UserControl, ISettingsCard
             var g = _draft.Working.General;
             var lang = UiLanguage;
 
-            ShowToolsToggle.Content = AppLanguage.Text("ShowCommonTools", lang);
+            ShowToolsLabel.Text = AppLanguage.Text("ShowCommonTools", lang);
+            ShowToolsRow.Description = AppLanguage.Text("ShowCommonToolsCardSub", lang);
+            ShowToolsToggle.OnContent = AppLanguage.Text("StateOn", lang);
+            ShowToolsToggle.OffContent = AppLanguage.Text("StateOff", lang);
             ShowToolsToggle.IsChecked = g.ShowDefaultTools;
             ToolsListLabel.Text = AppLanguage.Text("CommonToolsHint", lang);
+            ToolsList.Description = AppLanguage.Text("CommonToolsHintSub", lang);
 
             BuildToolCheckboxes(g.DefaultTools, lang);
-            ToolsPanel.IsEnabled = g.ShowDefaultTools; // disabled, not cleared — see the XAML remark
+            ToolsList.IsEnabled = g.ShowDefaultTools;
         }
         finally
         {
@@ -93,7 +98,7 @@ public partial class ToolsCard : UserControl, ISettingsCard
     /// construction can never look like a user click even in principle.</summary>
     private void BuildToolCheckboxes(List<DefaultTool>? tools, string? lang)
     {
-        ToolsPanel.Children.Clear();
+        ToolsList.Items.Clear();
         var skipped = 0;
         foreach (var tool in tools ?? Enumerable.Empty<DefaultTool>())
         {
@@ -106,16 +111,20 @@ public partial class ToolsCard : UserControl, ISettingsCard
             // Show the launch command (not just the name) so a tampered/roamed config that repoints an
             // innocuous-looking tool at an arbitrary command is visible before the user enables it.
             var displayName = AppLanguage.LocalizeToolName(tool.Command, tool.Name, lang);
-            var cb = new CheckBox
+            var toggle = new ToggleSwitch
             {
-                Content = L("ToolCheckbox", displayName, tool.Command),
                 IsChecked = tool.Show,
-                Margin = new Thickness(0, 3, 0, 3),
+                OnContent = AppLanguage.Text("StateOn", lang),
+                OffContent = AppLanguage.Text("StateOff", lang),
                 Tag = tool, // the DRAFT's DefaultTool instance this checkbox writes; never the live one
             };
-            ToolTip.SetTip(cb, L("ToolCommand", tool.Command));
-            cb.Click += OnToolChanged;
-            ToolsPanel.Children.Add(cb);
+            toggle.IsCheckedChanged += OnToolChanged;
+            ToolsList.Items.Add(new FASettingsExpanderItem
+            {
+                Content = L("ToolCheckbox", displayName, tool.Command),
+                Description = L("ToolCommand", tool.Command),
+                Footer = toggle,
+            });
         }
 
         if (skipped > 0)
@@ -130,7 +139,7 @@ public partial class ToolsCard : UserControl, ISettingsCard
 
         var next = ShowToolsToggle.IsChecked == true;
         _draft.Working.General.ShowDefaultTools = next;
-        ToolsPanel.IsEnabled = next; // immediate UX feedback; ReloadFromConfig repeats this either way
+        ToolsList.IsEnabled = next;
         _draft.Revalidate();
     }
 
@@ -143,10 +152,10 @@ public partial class ToolsCard : UserControl, ISettingsCard
     {
         if (_loading)
             return;
-        if (sender is not CheckBox { Tag: DefaultTool tool } cb)
+        if (sender is not ToggleSwitch { Tag: DefaultTool tool } toggle)
             return;
 
-        tool.Show = cb.IsChecked == true;
+        tool.Show = toggle.IsChecked == true;
         _draft.Revalidate();
     }
 }

@@ -1,640 +1,120 @@
-<Window xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:chrome="using:Avalonia.Controls.Chrome"
-        xmlns:vm="using:TanMenu.Wpf.ViewModels"
-        x:Class="TanMenu.Wpf.MainWindow"
-        Title="TanMenu"
-        Width="1000" Height="688" MinWidth="711"
-        WindowStartupLocation="Manual"
-        TransparencyLevelHint="AcrylicBlur"
-        Background="Transparent"
-        Icon="/wwwroot/app.ico"
-        FontSize="14"
-        Foreground="{DynamicResource TextPrimaryBrush}"
-        ExtendClientAreaToDecorationsHint="True"
-        ExtendClientAreaTitleBarHeightHint="30">
+<wnd:FAAppWindow xmlns="https://github.com/avaloniaui"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:ui="using:FluentAvalonia.UI.Controls"
+                 xmlns:wnd="using:FluentAvalonia.UI.Windowing"
+                 xmlns:vm="using:TanMenu.Wpf.ViewModels"
+                 xmlns:views="using:TanMenu.Wpf.Views"
+                 x:Class="TanMenu.Wpf.MainWindow"
+                 Title="TanMenu"
+                 Width="1100" Height="760"
+                 MinWidth="640" MinHeight="520"
+                 WindowStartupLocation="Manual"
+                 Icon="/wwwroot/app.ico">
 
-  <!--
-    The shell: an acrylic window split into a hand-drawn Windows 7 Aero caption, a CLASSIC MENU BAND
-    and a page host.
-
-    ROUND 8, TASK 3 DELETED THE NAVIGATION PANE AND PUT THE BAND WHERE IT USED TO POINT. The pane was
-    a 160 DIP vertical strip down the LEFT of the client area (Round 7, Task 8 widened it from a
-    48 DIP icon rail; Round 3, Task 2 had built its two-group shape). It is gone, and with it the
-    ListBox that held 应用, the four command Buttons, the group separator, the five
-    Theme="{StaticResource TmNavRow…}" rows and the two ControlThemes that dressed them
-    (Themes/Shell/Launcher.axaml). What replaces it is a horizontal Menu across the top of the client
-    area, below the caption — "windows 经典的 mainmenu", in the user's own words.
-
-    FIVE ITEMS, IN THIS ORDER: 设置 · 主目录 · 刷新 · 退出 · 关于. Every one is a DIRECT COMMAND with
-    no submenu, which is legal and rare rather than ordinary — PUBLISHED,
-    https://learn.microsoft.com/en-us/windows/win32/menurc/about-menus: "A menu bar typically contains
-    menu names, but it can also contain command items." and "An item on the menu bar almost always
-    opens a menu. Menu bars rarely contain command items." THE UX GUIDE POINTS THE OTHER WAY AND THE
-    DEVIATION IS BOOKED RATHER THAN ARGUED AWAY — PUBLISHED, cmd-menus: "The presence of menus goes
-    without saying in a menu bar", and cmd-toolbars sanctions this row's exact shape ("Partial
-    toolbars can be combined with navigation buttons, a search box, or tabs"). A toolbar would satisfy
-    every published sentence and has no published height at all, which would have dissolved the
-    20-versus-23 arithmetic that forces the band to 25 DIP. The user asked for a main menu; the user's
-    word wins and those sentences are the stated cost.
-
-    刷新 IS IN THE LIST FOR A REASON THAT IS NOT SYMMETRY. LauncherViewModel.RefreshAsync is the only
-    USER-REACHABLE caller of ReloadAsync(force: true) — the other is InitializeCoreAsync, the
-    once-per-process startup build — and force is the only way past MenuService's fingerprint gate,
-    whose own comment names a case it cannot catch: "A target exe overwritten in place under the SAME
-    .lnk still needs a manual 刷新". Dropping the item would leave a manual rescan unreachable.
-
-    THE SEARCH FIELD IS IN THE BAND, IMMEDIATELY AFTER 关于, WITH ONE SEPARATOR BETWEEN THEM AND THE
-    WHOLE GROUP LEFT-ALIGNED. That is the request (放在"关于"后面) taken literally. A RIGHT-ALIGNED
-    VARIANT WAS CONSIDERED AND REJECTED: Office XP/2003's "Type a question for help" box is the one
-    adjacent Microsoft precedent, and it puts the separator a window-width away from 关于, which is a
-    different layout wearing the same words. No Microsoft-shipped Windows 7 application was found with
-    a text field in its menu bar at all — COULD NOT VERIFY — so this is a documented extrapolation
-    rather than a reproduction, and the band's own 25 DIP says so again where it departs from the OS
-    metric (SM_CYMENU MEASURED 20; see Themes/Aero/ControlStyles/Menu.axaml's header).
-
-    THIS IS NOT THE THING ROUND 7, TASK 1 REMOVED. That was a control in the window FRAME, which
-    https://learn.microsoft.com/en-us/windows/win32/uxguide/win-window-frames forbids verbatim: "Don't
-    add controls to a window frame. Put the controls within the window instead." The frame is the
-    caption — the Window.WindowDecorationsTheme block below. This band is inside the client area,
-    under it, which is exactly where that sentence says to put controls.
-
-    ExtendClientAreaToDecorationsHint pulls the whole client area — including the strip where the OS
-    used to paint its own title bar — under our control. ExtendClientAreaTitleBarHeightHint is pinned to
-    30, the Aero caption band's own MEASURED height (see the WindowDecorationsTheme block below for the
-    capture and the coordinates), and it MUST stay equal to the height that block draws:
-    WindowImpl.UpdateExtendMargins sets rect2.top = (int)(_extendTitleBarHint * RenderScaling) and
-    HitTestNCA derives the OS-level caption/resize band from _extendedMargins.Top, so a mismatch produces
-    a drag band that does not line up with the caption you can see. The number appears in three unlinked
-    places — here, the root Grid's row 0 below, and WindowHost.TitleStripHeightDip — and
-    ShellConstantTests.CaptionHeight_IsTheSameNumberInAllThreePlaces is what keeps them equal.
-
-    THE MENU BAND'S 25 IS THE SECOND SUCH NUMBER, and it lands in three unlinked places of its own:
-    the vendored Menu.axaml's <x:Double x:Key="MenuBarHeight">, WindowHost.MenuBandHeightDip (the
-    fit's chrome term), and MenuBand's own Height below.
-    ShellConstantTests.MenuBandHeight_IsTheSameNumberInAllThreePlaces ties all three, and it needs all
-    three because two of them can agree while the third drifts — and the only symptom of that drift is
-    a band whose painted height and whose fit term disagree, silently.
-
-    There is deliberately NO MinHeight here, and MinWidth stays. Round 4, item 4: Avalonia's
-    WM_GETMINMAXINFO handler sets ptMinTrackSize.Y to MinHeight × scale PLUS BorderThickness.Top+Bottom
-    (decompiled Win32.WindowImpl 12.1.0), which on this window's style is the full 45+11 px frame — but
-    ExtendClientAreaToDecorationsHint has already pulled the 45 px caption INTO the client area, so a
-    declared MinHeight="568" forced a 598 DIP client, 30 DIP more than any fit ever asked for, and made
-    a bottom anchor computed from the requested height overlap the taskbar. The horizontal case has no
-    such error (the 22 px AdjustWindowRectEx reports IS the real horizontal inset), so MinWidth stays
-    declared. The app's own 568 DIP height floor now lives in WindowHost.MinWindowHeightDip, where
-    it is applied to the request instead of to the window.
-
-    ROUND 8, TASK 3 MOVED MinWidth FROM 872 BACK TO 711 AND Width FROM 1112 BACK TO 1000, and both are
-    reversions of Round 7 Task 8's pane growth rather than new numbers. The floor the four measurement
-    records elsewhere in this tree actually rest on is the CONTENT PANE's 711 DIP; the pane made the
-    window's own floor 711 + 161 of chrome, and with the pane deleted the chrome WIDTH is 0, so the
-    window's floor IS the content pane's. WindowHost.MinWindowWidthDip mirrors the 711 and
-    ShellConstantTests.MinWindowWidth_IsTheSameNumberInBothPlaces ties them;
-    WindowHost.PlaceholderWidthDip mirrors the 1000 and its own remark says why the two must agree.
-    THE 711 HAS ONE NEW FLOOR TO CLEAR that the old one did not: the band is five menu items, then the
-    separator's whole 23 DIP footprint, then a 320 DIP field, then 11 DIP of trailing margin, laid end
-    to end. Task 3 MEASURED that run rather than estimating it, and Round 8, Task 9 re-measured it and
-    wrote the numbers down here, because the citation this sentence used to carry — "see this task's
-    report" — pointed at a scratch file that is not in this repository. MEASURED through UIA at 150 %
-    on the published build, both languages: the menu run's right edge (MenuAbout.Bounds.Right, the same
-    value MenuRunSpacer binds to) is 316 DIP in Chinese and 309.33 in English, so the band wants
-    316 + 23 + 320 + 11 = 670 DIP, and 663.33 in English. Both clear 711 with room; the design's own
-    estimate for this was ≈686. The full record is in the round's design document, section 10.2.
-  -->
-
-  <Window.Resources>
-
-    <!-- ══ The Aero caption buttons ═══════════════════════════════════════════════════════════════
-         One ControlTheme for all three, differing only by width and by the ".close" class. It carries
-         the app's own "Tm" prefix like every other ControlTheme this app writes, but it lives HERE
-         rather than in Themes/Shell/Launcher.axaml because it is window chrome, not launcher dialect,
-         and because the decorations template below resolves it by {StaticResource} out of this same
-         file's scope.
-
-         GEOMETRY IS MEASURED off Microsoft's own published Windows 7 screenshot,
-         https://learn.microsoft.com/en-us/windows/win32/uxguide/images/win-window-frames-image2.png
-         (Calculator on Windows 7, 278x351, 24-bit RGB, native resolution — self-consistency holds on
-         both axes, 228 − 8 − 8 = 212 and 321 − 30 − 8 = 283, and every border is a crisp single
-         pixel): the buttons are 19 DIP tall, sit 1 DIP below the window's top edge, and measure
-         28 (minimize) / 27 (maximize) / 48 (close) wide — separators at x ≈ 140 and x ≈ 168, the
-         close button spanning x = 195..242, against a window whose outer right edge is x = 249.
-
-         The FACE is AUTHORED (Tokens.axaml carries the alphas and says so). The glyphs are vector
-         geometry rather than Segoe Fluent Icons code points, because the icon font is the one
-         deliberate Windows 11 anachronism this conversion keeps and there is no reason to spend it on
-         three shapes this simple: read off the Data strings below, minimize is ONE line, maximize is a
-         closed four-sided square and close is TWO crossed lines. (This sentence said "three shapes
-         that are four line segments each" until Round 7, Task 10; only maximize was ever four.) -->
-    <ControlTheme x:Key="TmCaptionButton" TargetType="Button">
-      <Setter Property="Height" Value="19" />
-      <Setter Property="VerticalAlignment" Value="Top" />
-      <Setter Property="Background" Value="{DynamicResource CaptionButtonFaceBrush}" />
-      <Setter Property="Padding" Value="0" />
-      <Setter Property="Template">
-        <ControlTemplate TargetType="Button">
-          <!-- Only the BOTTOM corners are rounded: an Aero caption button is flush with the top of
-               the frame and curves away from it. AUTHORED radius. It was written as RadiusControl's
-               then-4 minus the 1 DIP border the face carries; Round 7, Task 7 re-valued RadiusControl
-               to Aero's own 3, so the derivation no longer produces this number and the 3 is now a
-               plain authored literal. It is deliberately NOT re-pointed at the token: the caption is
-               window chrome measured off a Windows 7 screenshot, not a step on the app's shape
-               scale, and the two happening to agree is not a reason to couple them. -->
-          <Border Background="{TemplateBinding Background}"
-                  BorderBrush="{DynamicResource CaptionBevelLightBrush}"
-                  BorderThickness="1"
-                  CornerRadius="0,0,3,3">
-            <ContentPresenter Content="{TemplateBinding Content}"
-                              HorizontalAlignment="Center"
-                              VerticalAlignment="Center" />
-          </Border>
-        </ControlTemplate>
-      </Setter>
-      <Style Selector="^:pointerover">
-        <Setter Property="Background" Value="{DynamicResource CaptionButtonHoverBrush}" />
-      </Style>
-      <Style Selector="^:pressed">
-        <Setter Property="Background" Value="{DynamicResource CaptionButtonPressedBrush}" />
-      </Style>
-      <!-- Windows 7's close button is red AT REST, not only under the pointer. -->
-      <Style Selector="^.close">
-        <Setter Property="Background" Value="{DynamicResource CaptionCloseFaceBrush}" />
-      </Style>
-      <Style Selector="^.close:pointerover">
-        <Setter Property="Background" Value="{DynamicResource CaptionCloseHoverBrush}" />
-      </Style>
-      <Style Selector="^:disabled">
-        <Setter Property="Opacity" Value="0.4" />
-      </Style>
-    </ControlTheme>
-
-  </Window.Resources>
-
-  <!-- ══ The Aero caption ═════════════════════════════════════════════════════════════════════════
-       Round 7, Task 1. Avalonia 12 moved the drawn window decorations out of the Window control
-       template into TopLevelHost.Decorations, driven by Window.WindowDecorationsTheme and
-       Avalonia.Controls.Chrome.WindowDrawnDecorations. This block REPLACES that theme's Template
-       wholesale rather than patching parts of Fluent's, and BasedOn is deliberately dropped: a full
-       replacement has no use for Fluent's DefaultTitleBarHeight = 30 / DefaultFrameThickness = 1 /
-       DefaultShadowThickness = 8 setters, and GetEffectiveTheme() returns the explicit theme without
-       consulting the implicit {x:Type WindowDrawnDecorations} resource at all. The five Style rules
-       that used to live here — suppressing PART_TitleTextPanel and PART_FullScreenButton and pulling
-       PART_MinimizeButton/MaximizeButton/CloseButton flush to the top — all targeted parts of the
-       template that no longer exists, so they went with it.
-
-       WHY THE HEIGHT STILL COMES OUT AT 30 WITHOUT A DefaultTitleBarHeight SETTER: decompiled
-       Avalonia 12.1.0, Window.UpdateDrawnDecorations sets decorations.TitleBarHeightOverride =
-       ExtendClientAreaTitleBarHeightHint whenever that hint is >= 0, and
-       WindowDrawnDecorations.UpdateEffectiveGeometry resolves TitleBarHeight from the override unless
-       it is -1. The hint is 30 (top of this file), so the override wins and the default is never read.
-
-       WHY THE UNDERLAY IS REACHABLE BY A HIT TEST, which is the whole point of drawing the caption
-       here rather than in the window's own content. TopLevelHost's visual children are
-       [underlay, TopLevel, overlay, popover, resizeGrips], and Win32 resolves WM_NCHITTEST through
-       PresentationSource.HitTestChromeElement → RootVisual.GetVisualAt(point), where RootVisual is the
-       TopLevelHost itself (decompiled: PresentationSource is constructed as
-       new PresentationSource(topLevelHost, this, impl, dependencyResolver)). Nothing in the window's
-       own content paints in the band — the root Grid's row 0 is an empty spacer with no Background,
-       Fluent's Window template marks BOTH its PART_TransparencyFallback Border and its
-       {TemplateBinding Background} Border IsHitTestVisible="False", and the one hit-testable Panel in
-       that template carries Margin="{TemplateBinding WindowDecorationMargin}", which is (0,30,0,0)
-       here — so the walk reaches the underlay and finds PART_TitleBar's ElementRole. The three caption
-       buttons are in the OVERLAY, which sits ABOVE the window content, so they win the same walk.
-
-       ROLES → WIN32 HIT TESTS, decompiled from Avalonia.Win32.WindowImpl.HitTestVisual: TitleBar →
-       HTCAPTION (2), CloseButton → HTCLOSE (20), MinimizeButton → HTMINBUTTON (8), MaximizeButton →
-       HTMAXBUTTON (9). Drag and double-click-to-maximise then come from DefWindowProc for free
-       (WM_NCLBUTTONDBLCLK appears nowhere in WindowImpl), right-click on the band gives the system
-       menu for free (WM_NCRBUTTONUP is not in CustomCaptionProc's switch), and
-       ShouldRedirectNonClientInput returns true for exactly the three button hit-tests, which is what
-       turns WM_NCMOUSEMOVE/WM_NCLBUTTONDOWN/WM_NCLBUTTONUP into RawPointerEventArgs and makes
-       :pointerover, :pressed and Click work on them.
-
-       WHAT IS NOT EXPRESSIBLE, and is therefore not attempted:
-         • Aero's 8 px glass side and bottom frame. On Win32 the only decoration part ever enabled is
-           TitleBar — WindowImpl.RequestedDrawnDecorations returns _isClientAreaExtended ?
-           (PlatformRequestedDrawnDecoration)8 : 0 against the enum None=0, Shadow=1, Border=2,
-           ResizeGrips=4, TitleBar=8 — so FrameThickness and ShadowThickness are permanently zero and
-           the :has-border / :has-shadow pseudo-classes never fire. Drawing the frame anyway would mean
-           drawing it INSIDE the client area, stealing 8 DIP from the content on three sides.
-         • A LEFT-click system menu on the window icon. There is no HTSYSMENU member on
-           WindowDecorationsElementRole, so no public role maps to it. Right-click on the band still
-           raises the system menu through DefWindowProc.
-         • PART_FullScreenButton, which is simply not authored. Every AttachCaptionButtons lookup is
-           null-guarded (decompiled), so an absent part is legal.
-
-       THE BUTTONS KEEP THE PART_ NAMES and nothing here wires their behaviour: AttachCaptionButtons
-       finds PART_CloseButton / PART_MinimizeButton / PART_MaximizeButton in the template's name scope
-       and hooks Close() / WindowState = Minimized / the maximize toggle itself, and it also sets
-       AutomationProperties.AutomationId to Close / Minimize / Maximize and marks PART_TitleBar with
-       AutomationId "AvaloniaTitleBar". That is where this round's UI Automation verification gets its
-       identifiers from — we do not name them ourselves. -->
-  <Window.WindowDecorationsTheme>
-    <ControlTheme TargetType="chrome:WindowDrawnDecorations">
-      <Setter Property="Template">
-        <WindowDrawnDecorationsTemplate>
-          <chrome:WindowDrawnDecorationsContent>
-
-            <!-- ══ Underlay: the glass band, its bevel, the icon and the title ══════════════════
-                 The underlay renders BEHIND the window's own content. That is correct for a caption
-                 the content deliberately leaves empty, and it is what makes the band impossible to
-                 cover or clip from inside a page. -->
-            <chrome:WindowDrawnDecorationsContent.Underlay>
-              <Panel>
-                <Border x:Name="PART_TitleBar"
-                        VerticalAlignment="Top"
-                        Height="{TemplateBinding TitleBarHeight}"
-                        Background="Transparent"
-                        IsVisible="{TemplateBinding HasTitleBar}"
-                        chrome:WindowDecorationProperties.ElementRole="TitleBar">
-                  <Panel>
-
-                    <!-- 1. The colour tint bar. Aero's user colour was DwmGetColorizationColor — a
-                            single FRAME colour — and that is exactly the role restored here, which is
-                            why this app's accent survives the conversion with a job instead of six.
-                            AccentColor / AccentColorShaded are republished live by
-                            Services/AppTheme.cs on every Windows personalization change, so the stops
-                            are {DynamicResource} rather than a brush baked in Tokens.axaml.
-                            Opacity 0.35 is AUTHORED: the accent keys are fully opaque (they also
-                            drive the splash card, which needs them so), and a solid accent bar would
-                            hide the acrylic the tint is supposed to sit on. -->
-                    <Border Opacity="0.35">
-                      <Border.Background>
-                        <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
-                          <GradientStop Offset="0" Color="{DynamicResource AccentColor}" />
-                          <GradientStop Offset="1" Color="{DynamicResource AccentColorShaded}" />
-                        </LinearGradientBrush>
-                      </Border.Background>
-                    </Border>
-
-                    <!-- 2. The glass veil — the bright inner reflection Aero had and acrylic does
-                            not. Three stops, brightest at 40% of the band's height; the shape is
-                            measured and the alphas are authored (Tokens.axaml). CaptionGlassBrush is
-                            rewritten by MainWindow.axaml.cs on every IsActive change, because
-                            WindowDrawnDecorations has no active/inactive pseudo-class and no public
-                            path to WindowBase.IsActive. -->
-                    <Border Background="{DynamicResource CaptionGlassBrush}" />
-
-                    <!-- 3. The 2 DIP inner bevel on the band's bottom edge, light over dark.
-                            MEASURED: rows 28 and 29 of the 30 (y = 42 light, y = 43 dark in the
-                            published capture, whose band is y 14..43). -->
-                    <Border VerticalAlignment="Bottom" Height="1"
-                            Background="{DynamicResource CaptionBevelDarkBrush}" />
-                    <Border VerticalAlignment="Bottom" Height="1" Margin="0,0,0,1"
-                            Background="{DynamicResource CaptionBevelLightBrush}" />
-
-                    <!-- 4. Icon, then title. MEASURED: the title's ink starts 30 DIP from the
-                            window's outer edge (glyph column histogram, first text column x ≈ 52
-                            against a window whose left edge is x = 22), and the icon sits between the
-                            frame and the text — so 8 + 16 + 6 = 30 reproduces it exactly. The title
-                            is centred in the full 30 DIP band (measured glyph band y = 24..32, centre
-                            ≈ 28, against a band centre of (14+43)/2 = 28.5).
-
-                            FontSize 12 is Segoe UI 9 pt at 96 dpi, which
-                            https://learn.microsoft.com/en-us/windows/win32/uxguide/vis-fonts gives as
-                            the system font AND as the title-bar face. It is a literal rather than
-                            FontSizeCaption because that token was a Windows 11 optical-size step, and
-                            Round 7, Task 7 deleted it outright; the caption's size is Aero's, not the
-                            ramp's. It coincides with FontSizeBody, which that same task re-valued to
-                            12, and the coincidence is not made into a reference for the reason above.
-
-                            The glow is Microsoft's own number — see CaptionTitleGlow in Tokens.axaml
-                            for the DTTOPTS citation. Foreground follows the variant instead of
-                            vis-fonts' literal black #000000, because black title text over a dark
-                            acrylic in the dark variant would be unreadable and Windows 7 had no dark
-                            variant to rule on it. -->
-                    <StackPanel Orientation="Horizontal"
-                                HorizontalAlignment="Left"
-                                VerticalAlignment="Center">
-                      <Image Width="16" Height="16" Margin="8,0,0,0"
-                             VerticalAlignment="Center"
-                             Source="avares://TanMenu.Wpf/wwwroot/app-tile.png" />
-                      <TextBlock Text="{TemplateBinding Title}"
-                                 Margin="6,0,0,0"
-                                 VerticalAlignment="Center"
-                                 FontSize="12"
-                                 Foreground="{DynamicResource TextPrimaryBrush}"
-                                 Effect="{DynamicResource CaptionTitleGlow}" />
-                    </StackPanel>
-
-                  </Panel>
-                </Border>
-              </Panel>
-            </chrome:WindowDrawnDecorationsContent.Underlay>
-
-            <!-- ══ Overlay: the three caption buttons ═════════════════════════════════════════════
-                 The overlay renders IN FRONT of the window's content, which is what a hit test has to
-                 find before it finds a page. Margin "0,1,8,0" is measured: the block is top-flush
-                 1 DIP down and its right edge is inset 8 DIP from the window's outer edge (block
-                 x 140..242 against an outer right edge of x = 249). The 8 DIP inset is kept even
-                 though no side frame is drawn, because under ExtendClientAreaToDecorationsHint the
-                 client's right edge IS the window's outer edge — the edge the measurement is relative
-                 to. 28 + 27 + 48 = 103 = the measured block width. -->
-            <chrome:WindowDrawnDecorationsContent.Overlay>
-              <StackPanel Orientation="Horizontal"
-                          VerticalAlignment="Top"
-                          HorizontalAlignment="Right"
-                          Margin="0,1,8,0"
-                          IsVisible="{TemplateBinding HasTitleBar}">
-
-                <Button x:Name="PART_MinimizeButton"
-                        Theme="{StaticResource TmCaptionButton}"
-                        Width="28"
-                        chrome:WindowDecorationProperties.ElementRole="MinimizeButton">
-                  <Path Stroke="{DynamicResource TextPrimaryBrush}" StrokeThickness="1"
-                        Data="M 0,0 L 9,0" Margin="0,6,0,0" />
-                </Button>
-
-                <Button x:Name="PART_MaximizeButton"
-                        Theme="{StaticResource TmCaptionButton}"
-                        Width="27"
-                        chrome:WindowDecorationProperties.ElementRole="MaximizeButton">
-                  <Path Stroke="{DynamicResource TextPrimaryBrush}" StrokeThickness="1"
-                        Data="M 0.5,0.5 L 8.5,0.5 L 8.5,8.5 L 0.5,8.5 Z" />
-                </Button>
-
-                <Button x:Name="PART_CloseButton"
-                        Classes="close"
-                        Theme="{StaticResource TmCaptionButton}"
-                        Width="48"
-                        chrome:WindowDecorationProperties.ElementRole="CloseButton">
-                  <!-- White, not TextPrimaryBrush: the face under it is red in both variants. -->
-                  <Path Stroke="White" StrokeThickness="1.5"
-                        Data="M 0,0 L 9,9 M 9,0 L 0,9" />
-                </Button>
-
-              </StackPanel>
-            </chrome:WindowDrawnDecorationsContent.Overlay>
-
-          </chrome:WindowDrawnDecorationsContent>
-        </WindowDrawnDecorationsTemplate>
-      </Setter>
-    </ControlTheme>
-  </Window.WindowDecorationsTheme>
-
-  <!-- Row 0 is a RESERVED SPACER and is deliberately empty. ExtendClientAreaToDecorationsHint pulls
-       the caption band into the client area but TopLevelHost.DecorationInset stays zero on Win32
-       (decompiled Window.UpdateDrawnDecorationMargins: the inset is only applied in
-       _isForcedDecorationMode, i.e. when decorations are drawn WITHOUT the client area being
-       extended), so the window's content is arranged over the whole window and this row is what keeps
-       the menu band and the page host out from under the caption. It must carry no Background: a
-       hit-testable element here would shadow the caption's own underlay in
-       PresentationSource.HitTestChromeElement's topmost-first walk and the window would stop being
-       draggable. The 30 is one of the three copies ShellConstantTests ties together. -->
-  <Grid RowDefinitions="30,*">
-
-    <!-- ══ THE CLIENT SURFACE, ROUND 7 TASK 7 ═══════════════════════════════════════════════════
-         This Background is what makes the app legible, and it is Aero's own structure rather than a
-         compromise: in Windows 7 the GLASS was the window FRAME and the client area under it was
-         opaque #FCFCFC. Row 0 above — the caption band — deliberately keeps no Background at all, so
-         the acrylic still shows through it and the hand-drawn glass gradient still sits on a live
-         blur. Everything below the caption is SurfaceBaseBrush, which Tokens.axaml aliases onto the
-         vendored AeroWindowBackground.
-
-         MEASURED, and this is why it is not optional. Until Task 7 the whole client was
-         Transparent over the acrylic. Avalonia's AcrylicBlur on Win32 is a plain gaussian blur of
-         what is behind the window with NO tint layer of its own, so every glyph on a page that
-         painted nothing sat on a blur of the user's desktop. On this machine the wallpaper
-         (D:\0.Documents\Pictures\壁纸, 7680x4532) averages (87,84,103) over 120,684 sampled pixels,
-         whose WCAG relative luminance is 0.093. Against that surface the 设置 page's group headings
-         (HeadingBrush's Light value, luminance 0.050) computed to 1.4:1 and its body ink (pure black)
-         to 2.9:1 — against WCAG AA's 4.5:1 for body text. PrintWindow cannot photograph the composite
-         at all (flag 2 returns (0,0,0) for a transparent client), so the failure was neither visible
-         to the instrument nor arguable away: the group headings really did sample (0,0,0) ink on a
-         (0,0,0) background, ratio 1.00, on the build that task replaced. Over AeroWindowBackground
-         the same two elements measured 10.59:1 and 20.47:1 in Light and 4.29:1 and 11.90:1 in Dark,
-         read off PrintWindow captures rather than computed. (That page is a modal dialog since
-         Round 8, Task 2 and reads the same SurfaceBaseBrush from its own Background; the argument is
-         about what the window's material IS, so it survives the move.)
-
-         ══ TWO ROWS, NOT TWO COLUMNS — ROUND 8, TASK 3 ═══════════════════════════════════════════
-         This Grid was ColumnDefinitions="Auto,*" with the 160 DIP navigation pane in the Auto column
-         and the page host in the "*" one. The pane is deleted and the chrome runs HORIZONTALLY now:
-         an Auto row holding the menu band, and a "*" row holding the page. The Auto row follows
-         MenuBand's own explicit Height rather than restating it, which is the same arrangement the
-         deleted Auto COLUMN had with the pane's Width — the number is stated once, in the markup
-         below. -->
-    <Grid Grid.Row="1" RowDefinitions="Auto,*"
-          Background="{DynamicResource SurfaceBaseBrush}">
-
-      <!-- ══ The classic menu band ═══════════════════════════════════════════════════════════════
-           25 DIP: the item strip is 23 and the vendored Menu template docks two 1 DIP bottom rules
-           inside the same height. 23 is PUBLISHED,
-           https://learn.microsoft.com/en-us/windows/win32/uxguide/vis-layout — a one-line text box is
-           23 relative pixels tall, and item 5 puts one of those in this bar. The full derivation, the
-           5 DIP departure from the MEASURED SM_CYMENU of 20, and the two alternatives that were
-           rejected are in Themes/Aero/ControlStyles/Menu.axaml's own header, which is also where the
-           three changes made to that vendored file are recorded.
-
-           x:DataType IS REQUIRED HERE AND IS NOT TIDINESS. AvaloniaUseCompiledBindingsByDefault is
-           true (TanMenu.Wpf.csproj), and a compiled {Binding} resolves its path against the nearest
-           ancestor's x:DataType. The search field below moved out of Views/AppPage.axaml, which
-           supplies one on its root; this Window's root does NOT and must not — the Window's own
-           DataContext is not the view model, and a root-level x:DataType would mis-type every other
-           binding in this file. Scoping it to the band is what makes {Binding Filter},
-           {Binding SearchPlaceholderText} and {Binding ClearFilterText} compile. Without it they are
-           a BUILD ERROR, not a silent no-op. The DataContext itself is assigned once, in the
-           constructor: MenuBand.DataContext = _appPage.ViewModel.
-           The THREE {Binding #Name.…} bindings below — MenuRunSpacer's Width and the two affordance
-           faces' IsVisible — are ELEMENT-NAME bindings: they resolve against the named element's own
-           type, need no x:DataType, and would have moved unchanged either way. -->
-      <Grid Grid.Row="0" x:Name="MenuBand" Height="25"
-            x:DataType="vm:LauncherViewModel">
-
-        <!-- The Menu fills the whole cell, which is what makes Aero's own bar — the gradient, the
-             7 DIP shine and the two bottom rules — run the FULL WINDOW WIDTH. The search group below
-             is a SIBLING over it, not a child of it: MenuBase.NeedsContainerOverride accepts only
-             MenuItem and Separator as their own containers (decompiled, Avalonia 12.1.0), so a
-             TextBox placed in Menu.Items would be wrapped in a generated MenuItem, become its Header,
-             and inherit DefaultMenuInteractionHandler's key handling and click-closes-the-menu
-             behaviour. Menu also overrides KeyboardNavigation.TabNavigation to Once, so a field
-             inside it might not be individually tab-reachable; a sibling is unaffected by both.
-
-             NO ICONS AND NO ELLIPSES. PUBLISHED, cmd-menus: "If you use icons, don't feel obligated
-             to provide them for all menu items", and About/Options "must display another window when
-             clicked, but don't require additional information from the user. Therefore they don't
-             need ellipses." Dropping the glyphs also removes five of this app's Segoe Fluent Icons
-             uses, which is the one anachronism the conversion declares.
-
-             HEADERS AND ACCESSIBLE NAMES ARE BOTH WRITTEN FROM CODE — ApplyMenuText, five Header
-             writes and five AutomationProperties.Name writes, the same ten ApplyRailText did for the
-             pane's rows. The Header carries the access-key marker "_" and the name does not: the
-             vendored template opts in with RecognizesAccessKey="True" on PART_HeaderPresenter, and
-             Avalonia's AccessText strips the marker before drawing, but a UIA name taken from the raw
-             header string keeps it — MEASURED on the Options dialog's own 应用 button in Round 8,
-             Task 2, which is why that button carries the same explicit pair. Access keys are
-             PUBLISHED where a published assignment exists (inter-keyboard's standard table gives
-             O = Options, x = Exit, A = About) and app-specific where none does (M for 主目录, on the
-             guide's own preference for wide letters "such as w, m"; R for 刷新). -->
-        <Menu x:Name="MainMenu">
-          <MenuItem x:Name="MenuOptions" Click="OnOptionsClick" />
-          <MenuItem x:Name="MenuOpenRoot" Click="OnOpenRootClick" />
-          <MenuItem x:Name="MenuRefresh" Click="OnRefreshClick" />
-          <MenuItem x:Name="MenuExit" Click="OnExitClick" />
-          <MenuItem x:Name="MenuAbout" Click="OnAboutClick" />
-        </Menu>
-
-        <!-- ══ 关于, then the separator, then the field — LEFT-ALIGNED ═════════════════════════════
-             The group starts exactly where 关于 ends, and it does that with a SPACER rather than with
-             a Grid column, because the two requirements are in tension: a
-             ColumnDefinitions="Auto,Auto,*" with the Menu in column 0 would put the group in the
-             right place and stop Aero's bar painting past the last item. So the Menu keeps the whole
-             cell and the group is offset by the x of 关于's right edge, taken from the one element
-             that knows it.
-
-             MenuAbout.Bounds is stated in its items panel's coordinate space, and READ OUT OF THE
-             VENDORED TEMPLATE that panel has no left inset to correct for: PART_ItemsPresenter is a
-             SIBLING of the bordered Border inside the template's Panel, not its child, so the 1 DIP
-             side border does not push it. Task 3 measured the gap to confirm it. MenuItem.Bounds is a
-             Rect and .Right a double, so this is a plain double-to-double element-name binding with
-             no converter, and it re-evaluates on every language, font and DPI change for free. There
-             is no layout cycle: MenuAbout's arrange depends on the Menu, which fills the cell whatever
-             this group measures.
-
-             VerticalAlignment="Top", NOT Center, and that is a correction to the design rather than a
-             preference. The band is 25 DIP and its bottom 2 belong to the template's two rules, so
-             the item strip is the TOP 23 — exactly the field's own MinHeight. Centring a 23 DIP field
-             in 25 DIP would push it 1 DIP down and lay its bottom edge across the inner rule, half a
-             DIP out of step with the menu items beside it.
-
-             The trailing Margin is 11 (PUBLISHED, vis-layout's dialog margin) so the field never
-             touches the window's right edge at the width floor. It is a margin on this panel rather
-             than a Grid column because below the floor the thing that should clip is the FIELD, not
-             the menu run. -->
-        <StackPanel x:Name="SearchGroup" Orientation="Horizontal"
-                    HorizontalAlignment="Left" VerticalAlignment="Top"
-                    Margin="0,0,11,0">
-
-          <Border x:Name="MenuRunSpacer" IsHitTestVisible="False"
-                  Width="{Binding #MenuAbout.Bounds.Right}" />
-
-          <!-- Geometry, and why this is a Border rather than a Separator, are in
-               Themes/Shell/Launcher.axaml's "Border.tm-bar-separator" block. -->
-          <Border Classes="tm-bar-separator" />
-
-          <!-- ══ The search field ════════════════════════════════════════════════════════════════
-               Moved here from Views/AppPage.axaml by Round 8, Task 3, with its two affordance faces,
-               its four handlers and its authored 320 DIP width unchanged. THE 320 IS AUTHORED and
-               nothing published fixes it: ctrl-search-boxes states no width rule at all and its
-               sizing section is an image. 320 holds the longest prompt this app ships in either
-               language plus the "additional 30 percent" localisation allowance ctrl-drop publishes
-               (https://learn.microsoft.com/en-us/windows/win32/uxguide/ctrl-drop). It is a fixed
-               width, not a proportional one: the Task-Manager-measured 0.34 x client ratio that drove
-               this field through Rounds 3-6 was a property of a control living in the window's own
-               chrome, and ApplySearchFieldWidth died with that strip in Round 7, Task 1. Nothing here
-               brings it back — a re-fit trigger is exactly what a proportional width would need.
-
-               ctrl-search-boxes puts a primary-entry-point search box "centered at the top of the
-               window" (https://learn.microsoft.com/en-us/windows/win32/uxguide/ctrl-search-boxes).
-               This field is at the top of the window and is NOT centred, and that is item 5's
-               instruction rather than an oversight: 放在"关于"后面. Booked as a deviation, like the
-               menu-bar-versus-toolbar one above. -->
-          <Border Classes="tm-searchfield" x:Name="SearchField" Width="320">
-            <DockPanel>
-              <!-- THE TWO FACES OF THE RIGHT-END AFFORDANCE. PUBLISHED, ctrl-search-boxes
-                   (https://learn.microsoft.com/en-us/windows/win32/uxguide/ctrl-search-boxes): "In
-                   Instant search mode, a clear button appears after the user starts typing; an 'x'
-                   replaces the magnifying glass search symbol. On hover, the 'x' gets a button look
-                   and can be clicked", under a figure captioned "…at the right end of the control".
-
-                   The swap is driven off the TEXT BOX ITSELF rather than off a view-model flag, with
-                   Avalonia's own StringConverters singletons — the same pair, and the same x:Static
-                   form, the vendored TextBox template uses for PART_Watermark's own visibility. That
-                   keeps a purely visual state out of LauncherViewModel and needs no new property to
-                   raise, and it still answers the view model: SearchBox.Text is TwoWay-bound to
-                   Filter, so setting Filter programmatically flips these two exactly as typing does.
-                   Both are ELEMENT-NAME bindings, so they need no x:DataType and moved unchanged.
-
-                   Both are DockPanel.Dock="Right" and both are declared BEFORE the TextBox, because a
-                   DockPanel gives its LAST child the remaining space and the text box is what should
-                   take it. Only one of the two is ever visible, so the field's layout does not move
-                   when they swap: they are the same box with the same padding. -->
-              <Border DockPanel.Dock="Right" Classes="tm-search-affordance"
-                      IsVisible="{Binding #SearchBox.Text, Converter={x:Static StringConverters.IsNullOrEmpty}}">
-                <TextBlock Classes="tm-icon subtle small" Text="&#xE721;" />
-              </Border>
-              <Border DockPanel.Dock="Right" x:Name="SearchClear"
-                      Classes="tm-search-affordance clickable"
-                      AutomationProperties.Name="{Binding ClearFilterText}"
-                      IsVisible="{Binding #SearchBox.Text, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                      PointerPressed="OnSearchClearPressed">
-                <TextBlock Classes="tm-icon small" Text="&#xE711;" />
-              </Border>
-              <!-- Background and BorderThickness are LOCAL values on purpose: a local value outranks
-                   a style setter for the SAME property on the SAME element, so the TextBox itself
-                   paints nothing over the fill Border.tm-searchfield already draws.
-
-                   What that does NOT block is a theme rule aimed at a NAMED PART inside the TextBox
-                   control template — a different element, with no local value of its own, whatever
-                   is set here. Under the vendored Aero theme that part is Border#BgElement and the
-                   rules that reach it are :pointerover and :focus. Only the :pointerover one is
-                   suppressed: see Launcher.axaml's
-                   "TextBox.tm-search:pointerover /template/ Border#BgElement" rule for why, why the
-                   BorderBrush half needs no rule, and why Round 8, Task 7 measured the :focus twin
-                   inert and deleted it. -->
-              <TextBox x:Name="SearchBox"
-                       Classes="tm-search"
-                       AutomationProperties.Name="{Binding SearchPlaceholderText}"
-                       Background="Transparent"
-                       BorderThickness="0"
-                       PlaceholderText="{Binding SearchPlaceholderText}"
-                       Text="{Binding Filter, Mode=TwoWay}"
-                       KeyDown="OnSearchKeyDown"
-                       GotFocus="OnSearchFocusChanged"
-                       LostFocus="OnSearchFocusChanged" />
-            </DockPanel>
-          </Border>
-        </StackPanel>
-      </Grid>
-
-      <!-- ══ Content pane: the opaque 应用 surface ═════════════════════════════════════════════════
-           The acrylic reaches ONE band and one only — row 0, the caption. Everything below it is the
-           opaque SurfaceBaseBrush the content Grid above paints, so "the window's own material" below
-           this point means AeroWindowBackground, not a backdrop. On the 应用 page that surface is
-           covered again, by this Border. The page paints no surface of its own — AppPage's root Panel
-           sets only Transparent — which is what lets this single Border decide the surface under it.
-
-           Round 4, item 5 gave the shell's two pages two DIFFERENT looks on this one Border, and
-           Round 6, item 2 flipped which of them was the exception. ROUND 8, TASK 2 ENDED THE PAIR by
-           ending the plurality — 设置 became a modal dialog, so the :not(.app) rule lost its only
-           subject — and ROUND 8, TASK 3 ENDED THE CLASS: there is one rule now, Border.tm-page-pane,
-           and the markup states no "app" any more.
-
-           THE 1 DIP TOP+LEFT HAIRLINE IS GONE WITH IT, and that is this task's one visible change to
-           this element. Its LEFT edge separated the page from the navigation pane, which no longer
-           exists; its TOP edge is redundant against the two 1 DIP bottom rules the menu band's own
-           vendored template draws directly above it. Both DIP came out of the fit in the same commit
-           — MainWindow.PaneBorderDip is deleted, the chrome WIDTH term is 0, and
-           WindowHost.ChromeHeightDip is TitleStripHeightDip + MenuBandHeightDip with no "+1" left.
-
-           ROUND 7, TASK 7 CHANGED WHAT THE LOOK IS MADE OF, and that half is unchanged here. The fill
-           is SurfacePageBrush aliased onto the vendored AeroListBoxBackground — Explorer's own content
-           area was a list background — and the 8 DIP top-left arc is GONE: Aero's ListBox sets
-           CornerRadius="0" and a Windows 7 content pane has no rounded corner, so RadiusPaneTopLeft
-           was deleted with its measurement. The backdrop-refused fallback is unchanged and still the
-           single source of truth for the window's colour (Window.Background, set by ApplyBackdrop);
-           this Border must never grow a fallback of its own. Why the look is a STYLE rather than local
-           attributes here is in Launcher.axaml's "Border.tm-page-pane" block — a style setter cannot
-           override a local value in Avalonia, in either direction.
-
-           ClipToBounds — AND WHY THE EVIDENCE THAT ONCE JUSTIFIED IT IS NOW MOOT TWICE OVER. Round 4
-           recorded here that a Border clips its child to its CORNER RADIUS rather than to its bounds
-           rectangle, on one observation: the 关于 overlay's square accent card traced an arc down its
-           first eleven rows on a PrintWindow capture. Round 5, item 2 deleted that overlay, so the
-           observation lost its subject; Round 7, Task 7 deleted the arc, so it has lost its mechanism
-           as well — this pane's corners are square and a radius clip and a bounds clip are the same
-           rectangle. ClipToBounds stays because it costs nothing and because a full-bleed child of
-           AppPage's OverlayPanel (whose ArrangeOverride arranges every child over the WHOLE panel
-           rect) would otherwise be free to paint outside the pane. None of the five children it has
-           today can: the DockPanel's own children inset themselves, and SplashPanel, both tm-empty
-           panels and tm-toast are all centred. -->
-      <Border Grid.Row="1"
-              x:Name="PagePane"
-              Classes="tm-page-pane"
-              ClipToBounds="True">
-        <ContentControl x:Name="PageHost" />
-      </Border>
+  <Grid RowDefinitions="32,*">
+    <Grid x:Name="TitleBarHost"
+          Height="32"
+          ColumnDefinitions="Auto,Auto,*"
+          Background="Transparent"
+          WindowDecorationProperties.ElementRole="TitleBar">
+      <Image Grid.Column="0"
+             Width="16" Height="16"
+             Margin="12,0,8,0"
+             Source="/wwwroot/app-tile.png"
+             Stretch="Uniform"
+             IsHitTestVisible="False" />
+      <TextBlock Grid.Column="1"
+                 Text="TanMenu"
+                 FontSize="12"
+                 VerticalAlignment="Center"
+                 IsHitTestVisible="False" />
     </Grid>
+
+    <ui:FANavigationView x:Name="AppNavigation"
+                         Grid.Row="1"
+                         PaneDisplayMode="Auto"
+                         OpenPaneLength="220"
+                         CompactPaneLength="48"
+                         IsPaneOpen="False"
+                         CompactModeThresholdWidth="0"
+                         ExpandedModeThresholdWidth="1440"
+                         AlwaysShowHeader="False"
+                         IsSettingsVisible="False"
+                         IsBackButtonVisible="False"
+                         SelectionChanged="OnNavigationSelectionChanged">
+      <ui:FANavigationView.MenuItems>
+        <ui:FANavigationViewItem x:Name="LauncherNavItem"
+                                 Tag="launcher"
+                                 IconSource="Home" />
+      </ui:FANavigationView.MenuItems>
+      <ui:FANavigationView.FooterMenuItems>
+        <ui:FANavigationViewItem x:Name="SettingsNavItem"
+                                 Tag="settings">
+          <ui:FANavigationViewItem.IconSource>
+            <ui:FASymbolIconSource Symbol="Setting" />
+          </ui:FANavigationViewItem.IconSource>
+        </ui:FANavigationViewItem>
+        <ui:FANavigationViewItem x:Name="ExitNavItem" Tag="exit">
+          <ui:FANavigationViewItem.IconSource>
+            <ui:FAFontIconSource Glyph="&#xE7E8;"
+                                 FontFamily="Segoe Fluent Icons"
+                                 FontSize="16" />
+          </ui:FANavigationViewItem.IconSource>
+        </ui:FANavigationViewItem>
+      </ui:FANavigationView.FooterMenuItems>
+
+      <Grid>
+        <Grid x:Name="LauncherPage" RowDefinitions="Auto,*">
+          <Grid Grid.Row="0"
+                Margin="24,8,24,8"
+                ColumnDefinitions="Auto,Auto,Auto,*">
+
+            <TextBox x:Name="SearchBox"
+                     x:DataType="vm:LauncherViewModel"
+                     Grid.Column="0"
+                     Classes="clearButton"
+                     Width="320"
+                     MinHeight="32"
+                     Margin="0,2,8,2"
+                     HorizontalAlignment="Left"
+                     VerticalAlignment="Center"
+                     AutomationProperties.Name="{Binding SearchPlaceholderText}"
+                     PlaceholderText="{Binding SearchPlaceholderText}"
+                     Text="{Binding Filter, Mode=TwoWay}"
+                     KeyDown="OnSearchKeyDown">
+              <TextBox.InnerLeftContent>
+                <ui:FASymbolIcon Symbol="Find"
+                                 FontSize="14"
+                                 Margin="8,0,0,0" />
+              </TextBox.InnerLeftContent>
+            </TextBox>
+
+            <Button x:Name="MenuOpenRoot"
+                    Grid.Column="1"
+                    Margin="0,2,8,2"
+                    Click="OnOpenRootClick">
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <ui:FASymbolIcon Symbol="OpenFolder" FontSize="16" />
+                <TextBlock x:Name="MenuOpenRootText" />
+              </StackPanel>
+            </Button>
+
+            <Button x:Name="MenuRefresh"
+                    Grid.Column="2"
+                    Margin="0,2,0,2"
+                    Click="OnRefreshClick">
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <ui:FASymbolIcon Symbol="Refresh" FontSize="16" />
+                <TextBlock x:Name="MenuRefreshText" />
+              </StackPanel>
+            </Button>
+          </Grid>
+
+          <views:AppPage x:Name="LauncherContent" Grid.Row="1" />
+        </Grid>
+
+        <views:SettingsPage x:Name="SettingsContent" IsVisible="False" />
+      </Grid>
+    </ui:FANavigationView>
   </Grid>
-</Window>
+</wnd:FAAppWindow>

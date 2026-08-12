@@ -285,6 +285,7 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
         RaisePropertyChanged(nameof(ClearFilterText));
         RaisePropertyChanged(nameof(CopyrightText));
         RaisePropertyChanged(nameof(UpdateNoticeText));
+        RaisePropertyChanged(nameof(UpdateActionText));
     }
 
     // ══════════════════════════════════════════════════════════════════════════════════════════
@@ -341,6 +342,10 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
         _ => "",
     };
 
+    public string UpdateActionText => _updateState.Status == AppUpdateStatus.ReadyToRestart
+        ? L("RestartToUpdate")
+        : L("DownloadUpdate");
+
     /// <summary>The download percentage, 0..100, for the update banner's <c>ProgressBar.Value</c>.
     /// It used to be <c>UpdateProgressWidth</c>, a DIP width for the inner Border of the hand-drawn
     /// bar AppPage.axaml carried until Round 7, Task 5 (<c>82.0 * pct / 100</c> — 82 being the 84 DIP
@@ -371,6 +376,7 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
         RaisePropertyChanged(nameof(ShowUpdateNotice));
         RaisePropertyChanged(nameof(IsUpdateDownloading));
         RaisePropertyChanged(nameof(UpdateNoticeText));
+        RaisePropertyChanged(nameof(UpdateActionText));
         RaisePropertyChanged(nameof(UpdateProgressPercent));
     }
 
@@ -483,9 +489,17 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
             _launch.OpenFolder(group.Directory);
     }
 
-    public void PlayClickSound() => _ = _sounds.PlayClickSoundAsync();
+    public void PlayClickSound()
+    {
+        if (_cfg.General.ClickSoundEnabled)
+            _ = _sounds.PlayClickSoundAsync();
+    }
 
-    public void PlayHoverSound() => _ = _sounds.PlayHoverSoundAsync();
+    public void PlayHoverSound()
+    {
+        if (_cfg.General.HoverSoundEnabled)
+            _ = _sounds.PlayHoverSoundAsync();
+    }
 
     /// <summary>Launch an item. On SUCCESS the window hides; on FAILURE it deliberately stays up and
     /// shows a toast — the menu used to silently vanish when a target had been deleted or moved.</summary>
@@ -564,11 +578,10 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
         // Wholly guarded: the Task is discarded, so nothing may escape.
         try
         {
-            // Cleared + focused each summon so you can type-to-filter immediately. The focus itself is
-            // deferred to the next layout: on a cold start the search box lives inside the groups
-            // branch and may not exist yet.
+            // Clear every summon. Keep the initial window visually neutral; later summons from the
+            // taskbar/hotkey still focus search so the quick-launch workflow remains immediate.
             Filter = "";
-            PendingFocus = true;
+            PendingFocus = _firstShownHandled;
 
             // Startup just built the menu, so skip the redundant rescan on the very first summon — but
             // ONLY if that build actually succeeded (fingerprint set). If it FAILED, fall through and

@@ -1,64 +1,18 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="TanMenu.Wpf.Views.Settings.ToolsCard"
-             FontSize="{DynamicResource FontSizeBody}">
-  <!-- ══ 常用工具 — a master check box and the list it governs ═══════════════════════════════
-       ROUND 8, TASK 6 REPLACED THE ROW GRAMMAR. See AppearanceCard.axaml's header for the argument,
-       the published citations for 3 / 7 / 11, and why every card root states the FontSize above.
-       That FontSize reaches the per-tool boxes below as well as the two elements in this markup:
-       BuildToolCheckboxes constructs them into ToolsPanel, which is inside this control, and an
-       inherited value follows the tree rather than the file.
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             HorizontalContentAlignment="Stretch"
+             x:Class="TanMenu.Wpf.Views.Settings.ToolsCard">
+  <StackPanel Spacing="4">
+    <ui:FASettingsExpander x:Name="ShowToolsRow" IconSource="List">
+      <ui:FASettingsExpander.Header><TextBlock x:Name="ShowToolsLabel" /></ui:FASettingsExpander.Header>
+      <ui:FASettingsExpander.Footer>
+        <ToggleSwitch x:Name="ShowToolsToggle" IsCheckedChanged="OnShowToolsChanged" />
+      </ui:FASettingsExpander.Footer>
+    </ui:FASettingsExpander>
 
-       THIS TAB HAS NO LABEL-AND-CONTROL PAIR AT ALL, so it has no two-column Grid. It has one
-       self-labelling check box, one line of instruction, and the list that line points at — which is
-       exactly the "all the controls are inside the group" case ctrl-group-boxes says to indicate on
-       the larger surface, so there is no group box either and the TabItem carries 常用工具.
-
-       THE MASTER'S LABEL IS ON THE BOX. Round 8, Task 5 made it a CheckBox and took its accessible
-       name from ShowToolsTitle through AutomationProperties.LabeledBy, saying its own label would
-       move onto it "until Task 6 rewrites the row grammar". This is that move: the title TextBlock
-       and the LabeledBy are gone, the Content is the label, and the box names itself.
-
-       THE INSTRUCTION LINE IS NOT A SUBTITLE. It ends in a colon and it introduces the list below it
-       ("勾选要在该分类中显示的工具："), which is what keeps it when the four restating subtitles on 外观
-       and 行为 were deleted with their AppLanguage keys. It sits 7 below the master (related
-       controls) and 3 above the list it labels (the smallest space between a non-interactive control
-       and any other control) — both PUBLISHED, vis-layout.
-
-       THE LIST IS DISABLED, NOT HIDDEN, while the master is off — ported verbatim from
-       SettingsWindow.BuildToolCheckboxes ("Unchecking only disables the list; the individual states
-       stay and are still persisted"): the per-tool Show values keep whatever the user set, so
-       re-enabling the category does not silently reset which tools it contains.
-
-       THE LIST BORDER'S OWN 7,5 PADDING AND ITS MaxHeight ARE THE LIST CONTROL'S BUSINESS, not the
-       row grammar's, and neither moved in this task. MaxHeight="240" (ported verbatim from
-       SettingsWindow's 常用工具 tab) is what keeps a long DefaultTools list — config.json is
-       user-editable, see the code-behind — from pushing the tab past the dialog's fixed height.
-       Round 7, Task 3's Aero CheckBox template is what gave it room: measured with UI Automation on
-       the live surface at 150 %, on the eight tools config.json ships with, on a build with the
-       change and a build without —
-
-         each CheckBox   237-339 x 48 physical  ->  1750 x 29   (Auto width -> stretched; 32 -> 19.33 DIP tall)
-         row pitch       56 physical            ->  37          (the 3,3 code-set Margin is unchanged)
-         list content    8 x 56 = 448 physical  ->  8 x 37 = 296  (299 DIP -> 197 DIP)
-         element left    x = 3035 physical      ->  x = 3035    (UNCHANGED)
-
-       — so at 197 DIP the eight fit inside 240 with no scrollbar, and the clamp starts biting at
-       roughly twelve tools instead of roughly seven. Those figures were read on the pre-Task-6
-       surface and are kept as the LIST's own record; this task did not re-measure them, and the one
-       thing it changed around them is what is above the Border, not inside it. -->
-  <StackPanel Margin="11">
-
-    <CheckBox x:Name="ShowToolsToggle" IsCheckedChanged="OnShowToolsChanged" />
-
-    <TextBlock x:Name="ToolsListLabel" TextWrapping="Wrap" Margin="0,7,0,0" />
-
-    <Border Margin="0,3,0,0" Padding="7,5"
-            BorderBrush="{DynamicResource StrokeControlBrush}" BorderThickness="1"
-            CornerRadius="{DynamicResource RadiusControl}">
-      <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="240">
-        <StackPanel x:Name="ToolsPanel" />
-      </ScrollViewer>
-    </Border>
+    <ui:FASettingsExpander x:Name="ToolsList" IconSource="Bullets" IsExpanded="True">
+      <ui:FASettingsExpander.Header><TextBlock x:Name="ToolsListLabel" /></ui:FASettingsExpander.Header>
+    </ui:FASettingsExpander>
   </StackPanel>
 </UserControl>

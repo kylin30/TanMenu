@@ -32,10 +32,6 @@ public partial class App : Application
     /// can tell a real exit from the close button (which hides to the tray).</summary>
     public static bool IsExiting { get; private set; }
 
-    /// <summary>Unsubscriber for the OS accent/colour subscription. Held for the process lifetime —
-    /// the app is tray-resident, so this is released only by exit.</summary>
-    private IDisposable? _platformColors;
-
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
 
     public override async void OnFrameworkInitializationCompleted()
@@ -150,9 +146,8 @@ public partial class App : Application
                 : IsPortable && VelopackLocator.Current.IsPortable
                     ? new VelopackAppUpdateService()
                     : new FixedAppUpdateService(AppUpdateStatus.Disabled));
-        // NOTE: ThemeService and the BlazorWebView registrations are gone with the CSS theme system
-        // and the WebView. There is exactly one look now (Themes/Shell, applied in App.axaml),
-        // rendered in a light or dark variant chosen by AppTheme.
+        // There is one first-party visual language: Avalonia FluentTheme in App.axaml, rendered in
+        // the light, dark or system-following variant selected by AppTheme.
 
         Services = services.BuildServiceProvider();
 
@@ -164,10 +159,6 @@ public partial class App : Application
         // launcher paint and then flip. ThemeVariant.Default (the "System" setting) makes Avalonia
         // track the OS itself, so there is nothing to re-apply on an OS theme change.
         AppTheme.Apply(this, Services.GetRequiredService<ConfigService>().Config.General.Appearance);
-        // The real Windows accent, replacing FluentTheme's hardcoded #0078D7. Platform settings hang
-        // off Application in Avalonia 12, so this needs no window to exist yet.
-        AppTheme.PublishAccent(this);
-        _platformColors = AppTheme.TrackPlatformChanges(this);
         Services.GetRequiredService<SoundService>()
             .Initialize(Path.Combine(AppContext.BaseDirectory, "wwwroot", "sounds"));
 
@@ -299,7 +290,7 @@ public partial class App : Application
         host.SuppressHide(true);
         try
         {
-            await MessageBox.ShowAsync(OptionsWindow.Current ?? host.Window,
+            await MessageBox.ShowAsync(host.Window,
                 AppLanguage.Format("HotkeyRegistrationFailed", language, combo),
                 "TanMenu", MessageBoxButtons.Ok, MessageBoxIcon.Warning);
         }
