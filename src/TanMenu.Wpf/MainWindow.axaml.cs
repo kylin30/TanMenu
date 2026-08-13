@@ -42,6 +42,7 @@ public partial class MainWindow : FAAppWindow
         _events.SettingsChanged += ApplyWindowFont;
         _events.SettingsChanged += ApplyNavigationText;
         _events.SettingsChanged += QueueRefitToContent;
+        _events.LauncherPageRequested += ShowLauncherPage;
         ActualThemeVariantChanged += OnActualThemeVariantChanged;
         LauncherContent.ViewModel.PropertyChanged += OnLauncherViewModelPropertyChanged;
         LauncherContent.ViewModel.ContentMetricsChanged += QueueRefitToContent;
@@ -68,6 +69,7 @@ public partial class MainWindow : FAAppWindow
         _events.SettingsChanged -= ApplyWindowFont;
         _events.SettingsChanged -= ApplyNavigationText;
         _events.SettingsChanged -= QueueRefitToContent;
+        _events.LauncherPageRequested -= ShowLauncherPage;
         ActualThemeVariantChanged -= OnActualThemeVariantChanged;
         LauncherContent.ViewModel.PropertyChanged -= OnLauncherViewModelPropertyChanged;
         LauncherContent.ViewModel.ContentMetricsChanged -= QueueRefitToContent;

@@ -1132,14 +1132,9 @@ public sealed partial class WindowHost : IWindowHost
         FlushPlacement(); // hiding is often the last thing before exit; do not leave it to the timer
         _window?.Hide();
 
-        // ROUND 8, TASK 2 DELETED THE LINE THAT USED TO FOLLOW: _navigator.Navigate(ShellPage.App).
-        // It reset the shell to 应用 after the window went off screen, because ShellNavigator.Current
-        // was process-lifetime state that survived hide/show and a session that had visited 设置 would
-        // otherwise re-summon onto 设置 — with AppPage detached, which also killed the search box's
-        // type-to-filter focus. There is one page now: 设置 is a modal dialog (Dialogs/OptionsWindow),
-        // the whole page model is gone, and "the window always opens on 应用" is true by construction
-        // rather than by a reset here. Nothing replaces it, and this class no longer takes a navigator
-        // at all.
+        // Hiding deliberately preserves the current page for tray and hotkey toggles. A second process
+        // is different: GlobalHotkeyService raises LauncherPageRequested before ShowAndActivate, and
+        // MainWindow switches that explicit "open TanMenu" request back to the Apps page.
     }
 
     public void ShowAndActivate()

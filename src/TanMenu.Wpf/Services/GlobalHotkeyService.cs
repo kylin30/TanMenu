@@ -66,9 +66,11 @@ public sealed partial class GlobalHotkeyService : IDisposable
         // a failed registration from turning every stray message into a show request.
         if (Program.ShowFirstInstanceMessage != 0 && msg == Program.ShowFirstInstanceMessage)
         {
-            // Deliberately SHOW, never toggle: clicking the taskbar pin again must not hide the window
-            // the user just asked for.
-            _host.ShowAndActivate();
+            // A new process means "open TanMenu", not merely "raise whichever page was left open".
+            // Return to Apps before showing so a hidden or Settings-page instance behaves like a fresh
+            // launcher request. Deliberately SHOW, never toggle: clicking the taskbar pin again must
+            // not hide the window the user just asked for.
+            App.ActivateFromSecondInstance();
             handled = true;
         }
 

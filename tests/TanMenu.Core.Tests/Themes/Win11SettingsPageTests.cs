@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Xml.Linq;
 using TanMenu.Core.Services;
+using TanMenu.Wpf.Services;
 using Xunit;
 
 namespace TanMenu.Core.Tests.Themes;
@@ -28,6 +29,36 @@ public class Win11SettingsPageTests
         var nav = Assert.Single(main.Descendants(), e => e.Name.LocalName == "FANavigationView");
         Assert.Equal("False", (string?)nav.Attribute("IsSettingsVisible"));
         Assert.Contains(main.Descendants(), e => e.Name.LocalName == "SettingsPage");
+    }
+
+    [Fact]
+    public void SecondInstanceReturnsTheExistingWindowToAppsAndGrantsForegroundPermission()
+    {
+        var events = new AppEvents();
+        var requested = false;
+        events.LauncherPageRequested += () => requested = true;
+        events.RaiseLauncherPageRequested();
+        Assert.True(requested);
+
+        var program = File.ReadAllText(Path.Combine(WpfRoot, "Program.cs"));
+        Assert.Contains("AllowSetForegroundWindow(AsfwAny)", program);
+        Assert.True(program.IndexOf("AllowSetForegroundWindow(AsfwAny)", StringComparison.Ordinal) <
+                    program.IndexOf("activationEvent.Set()", StringComparison.Ordinal));
+        Assert.Contains("EventResetMode.AutoReset", program);
+        Assert.Contains("createdNewActivationEvent", program);
+
+        var hotkey = File.ReadAllText(Path.Combine(WpfRoot, "Services", "GlobalHotkeyService.cs"));
+        Assert.Contains("App.ActivateFromSecondInstance()", hotkey);
+
+        var app = File.ReadAllText(Path.Combine(WpfRoot, "App.axaml.cs"));
+        Assert.Contains("StartSingleInstanceActivationListener()", app);
+        Assert.Contains("WaitHandle.WaitAny(handles)", app);
+        Assert.True(app.IndexOf("RaiseLauncherPageRequested()", StringComparison.Ordinal) <
+                    app.IndexOf("ShowAndActivate()", StringComparison.Ordinal));
+
+        var window = File.ReadAllText(Path.Combine(WpfRoot, "MainWindow.axaml.cs"));
+        Assert.Contains("_events.LauncherPageRequested += ShowLauncherPage", window);
+        Assert.Contains("_events.LauncherPageRequested -= ShowLauncherPage", window);
     }
 
     [Fact]

@@ -18,6 +18,9 @@ namespace TanMenu.Wpf;
 
 public partial class App : Application
 {
+    private CancellationTokenSource? _singleInstanceActivationCancellation;
+    private Task? _singleInstanceActivationListener;
+
     /// <summary>Service locator for the code-behind of windows Avalonia constructs for us.</summary>
     public static IServiceProvider Services { get; private set; } = null!;
 
@@ -200,7 +203,7 @@ public partial class App : Application
     /// built the entire menu twice.</item>
     /// </list>
     /// </remarks>
-    private static void ShowLauncherWindow()
+    private void ShowLauncherWindow()
     {
         var window = new MainWindow();
 
@@ -217,6 +220,8 @@ public partial class App : Application
         if (Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             desktop.MainWindow = window;
 
+        StartSingleInstanceActivationListener();
+
         // A cold start must produce the same LauncherShown a tray or hotkey summon does: the search
         // box takes focus from it, and so does AppPage's taskbar-pin InfoBar refresh. Guarded like the
         // tray wiring above — losing the pin notice or the initial focus is bad but survivable, and
@@ -229,6 +234,51 @@ public partial class App : Application
         {
             Log.Error(ex, "LauncherShown handlers faulted on cold start");
         }
+    }
+
+    /// <summary>Wait for second-process activation independently of the main window's visibility.
+    /// A hidden Avalonia HWND does not reliably receive HWND_BROADCAST messages, which is why this
+    /// listener uses the named AutoResetEvent created before the single-instance mutex.</summary>
+    private void StartSingleInstanceActivationListener()
+    {
+        var signal = Program.FirstInstanceActivationEvent;
+        if (signal is null || _singleInstanceActivationListener is not null)
+            return;
+
+        _singleInstanceActivationCancellation = new CancellationTokenSource();
+        var cancellation = _singleInstanceActivationCancellation;
+        _singleInstanceActivationListener = Task.Factory.StartNew(() =>
+        {
+            var handles = new WaitHandle[] { signal, cancellation.Token.WaitHandle };
+            while (WaitHandle.WaitAny(handles) == 0)
+                Dispatcher.UIThread.Post(ActivateFromSecondInstance, DispatcherPriority.Send);
+        }, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+    }
+
+    /// <summary>Shared activation endpoint for the named-event protocol and the legacy registered
+    /// window-message fallback. Must run on the UI thread.</summary>
+    internal static void ActivateFromSecondInstance()
+    {
+        try
+        {
+            Services.GetRequiredService<AppEvents>().RaiseLauncherPageRequested();
+            Services.GetRequiredService<IWindowHost>().ShowAndActivate();
+            Log.Information("Activated launcher page from second-instance request");
+        }
+        catch (Exception ex)
+        {
+            TryLogFatal(ex, "Failed to activate launcher from second instance");
+        }
+    }
+
+    private void StopSingleInstanceActivationListener()
+    {
+        _singleInstanceActivationCancellation?.Cancel();
+        try { _singleInstanceActivationListener?.Wait(TimeSpan.FromSeconds(1)); }
+        catch (AggregateException) { /* listener cancellation/teardown must not block exit */ }
+        _singleInstanceActivationCancellation?.Dispose();
+        _singleInstanceActivationCancellation = null;
+        _singleInstanceActivationListener = null;
     }
 
     private static void OnLauncherOpened(object? sender, EventArgs e)
@@ -390,6 +440,7 @@ public partial class App : Application
         // ConfigureAwait(false) throughout; see its remarks.
         Services.GetRequiredService<WindowHost>().FlushPlacementBlocking();
 
+        StopSingleInstanceActivationListener();
         Tray?.Dispose();
         (Services as IDisposable)?.Dispose(); // disposes singletons (unregisters the global hotkey, etc.)
         try { SingleInstanceMutex?.ReleaseMutex(); } catch { /* ignore: not owned / already released */ }

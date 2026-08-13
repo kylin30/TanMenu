@@ -4,10 +4,9 @@
          each release so update-diffing / crash correlation / Store submissions have a real version
          instead of the default 1.0.0.0.
 
-         0.14.1 is a visual-polish patch for the released Windows 11 Fluent shell. It keeps the 0.14
-         information architecture while aligning the launcher spacing, Mica surfaces, title-bar search,
-         category cards, compact buttons, and navigation rail. -->
-    <Version>0.14.1</Version>
+         0.14.2 is a reliability patch for single-instance activation. Repeated launches now wake the
+         existing window, return it to the Apps page, and transfer foreground activation permission. -->
+    <Version>0.14.2</Version>
     <!-- Keep the application SDK and vpk CLI on the same release. -->
     <VelopackVersion>1.2.0</VelopackVersion>
 
