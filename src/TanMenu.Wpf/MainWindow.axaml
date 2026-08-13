@@ -6,119 +6,118 @@
                  xmlns:views="using:TanMenu.Wpf.Views"
                  x:Class="TanMenu.Wpf.MainWindow"
                  Title="TanMenu"
-                 Width="1100" Height="760"
-                 MinWidth="640" MinHeight="520"
-                 WindowStartupLocation="Manual"
+                 Width="1180" Height="760"
+                 MinWidth="840" MinHeight="600"
+                 WindowStartupLocation="CenterScreen"
                  ShowInTaskbar="False"
                  Icon="/wwwroot/app.ico">
 
-  <Grid RowDefinitions="48,*">
-    <Grid x:Name="TitleBarHost"
-          Height="48"
-          ColumnDefinitions="Auto,Auto,*,138"
-          Background="Transparent"
-          WindowDecorationProperties.ElementRole="TitleBar">
-      <Image Grid.Column="0"
-             Width="16" Height="16"
-             Margin="12,0,8,0"
-             Source="/wwwroot/app-tile.png"
-             Stretch="Uniform"
-             IsHitTestVisible="False" />
-      <TextBlock Grid.Column="1"
-                 Text="TanMenu"
-                 FontSize="12"
+  <Grid ColumnDefinitions="64,*" Background="#F5F5F5">
+    <Border Grid.Column="0" Classes="hero-sidebar-chrome">
+      <Grid RowDefinitions="60,*">
+        <Border Height="60"
+                ToolTip.Tip="TanMenu"
+                WindowDecorationProperties.ElementRole="TitleBar">
+          <Image Width="22" Height="22"
+                 HorizontalAlignment="Center"
                  VerticalAlignment="Center"
+                 Source="/wwwroot/app-tile.png"
+                 Stretch="Uniform"
                  IsHitTestVisible="False" />
+        </Border>
 
-      <TextBox x:Name="SearchBox"
-               x:DataType="vm:LauncherViewModel"
-               Grid.Column="2"
-               Classes="clearButton"
-               Width="320"
-               Height="32"
-               MinHeight="0"
-               Margin="0,8"
-               HorizontalAlignment="Center"
-               VerticalAlignment="Center"
-               WindowDecorationProperties.ElementRole="User"
-               AutomationProperties.Name="{Binding SearchPlaceholderText}"
-               PlaceholderText="{Binding SearchPlaceholderText}"
-               Text="{Binding Filter, Mode=TwoWay}"
-               KeyDown="OnSearchKeyDown">
-        <TextBox.InnerLeftContent>
-          <ui:FASymbolIcon Symbol="Find"
-                           FontSize="14"
-                           Margin="8,0,0,0" />
-        </TextBox.InnerLeftContent>
-      </TextBox>
-    </Grid>
+        <Border x:Name="SidebarPanel"
+                Grid.Row="1"
+                Classes="hero-sidebar-panel">
+          <Grid RowDefinitions="*,Auto">
+            <StackPanel Grid.Row="0" Spacing="4">
+              <Button x:Name="LauncherNavButton"
+                      Classes="hero-button hero-sidebar-item is-active"
+                      Click="OnLauncherNavClick">
+                <ui:FASymbolIcon Symbol="Home" FontSize="17" />
+              </Button>
 
-    <ui:FANavigationView x:Name="AppNavigation"
-                         Grid.Row="1"
-                         PaneDisplayMode="Auto"
-                         OpenPaneLength="220"
-                         CompactPaneLength="48"
-                         IsPaneOpen="False"
-                         CompactModeThresholdWidth="0"
-                         ExpandedModeThresholdWidth="1440"
-                         AlwaysShowHeader="False"
-                         IsSettingsVisible="False"
-                         IsBackButtonVisible="False"
-                         IsPaneToggleButtonVisible="False"
-                         ItemInvoked="OnNavigationItemInvoked"
-                         SelectionChanged="OnNavigationSelectionChanged">
-      <ui:FANavigationView.Resources>
-        <SolidColorBrush x:Key="NavigationViewContentBackground" Color="Transparent" />
-      </ui:FANavigationView.Resources>
-      <ui:FANavigationView.MenuItems>
-        <ui:FANavigationViewItem x:Name="TogglePaneNavItem"
-                                 Tag="toggle-pane"
-                                 SelectsOnInvoked="False">
-          <ui:FANavigationViewItem.IconSource>
-            <ui:FASymbolIconSource Symbol="GlobalNavigationButton" />
-          </ui:FANavigationViewItem.IconSource>
-        </ui:FANavigationViewItem>
-        <ui:FANavigationViewItem x:Name="LauncherNavItem"
-                                 Tag="launcher"
-                                 IconSource="Home" />
-        <ui:FANavigationViewItem x:Name="OpenRootNavItem"
-                                 Tag="open-root"
-                                 SelectsOnInvoked="False">
-          <ui:FANavigationViewItem.IconSource>
-            <ui:FASymbolIconSource Symbol="OpenFolder" />
-          </ui:FANavigationViewItem.IconSource>
-        </ui:FANavigationViewItem>
-        <ui:FANavigationViewItem x:Name="RefreshNavItem"
-                                 Tag="refresh"
-                                 SelectsOnInvoked="False">
-          <ui:FANavigationViewItem.IconSource>
-            <ui:FASymbolIconSource Symbol="Refresh" />
-          </ui:FANavigationViewItem.IconSource>
-        </ui:FANavigationViewItem>
-      </ui:FANavigationView.MenuItems>
-      <ui:FANavigationView.FooterMenuItems>
-        <ui:FANavigationViewItem x:Name="SettingsNavItem"
-                                 Tag="settings">
-          <ui:FANavigationViewItem.IconSource>
-            <ui:FASymbolIconSource Symbol="Setting" />
-          </ui:FANavigationViewItem.IconSource>
-        </ui:FANavigationViewItem>
-        <ui:FANavigationViewItem x:Name="ExitNavItem" Tag="exit">
-          <ui:FANavigationViewItem.IconSource>
-            <ui:FAFontIconSource Glyph="&#xE7E8;"
-                                 FontFamily="Segoe Fluent Icons"
-                                 FontSize="16" />
-          </ui:FANavigationViewItem.IconSource>
-        </ui:FANavigationViewItem>
-      </ui:FANavigationView.FooterMenuItems>
+              <Button x:Name="SettingsNavButton"
+                      Classes="hero-button hero-sidebar-item"
+                      Click="OnSettingsNavClick">
+                <ui:FASymbolIcon Symbol="Setting" FontSize="17" />
+              </Button>
+            </StackPanel>
 
-      <Grid>
-        <Grid x:Name="LauncherPage">
-          <views:AppPage x:Name="LauncherContent" />
-        </Grid>
-
-        <views:SettingsPage x:Name="SettingsContent" IsVisible="False" />
+            <Button x:Name="ExitNavButton"
+                    Grid.Row="1"
+                    Classes="hero-button hero-sidebar-item"
+                    Click="OnExitClick">
+              <TextBlock Text="&#xE7E8;"
+                         FontFamily="Segoe Fluent Icons"
+                         FontSize="17"
+                         Width="17"
+                         TextAlignment="Center" />
+            </Button>
+          </Grid>
+        </Border>
       </Grid>
-    </ui:FANavigationView>
+    </Border>
+
+    <Grid Grid.Column="1" RowDefinitions="60,*">
+      <Grid x:Name="TitleBarHost"
+            Height="60"
+            ColumnDefinitions="*,138"
+            Background="#F5F5F5"
+            Panel.ZIndex="1"
+            WindowDecorationProperties.ElementRole="TitleBar">
+        <StackPanel x:Name="LauncherTitleCommands"
+                    Grid.Column="0"
+                    Margin="16,12,0,12"
+                    Orientation="Horizontal"
+                    Spacing="8"
+                    HorizontalAlignment="Left"
+                    WindowDecorationProperties.ElementRole="User">
+          <Border x:Name="SearchShell"
+                  Classes="hero-search-shell"
+                  HorizontalAlignment="Left"
+                  VerticalAlignment="Stretch"
+                  WindowDecorationProperties.ElementRole="User">
+            <TextBox x:Name="SearchBox"
+                     x:DataType="vm:LauncherViewModel"
+                     Classes="clearButton hero-search-input"
+                     AutomationProperties.Name="{Binding SearchPlaceholderText}"
+                     PlaceholderText="{Binding SearchPlaceholderText}"
+                     Text="{Binding Filter, Mode=TwoWay}"
+                     WindowDecorationProperties.ElementRole="User"
+                     KeyDown="OnSearchKeyDown">
+              <TextBox.InnerLeftContent>
+                <ui:FASymbolIcon Symbol="Find"
+                                 FontSize="14"
+                                 Margin="8,0,0,0" />
+              </TextBox.InnerLeftContent>
+            </TextBox>
+          </Border>
+
+          <Button x:Name="OpenRootNavButton"
+                  Classes="hero-button hero-icon-button hero-title-command"
+                  VerticalAlignment="Center"
+                  Click="OnOpenRootClick">
+            <ui:FASymbolIcon Symbol="OpenFolder" FontSize="16" />
+          </Button>
+
+          <Button x:Name="RefreshNavButton"
+                  Classes="hero-button hero-icon-button hero-title-command"
+                  VerticalAlignment="Center"
+                  Click="OnRefreshClick">
+            <ui:FASymbolIcon Symbol="Refresh" FontSize="16" />
+          </Button>
+        </StackPanel>
+      </Grid>
+
+      <Grid x:Name="ContentHost" Grid.Row="1">
+        <Grid>
+          <Grid x:Name="LauncherPage">
+            <views:AppPage x:Name="LauncherContent" />
+          </Grid>
+          <views:SettingsPage x:Name="SettingsContent" IsVisible="False" />
+        </Grid>
+      </Grid>
+    </Grid>
   </Grid>
 </wnd:FAAppWindow>

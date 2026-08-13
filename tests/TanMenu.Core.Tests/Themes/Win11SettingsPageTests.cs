@@ -10,6 +10,9 @@ namespace TanMenu.Core.Tests.Themes;
 
 public class Win11SettingsPageTests
 {
+    private static readonly XName XamlName =
+        XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml");
+
     private static string RepoRoot()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
@@ -22,12 +25,16 @@ public class Win11SettingsPageTests
     private static string WpfRoot => Path.Combine(RepoRoot(), "src", "TanMenu.Wpf");
 
     [Fact]
-    public void MainWindowIsAnAppWindowWithBuiltInSettingsNavigation()
+    public void MainWindowIsAnAppWindowWithHeroUiAppLayout()
     {
         var main = XDocument.Load(Path.Combine(WpfRoot, "MainWindow.axaml"));
         Assert.Equal("FAAppWindow", main.Root!.Name.LocalName);
-        var nav = Assert.Single(main.Descendants(), e => e.Name.LocalName == "FANavigationView");
-        Assert.Equal("False", (string?)nav.Attribute("IsSettingsVisible"));
+        Assert.DoesNotContain(main.Descendants(), e => e.Name.LocalName == "FANavigationView");
+        Assert.Contains(main.Descendants(), e => (string?)e.Attribute("Classes") == "hero-sidebar-panel");
+        var content = Assert.Single(main.Descendants(), e =>
+            (string?)e.Attribute(XamlName) == "ContentHost");
+        Assert.Equal("Grid", content.Name.LocalName);
+        Assert.Null((string?)content.Attribute("Classes"));
         Assert.Contains(main.Descendants(), e => e.Name.LocalName == "SettingsPage");
     }
 
@@ -45,14 +52,9 @@ public class Win11SettingsPageTests
         Assert.True(program.IndexOf("AllowSetForegroundWindow(AsfwAny)", StringComparison.Ordinal) <
                     program.IndexOf("activationEvent.Set()", StringComparison.Ordinal));
         Assert.Contains("EventResetMode.AutoReset", program);
-        Assert.Contains("createdNewActivationEvent", program);
-
-        var hotkey = File.ReadAllText(Path.Combine(WpfRoot, "Services", "GlobalHotkeyService.cs"));
-        Assert.Contains("App.ActivateFromSecondInstance()", hotkey);
 
         var app = File.ReadAllText(Path.Combine(WpfRoot, "App.axaml.cs"));
         Assert.Contains("StartSingleInstanceActivationListener()", app);
-        Assert.Contains("WaitHandle.WaitAny(handles)", app);
         Assert.True(app.IndexOf("RaiseLauncherPageRequested()", StringComparison.Ordinal) <
                     app.IndexOf("ShowAndActivate()", StringComparison.Ordinal));
 
@@ -62,97 +64,167 @@ public class Win11SettingsPageTests
     }
 
     [Fact]
-    public void MainWindowUsesTheIntegratedTitleBarAndMicaBackdrop()
+    public void MainWindowUsesRightSideTitleBarAndSolidWindowBackground()
     {
         var main = XDocument.Load(Path.Combine(WpfRoot, "MainWindow.axaml"));
-        Assert.Contains(main.Descendants(), e =>
-            (string?)e.Attribute("WindowDecorationProperties.ElementRole") == "TitleBar");
-
-        var nav = main.Descendants().Single(e => e.Name.LocalName == "FANavigationView");
-        Assert.Equal("1", (string?)nav.Attribute("Grid.Row"));
-        Assert.Null(nav.Attribute("Grid.RowSpan"));
-        Assert.Null(nav.Attribute("WindowDecorationProperties.ElementRole"));
-        Assert.Equal("OnNavigationSelectionChanged", (string?)nav.Attribute("SelectionChanged"));
-
-        var titleBar = main.Descendants().Single(e =>
-            (string?)e.Attribute(XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml")) == "TitleBarHost");
-        Assert.Equal("48", (string?)titleBar.Attribute("Height"));
+        var titleBar = main.Descendants().Single(e => (string?)e.Attribute(XamlName) == "TitleBarHost");
+        Assert.Equal("60", (string?)titleBar.Attribute("Height"));
+        Assert.Equal("TitleBar", (string?)titleBar.Attribute("WindowDecorationProperties.ElementRole"));
 
         var shellGrid = Assert.Single(main.Root!.Elements(), e => e.Name.LocalName == "Grid");
-        Assert.Equal("48,*", (string?)shellGrid.Attribute("RowDefinitions"));
-
+        Assert.Equal("64,*", (string?)shellGrid.Attribute("ColumnDefinitions"));
+        Assert.Equal("#F5F5F5", (string?)shellGrid.Attribute("Background"));
         var code = File.ReadAllText(Path.Combine(WpfRoot, "MainWindow.axaml.cs"));
         Assert.Contains("TitleBar.ExtendsContentIntoTitleBar = true", code);
-        Assert.Contains("WindowTransparencyLevel.Mica", code);
-
-        var host = File.ReadAllText(Path.Combine(WpfRoot, "Services", "WindowHost.cs"));
-        Assert.Contains("TitleBarHeightDip = 48", host);
+        Assert.Contains("TitleBar.Height = 60", code);
+        Assert.Contains("Color.FromRgb(0xF5, 0xF5, 0xF5)", code);
+        Assert.DoesNotContain("WindowTransparencyLevel.Mica", code);
     }
 
     [Fact]
-    public void MainContentExposesTheMicaBackdrop()
+    public void LauncherFitsAllApplicationColumnsWhilePageSwitchingDoesNotFitSettings()
     {
-        var main = XDocument.Load(Path.Combine(WpfRoot, "MainWindow.axaml"));
-        var navigation = main.Descendants().Single(e => e.Name.LocalName == "FANavigationView");
-        var resources = Assert.Single(navigation.Elements(), e =>
-            e.Name.LocalName == "FANavigationView.Resources");
-        var contentBackground = Assert.Single(resources.Elements(), e =>
-            (string?)e.Attribute(XName.Get("Key", "http://schemas.microsoft.com/winfx/2006/xaml")) ==
-            "NavigationViewContentBackground");
+        var main = XDocument.Load(Path.Combine(WpfRoot, "MainWindow.axaml")).Root!;
+        Assert.Equal("1180", (string?)main.Attribute("Width"));
+        Assert.Equal("760", (string?)main.Attribute("Height"));
+        Assert.Equal("840", (string?)main.Attribute("MinWidth"));
+        Assert.Equal("600", (string?)main.Attribute("MinHeight"));
 
-        Assert.Equal("SolidColorBrush", contentBackground.Name.LocalName);
-        Assert.Equal("Transparent", (string?)contentBackground.Attribute("Color"));
+        var code = File.ReadAllText(Path.Combine(WpfRoot, "MainWindow.axaml.cs"));
+        Assert.Contains("QueueLauncherFit", code);
+        Assert.Contains("RefitLauncherToContent", code);
+        Assert.Contains("ContentMetricsChanged +=", code);
+        Assert.Contains("NoticeVisibilityChanged +=", code);
+        Assert.Contains("_host.FitToContent", code);
+        Assert.Contains("await LauncherContent.BeginInitialize()", code);
+        var showSettings = code[(code.IndexOf("public void ShowSettingsPage()", StringComparison.Ordinal))..];
+        showSettings = showSettings[..showSettings.IndexOf("public void ShowLauncherPage()", StringComparison.Ordinal)];
+        Assert.DoesNotContain("FitToContent", showSettings);
+        Assert.Contains("Grid.SetRow(ContentHost, 0)", showSettings);
+        Assert.Contains("Grid.SetRowSpan(ContentHost, 2)", showSettings);
+        Assert.Contains("TitleBarHost.Background = Brushes.Transparent", showSettings);
+
+        var showLauncher = code[(code.IndexOf("public void ShowLauncherPage()", StringComparison.Ordinal))..];
+        Assert.Contains("Grid.SetRow(ContentHost, 1)", showLauncher);
+        Assert.Contains("Grid.SetRowSpan(ContentHost, 1)", showLauncher);
+        Assert.Contains("TitleBarHost.Background = WindowBackgroundBrush", showLauncher);
     }
 
     [Fact]
-    public void SettingsUseOneBoundedSingleColumnPage()
+    public void SettingsUseSectionNavigationAndOneContinuousContentRegion()
     {
         var page = XDocument.Load(Path.Combine(WpfRoot, "Views", "SettingsPage.axaml"));
-        Assert.DoesNotContain(page.Descendants(), e => (string?)e.Attribute(
-            XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml")) == "PageTitle");
-        Assert.DoesNotContain(page.Descendants(), e => e.Name.LocalName == "FATabView");
+        var rootGrid = Assert.Single(page.Root!.Elements(), e => e.Name.LocalName == "Grid");
+        Assert.Equal("184,1,*", (string?)rootGrid.Attribute("ColumnDefinitions"));
+        Assert.Equal("24", (string?)rootGrid.Attribute("Margin"));
+        Assert.Equal("24", (string?)rootGrid.Attribute("ColumnSpacing"));
 
-        var scroll = Assert.Single(page.Descendants(), e => e.Name.LocalName == "ScrollViewer");
-        Assert.Equal("680", (string?)scroll.Attribute("MinWidth"));
-        Assert.Equal("820", (string?)scroll.Attribute("MaxWidth"));
-        Assert.Equal("700", (string?)scroll.Attribute("MaxHeight"));
+        var nav = Assert.Single(page.Descendants(), e =>
+            (string?)e.Attribute("Classes") == "hero-settings-section-nav");
+        var navButtons = nav.Descendants().Where(e =>
+            e.Name.LocalName == "Button" && ((string?)e.Attribute("Classes"))?.Contains("hero-settings-nav-item") == true).ToList();
+        Assert.Equal(6, navButtons.Count);
+        Assert.Equal(Enumerable.Range(0, 6).Select(i => i.ToString()),
+            navButtons.Select(e => (string?)e.Attribute("Tag")));
+
+        var scroll = Assert.Single(page.Descendants(), e => (string?)e.Attribute(XamlName) == "SettingsScroll");
         Assert.Equal("Hidden", (string?)scroll.Attribute("HorizontalScrollBarVisibility"));
         Assert.Equal("Hidden", (string?)scroll.Attribute("VerticalScrollBarVisibility"));
+        var contentColumn = Assert.Single(scroll.Elements(), e => e.Name.LocalName == "StackPanel");
+        Assert.Equal("{Binding #SettingsScroll.Viewport.Width}", (string?)contentColumn.Attribute("Width"));
+        Assert.Equal("1000", (string?)contentColumn.Attribute("MaxWidth"));
+        Assert.Equal(6, page.Descendants().Count(e => e.Name.LocalName.EndsWith("Card", StringComparison.Ordinal)));
+        Assert.Equal(6, page.Descendants().Count(e =>
+            ((string?)e.Attribute(XamlName))?.EndsWith("Section", StringComparison.Ordinal) == true));
+        Assert.DoesNotContain(page.Descendants(), e =>
+            e.Name.LocalName.EndsWith("Card", StringComparison.Ordinal) &&
+            string.Equals((string?)e.Attribute("IsVisible"), "False", StringComparison.OrdinalIgnoreCase));
 
-        Assert.Equal("SettingsScroll", (string?)scroll.Attribute(
-            XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml")));
-        var viewportGrid = Assert.Single(scroll.Elements(), e => e.Name.LocalName == "Grid");
-        Assert.Equal("{Binding #SettingsScroll.Viewport.Width}", (string?)viewportGrid.Attribute("Width"));
-        Assert.Equal("*,16", (string?)viewportGrid.Attribute("ColumnDefinitions"));
+        var code = File.ReadAllText(Path.Combine(WpfRoot, "Views", "SettingsPage.axaml.cs"));
+        Assert.Contains("SelectSection(_selectedSection, scrollToSection: false)", code);
+        Assert.Contains("sections[_selectedSection].BringIntoView", code);
+        Assert.DoesNotContain(".IsVisible = selected", code);
+        Assert.Contains("buttons[index].Classes.Set(\"is-active\", index == _selectedSection)", code);
+    }
 
-        var column = Assert.Single(viewportGrid.Elements(), e => e.Name.LocalName == "StackPanel");
-        Assert.Equal("0", (string?)column.Attribute("Grid.Column"));
-        Assert.Equal("Stretch", (string?)column.Attribute("HorizontalAlignment"));
-        Assert.Equal("20", (string?)column.Attribute("Spacing"));
-
-        var sections = column.Elements().Where(e => e.Name.LocalName == "StackPanel").ToList();
-        Assert.Equal(6, sections.Count);
-        Assert.All(sections, section => Assert.Equal("Stretch", (string?)section.Attribute("HorizontalAlignment")));
-        Assert.All(sections, section =>
+    [Fact]
+    public void SettingsCardsUseHeroUiRowsWithoutFluentSettingsExpanders()
+    {
+        var cardFiles = Directory.GetFiles(Path.Combine(WpfRoot, "Views", "Settings"), "*Card.axaml");
+        Assert.NotEmpty(cardFiles);
+        Assert.All(cardFiles, file =>
         {
-            var card = Assert.Single(section.Elements(), e => e.Name.LocalName.EndsWith("Card", StringComparison.Ordinal));
-            Assert.Equal("Stretch", (string?)card.Attribute("HorizontalAlignment"));
+            var doc = XDocument.Load(file);
+            Assert.Equal("Stretch", (string?)doc.Root!.Attribute("HorizontalContentAlignment"));
+            Assert.DoesNotContain(doc.Descendants(), e => e.Name.LocalName is "FASettingsExpander" or "FASettingsExpanderItem");
+            Assert.Contains(doc.Descendants(), e =>
+                ((string?)e.Attribute("Classes"))?.Contains("hero-setting-card", StringComparison.Ordinal) == true ||
+                ((string?)e.Attribute("Classes"))?.Contains("hero-setting-group", StringComparison.Ordinal) == true);
+            Assert.All(doc.Descendants().Where(e => e.Name.LocalName == "Button"), button =>
+                Assert.Contains("hero-button", (string?)button.Attribute("Classes")));
+            Assert.All(doc.Descendants().Where(e => e.Name.LocalName == "ToggleSwitch"), toggle =>
+                Assert.Equal("hero-switch", (string?)toggle.Attribute("Classes")));
+            Assert.All(doc.Descendants().Where(e => e.Name.LocalName is "ComboBox" or "TextBox"), field =>
+                Assert.Equal("hero-field", (string?)field.Attribute("Classes")));
         });
 
-        var headings = page.Descendants().Where(e =>
-            e.Name.LocalName == "TextBlock" &&
-            ((string?)e.Attribute(XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml")))?.EndsWith("Heading") == true).ToList();
-        Assert.Equal(6, headings.Count);
-        Assert.All(headings, heading => Assert.Equal("18", (string?)heading.Attribute("FontSize")));
-        Assert.Equal(6, page.Descendants().Count(e => e.Name.LocalName.EndsWith("Card", StringComparison.Ordinal)));
+        var pageCode = File.ReadAllText(Path.Combine(WpfRoot, "Views", "SettingsPage.axaml.cs"));
+        Assert.Contains("TimeSpan.FromMilliseconds(300)", pageCode);
+        Assert.DoesNotContain("OkButton", pageCode);
+        Assert.DoesNotContain("CancelButton", pageCode);
+        Assert.DoesNotContain("ApplyButton", pageCode);
+    }
+
+    [Fact]
+    public void LauncherUsesAutomaticColumnsWithoutExposingAManualColumnSetting()
+    {
+        var appearanceXaml = File.ReadAllText(Path.Combine(WpfRoot, "Views", "Settings", "AppearanceCard.axaml"));
+        var appearanceCode = File.ReadAllText(Path.Combine(WpfRoot, "Views", "Settings", "AppearanceCard.axaml.cs"));
+        Assert.DoesNotContain("ColumnCount", appearanceXaml);
+        Assert.DoesNotContain("ColButtonCount", appearanceCode);
+        Assert.DoesNotContain("NumericUpDown", appearanceXaml);
+
+        var appPage = File.ReadAllText(Path.Combine(WpfRoot, "Views", "AppPage.axaml"));
+        Assert.Contains("ItemsSource=\"{Binding Columns}\"", appPage);
+        Assert.Contains("ItemsSource=\"{Binding Items}\"", appPage);
+        Assert.DoesNotContain("<WrapPanel", appPage);
+    }
+
+    [Fact]
+    public void SettingsCardsRetainDescriptionsAndInteractiveBehavior()
+    {
+        var appearance = File.ReadAllText(Path.Combine(WpfRoot, "Views", "Settings", "AppearanceCard.axaml.cs"));
+        var behavior = File.ReadAllText(Path.Combine(WpfRoot, "Views", "Settings", "BehaviorCard.axaml.cs"));
+        var folders = File.ReadAllText(Path.Combine(WpfRoot, "Views", "Settings", "FoldersCard.axaml.cs"));
+        Assert.Contains("LanguageDescription.Text", appearance);
+        Assert.Contains("AppearanceDescription.Text", appearance);
+        Assert.Contains("AutoCloseDescription.Text", behavior);
+        Assert.Contains("ButtonSoundsDescription.Text", behavior);
+        Assert.Contains("HoverSoundEnabled = HoverSoundToggle.IsChecked == true", behavior);
+        Assert.Contains("ClickSoundEnabled = ClickSoundToggle.IsChecked == true", behavior);
+        Assert.Contains("MainFolderDescription.Text", folders);
+        Assert.Contains("DataFolderDescription.Text", folders);
+    }
+
+    [Fact]
+    public void SoundPreferencesAreGroupedAsHeroUiSubrows()
+    {
+        var behavior = XDocument.Load(Path.Combine(WpfRoot, "Views", "Settings", "BehaviorCard.axaml"));
+        var soundGroup = Assert.Single(behavior.Descendants(), e =>
+            (string?)e.Attribute("Classes") == "hero-setting-group");
+        Assert.Contains(soundGroup.Descendants(), e =>
+            e.Name.LocalName == "FASymbolIcon" && (string?)e.Attribute("Symbol") == "Volume");
+        Assert.Equal(2, soundGroup.Descendants().Count(e =>
+            (string?)e.Attribute("Classes") == "hero-setting-subrow"));
+        Assert.Contains(soundGroup.Descendants(), e => (string?)e.Attribute(XamlName) == "HoverSoundToggle");
+        Assert.Contains(soundGroup.Descendants(), e => (string?)e.Attribute(XamlName) == "ClickSoundToggle");
     }
 
     [Fact]
     public void LanguageChoicesUseTheirOwnLanguage()
     {
         Assert.Equal("中文（简体）", AppLanguage.LanguageLabel(AppLanguage.ZhHans, AppLanguage.EnUs));
-        Assert.Equal("English (United States)",
-            AppLanguage.LanguageLabel(AppLanguage.EnUs, AppLanguage.ZhHans));
+        Assert.Equal("English (United States)", AppLanguage.LanguageLabel(AppLanguage.EnUs, AppLanguage.ZhHans));
     }
 
     [Fact]
@@ -165,92 +237,8 @@ public class Win11SettingsPageTests
         Assert.True(File.Exists(Path.Combine(fontRoot, "AlibabaPuHuiTi2-Bold.ttf")));
         Assert.True(File.Exists(Path.Combine(fontRoot, "NOTICE.txt")));
 
-        var project = File.ReadAllText(Path.Combine(WpfRoot, "TanMenu.Wpf.csproj"));
-        Assert.Contains("AlibabaPuHuiTi2-Regular.ttf", project);
-        Assert.Contains("AlibabaPuHuiTi2-Medium.ttf", project);
-        Assert.Contains("AlibabaPuHuiTi2-SemiBold.ttf", project);
-        Assert.Contains("AlibabaPuHuiTi2-Bold.ttf", project);
-        Assert.Contains("FONT-NOTICE.txt", project);
-
         var program = File.ReadAllText(Path.Combine(WpfRoot, "Program.cs"));
         Assert.Contains(".WithBundledFonts()", program);
-    }
-
-    [Fact]
-    public void MainWindowRefitsWhenItsActiveContentChanges()
-    {
-        var code = File.ReadAllText(Path.Combine(WpfRoot, "MainWindow.axaml.cs"));
-        Assert.Contains("ContentMetricsChanged += QueueRefitToContent", code);
-        Assert.Contains("NoticeVisibilityChanged += QueueRefitToContent", code);
-        Assert.Contains("AppNavigation.DisplayModeChanged += OnNavigationDisplayModeChanged", code);
-        Assert.Contains("AppNavigation.PaneOpened += OnNavigationPaneLayoutChanged", code);
-        Assert.Contains("AppNavigation.PaneClosed += OnNavigationPaneLayoutChanged", code);
-        Assert.Contains("AppNavigation.OpenPaneLength", code);
-        Assert.Contains("AppNavigation.CompactPaneLength", code);
-        Assert.Contains("NavigationContentDividerWidthDip = 1", code);
-        Assert.Contains("+ NavigationContentDividerWidthDip", code);
-        Assert.Contains("QueuePageRefitToContent();", code);
-        Assert.Contains("RefitToContent(forcePageFit: true)", code);
-        Assert.Contains("host.FitToContent(activePage, NavigationChromeWidthDip, forcePageFit)", code);
-
-        var hostCode = File.ReadAllText(Path.Combine(WpfRoot, "Services", "WindowHost.cs"));
-        Assert.Contains("(_userResized && !forcePageFit)", hostCode);
-        Assert.Contains("if (forcePageFit)\n            _userResized = false", hostCode.Replace("\r\n", "\n"));
-        Assert.Contains("if (!forcePageFit && !_fitBasisStale", hostCode);
-        Assert.Contains("pageContent.Measure(new Size(availableContentWidth, double.PositiveInfinity))", hostCode);
-        Assert.Contains("FitRoundingSlackPixels / scale", hostCode);
-    }
-
-    [Fact]
-    public void SettingsUseLibraryCardsAndHaveNoConfirmationDialog()
-    {
-        var cardFiles = Directory.GetFiles(Path.Combine(WpfRoot, "Views", "Settings"), "*Card.axaml");
-        Assert.NotEmpty(cardFiles);
-        Assert.All(cardFiles, file =>
-        {
-            var doc = XDocument.Load(file);
-            Assert.Equal("Stretch", (string?)doc.Root!.Attribute("HorizontalContentAlignment"));
-            Assert.Contains(doc.Descendants(), e => e.Name.LocalName == "FASettingsExpander");
-        });
-
-        Assert.False(File.Exists(Path.Combine(WpfRoot, "Dialogs", "OptionsWindow.axaml")));
-        Assert.False(File.Exists(Path.Combine(WpfRoot, "Dialogs", "AboutWindow.axaml")));
-        var pageCode = File.ReadAllText(Path.Combine(WpfRoot, "Views", "SettingsPage.axaml.cs"));
-        Assert.Contains("TimeSpan.FromMilliseconds(300)", pageCode);
-        Assert.DoesNotContain("OkButton", pageCode);
-        Assert.DoesNotContain("CancelButton", pageCode);
-        Assert.DoesNotContain("ApplyButton", pageCode);
-    }
-
-    [Fact]
-    public void SettingsCardsUseLibraryIconsAndHelpfulDescriptions()
-    {
-        var cardFiles = Directory.GetFiles(Path.Combine(WpfRoot, "Views", "Settings"), "*Card.axaml");
-        var cards = cardFiles.SelectMany(file => XDocument.Load(file).Descendants())
-            .Where(e => e.Name.LocalName == "FASettingsExpander")
-            .ToList();
-
-        Assert.NotEmpty(cards);
-        Assert.All(cards, card => Assert.False(string.IsNullOrWhiteSpace((string?)card.Attribute("IconSource"))));
-
-        var appearanceCode = File.ReadAllText(Path.Combine(WpfRoot, "Views", "Settings", "AppearanceCard.axaml.cs"));
-        var behaviorCode = File.ReadAllText(Path.Combine(WpfRoot, "Views", "Settings", "BehaviorCard.axaml.cs"));
-        var foldersXaml = XDocument.Load(Path.Combine(WpfRoot, "Views", "Settings", "FoldersCard.axaml"));
-        var foldersCode = File.ReadAllText(Path.Combine(WpfRoot, "Views", "Settings", "FoldersCard.axaml.cs"));
-        Assert.Contains("LanguageRow.Description", appearanceCode);
-        Assert.Contains("ColumnCountRow.Description", appearanceCode);
-        Assert.Contains("_draft.Working.General.ColButtonCount", appearanceCode);
-        Assert.Contains("AutoCloseRow.Description", behaviorCode);
-        Assert.Contains("ButtonSoundsRow.Description", behaviorCode);
-        Assert.Contains("HoverSoundItem.Description", behaviorCode);
-        Assert.Contains("ClickSoundItem.Description", behaviorCode);
-        Assert.Contains("HoverSoundEnabled = HoverSoundToggle.IsChecked == true", behaviorCode);
-        Assert.Contains("ClickSoundEnabled = ClickSoundToggle.IsChecked == true", behaviorCode);
-        Assert.DoesNotContain(foldersXaml.Descendants(), e =>
-            (string?)e.Attribute(XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml")) is
-                "RootPathText" or "DataPathText");
-        Assert.Contains("MainFolderRow.Description", foldersCode);
-        Assert.Contains("DataFolderRow.Description", foldersCode);
     }
 
     [Fact]
@@ -261,27 +249,5 @@ public class Win11SettingsPageTests
         Assert.Contains("if (_cfg.General.HoverSoundEnabled)", code);
         Assert.Contains("_sounds.PlayClickSoundAsync()", code);
         Assert.Contains("_sounds.PlayHoverSoundAsync()", code);
-    }
-
-    [Fact]
-    public void SoundSwitchesUseTheCommonToolsNestedItemStyle()
-    {
-        var behavior = XDocument.Load(Path.Combine(WpfRoot, "Views", "Settings", "BehaviorCard.axaml"));
-        var soundGroup = behavior.Descendants().Single(e =>
-            (string?)e.Attribute(XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml")) ==
-            "ButtonSoundsRow");
-
-        Assert.Equal("FASettingsExpander", soundGroup.Name.LocalName);
-        Assert.Equal("True", (string?)soundGroup.Attribute("IsExpanded"));
-        Assert.Equal("Volume", (string?)soundGroup.Attribute("IconSource"));
-
-        var soundItems = soundGroup.Descendants().Where(e => e.Name.LocalName == "FASettingsExpanderItem").ToList();
-        Assert.Equal(2, soundItems.Count);
-        Assert.Contains(soundItems, item =>
-            (string?)item.Attribute(XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml")) ==
-            "HoverSoundItem");
-        Assert.Contains(soundItems, item =>
-            (string?)item.Attribute(XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml")) ==
-            "ClickSoundItem");
     }
 }

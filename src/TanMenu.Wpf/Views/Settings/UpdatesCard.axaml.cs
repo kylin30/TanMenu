@@ -150,7 +150,7 @@ public partial class UpdatesCard : UserControl, ISettingsCard
             AppUpdateStatus.Failed => L("UpdateFailed", state.Error ?? L("UnknownError")),
             _ => L("UpdateIdle"),
         };
-        UpdateStatusRow.Description = string.IsNullOrWhiteSpace(_helpText)
+        UpdateStatusDescription.Text = string.IsNullOrWhiteSpace(_helpText)
             ? statusText
             : $"{statusText}\n{_helpText}";
 

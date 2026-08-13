@@ -79,7 +79,7 @@ public sealed partial class WindowHost : IWindowHost
     /// carries the departure, the measurement and the two alternatives that were rejected.
     /// </para>
     /// </remarks>
-    private const double TitleBarHeightDip = 48;
+    private const double TitleBarHeightDip = 60;
 
     /// <summary>The bottom edge of the managed Aero frame. The 8 DIP left/right pair is supplied by
     /// <c>MainWindow.ChromeWidthDip</c>; this is the matching vertical edge below the page.</summary>
@@ -100,6 +100,7 @@ public sealed partial class WindowHost : IWindowHost
     /// <see cref="TitleBarHeightDip"/>. The caller's horizontal term is the compact navigation pane,
     /// now 16 DIP for the matching left and right frame edges.
     /// </remarks>
+    // The content host is unstyled and adds no vertical chrome below the 60 DIP title bar.
     private const double ChromeHeightDip = TitleBarHeightDip;
 
     /// <summary>The app's own minimum window WIDTH, in DIP. Mirrors <c>MainWindow.axaml</c>'s
@@ -133,7 +134,7 @@ public sealed partial class WindowHost : IWindowHost
     /// regression, and it is what happened the last two times this minimum moved.
     /// </para>
     /// </remarks>
-    private const double MinWindowWidthDip = 640;
+    private const double MinWindowWidthDip = 840;
 
     /// <summary>
     /// The app's own minimum window HEIGHT, in DIP — the floor <see cref="RestorePlacement"/> and
@@ -161,7 +162,7 @@ public sealed partial class WindowHost : IWindowHost
     /// comes back at the fitted size), and the window renders 30 DIP shorter than before at the same
     /// content.
     /// </remarks>
-    private const double MinWindowHeightDip = 520;
+    private const double MinWindowHeightDip = 600;
 
     /// <summary>DIPs left between the placement rectangle's bottom edge and the work area's bottom edge
     /// (i.e. the top of the taskbar). The app's own precedent: the 0.11 flyout placed itself at
@@ -200,7 +201,7 @@ public sealed partial class WindowHost : IWindowHost
     /// reaches a PLACEHOLDER, because the menu band's 29 DIP is chrome the fit adds and the placeholder
     /// is a whole-window size.
     /// </para></summary>
-    private const double PlaceholderWidthDip = 1100;
+    private const double PlaceholderWidthDip = 1180;
     private const double PlaceholderHeightDip = 760;
 
     private readonly ConfigService _config;

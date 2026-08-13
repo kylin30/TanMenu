@@ -3,7 +3,6 @@ using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
-using FluentAvalonia.UI.Controls;
 using Microsoft.Extensions.DependencyInjection;
 using TanMenu.Core.Models;
 using TanMenu.Core.Services;
@@ -67,12 +66,12 @@ public partial class ToolsCard : UserControl, ISettingsCard
             var lang = UiLanguage;
 
             ShowToolsLabel.Text = AppLanguage.Text("ShowCommonTools", lang);
-            ShowToolsRow.Description = AppLanguage.Text("ShowCommonToolsCardSub", lang);
+            ShowToolsDescription.Text = AppLanguage.Text("ShowCommonToolsCardSub", lang);
             ShowToolsToggle.OnContent = AppLanguage.Text("StateOn", lang);
             ShowToolsToggle.OffContent = AppLanguage.Text("StateOff", lang);
             ShowToolsToggle.IsChecked = g.ShowDefaultTools;
             ToolsListLabel.Text = AppLanguage.Text("CommonToolsHint", lang);
-            ToolsList.Description = AppLanguage.Text("CommonToolsHintSub", lang);
+            ToolsListDescription.Text = AppLanguage.Text("CommonToolsHintSub", lang);
 
             BuildToolCheckboxes(g.DefaultTools, lang);
             ToolsList.IsEnabled = g.ShowDefaultTools;
@@ -98,7 +97,7 @@ public partial class ToolsCard : UserControl, ISettingsCard
     /// construction can never look like a user click even in principle.</summary>
     private void BuildToolCheckboxes(List<DefaultTool>? tools, string? lang)
     {
-        ToolsList.Items.Clear();
+        ToolsListItems.Children.Clear();
         var skipped = 0;
         foreach (var tool in tools ?? Enumerable.Empty<DefaultTool>())
         {
@@ -119,12 +118,28 @@ public partial class ToolsCard : UserControl, ISettingsCard
                 Tag = tool, // the DRAFT's DefaultTool instance this checkbox writes; never the live one
             };
             toggle.IsCheckedChanged += OnToolChanged;
-            ToolsList.Items.Add(new FASettingsExpanderItem
+            toggle.Classes.Add("hero-switch");
+
+            var label = new TextBlock { Text = L("ToolCheckbox", displayName, tool.Command) };
+            label.Classes.Add("hero-setting-label");
+            var description = new TextBlock { Text = L("ToolCommand", tool.Command) };
+            description.Classes.Add("hero-setting-description");
+            var copy = new StackPanel { Spacing = 3, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center };
+            copy.Children.Add(label);
+            copy.Children.Add(description);
+
+            var grid = new Grid
             {
-                Content = L("ToolCheckbox", displayName, tool.Command),
-                Description = L("ToolCommand", tool.Command),
-                Footer = toggle,
-            });
+                ColumnDefinitions = new ColumnDefinitions("*,Auto"),
+                ColumnSpacing = 12,
+            };
+            grid.Children.Add(copy);
+            Grid.SetColumn(toggle, 1);
+            grid.Children.Add(toggle);
+
+            var row = new Border { Child = grid };
+            row.Classes.Add("hero-setting-subrow");
+            ToolsListItems.Children.Add(row);
         }
 
         if (skipped > 0)

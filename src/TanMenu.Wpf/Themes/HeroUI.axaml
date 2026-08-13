@@ -1,0 +1,606 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:easing="using:Avalonia.Animation.Easings"
+        xmlns:ui="using:FluentAvalonia.UI.Controls">
+
+  <!--
+    HeroUI v3 translated to Avalonia primitives.
+
+    Source tokens: default @heroui/react theme, retrieved through HeroUI Pro MCP.
+    Source components: button.css, card.css, input.css and the Pro sidebar.css.
+    The Mica-aware surface alpha is the only platform adaptation: geometry, spacing,
+    state timing and interaction scale follow the source design system.
+  -->
+  <Styles.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Light">
+          <SolidColorBrush x:Key="Hero.BackgroundBrush" Color="Transparent" />
+          <SolidColorBrush x:Key="Hero.ChromeBrush" Color="#FFF5F5F5" />
+          <SolidColorBrush x:Key="Hero.ForegroundBrush" Color="#18181B" />
+          <SolidColorBrush x:Key="Hero.MutedBrush" Color="#71717A" />
+          <SolidColorBrush x:Key="Hero.SurfaceBrush" Color="#F2FFFFFF" />
+          <SolidColorBrush x:Key="Hero.SurfaceSecondaryBrush" Color="#E8EFEFF0" />
+          <SolidColorBrush x:Key="Hero.DefaultBrush" Color="#EBEBEC" />
+          <SolidColorBrush x:Key="Hero.DefaultHoverBrush" Color="#DEDEE0" />
+          <SolidColorBrush x:Key="Hero.FieldBrush" Color="#F7FFFFFF" />
+          <SolidColorBrush x:Key="Hero.FieldHoverBrush" Color="#EBFFFFFF" />
+          <SolidColorBrush x:Key="Hero.BorderBrush" Color="#DEDEE0" />
+          <SolidColorBrush x:Key="Hero.SeparatorBrush" Color="#E4E4E7" />
+          <SolidColorBrush x:Key="Hero.FocusBrush" Color="#0485F7" />
+          <SolidColorBrush x:Key="Hero.AccentBrush" Color="#0485F7" />
+          <SolidColorBrush x:Key="Hero.AccentHoverBrush" Color="#0878DC" />
+          <SolidColorBrush x:Key="Hero.AccentForegroundBrush" Color="#FCFCFC" />
+          <BoxShadows x:Key="Hero.SurfaceShadow">0 2 4 0 #0A000000, 0 1 2 0 #0F000000, 0 0 1 0 #0F000000</BoxShadows>
+          <BoxShadows x:Key="Hero.FieldShadow">0 2 4 0 #0A000000, 0 1 2 0 #0F000000, 0 0 1 0 #0F000000</BoxShadows>
+        </ResourceDictionary>
+
+        <ResourceDictionary x:Key="Dark">
+          <SolidColorBrush x:Key="Hero.BackgroundBrush" Color="Transparent" />
+          <SolidColorBrush x:Key="Hero.ChromeBrush" Color="#FF18181B" />
+          <SolidColorBrush x:Key="Hero.ForegroundBrush" Color="#FCFCFC" />
+          <SolidColorBrush x:Key="Hero.MutedBrush" Color="#9F9FA9" />
+          <SolidColorBrush x:Key="Hero.SurfaceBrush" Color="#EB18181B" />
+          <SolidColorBrush x:Key="Hero.SurfaceSecondaryBrush" Color="#E8232325" />
+          <SolidColorBrush x:Key="Hero.DefaultBrush" Color="#27272A" />
+          <SolidColorBrush x:Key="Hero.DefaultHoverBrush" Color="#303034" />
+          <SolidColorBrush x:Key="Hero.FieldBrush" Color="#F218181B" />
+          <SolidColorBrush x:Key="Hero.FieldHoverBrush" Color="#F2232325" />
+          <SolidColorBrush x:Key="Hero.BorderBrush" Color="#28282C" />
+          <SolidColorBrush x:Key="Hero.SeparatorBrush" Color="#353539" />
+          <SolidColorBrush x:Key="Hero.FocusBrush" Color="#0485F7" />
+          <SolidColorBrush x:Key="Hero.AccentBrush" Color="#0485F7" />
+          <SolidColorBrush x:Key="Hero.AccentHoverBrush" Color="#2995FA" />
+          <SolidColorBrush x:Key="Hero.AccentForegroundBrush" Color="#FCFCFC" />
+          <BoxShadows x:Key="Hero.SurfaceShadow">0 0 0 0 Transparent</BoxShadows>
+          <BoxShadows x:Key="Hero.FieldShadow">0 0 0 0 Transparent</BoxShadows>
+        </ResourceDictionary>
+      </ResourceDictionary.ThemeDictionaries>
+
+      <!-- HeroUI's 4-DIP spacing and 8-DIP base radius scales. -->
+      <x:Double x:Key="Hero.Space.1">4</x:Double>
+      <x:Double x:Key="Hero.Space.2">8</x:Double>
+      <x:Double x:Key="Hero.Space.3">12</x:Double>
+      <x:Double x:Key="Hero.Space.4">16</x:Double>
+      <x:Double x:Key="Hero.Radius.Small">4</x:Double>
+      <x:Double x:Key="Hero.Radius.Medium">8</x:Double>
+      <x:Double x:Key="Hero.Radius.Large">12</x:Double>
+      <x:Double x:Key="Hero.Radius.XLarge">16</x:Double>
+      <x:Double x:Key="Hero.Radius.3XLarge">24</x:Double>
+    </ResourceDictionary>
+  </Styles.Resources>
+
+  <!-- Button: desktop small size, rounded-3xl, 250ms transform and 100ms paint transitions. -->
+  <Style Selector="Button.hero-button">
+    <Setter Property="Height" Value="32" />
+    <Setter Property="MinHeight" Value="32" />
+    <Setter Property="Padding" Value="12,0" />
+    <Setter Property="CornerRadius" Value="16" />
+    <Setter Property="Background" Value="{DynamicResource Hero.DefaultBrush}" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Foreground" Value="{DynamicResource Hero.ForegroundBrush}" />
+    <Setter Property="FontSize" Value="14" />
+    <Setter Property="FontWeight" Value="Medium" />
+    <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+    <Setter Property="RenderTransform" Value="scale(1)" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.25">
+          <TransformOperationsTransition.Easing>
+            <easing:CubicEaseOut />
+          </TransformOperationsTransition.Easing>
+        </TransformOperationsTransition>
+        <BrushTransition Property="Background" Duration="0:0:0.10">
+          <BrushTransition.Easing>
+            <easing:CubicEaseOut />
+          </BrushTransition.Easing>
+        </BrushTransition>
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Button.hero-button:pointerover">
+    <Setter Property="Background" Value="{DynamicResource Hero.DefaultHoverBrush}" />
+  </Style>
+  <Style Selector="Button.hero-button:pressed">
+    <Setter Property="Background" Value="{DynamicResource Hero.DefaultHoverBrush}" />
+    <Setter Property="RenderTransform" Value="scale(0.97)" />
+  </Style>
+  <Style Selector="Button.hero-button:focus-visible">
+    <Setter Property="BorderBrush" Value="{DynamicResource Hero.FocusBrush}" />
+    <Setter Property="BorderThickness" Value="2" />
+  </Style>
+  <Style Selector="Button.hero-button:disabled">
+    <Setter Property="Opacity" Value="0.5" />
+  </Style>
+  <!-- Avalonia Fluent paints button states on PART_ContentPresenter, so mirror the HeroUI tokens there. -->
+  <Style Selector="Button.hero-button /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Hero.DefaultBrush}" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="16" />
+    <Setter Property="Foreground" Value="{DynamicResource Hero.ForegroundBrush}" />
+  </Style>
+  <Style Selector="Button.hero-button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Hero.DefaultHoverBrush}" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource Hero.ForegroundBrush}" />
+  </Style>
+  <Style Selector="Button.hero-button:pressed /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Hero.DefaultHoverBrush}" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource Hero.ForegroundBrush}" />
+  </Style>
+  <Style Selector="Button.hero-button.hero-primary">
+    <Setter Property="Background" Value="{DynamicResource Hero.AccentBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource Hero.AccentForegroundBrush}" />
+  </Style>
+  <Style Selector="Button.hero-button.hero-primary:pointerover">
+    <Setter Property="Background" Value="{DynamicResource Hero.AccentHoverBrush}" />
+  </Style>
+  <Style Selector="Button.hero-button.hero-primary /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Hero.AccentBrush}" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource Hero.AccentForegroundBrush}" />
+  </Style>
+  <Style Selector="Button.hero-button.hero-primary:pointerover /template/ ContentPresenter#PART_ContentPresenter,
+                   Button.hero-button.hero-primary:pressed /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Hero.AccentHoverBrush}" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource Hero.AccentForegroundBrush}" />
+  </Style>
+  <Style Selector="Button.hero-icon-button">
+    <Setter Property="Width" Value="32" />
+    <Setter Property="MinWidth" Value="32" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Button.hero-title-command">
+    <Setter Property="Width" Value="36" />
+    <Setter Property="MinWidth" Value="36" />
+    <Setter Property="Height" Value="36" />
+    <Setter Property="MinHeight" Value="36" />
+  </Style>
+
+  <Style Selector="Border.hero-count-badge">
+    <Setter Property="Padding" Value="8,2" />
+    <Setter Property="Background" Value="{DynamicResource Hero.DefaultBrush}" />
+    <Setter Property="CornerRadius" Value="12" />
+  </Style>
+
+  <!-- Input: rounded-field (12px), field shadow and 150ms field transitions. -->
+  <Style Selector="Border.hero-search-shell">
+    <Setter Property="Width" Value="360" />
+    <Setter Property="MinHeight" Value="36" />
+    <Setter Property="Background" Value="{DynamicResource Hero.FieldBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Hero.BorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="BoxShadow" Value="{DynamicResource Hero.FieldShadow}" />
+  </Style>
+  <Style Selector="TextBox.hero-search-input">
+    <Setter Property="Height" Value="34" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Padding" Value="8,0" />
+    <Setter Property="CornerRadius" Value="11" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Foreground" Value="{DynamicResource Hero.ForegroundBrush}" />
+    <Setter Property="FontSize" Value="14" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="TextBox.hero-search-input:pointerover">
+    <Setter Property="Background" Value="{DynamicResource Hero.FieldHoverBrush}" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+  </Style>
+  <Style Selector="TextBox.hero-search-input:focus">
+    <Setter Property="Background" Value="{DynamicResource Hero.FieldBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Hero.FocusBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+  <Style Selector="TextBox.hero-search-input /template/ Border#PART_BorderElement,
+                   TextBox.hero-search-input:pointerover /template/ Border#PART_BorderElement">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="11" />
+  </Style>
+  <Style Selector="TextBox.hero-search-input:focus /template/ Border#PART_BorderElement">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Hero.FocusBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="11" />
+  </Style>
+
+  <!-- Settings fields: HeroUI Select/TextField dimensions, field surface and 150ms state timing. -->
+  <Style Selector="ComboBox.hero-field">
+    <Setter Property="Height" Value="36" />
+    <Setter Property="MinHeight" Value="36" />
+    <Setter Property="Padding" Value="12,0" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="Background" Value="{DynamicResource Hero.FieldBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Hero.BorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Foreground" Value="{DynamicResource Hero.ForegroundBrush}" />
+    <Setter Property="FontSize" Value="14" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="ComboBox.hero-field /template/ Border#Background">
+    <Setter Property="Background" Value="{DynamicResource Hero.FieldBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Hero.BorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="BoxShadow" Value="{DynamicResource Hero.FieldShadow}" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.15" />
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.15" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="ComboBox.hero-field:pointerover /template/ Border#Background,
+                   ComboBox.hero-field:pressed /template/ Border#Background">
+    <Setter Property="Background" Value="{DynamicResource Hero.FieldHoverBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Hero.DefaultHoverBrush}" />
+  </Style>
+  <Style Selector="ComboBox.hero-field:focus-visible /template/ Border#Background">
+    <Setter Property="Background" Value="{DynamicResource Hero.FieldBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Hero.FocusBrush}" />
+    <Setter Property="BorderThickness" Value="2" />
+  </Style>
+  <Style Selector="ComboBox.hero-field /template/ Border#PopupBorder">
+    <Setter Property="Background" Value="{DynamicResource Hero.SurfaceBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Hero.BorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="24" />
+    <Setter Property="Padding" Value="6" />
+    <Setter Property="BoxShadow" Value="{DynamicResource Hero.SurfaceShadow}" />
+  </Style>
+
+  <Style Selector="NumericUpDown.hero-field">
+    <Setter Property="Height" Value="36" />
+    <Setter Property="MinHeight" Value="36" />
+    <Setter Property="Padding" Value="12,0" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="Background" Value="{DynamicResource Hero.FieldBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Hero.BorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Foreground" Value="{DynamicResource Hero.ForegroundBrush}" />
+    <Setter Property="FontSize" Value="14" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="NumericUpDown.hero-field:pointerover">
+    <Setter Property="Background" Value="{DynamicResource Hero.FieldHoverBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Hero.DefaultHoverBrush}" />
+  </Style>
+  <Style Selector="NumericUpDown.hero-field:focus-within">
+    <Setter Property="BorderBrush" Value="{DynamicResource Hero.FocusBrush}" />
+    <Setter Property="BorderThickness" Value="2" />
+  </Style>
+
+  <Style Selector="TextBox.hero-field">
+    <Setter Property="Height" Value="36" />
+    <Setter Property="MinHeight" Value="36" />
+    <Setter Property="Padding" Value="12,0" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="Background" Value="{DynamicResource Hero.FieldBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Hero.BorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Foreground" Value="{DynamicResource Hero.ForegroundBrush}" />
+    <Setter Property="FontSize" Value="14" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="TextBox.hero-field /template/ Border#PART_BorderElement">
+    <Setter Property="Background" Value="{DynamicResource Hero.FieldBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Hero.BorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="BoxShadow" Value="{DynamicResource Hero.FieldShadow}" />
+  </Style>
+  <Style Selector="TextBox.hero-field:pointerover /template/ Border#PART_BorderElement">
+    <Setter Property="Background" Value="{DynamicResource Hero.FieldHoverBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Hero.DefaultHoverBrush}" />
+  </Style>
+  <Style Selector="TextBox.hero-field:focus /template/ Border#PART_BorderElement">
+    <Setter Property="Background" Value="{DynamicResource Hero.FieldBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Hero.FocusBrush}" />
+    <Setter Property="BorderThickness" Value="2" />
+  </Style>
+
+  <!-- Switch: HeroUI's 40x20 track, accent checked state and 250/300ms transitions. -->
+  <Style Selector="ToggleSwitch.hero-switch">
+    <Setter Property="KnobTransitions">
+      <Transitions>
+        <DoubleTransition Property="Canvas.Left" Duration="0:0:0.30">
+          <DoubleTransition.Easing>
+            <easing:CubicEaseOut />
+          </DoubleTransition.Easing>
+        </DoubleTransition>
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="ToggleSwitch.hero-switch /template/ Border#OuterBorder">
+    <Setter Property="Background" Value="{DynamicResource Hero.DefaultBrush}" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.25" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="ToggleSwitch.hero-switch:pointerover /template/ Border#OuterBorder,
+                   ToggleSwitch.hero-switch:pressed /template/ Border#OuterBorder">
+    <Setter Property="Background" Value="{DynamicResource Hero.DefaultHoverBrush}" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+  </Style>
+  <Style Selector="ToggleSwitch.hero-switch /template/ Border#SwitchKnobBounds">
+    <Setter Property="Background" Value="{DynamicResource Hero.AccentBrush}" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="10" />
+  </Style>
+  <Style Selector="ToggleSwitch.hero-switch:pointerover /template/ Border#SwitchKnobBounds,
+                   ToggleSwitch.hero-switch:pressed /template/ Border#SwitchKnobBounds">
+    <Setter Property="Background" Value="{DynamicResource Hero.AccentHoverBrush}" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+  </Style>
+  <Style Selector="ToggleSwitch.hero-switch /template/ Ellipse#SwitchKnobOff,
+                   ToggleSwitch.hero-switch /template/ Ellipse#SwitchKnobOn">
+    <Setter Property="Width" Value="16" />
+    <Setter Property="Height" Value="16" />
+    <Setter Property="Fill" Value="{DynamicResource Hero.AccentForegroundBrush}" />
+  </Style>
+  <Style Selector="ToggleSwitch.hero-switch:disabled">
+    <Setter Property="Opacity" Value="0.5" />
+  </Style>
+
+  <Style Selector="ProgressBar.hero-progress">
+    <Setter Property="Height" Value="8" />
+    <Setter Property="Foreground" Value="{DynamicResource Hero.AccentBrush}" />
+    <Setter Property="Background" Value="{DynamicResource Hero.DefaultBrush}" />
+  </Style>
+
+  <Style Selector="ui|FAInfoBar.hero-alert">
+    <Setter Property="CornerRadius" Value="16" />
+    <Setter Property="Background" Value="{DynamicResource Hero.SurfaceBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Hero.BorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+
+  <!-- AppLayout: stable full-height sidebar plus an inset scrollable surface. -->
+  <Style Selector="Border.hero-sidebar-chrome">
+    <Setter Property="Background" Value="{DynamicResource Hero.ChromeBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Hero.SeparatorBrush}" />
+    <Setter Property="BorderThickness" Value="0,0,1,0" />
+  </Style>
+
+  <Style Selector="Border.hero-sidebar-panel">
+    <Setter Property="Width" Value="48" />
+    <Setter Property="Margin" Value="8" />
+    <Setter Property="Padding" Value="6,4,6,12" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="ClipToBounds" Value="True" />
+  </Style>
+
+  <Style Selector="Button.hero-sidebar-item">
+    <Setter Property="Height" Value="36" />
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="Foreground" Value="{DynamicResource Hero.MutedBrush}" />
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="Button.hero-sidebar-item /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource Hero.MutedBrush}" />
+  </Style>
+  <Style Selector="Button.hero-sidebar-item:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Hero.DefaultBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource Hero.ForegroundBrush}" />
+  </Style>
+  <Style Selector="Button.hero-sidebar-item.is-active /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Hero.DefaultBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource Hero.ForegroundBrush}" />
+  </Style>
+  <Style Selector="Button.hero-sidebar-item.is-active">
+    <Setter Property="Foreground" Value="{DynamicResource Hero.ForegroundBrush}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <!-- Launcher information hierarchy and fixed quick-navigation index. -->
+  <Style Selector="TextBlock.hero-page-title">
+    <Setter Property="FontSize" Value="24" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource Hero.ForegroundBrush}" />
+  </Style>
+  <Style Selector="TextBlock.hero-page-subtitle">
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="Foreground" Value="{DynamicResource Hero.MutedBrush}" />
+  </Style>
+  <Style Selector="TextBlock.hero-section-title">
+    <Setter Property="FontSize" Value="14" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource Hero.ForegroundBrush}" />
+  </Style>
+  <Style Selector="TextBlock.hero-eyebrow">
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource Hero.MutedBrush}" />
+  </Style>
+  <Style Selector="TextBlock.hero-chip-count">
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="Foreground" Value="{DynamicResource Hero.MutedBrush}" />
+  </Style>
+  <!-- Equal-height category panels laid out side-by-side for an all-app, no-scroll launcher. -->
+  <Style Selector="Border.hero-launcher-group-panel">
+    <Setter Property="Padding" Value="16" />
+    <Setter Property="Background" Value="{DynamicResource Hero.SurfaceBrush}" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="16" />
+    <Setter Property="BoxShadow" Value="{DynamicResource Hero.SurfaceShadow}" />
+    <Setter Property="VerticalAlignment" Value="Stretch" />
+  </Style>
+
+  <!-- Compact one-click application command; each vertical column adopts its widest command. -->
+  <Style Selector="Button.hero-launcher-command">
+    <Setter Property="Padding" Value="8,4" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="Background" Value="{DynamicResource Hero.DefaultBrush}" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Foreground" Value="{DynamicResource Hero.ForegroundBrush}" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="VerticalContentAlignment" Value="Stretch" />
+    <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+    <Setter Property="RenderTransform" Value="scale(1)" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.16">
+          <TransformOperationsTransition.Easing>
+            <easing:CubicEaseOut />
+          </TransformOperationsTransition.Easing>
+        </TransformOperationsTransition>
+        <BrushTransition Property="Background" Duration="0:0:0.15" />
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.15" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Button.hero-launcher-command /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Hero.DefaultBrush}" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="Foreground" Value="{DynamicResource Hero.ForegroundBrush}" />
+  </Style>
+  <Style Selector="Button.hero-launcher-command:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Hero.DefaultHoverBrush}" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+  </Style>
+  <Style Selector="Button.hero-launcher-command:pointerover">
+    <Setter Property="RenderTransform" Value="scale(1.015)" />
+  </Style>
+  <Style Selector="Button.hero-launcher-command:pressed">
+    <Setter Property="RenderTransform" Value="scale(0.97)" />
+  </Style>
+  <Style Selector="Button.hero-launcher-command:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="BorderBrush" Value="{DynamicResource Hero.FocusBrush}" />
+    <Setter Property="BorderThickness" Value="2" />
+  </Style>
+  <Style Selector="Button.hero-launcher-command:disabled">
+    <Setter Property="Opacity" Value="0.45" />
+  </Style>
+  <Style Selector="Border.hero-launcher-command-icon">
+    <Setter Property="Width" Value="24" />
+    <Setter Property="Height" Value="24" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+
+  <!-- Empty state, toast and settings section navigation. -->
+  <Style Selector="Border.hero-empty-state">
+    <Setter Property="MinHeight" Value="420" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="VerticalAlignment" Value="Stretch" />
+  </Style>
+  <Style Selector="Border.hero-empty-icon">
+    <Setter Property="Width" Value="52" />
+    <Setter Property="Height" Value="52" />
+    <Setter Property="CornerRadius" Value="16" />
+    <Setter Property="Background" Value="{DynamicResource Hero.DefaultBrush}" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Border.hero-empty-icon ui|FASymbolIcon">
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="TextBlock.hero-empty-title">
+    <Setter Property="FontSize" Value="18" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="TextBlock.hero-empty-description">
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="Foreground" Value="{DynamicResource Hero.MutedBrush}" />
+    <Setter Property="TextAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Border.hero-toast">
+    <Setter Property="Padding" Value="16,10" />
+    <Setter Property="CornerRadius" Value="16" />
+    <Setter Property="Background" Value="{DynamicResource Hero.ForegroundBrush}" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource Hero.SurfaceBrush}" />
+    <Setter Property="BoxShadow" Value="{DynamicResource Hero.SurfaceShadow}" />
+  </Style>
+  <Style Selector="Border.hero-settings-section-nav">
+    <Setter Property="Padding" Value="4" />
+    <Setter Property="CornerRadius" Value="16" />
+    <Setter Property="Background" Value="{DynamicResource Hero.SurfaceSecondaryBrush}" />
+  </Style>
+  <Style Selector="Button.hero-settings-nav-item">
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Left" />
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="Button.hero-settings-nav-item /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="Button.hero-settings-nav-item.is-active /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Hero.FieldBrush}" />
+    <Setter Property="BoxShadow" Value="{DynamicResource Hero.FieldShadow}" />
+    <Setter Property="Foreground" Value="{DynamicResource Hero.ForegroundBrush}" />
+  </Style>
+
+  <!-- Settings primitives: standalone ItemCards and grouped subrows, independent of Fluent SettingsExpander. -->
+  <Style Selector="Border.hero-setting-card">
+    <Setter Property="MinHeight" Value="68" />
+    <Setter Property="Padding" Value="16,12" />
+    <Setter Property="CornerRadius" Value="16" />
+    <Setter Property="Background" Value="{DynamicResource Hero.FieldBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Hero.BorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BoxShadow" Value="{DynamicResource Hero.FieldShadow}" />
+  </Style>
+  <Style Selector="Border.hero-setting-group">
+    <Setter Property="CornerRadius" Value="16" />
+    <Setter Property="Background" Value="{DynamicResource Hero.FieldBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Hero.BorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BoxShadow" Value="{DynamicResource Hero.FieldShadow}" />
+    <Setter Property="ClipToBounds" Value="True" />
+  </Style>
+  <Style Selector="Border.hero-setting-subrow">
+    <Setter Property="MinHeight" Value="60" />
+    <Setter Property="Padding" Value="16,10" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Hero.SeparatorBrush}" />
+    <Setter Property="BorderThickness" Value="0,1,0,0" />
+  </Style>
+  <Style Selector="Border.hero-setting-icon">
+    <Setter Property="Width" Value="36" />
+    <Setter Property="Height" Value="36" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="Background" Value="{DynamicResource Hero.DefaultBrush}" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Border.hero-setting-icon ui|FASymbolIcon">
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="TextBlock.hero-setting-label">
+    <Setter Property="FontSize" Value="14" />
+    <Setter Property="FontWeight" Value="Medium" />
+    <Setter Property="Foreground" Value="{DynamicResource Hero.ForegroundBrush}" />
+  </Style>
+  <Style Selector="TextBlock.hero-setting-description">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Foreground" Value="{DynamicResource Hero.MutedBrush}" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+  </Style>
+</Styles>

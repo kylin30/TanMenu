@@ -105,6 +105,15 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
 
     public bool HasGroups => Groups.Count > 0;
 
+    /// <summary>The collections rendered by the launcher. The normal application page is an overview:
+    /// every collection and every application stay visible so launching never requires a category
+    /// selection first. A search only removes collections with no matches.</summary>
+    public IReadOnlyList<MenuGroupVm> DisplayGroups => _filterTrimmed.Length > 0
+        ? Groups.Where(static group => group.HasVisibleItems).ToList()
+        : Groups;
+
+    public bool IsSearchActive => _filterTrimmed.Length > 0;
+
     /// <summary>
     /// True once a build has actually produced groups — or once the INITIAL build threw.
     /// <para>
@@ -164,6 +173,7 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
             _filter = text;
             _filterTrimmed = text.Trim();
             RaisePropertyChanged();
+            RaisePropertyChanged(nameof(IsSearchActive));
             ApplyFilter();
         }
     }
@@ -180,6 +190,7 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
 
         RaisePropertyChanged(nameof(HasVisibleItems));
         RaisePropertyChanged(nameof(ShowNoMatches));
+        RaisePropertyChanged(nameof(DisplayGroups));
     }
 
     /// <summary>True when at least one section still has something to show. Distinct from
@@ -258,6 +269,10 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
     // and it is the one menu-command string this view model still owns.
     public string MenuRefreshText => L("MenuRefresh");
     public string SearchPlaceholderText => L("SearchPlaceholder");
+    public string LauncherHeadingText => L("LauncherHeading");
+    public string LauncherSubheadingText => L("LauncherSubheading");
+    public string CategoriesText => L("Categories");
+    public string SearchResultsText => L("SearchResults");
     public string EmptyTitleText => L("EmptyTitle");
     public string EmptyHelpText => L("EmptyHelp");
     public string OpenOptionsText => L("OpenOptions");
@@ -277,6 +292,10 @@ public sealed class LauncherViewModel : ObservableObject, IDisposable
     {
         RaisePropertyChanged(nameof(MenuRefreshText));
         RaisePropertyChanged(nameof(SearchPlaceholderText));
+        RaisePropertyChanged(nameof(LauncherHeadingText));
+        RaisePropertyChanged(nameof(LauncherSubheadingText));
+        RaisePropertyChanged(nameof(CategoriesText));
+        RaisePropertyChanged(nameof(SearchResultsText));
         RaisePropertyChanged(nameof(EmptyTitleText));
         RaisePropertyChanged(nameof(EmptyHelpText));
         RaisePropertyChanged(nameof(OpenOptionsText));

@@ -3,21 +3,24 @@
              xmlns:ui="using:FluentAvalonia.UI.Controls"
              HorizontalContentAlignment="Stretch"
              x:Class="TanMenu.Wpf.Views.Settings.UpdatesCard">
-  <ui:FASettingsExpander x:Name="UpdateStatusRow" IconSource="Sync">
-    <ui:FASettingsExpander.Header>
-      <TextBlock x:Name="UpdateStatusLabel" />
-    </ui:FASettingsExpander.Header>
-    <ui:FASettingsExpander.Footer>
-      <StackPanel Spacing="8" HorizontalAlignment="Right">
+  <Border Classes="hero-setting-card">
+    <Grid ColumnDefinitions="36,*,Auto" ColumnSpacing="12">
+      <Border Classes="hero-setting-icon"><ui:FASymbolIcon Symbol="Sync" FontSize="16" /></Border>
+      <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+        <TextBlock x:Name="UpdateStatusLabel" Classes="hero-setting-label" />
+        <TextBlock x:Name="UpdateStatusDescription" Classes="hero-setting-description" />
+      </StackPanel>
+      <StackPanel Grid.Column="2" Spacing="8" HorizontalAlignment="Right" VerticalAlignment="Center">
         <ProgressBar x:Name="UpdateProgress"
+                     Classes="hero-progress"
                      Width="220"
                      Minimum="0" Maximum="100"
                      IsVisible="False" />
         <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-          <Button x:Name="CheckUpdateBtn" Click="OnCheckUpdateClick" />
-          <Button x:Name="UpdateActionBtn" Click="OnUpdateActionClick" IsVisible="False" />
+          <Button x:Name="CheckUpdateBtn" Classes="hero-button" Click="OnCheckUpdateClick" />
+          <Button x:Name="UpdateActionBtn" Classes="hero-button hero-primary" Click="OnUpdateActionClick" IsVisible="False" />
         </StackPanel>
       </StackPanel>
-    </ui:FASettingsExpander.Footer>
-  </ui:FASettingsExpander>
+    </Grid>
+  </Border>
 </UserControl>

@@ -3,16 +3,29 @@
              xmlns:ui="using:FluentAvalonia.UI.Controls"
              HorizontalContentAlignment="Stretch"
              x:Class="TanMenu.Wpf.Views.Settings.ToolsCard">
-  <StackPanel Spacing="4">
-    <ui:FASettingsExpander x:Name="ShowToolsRow" IconSource="List">
-      <ui:FASettingsExpander.Header><TextBlock x:Name="ShowToolsLabel" /></ui:FASettingsExpander.Header>
-      <ui:FASettingsExpander.Footer>
-        <ToggleSwitch x:Name="ShowToolsToggle" IsCheckedChanged="OnShowToolsChanged" />
-      </ui:FASettingsExpander.Footer>
-    </ui:FASettingsExpander>
+  <StackPanel Spacing="12">
+    <Border Classes="hero-setting-card">
+      <Grid ColumnDefinitions="36,*,Auto" ColumnSpacing="12">
+        <Border Classes="hero-setting-icon"><ui:FASymbolIcon Symbol="List" FontSize="16" /></Border>
+        <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+          <TextBlock x:Name="ShowToolsLabel" Classes="hero-setting-label" />
+          <TextBlock x:Name="ShowToolsDescription" Classes="hero-setting-description" />
+        </StackPanel>
+        <ToggleSwitch x:Name="ShowToolsToggle" Grid.Column="2" Classes="hero-switch" VerticalAlignment="Center" IsCheckedChanged="OnShowToolsChanged" />
+      </Grid>
+    </Border>
 
-    <ui:FASettingsExpander x:Name="ToolsList" IconSource="Bullets" IsExpanded="True">
-      <ui:FASettingsExpander.Header><TextBlock x:Name="ToolsListLabel" /></ui:FASettingsExpander.Header>
-    </ui:FASettingsExpander>
+    <Border x:Name="ToolsList" Classes="hero-setting-group">
+      <StackPanel>
+        <Grid Margin="16,12" ColumnDefinitions="36,*" ColumnSpacing="12">
+          <Border Classes="hero-setting-icon"><ui:FASymbolIcon Symbol="Bullets" FontSize="16" /></Border>
+          <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+            <TextBlock x:Name="ToolsListLabel" Classes="hero-setting-label" />
+            <TextBlock x:Name="ToolsListDescription" Classes="hero-setting-description" />
+          </StackPanel>
+        </Grid>
+        <StackPanel x:Name="ToolsListItems" />
+      </StackPanel>
+    </Border>
   </StackPanel>
 </UserControl>

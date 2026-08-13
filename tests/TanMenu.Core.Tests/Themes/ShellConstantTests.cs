@@ -25,13 +25,15 @@ public class ShellConstantTests
     private static string WpfRoot => Path.Combine(RepoRoot(), "src", "TanMenu.Wpf");
 
     [Fact]
-    public void Application_UsesOfficialFluentTheme()
+    public void Application_UsesOfficialFluentThemeWithHeroUiTranslationLayer()
     {
         var styles = XDocument.Load(Path.Combine(WpfRoot, "App.axaml"))
             .Descendants().Where(e => e.Parent?.Name.LocalName == "Application.Styles").ToList();
 
-        Assert.Single(styles);
+        Assert.Equal(2, styles.Count);
         Assert.Equal("FluentAvaloniaTheme", styles[0].Name.LocalName);
+        Assert.Equal("StyleInclude", styles[1].Name.LocalName);
+        Assert.Equal("avares://TanMenu.Wpf/Themes/HeroUI.axaml", (string?)styles[1].Attribute("Source"));
     }
 
     [Fact]
@@ -91,10 +93,14 @@ public class ShellConstantTests
 
         Assert.Equal((string?)main.Attribute("Width"), placeholderWidth);
         Assert.Equal((string?)main.Attribute("Height"), placeholderHeight);
-        Assert.Contains(main.Descendants(), e => e.Name.LocalName == "FANavigationView");
+        Assert.DoesNotContain(main.Descendants(), e => e.Name.LocalName == "FANavigationView");
         Assert.Contains(main.Descendants(), e =>
-            e.Name.LocalName == "FANavigationViewItem" &&
-            (string?)e.Attribute(XamlName) == "OpenRootNavItem");
+            e.Name.LocalName == "Border" &&
+            (string?)e.Attribute(XamlName) == "SidebarPanel" &&
+            (string?)e.Attribute("Classes") == "hero-sidebar-panel");
+        Assert.Contains(main.Descendants(), e =>
+            e.Name.LocalName == "Button" &&
+            (string?)e.Attribute(XamlName) == "OpenRootNavButton");
         Assert.DoesNotContain(main.Descendants(), e => e.Name.LocalName is "Menu" or "MenuItem");
     }
 

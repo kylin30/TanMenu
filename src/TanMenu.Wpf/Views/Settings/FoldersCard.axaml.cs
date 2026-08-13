@@ -146,11 +146,11 @@ public partial class FoldersCard : UserControl, ISettingsCard
         ApplyDataInfoLabel(); // re-label from the last measurement; ResetDataBtn.IsEnabled is set inside
 
         CacheHead.Text = AppLanguage.Text("Cache", lang);
-        CacheRow.Description = AppLanguage.Text("CacheHelp", lang);
+        CacheDescription.Text = AppLanguage.Text("CacheHelp", lang);
         ClearCacheBtn.Content = AppLanguage.Text("ClearCache", lang);
 
         BackupHead.Text = AppLanguage.Text("BackupRestore", lang);
-        BackupRow.Description = AppLanguage.Text("BackupHelp", lang);
+        BackupDescription.Text = AppLanguage.Text("BackupHelp", lang);
         BackupBtn.Content = AppLanguage.Text("Backup", lang);
         RestoreBtn.Content = AppLanguage.Text("Restore", lang);
     }
@@ -158,7 +158,7 @@ public partial class FoldersCard : UserControl, ISettingsCard
     private void ApplyMainFolderDescription()
     {
         var lang = UiLanguage;
-        MainFolderRow.Description = $"{AppLanguage.Text("MainFolderHelp", lang)}\n" +
+        MainFolderDescription.Text = $"{AppLanguage.Text("MainFolderHelp", lang)}\n" +
                                     $"{AppLanguage.Text("Location", lang)} {_draft.Working.RootFolder}";
     }
 
@@ -179,7 +179,7 @@ public partial class FoldersCard : UserControl, ISettingsCard
         var dataInfo = _dataSizeBytes < 0
             ? AppLanguage.Format("CurrentDataPending", lang, kind)
             : AppLanguage.Format("CurrentDataSize", lang, kind, FormatSize(_dataSizeBytes));
-        DataFolderRow.Description = $"{_dataFolderHelp}\n" +
+        DataFolderDescription.Text = $"{_dataFolderHelp}\n" +
                                     $"{AppLanguage.Text("Location", lang)} {root}\n" +
                                     dataInfo;
     }

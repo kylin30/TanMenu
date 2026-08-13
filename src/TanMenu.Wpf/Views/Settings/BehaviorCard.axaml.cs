@@ -167,28 +167,28 @@ public partial class BehaviorCard : UserControl, ISettingsCard
             }
 
             AutoCloseLabel.Text = AppLanguage.Text("AutoClose", lang);
-            AutoCloseRow.Description = AppLanguage.Text("AutoCloseCardSub", lang);
+            AutoCloseDescription.Text = AppLanguage.Text("AutoCloseCardSub", lang);
             AutoCloseToggle.IsChecked = g.AutoClose;
 
             TopMostLabel.Text = AppLanguage.Text("TopMost", lang);
-            TopMostRow.Description = AppLanguage.Text("TopMostCardSub", lang);
+            TopMostDescription.Text = AppLanguage.Text("TopMostCardSub", lang);
             TopMostToggle.IsChecked = g.TopMost;
 
             ButtonSoundsLabel.Text = AppLanguage.Text("ButtonSounds", lang);
-            ButtonSoundsRow.Description = AppLanguage.Text("ButtonSoundsCardSub", lang);
+            ButtonSoundsDescription.Text = AppLanguage.Text("ButtonSoundsCardSub", lang);
             HoverSoundLabel.Text = AppLanguage.Text("HoverSound", lang);
-            HoverSoundItem.Description = AppLanguage.Text("HoverSoundCardSub", lang);
+            HoverSoundDescription.Text = AppLanguage.Text("HoverSoundCardSub", lang);
             HoverSoundToggle.IsChecked = g.HoverSoundEnabled;
 
             ClickSoundLabel.Text = AppLanguage.Text("ClickSound", lang);
-            ClickSoundItem.Description = AppLanguage.Text("ClickSoundCardSub", lang);
+            ClickSoundDescription.Text = AppLanguage.Text("ClickSoundCardSub", lang);
             ClickSoundToggle.IsChecked = g.ClickSoundEnabled;
 
             AutoStartLabel.Text = AppLanguage.Text("AutoStart", lang);
             // The portable build's help line is the ONLY thing this row says beyond its own label, so
             // it is shown only where it is true: on every other build there is nothing to explain and
             // an empty, collapsed line costs the layout nothing (see the XAML).
-            AutoStartRow.Description = _isPortable
+            AutoStartDescription.Text = _isPortable
                 ? AppLanguage.Text("AutoStartPortableHelp", lang)
                 : AppLanguage.Text("AutoStartCardSub", lang);
             ApplyAutoStartRow();
@@ -197,11 +197,11 @@ public partial class BehaviorCard : UserControl, ISettingsCard
             ApplyTaskbarPinState(_taskbarPinState); // re-label the button/status text; never re-query here
 
             HotkeyEnabledLabel.Text = AppLanguage.Text("EnableHotkey", lang);
-            HotkeyEnabledRow.Description = AppLanguage.Text("HotkeyEnabledCardSub", lang);
+            HotkeyEnabledDescription.Text = AppLanguage.Text("HotkeyEnabledCardSub", lang);
             HotkeyEnabledToggle.IsChecked = g.GlobalHotkeyEnabled;
 
             HotkeyLabel.Text = AppLanguage.Text("Hotkey", lang);
-            HotkeyRow.Description = AppLanguage.Text("HotkeyHelp", lang);
+            HotkeyDescription.Text = AppLanguage.Text("HotkeyHelp", lang);
             ToolTip.SetTip(HotkeyBox, AppLanguage.Text("HotkeyTooltip", lang));
             HotkeyClearBtn.Content = AppLanguage.Text("Clear", lang);
             HotkeyBox.Text = string.IsNullOrWhiteSpace(g.GlobalHotkey) ? AppLanguage.Text("None", lang) : g.GlobalHotkey;
@@ -302,7 +302,7 @@ public partial class BehaviorCard : UserControl, ISettingsCard
     private void OnPinTaskbarClick(object? sender, RoutedEventArgs e) => RunSafely(async () =>
     {
         PinTaskbarBtn.IsEnabled = false;
-        PinTaskbarRow.Description = L("PinToTaskbarWorking");
+        PinTaskbarDescription.Text = L("PinToTaskbarWorking");
 
         if (_taskbarPinState.Status is TaskbarPinStatus.Unsupported or TaskbarPinStatus.NotAllowed or
             TaskbarPinStatus.Failed)
@@ -328,11 +328,11 @@ public partial class BehaviorCard : UserControl, ISettingsCard
         ApplyTaskbarPinState(state); // re-enables the button and sets the state message
         if (_taskbarPin.OpenManualPinLocation())
         {
-            PinTaskbarRow.Description = L("PinToTaskbarManualOpened");
+            PinTaskbarDescription.Text = L("PinToTaskbarManualOpened");
             return;
         }
 
-        PinTaskbarRow.Description = L("PinToTaskbarManualOpenFailed");
+        PinTaskbarDescription.Text = L("PinToTaskbarManualOpenFailed");
         await ShowErrorAsync(L("PinToTaskbarManualOpenFailed"));
     }
 
@@ -425,7 +425,7 @@ public partial class BehaviorCard : UserControl, ISettingsCard
             : state.Status is TaskbarPinStatus.Available
                 ? L("PinToTaskbar")
                 : L("PinToTaskbarManual");
-        PinTaskbarRow.Description = state.Status switch
+        PinTaskbarDescription.Text = state.Status switch
         {
             TaskbarPinStatus.Pinned => L("PinnedToTaskbarHelp"),
             TaskbarPinStatus.NotAllowed => L("PinToTaskbarNotAllowed"),

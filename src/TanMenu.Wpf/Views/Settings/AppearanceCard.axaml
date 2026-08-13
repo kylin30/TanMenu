@@ -3,59 +3,58 @@
              xmlns:ui="using:FluentAvalonia.UI.Controls"
              HorizontalContentAlignment="Stretch"
              x:Class="TanMenu.Wpf.Views.Settings.AppearanceCard">
-  <StackPanel Spacing="4">
-    <ui:FASettingsExpander x:Name="LanguageRow" IconSource="Globe">
-      <ui:FASettingsExpander.Header>
-        <TextBlock x:Name="LanguageLabel" />
-      </ui:FASettingsExpander.Header>
-      <ui:FASettingsExpander.Footer>
+  <StackPanel Spacing="12">
+    <Border Classes="hero-setting-card">
+      <Grid ColumnDefinitions="36,*,Auto" ColumnSpacing="12">
+        <Border Classes="hero-setting-icon"><ui:FASymbolIcon Symbol="Globe" FontSize="16" /></Border>
+        <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+          <TextBlock x:Name="LanguageLabel" Classes="hero-setting-label" />
+          <TextBlock x:Name="LanguageDescription" Classes="hero-setting-description" />
+        </StackPanel>
         <ComboBox x:Name="LanguageCombo"
+                  Grid.Column="2"
+                  Classes="hero-field"
                   Width="240"
+                  VerticalAlignment="Center"
                   AutomationProperties.LabeledBy="{Binding #LanguageLabel}"
                   SelectionChanged="OnLanguageChanged" />
-      </ui:FASettingsExpander.Footer>
-    </ui:FASettingsExpander>
+      </Grid>
+    </Border>
 
-    <ui:FASettingsExpander x:Name="AppearanceRow" IconSource="View">
-      <ui:FASettingsExpander.Header>
-        <TextBlock x:Name="AppearanceLabel" />
-      </ui:FASettingsExpander.Header>
-      <ui:FASettingsExpander.Footer>
+    <Border Classes="hero-setting-card">
+      <Grid ColumnDefinitions="36,*,Auto" ColumnSpacing="12">
+        <Border Classes="hero-setting-icon"><ui:FASymbolIcon Symbol="View" FontSize="16" /></Border>
+        <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+          <TextBlock x:Name="AppearanceLabel" Classes="hero-setting-label" />
+          <TextBlock x:Name="AppearanceDescription" Classes="hero-setting-description" />
+        </StackPanel>
         <ComboBox x:Name="AppearanceCombo"
+                  Grid.Column="2"
+                  Classes="hero-field"
                   Width="240"
+                  VerticalAlignment="Center"
                   AutomationProperties.LabeledBy="{Binding #AppearanceLabel}"
                   SelectionChanged="OnAppearanceChanged" />
-      </ui:FASettingsExpander.Footer>
-    </ui:FASettingsExpander>
+      </Grid>
+    </Border>
 
-    <ui:FASettingsExpander x:Name="FontRow" IconSource="Font">
-      <ui:FASettingsExpander.Header>
-        <TextBlock x:Name="FontLabel" />
-      </ui:FASettingsExpander.Header>
-      <ui:FASettingsExpander.Footer>
+    <Border Classes="hero-setting-card">
+      <Grid ColumnDefinitions="36,*,Auto" ColumnSpacing="12">
+        <Border Classes="hero-setting-icon"><ui:FASymbolIcon Symbol="Font" FontSize="16" /></Border>
+        <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+          <TextBlock x:Name="FontLabel" Classes="hero-setting-label" />
+          <TextBlock x:Name="FontDescription" Classes="hero-setting-description" />
+        </StackPanel>
         <ComboBox x:Name="FontCombo"
+                  Grid.Column="2"
+                  Classes="hero-field"
                   Width="240"
                   MaxDropDownHeight="320"
                   IsTextSearchEnabled="True"
+                  VerticalAlignment="Center"
                   AutomationProperties.LabeledBy="{Binding #FontLabel}"
                   SelectionChanged="OnFontChanged" />
-      </ui:FASettingsExpander.Footer>
-    </ui:FASettingsExpander>
-
-    <ui:FASettingsExpander x:Name="ColumnCountRow" IconSource="Bullets">
-      <ui:FASettingsExpander.Header>
-        <TextBlock x:Name="ColumnCountLabel" />
-      </ui:FASettingsExpander.Header>
-      <ui:FASettingsExpander.Footer>
-        <NumericUpDown x:Name="ColumnCountInput"
-                       Width="120"
-                       Minimum="1"
-                       Maximum="30"
-                       Increment="1"
-                       FormatString="0"
-                       AutomationProperties.LabeledBy="{Binding #ColumnCountLabel}"
-                       ValueChanged="OnColumnCountChanged" />
-      </ui:FASettingsExpander.Footer>
-    </ui:FASettingsExpander>
+      </Grid>
+    </Border>
   </StackPanel>
 </UserControl>

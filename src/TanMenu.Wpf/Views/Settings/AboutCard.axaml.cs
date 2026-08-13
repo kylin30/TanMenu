@@ -62,6 +62,8 @@ public partial class AboutCard : UserControl, ISettingsCard
         // the name now. See the XAML.
         var publisher = AppLanguage.Text("AboutPublisher", lang);
         var version = AppLanguage.Format("CurrentVersion", lang, AppIdentity.Version);
-        AboutRow.Description = $"{publisher}\n{version}\n{AppIdentity.Copyright}";
+        AboutPublisherText.Text = publisher;
+        AboutVersionText.Text = version;
+        AboutCopyrightText.Text = AppIdentity.Copyright;
     }
 }

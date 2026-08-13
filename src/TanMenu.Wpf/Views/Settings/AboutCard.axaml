@@ -1,9 +1,24 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:ui="using:FluentAvalonia.UI.Controls"
              HorizontalContentAlignment="Stretch"
              x:Class="TanMenu.Wpf.Views.Settings.AboutCard">
-  <ui:FASettingsExpander x:Name="AboutRow"
-                         Header="TanMenu"
-                         IconSource="Info" />
+  <Border Classes="hero-setting-card" Padding="20">
+    <Grid ColumnDefinitions="56,*" ColumnSpacing="16">
+      <Border Width="56" Height="56"
+              CornerRadius="16"
+              Background="{DynamicResource Hero.DefaultBrush}">
+        <Image Width="38" Height="38"
+               Source="/wwwroot/app-tile.png"
+               Stretch="Uniform"
+               HorizontalAlignment="Center"
+               VerticalAlignment="Center" />
+      </Border>
+      <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+        <TextBlock Text="TanMenu" FontSize="18" FontWeight="SemiBold" />
+        <TextBlock x:Name="AboutPublisherText" Classes="hero-setting-description" />
+        <TextBlock x:Name="AboutVersionText" Classes="hero-setting-description" />
+        <TextBlock x:Name="AboutCopyrightText" Classes="hero-setting-description" />
+      </StackPanel>
+    </Grid>
+  </Border>
 </UserControl>

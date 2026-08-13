@@ -3,43 +3,59 @@
              xmlns:ui="using:FluentAvalonia.UI.Controls"
              HorizontalContentAlignment="Stretch"
              x:Class="TanMenu.Wpf.Views.Settings.FoldersCard">
-  <StackPanel Spacing="4">
-    <ui:FASettingsExpander x:Name="MainFolderRow" IconSource="Folder">
-      <ui:FASettingsExpander.Header><TextBlock x:Name="MainFolderHead" /></ui:FASettingsExpander.Header>
-      <ui:FASettingsExpander.Footer>
-        <StackPanel Orientation="Horizontal" Spacing="8">
-          <Button x:Name="OpenRootBtn" Click="OnOpenRootClick" />
-          <Button x:Name="PickRootBtn" Click="OnPickRootClick" />
+  <StackPanel Spacing="12">
+    <Border Classes="hero-setting-card">
+      <Grid ColumnDefinitions="36,*,Auto" ColumnSpacing="12">
+        <Border Classes="hero-setting-icon"><ui:FASymbolIcon Symbol="Folder" FontSize="16" /></Border>
+        <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+          <TextBlock x:Name="MainFolderHead" Classes="hero-setting-label" />
+          <TextBlock x:Name="MainFolderDescription" Classes="hero-setting-description" />
         </StackPanel>
-      </ui:FASettingsExpander.Footer>
-    </ui:FASettingsExpander>
-
-    <ui:FASettingsExpander x:Name="DataFolderRow" IconSource="SaveLocal">
-      <ui:FASettingsExpander.Header><TextBlock x:Name="DataFolderHead" /></ui:FASettingsExpander.Header>
-      <ui:FASettingsExpander.Footer>
-        <StackPanel Orientation="Horizontal" Spacing="8">
-          <Button x:Name="OpenDataBtn" Click="OnOpenDataClick" />
-          <Button x:Name="ChangeDataBtn" Click="OnChangeDataClick" />
-          <Button x:Name="ResetDataBtn" Click="OnResetDataClick" />
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <Button x:Name="OpenRootBtn" Classes="hero-button" Click="OnOpenRootClick" />
+          <Button x:Name="PickRootBtn" Classes="hero-button" Click="OnPickRootClick" />
         </StackPanel>
-      </ui:FASettingsExpander.Footer>
-    </ui:FASettingsExpander>
+      </Grid>
+    </Border>
 
-    <ui:FASettingsExpander x:Name="CacheRow" IconSource="Delete">
-      <ui:FASettingsExpander.Header><TextBlock x:Name="CacheHead" /></ui:FASettingsExpander.Header>
-      <ui:FASettingsExpander.Footer>
-        <Button x:Name="ClearCacheBtn" Click="OnClearCacheClick" />
-      </ui:FASettingsExpander.Footer>
-    </ui:FASettingsExpander>
-
-    <ui:FASettingsExpander x:Name="BackupRow" IconSource="Save">
-      <ui:FASettingsExpander.Header><TextBlock x:Name="BackupHead" /></ui:FASettingsExpander.Header>
-      <ui:FASettingsExpander.Footer>
-        <StackPanel Orientation="Horizontal" Spacing="8">
-          <Button x:Name="BackupBtn" Click="OnBackupConfigClick" />
-          <Button x:Name="RestoreBtn" Click="OnRestoreConfigClick" />
+    <Border Classes="hero-setting-card">
+      <Grid ColumnDefinitions="36,*,Auto" ColumnSpacing="12">
+        <Border Classes="hero-setting-icon"><ui:FASymbolIcon Symbol="SaveLocal" FontSize="16" /></Border>
+        <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+          <TextBlock x:Name="DataFolderHead" Classes="hero-setting-label" />
+          <TextBlock x:Name="DataFolderDescription" Classes="hero-setting-description" />
         </StackPanel>
-      </ui:FASettingsExpander.Footer>
-    </ui:FASettingsExpander>
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <Button x:Name="OpenDataBtn" Classes="hero-button" Click="OnOpenDataClick" />
+          <Button x:Name="ChangeDataBtn" Classes="hero-button" Click="OnChangeDataClick" />
+          <Button x:Name="ResetDataBtn" Classes="hero-button" Click="OnResetDataClick" />
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <Border Classes="hero-setting-card">
+      <Grid ColumnDefinitions="36,*,Auto" ColumnSpacing="12">
+        <Border Classes="hero-setting-icon"><ui:FASymbolIcon Symbol="Delete" FontSize="16" /></Border>
+        <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+          <TextBlock x:Name="CacheHead" Classes="hero-setting-label" />
+          <TextBlock x:Name="CacheDescription" Classes="hero-setting-description" />
+        </StackPanel>
+        <Button x:Name="ClearCacheBtn" Grid.Column="2" Classes="hero-button" VerticalAlignment="Center" Click="OnClearCacheClick" />
+      </Grid>
+    </Border>
+
+    <Border Classes="hero-setting-card">
+      <Grid ColumnDefinitions="36,*,Auto" ColumnSpacing="12">
+        <Border Classes="hero-setting-icon"><ui:FASymbolIcon Symbol="Save" FontSize="16" /></Border>
+        <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+          <TextBlock x:Name="BackupHead" Classes="hero-setting-label" />
+          <TextBlock x:Name="BackupDescription" Classes="hero-setting-description" />
+        </StackPanel>
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <Button x:Name="BackupBtn" Classes="hero-button" Click="OnBackupConfigClick" />
+          <Button x:Name="RestoreBtn" Classes="hero-button" Click="OnRestoreConfigClick" />
+        </StackPanel>
+      </Grid>
+    </Border>
   </StackPanel>
 </UserControl>

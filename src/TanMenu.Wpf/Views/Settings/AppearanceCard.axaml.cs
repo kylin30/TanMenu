@@ -135,26 +135,22 @@ public partial class AppearanceCard : UserControl, ISettingsCard
             var lang = UiLanguage;
 
             LanguageLabel.Text = AppLanguage.Text("Language", lang);
-            LanguageRow.Description = AppLanguage.Text("LanguageCardSub", lang);
+            LanguageDescription.Text = AppLanguage.Text("LanguageCardSub", lang);
             LanguageCombo.ItemsSource = LanguageSettings.Select(s => AppLanguage.LanguageLabel(s, lang)).ToList();
             var langIdx = Array.FindIndex(LanguageSettings,
                 s => string.Equals(s, AppLanguage.NormalizeSetting(g.Language), StringComparison.OrdinalIgnoreCase));
             LanguageCombo.SelectedIndex = langIdx < 0 ? 0 : langIdx;
 
             AppearanceLabel.Text = AppLanguage.Text("AppearanceMode", lang);
-            AppearanceRow.Description = AppLanguage.Text("AppearanceCardSub", lang);
+            AppearanceDescription.Text = AppLanguage.Text("AppearanceCardSub", lang);
             AppearanceCombo.ItemsSource = AppearanceSettings.Select(s => AppearanceLabelFor(s, lang)).ToList();
             var appearanceIdx = Array.FindIndex(AppearanceSettings,
                 s => string.Equals(s, g.Appearance, StringComparison.OrdinalIgnoreCase));
             AppearanceCombo.SelectedIndex = appearanceIdx < 0 ? 0 : appearanceIdx;
 
             FontLabel.Text = AppLanguage.Text("Font", lang);
-            FontRow.Description = AppLanguage.Text("FontCardSub", lang);
+            FontDescription.Text = AppLanguage.Text("FontCardSub", lang);
             PopulateFontCombo(g.FontFamily ?? string.Empty, lang);
-
-            ColumnCountLabel.Text = AppLanguage.Text("ColButtonCount", lang);
-            ColumnCountRow.Description = AppLanguage.Text("ColButtonCountCardSub", lang);
-            ColumnCountInput.Value = Math.Clamp(g.ColButtonCount, 1, 30);
 
         }
         finally
@@ -255,15 +251,6 @@ public partial class AppearanceCard : UserControl, ISettingsCard
             return;
 
         _draft.Working.General.FontFamily = fam;
-        _draft.Revalidate();
-    }
-
-    private void OnColumnCountChanged(object? sender, NumericUpDownValueChangedEventArgs e)
-    {
-        if (_loading || ColumnCountInput.Value is not decimal value)
-            return;
-
-        _draft.Working.General.ColButtonCount = (int)value;
         _draft.Revalidate();
     }
 

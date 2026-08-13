@@ -6,8 +6,6 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Threading;
-using FluentAvalonia.Styling;
-using FluentAvalonia.UI.Controls;
 using FluentAvalonia.UI.Windowing;
 using Microsoft.Extensions.DependencyInjection;
 using TanMenu.Core.Services;
@@ -17,39 +15,39 @@ using TanMenu.Wpf.ViewModels;
 namespace TanMenu.Wpf;
 
 /// <summary>
-/// Windows 11-style single-window shell. The adaptive NavigationView owns application navigation;
-/// settings are an in-window page and are applied as they change.
+/// HeroUI-inspired application shell. Navigation and content live in one stable AppLayout so changing
+/// pages never changes the window's dimensions or moves the user's pointer target.
 /// </summary>
 public partial class MainWindow : FAAppWindow
 {
-    private const double NavigationContentDividerWidthDip = 1;
-    private readonly IWindowHost _host;
+    private const double LauncherChromeWidthDip = 64;
+    private static readonly IBrush WindowBackgroundBrush =
+        new SolidColorBrush(Color.FromRgb(0xF5, 0xF5, 0xF5));
+
+    private readonly WindowHost _host;
     private readonly AppEvents _events;
     private bool _hidingAfterFlush;
+    private bool _launcherInitialized;
 
     public MainWindow()
     {
         InitializeComponent();
         TitleBar.ExtendsContentIntoTitleBar = true;
+        TitleBar.Height = 60;
 
-        _host = App.Services.GetRequiredService<IWindowHost>();
+        _host = App.Services.GetRequiredService<WindowHost>();
         _events = App.Services.GetRequiredService<AppEvents>();
 
         LauncherPage.DataContext = LauncherContent.ViewModel;
         SearchBox.DataContext = LauncherContent.ViewModel;
-        AppNavigation.SelectedItem = LauncherNavItem;
 
         _events.SettingsChanged += ApplyWindowFont;
         _events.SettingsChanged += ApplyNavigationText;
-        _events.SettingsChanged += QueueRefitToContent;
         _events.LauncherPageRequested += ShowLauncherPage;
         ActualThemeVariantChanged += OnActualThemeVariantChanged;
         LauncherContent.ViewModel.PropertyChanged += OnLauncherViewModelPropertyChanged;
-        LauncherContent.ViewModel.ContentMetricsChanged += QueueRefitToContent;
-        LauncherContent.NoticeVisibilityChanged += QueueRefitToContent;
-        AppNavigation.DisplayModeChanged += OnNavigationDisplayModeChanged;
-        AppNavigation.PaneOpened += OnNavigationPaneLayoutChanged;
-        AppNavigation.PaneClosed += OnNavigationPaneLayoutChanged;
+        LauncherContent.ViewModel.ContentMetricsChanged += OnLauncherContentMetricsChanged;
+        LauncherContent.NoticeVisibilityChanged += OnLauncherContentMetricsChanged;
 
         ApplyWindowFont();
         ApplyNavigationText();
@@ -61,22 +59,18 @@ public partial class MainWindow : FAAppWindow
         base.OnOpened(e);
         UpdateWindowBackdrop();
         ApplyNavigationText();
-        _ = InitializeAndFitAsync();
+        _ = InitializeLauncherAsync();
     }
 
     protected override void OnClosed(EventArgs e)
     {
         _events.SettingsChanged -= ApplyWindowFont;
         _events.SettingsChanged -= ApplyNavigationText;
-        _events.SettingsChanged -= QueueRefitToContent;
         _events.LauncherPageRequested -= ShowLauncherPage;
         ActualThemeVariantChanged -= OnActualThemeVariantChanged;
         LauncherContent.ViewModel.PropertyChanged -= OnLauncherViewModelPropertyChanged;
-        LauncherContent.ViewModel.ContentMetricsChanged -= QueueRefitToContent;
-        LauncherContent.NoticeVisibilityChanged -= QueueRefitToContent;
-        AppNavigation.DisplayModeChanged -= OnNavigationDisplayModeChanged;
-        AppNavigation.PaneOpened -= OnNavigationPaneLayoutChanged;
-        AppNavigation.PaneClosed -= OnNavigationPaneLayoutChanged;
+        LauncherContent.ViewModel.ContentMetricsChanged -= OnLauncherContentMetricsChanged;
+        LauncherContent.NoticeVisibilityChanged -= OnLauncherContentMetricsChanged;
         LauncherContent.Dispose();
         SettingsContent.Dispose();
         base.OnClosed(e);
@@ -117,20 +111,27 @@ public partial class MainWindow : FAAppWindow
 
     public void ShowSettingsPage()
     {
-        AppNavigation.SelectedItem = SettingsNavItem;
-        SearchBox.IsVisible = false;
+        LauncherTitleCommands.IsVisible = false;
+        TitleBarHost.Background = Brushes.Transparent;
+        Grid.SetRow(ContentHost, 0);
+        Grid.SetRowSpan(ContentHost, 2);
         LauncherPage.IsVisible = false;
         SettingsContent.IsVisible = true;
-        QueuePageRefitToContent();
+        SetActiveNavigation(settings: true);
     }
 
     public void ShowLauncherPage()
     {
-        AppNavigation.SelectedItem = LauncherNavItem;
-        SearchBox.IsVisible = true;
+        if (SettingsContent.IsVisible)
+            _ = FlushSettingsSafelyAsync();
+
+        LauncherTitleCommands.IsVisible = true;
+        TitleBarHost.Background = WindowBackgroundBrush;
+        Grid.SetRow(ContentHost, 1);
+        Grid.SetRowSpan(ContentHost, 1);
         SettingsContent.IsVisible = false;
         LauncherPage.IsVisible = true;
-        QueuePageRefitToContent();
+        SetActiveNavigation(settings: false);
     }
 
     private string CurrentLanguage =>
@@ -139,12 +140,17 @@ public partial class MainWindow : FAAppWindow
     private void ApplyNavigationText()
     {
         var lang = CurrentLanguage;
-        TogglePaneNavItem.Content = AppLanguage.Text("NavTogglePane", lang);
-        LauncherNavItem.Content = AppLanguage.Text("NavApps", lang);
-        OpenRootNavItem.Content = AppLanguage.Text("MenuOpenRoot", lang);
-        RefreshNavItem.Content = AppLanguage.Text("MenuRefresh", lang);
-        SettingsNavItem.Content = AppLanguage.Text("NavSettings", lang);
-        ExitNavItem.Content = AppLanguage.Text("NavExit", lang);
+        ApplyNavigationLabel(LauncherNavButton, AppLanguage.Text("NavApps", lang));
+        ApplyNavigationLabel(OpenRootNavButton, AppLanguage.Text("MenuOpenRoot", lang));
+        ApplyNavigationLabel(RefreshNavButton, AppLanguage.Text("MenuRefresh", lang));
+        ApplyNavigationLabel(SettingsNavButton, AppLanguage.Text("NavSettings", lang));
+        ApplyNavigationLabel(ExitNavButton, AppLanguage.Text("NavExit", lang));
+    }
+
+    private static void ApplyNavigationLabel(Control control, string text)
+    {
+        control.SetValue(ToolTip.TipProperty, text);
+        control.SetValue(AutomationProperties.NameProperty, text);
     }
 
     private void ApplyWindowFont()
@@ -157,63 +163,38 @@ public partial class MainWindow : FAAppWindow
 
     private void UpdateWindowBackdrop()
     {
-        if (IsWindows11 && ActualThemeVariant != FluentAvaloniaTheme.HighContrastTheme)
-        {
-            Background = Brushes.Transparent;
-            TransparencyLevelHint = new[] { WindowTransparencyLevel.Mica };
-            return;
-        }
-
-        ClearValue(BackgroundProperty);
+        Background = WindowBackgroundBrush;
         ClearValue(TransparencyBackgroundFallbackProperty);
         ClearValue(TransparencyLevelHintProperty);
     }
 
-    private async void OnNavigationSelectionChanged(object? sender, FANavigationViewSelectionChangedEventArgs e)
+    private void OnLauncherNavClick(object? sender, RoutedEventArgs e) => ShowLauncherPage();
+
+    private void OnSettingsNavClick(object? sender, RoutedEventArgs e) => ShowSettingsPage();
+
+    private void OnOpenRootClick(object? sender, RoutedEventArgs e) =>
+        LauncherContent.ViewModel.OpenRoot();
+
+    private void OnRefreshClick(object? sender, RoutedEventArgs e) =>
+        _ = LauncherContent.ViewModel.RefreshAsync();
+
+    private async void OnExitClick(object? sender, RoutedEventArgs e)
     {
         try
         {
-            if (ReferenceEquals(e.SelectedItem, ExitNavItem))
-            {
-                if (SettingsContent.IsVisible)
-                    await SettingsContent.FlushAsync();
-                (Application.Current as App)?.ExitApp();
-                return;
-            }
-
-            if (ReferenceEquals(e.SelectedItem, SettingsNavItem))
-            {
-                ShowSettingsPage();
-                return;
-            }
-
-            if (SettingsContent.IsVisible)
-                await SettingsContent.FlushAsync();
-
-            ShowLauncherPage();
+            await SettingsContent.FlushAsync();
+            (Application.Current as App)?.ExitApp();
         }
         catch (Exception ex)
         {
-            Serilog.Log.Error(ex, "切换应用页面失败");
+            Serilog.Log.Error(ex, "退出应用失败");
         }
     }
 
-    private void OnNavigationItemInvoked(object? sender, FANavigationViewItemInvokedEventArgs e)
+    private void SetActiveNavigation(bool settings)
     {
-        if (ReferenceEquals(e.InvokedItemContainer, TogglePaneNavItem))
-        {
-            AppNavigation.IsPaneOpen = !AppNavigation.IsPaneOpen;
-            return;
-        }
-
-        if (ReferenceEquals(e.InvokedItemContainer, OpenRootNavItem))
-        {
-            LauncherContent.ViewModel.OpenRoot();
-            return;
-        }
-
-        if (ReferenceEquals(e.InvokedItemContainer, RefreshNavItem))
-            _ = LauncherContent.ViewModel.RefreshAsync();
+        LauncherNavButton.Classes.Set("is-active", !settings);
+        SettingsNavButton.Classes.Set("is-active", settings);
     }
 
     private void OnLauncherViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -222,44 +203,36 @@ public partial class MainWindow : FAAppWindow
             Dispatcher.UIThread.Post(ConsumePendingFocus, DispatcherPriority.Loaded);
     }
 
-    private async Task InitializeAndFitAsync()
+    private async Task InitializeLauncherAsync()
     {
         try
         {
             await LauncherContent.BeginInitialize();
-            QueueRefitToContent();
+            _launcherInitialized = true;
+            QueueLauncherFit();
         }
         catch (Exception ex)
         {
-            Serilog.Log.Error(ex, "初始化应用并调整窗口大小失败");
+            Serilog.Log.Error(ex, "初始化应用失败");
         }
     }
 
-    private void QueueRefitToContent() =>
-        Dispatcher.UIThread.Post(() => RefitToContent(forcePageFit: false), DispatcherPriority.Loaded);
+    private void OnLauncherContentMetricsChanged() => QueueLauncherFit();
 
-    private void QueuePageRefitToContent() =>
-        Dispatcher.UIThread.Post(() => RefitToContent(forcePageFit: true), DispatcherPriority.Loaded);
-
-    private void OnNavigationDisplayModeChanged(
-        object? sender,
-        FANavigationViewDisplayModeChangedEventArgs e) => QueueRefitToContent();
-
-    private void OnNavigationPaneLayoutChanged(FANavigationView sender, EventArgs e) =>
-        QueueRefitToContent();
-
-    private double NavigationChromeWidthDip =>
-        (AppNavigation.DisplayMode == FANavigationViewDisplayMode.Expanded && AppNavigation.IsPaneOpen
-            ? AppNavigation.OpenPaneLength
-            : AppNavigation.CompactPaneLength) + NavigationContentDividerWidthDip;
-
-    private void RefitToContent(bool forcePageFit)
+    private void QueueLauncherFit()
     {
-        if (!IsVisible || _host is not WindowHost host)
+        if (!_launcherInitialized || !LauncherPage.IsVisible)
             return;
 
-        Control activePage = SettingsContent.IsVisible ? SettingsContent : LauncherPage;
-        host.FitToContent(activePage, NavigationChromeWidthDip, forcePageFit);
+        Dispatcher.UIThread.Post(RefitLauncherToContent, DispatcherPriority.Loaded);
+    }
+
+    private void RefitLauncherToContent()
+    {
+        if (!LauncherPage.IsVisible)
+            return;
+
+        _host.FitToContent(LauncherContent, LauncherChromeWidthDip);
     }
 
     private void ConsumePendingFocus()
@@ -269,7 +242,7 @@ public partial class MainWindow : FAAppWindow
 
         LauncherContent.ViewModel.PendingFocus = false;
         try { SearchBox.Focus(); }
-        catch { /* focus failure is non-fatal */ }
+        catch { /* Focus failure is non-fatal. */ }
     }
 
     private void OnSearchKeyDown(object? sender, KeyEventArgs e)
@@ -287,6 +260,18 @@ public partial class MainWindow : FAAppWindow
             case Key.Down:
                 e.Handled = LauncherContent.FocusFirstTile();
                 break;
+        }
+    }
+
+    private async Task FlushSettingsSafelyAsync()
+    {
+        try
+        {
+            await SettingsContent.FlushAsync();
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Error(ex, "保存设置失败");
         }
     }
 

@@ -6,257 +6,193 @@
              x:Class="TanMenu.Wpf.Views.AppPage"
              x:DataType="vm:LauncherViewModel">
 
-  <UserControl.Styles>
-    <Style Selector="Button.launcher-tile">
-      <Setter Property="RenderTransformOrigin" Value="50%,50%" />
-      <Setter Property="RenderTransform" Value="translate(0px, 0px)" />
-      <Setter Property="Transitions">
-        <Transitions>
-          <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.16" />
-        </Transitions>
-      </Setter>
-    </Style>
-    <Style Selector="Button.launcher-tile:pointerover">
-      <Setter Property="RenderTransform" Value="translate(0px, -1px)" />
-    </Style>
-  </UserControl.Styles>
-
   <Panel x:Name="Root" Background="Transparent">
     <ctl:OverlayPanel>
       <DockPanel>
-        <ui:FAInfoBar x:Name="PinNotice"
-                      DockPanel.Dock="Top"
-                      Margin="{StaticResource Page.NoticeMargin}"
-                      IsOpen="False"
-                      IsVisible="False"
-                      IsClosable="True"
-                      Severity="Informational">
-          <ui:FAInfoBar.ActionButton>
-            <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.Small}">
-              <Button x:Name="PinNowButton" Classes="accent" Click="OnPinNowClick" />
-              <Button x:Name="PinNeverButton" Click="OnPinNeverClick" />
-            </StackPanel>
-          </ui:FAInfoBar.ActionButton>
-        </ui:FAInfoBar>
+        <StackPanel DockPanel.Dock="Top"
+                    Margin="16,4,16,0"
+                    Spacing="12">
+          <ui:FAInfoBar x:Name="PinNotice"
+                        Classes="hero-alert"
+                        IsOpen="False"
+                        IsVisible="False"
+                        IsClosable="True"
+                        Severity="Informational">
+            <ui:FAInfoBar.ActionButton>
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button x:Name="PinNowButton" Classes="hero-button hero-primary" Click="OnPinNowClick" />
+                <Button x:Name="PinNeverButton" Classes="hero-button" Click="OnPinNeverClick" />
+              </StackPanel>
+            </ui:FAInfoBar.ActionButton>
+          </ui:FAInfoBar>
 
-        <ui:FAInfoBar DockPanel.Dock="Top"
-                      Margin="{StaticResource Page.NoticeMargin}"
-                      IsOpen="{Binding ShowUpdateNotice}"
-                      IsVisible="{Binding ShowUpdateNotice}"
-                      IsClosable="False"
-                      Severity="Informational"
-                      Message="{Binding UpdateNoticeText}">
-          <ui:FAInfoBar.ActionButton>
-            <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.Small}">
-              <ProgressBar IsVisible="{Binding IsUpdateDownloading}"
-                           Width="96"
-                           Minimum="0" Maximum="100"
-                           Value="{Binding UpdateProgressPercent}" />
-              <Button Content="{Binding UpdateActionText}"
-                      IsEnabled="{Binding !IsUpdateDownloading}"
-                      Click="OnUpdateNoticeClick" />
-            </StackPanel>
-          </ui:FAInfoBar.ActionButton>
-        </ui:FAInfoBar>
+          <ui:FAInfoBar Classes="hero-alert"
+                        IsOpen="{Binding ShowUpdateNotice}"
+                        IsVisible="{Binding ShowUpdateNotice}"
+                        IsClosable="False"
+                        Severity="Informational"
+                        Message="{Binding UpdateNoticeText}">
+            <ui:FAInfoBar.ActionButton>
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <ProgressBar Classes="hero-progress"
+                             IsVisible="{Binding IsUpdateDownloading}"
+                             Width="96"
+                             Minimum="0" Maximum="100"
+                             Value="{Binding UpdateProgressPercent}" />
+                <Button Content="{Binding UpdateActionText}"
+                        Classes="hero-button"
+                        IsEnabled="{Binding !IsUpdateDownloading}"
+                        Click="OnUpdateNoticeClick" />
+              </StackPanel>
+            </ui:FAInfoBar.ActionButton>
+          </ui:FAInfoBar>
+
+        </StackPanel>
 
         <ScrollViewer x:Name="Body"
-                      HorizontalScrollBarVisibility="Hidden"
-                      VerticalScrollBarVisibility="Hidden">
-          <ItemsControl Margin="{StaticResource Page.ContentInset}"
-                        IsVisible="{Binding HasVisibleItems}"
-                        ItemsSource="{Binding Groups}">
-            <ItemsControl.ItemsPanel>
-              <ItemsPanelTemplate>
-                <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.Large}" />
-              </ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-            <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="vm:MenuGroupVm">
-                <Border Padding="{StaticResource Card.BottomPadding}"
-                        VerticalAlignment="Stretch"
-                        IsVisible="{Binding HasVisibleItems}"
-                        Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
-                        BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
-                        BorderThickness="1"
-                        CornerRadius="12">
-                  <Grid RowDefinitions="Auto,Auto">
-                    <Border Grid.Row="0"
-                            Padding="{StaticResource Card.HeaderPadding}"
-                            Background="{DynamicResource CardBackgroundFillColorSecondaryBrush}"
-                            BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
-                            BorderThickness="0,0,0,1"
-                            CornerRadius="12,12,0,0">
-                      <Grid ColumnDefinitions="Auto,*,Auto,Auto"
-                            ColumnSpacing="{StaticResource Spacing.Small}">
-                        <Border Grid.Column="0"
-                                Width="28"
-                                Height="28"
-                                Background="{DynamicResource ControlFillColorSecondaryBrush}"
-                                CornerRadius="7">
-                          <Panel>
-                            <ui:FASymbolIcon Symbol="Folder"
-                                             IsVisible="{Binding IsDirectoryClickable}"
-                                             HorizontalAlignment="Center"
-                                             VerticalAlignment="Center" />
-                            <ui:FASymbolIcon Symbol="AllApps"
-                                             IsVisible="{Binding !IsDirectoryClickable}"
-                                             HorizontalAlignment="Center"
-                                             VerticalAlignment="Center" />
-                          </Panel>
-                        </Border>
+                      HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Disabled">
+          <Grid>
+            <ItemsControl Margin="16"
+                          ItemsSource="{Binding DisplayGroups}"
+                          IsVisible="{Binding HasVisibleItems}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <StackPanel Orientation="Horizontal" Spacing="12" />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:MenuGroupVm">
+                    <Border Classes="hero-launcher-group-panel"
+                            IsVisible="{Binding HasVisibleItems}">
+                      <Grid RowDefinitions="Auto,*">
+                        <Grid Height="32" ColumnDefinitions="*,Auto">
+                          <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                          <TextBlock Classes="hero-section-title"
+                                     Text="{Binding DirectoryName}" />
+                          <Border Classes="hero-count-badge">
+                            <TextBlock Text="{Binding VisibleItemCount}"
+                                       FontSize="12"
+                                       Foreground="{DynamicResource Hero.MutedBrush}" />
+                          </Border>
+                          </StackPanel>
+                          <Button Grid.Column="1"
+                                  Classes="hero-button hero-icon-button"
+                                  IsVisible="{Binding IsDirectoryClickable}"
+                                  ToolTip.Tip="{Binding TitleTooltip}"
+                                  AutomationProperties.Name="{Binding TitleTooltip}"
+                                  Click="OnGroupTitleClick">
+                            <ui:FASymbolIcon Symbol="OpenFolder" FontSize="14" />
+                          </Button>
+                        </Grid>
 
-                        <TextBlock Grid.Column="1"
-                                   Text="{Binding DirectoryName}"
-                                   HorizontalAlignment="Left"
-                                   VerticalAlignment="Center"
-                                   FontSize="14"
-                                   FontWeight="SemiBold"
-                                   MaxWidth="220"
-                                   TextTrimming="CharacterEllipsis" />
-
-                        <Border Grid.Column="2"
-                                Padding="6,1"
-                                VerticalAlignment="Center"
-                                Background="{DynamicResource ControlFillColorSecondaryBrush}"
-                                CornerRadius="9">
-                          <TextBlock Text="{Binding VisibleItemCount}"
-                                     FontSize="12"
-                                     Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-                        </Border>
-
-                        <Button Grid.Column="3"
-                                Theme="{DynamicResource TransparentButton}"
-                                Width="28"
-                                Height="28"
-                                Padding="0"
-                                HorizontalContentAlignment="Center"
-                                VerticalContentAlignment="Center"
-                                IsVisible="{Binding IsDirectoryClickable}"
-                                ToolTip.Tip="{Binding TitleTooltip}"
-                                AutomationProperties.Name="{Binding TitleTooltip}"
-                                Click="OnGroupTitleClick">
-                          <ui:FASymbolIcon Symbol="ChevronRight" />
-                        </Button>
+                        <ItemsControl Grid.Row="1"
+                                      Margin="0,12,0,0"
+                                      ItemsSource="{Binding Columns}">
+                        <ItemsControl.ItemsPanel>
+                          <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" Spacing="8" />
+                          </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="vm:MenuColumnVm">
+                            <ItemsControl ItemsSource="{Binding Items}">
+                              <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                  <StackPanel Spacing="6" />
+                                </ItemsPanelTemplate>
+                              </ItemsControl.ItemsPanel>
+                              <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:MenuItemVm">
+                                  <Button Classes="hero-launcher-command tm-tile"
+                                          Height="36"
+                                          MinWidth="112"
+                                          HorizontalAlignment="Stretch"
+                                          IsEnabled="{Binding !IsDisabled}"
+                                          ToolTip.Tip="{Binding FullPath}"
+                                          Click="OnItemClick"
+                                          PointerEntered="OnItemPointerEntered">
+                                    <Grid ColumnDefinitions="24,*" ColumnSpacing="8">
+                                      <Border Classes="hero-launcher-command-icon">
+                                        <Image Source="{Binding Icon}"
+                                               Width="20" Height="20"
+                                               Stretch="Uniform" />
+                                      </Border>
+                                      <TextBlock Grid.Column="1"
+                                                 Text="{Binding Name}"
+                                                 FontSize="12"
+                                                 FontWeight="Medium"
+                                                 VerticalAlignment="Center"
+                                                 TextWrapping="NoWrap" />
+                                    </Grid>
+                                  </Button>
+                                </DataTemplate>
+                              </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
                       </Grid>
                     </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
 
-                    <ItemsControl Grid.Row="1"
-                                  Margin="{StaticResource Card.BodyMargin}"
-                                  HorizontalAlignment="Left"
-                                  ItemsSource="{Binding Columns}">
-                      <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                          <StackPanel Orientation="Horizontal"
-                                      Spacing="{StaticResource Spacing.Small}" />
-                        </ItemsPanelTemplate>
-                      </ItemsControl.ItemsPanel>
-                      <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="vm:MenuColumnVm">
-                          <ItemsControl ItemsSource="{Binding Items}">
-                            <ItemsControl.ItemsPanel>
-                              <ItemsPanelTemplate>
-                                <StackPanel Orientation="Vertical" Spacing="{StaticResource Spacing.Small}" />
-                              </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
-                              <DataTemplate x:DataType="vm:MenuItemVm">
-                                <Button Classes="launcher-tile"
-                                        MinHeight="36"
-                                        Padding="4,2"
-                                        CornerRadius="5"
-                                        HorizontalAlignment="Stretch"
-                                        HorizontalContentAlignment="Left"
-                                        ToolTip.Tip="{Binding Name}"
-                                        AutomationProperties.Name="{Binding Name}"
-                                        IsEnabled="{Binding !IsDisabled}"
-                                        Click="OnItemClick"
-                                        PointerEntered="OnItemPointerEntered">
-                                  <Grid ColumnDefinitions="28,Auto"
-                                        ColumnSpacing="{StaticResource Spacing.Small}">
-                                    <Border Grid.Column="0"
-                                            Width="28" Height="28"
-                                            Background="{DynamicResource ControlFillColorSecondaryBrush}"
-                                            CornerRadius="5">
-                                      <Image Width="22" Height="22"
-                                             Source="{Binding Icon}"
-                                             Stretch="Uniform"
-                                             HorizontalAlignment="Center"
-                                             VerticalAlignment="Center" />
-                                    </Border>
-                                    <TextBlock Grid.Column="1"
-                                               Text="{Binding Name}"
-                                               FontWeight="Medium"
-                                               MaxWidth="220"
-                                               TextTrimming="CharacterEllipsis"
-                                               TextWrapping="NoWrap"
-                                               VerticalAlignment="Center" />
-                                  </Grid>
-                                </Button>
-                              </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                          </ItemsControl>
-                        </DataTemplate>
-                      </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                  </Grid>
+            <Border Classes="hero-empty-state"
+                    Margin="24"
+                    IsVisible="{Binding ShowSplash}">
+              <StackPanel Spacing="16" HorizontalAlignment="Center">
+                <Image Width="48" Height="48" Source="/wwwroot/app-tile.png" />
+                <ProgressBar Classes="hero-progress" Width="160" IsIndeterminate="True" />
+                <TextBlock Text="{Binding VersionText}"
+                           HorizontalAlignment="Center"
+                           Foreground="{DynamicResource Hero.MutedBrush}" />
+              </StackPanel>
+            </Border>
+
+            <Border Classes="hero-empty-state"
+                    Margin="24"
+                    IsVisible="{Binding ShowEmpty}">
+              <StackPanel Spacing="12" HorizontalAlignment="Center" MaxWidth="460">
+                <Border Classes="hero-empty-icon">
+                  <ui:FASymbolIcon Symbol="Folder" FontSize="24" />
                 </Border>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
+                <TextBlock Classes="hero-empty-title" Text="{Binding EmptyTitleText}" />
+                <TextBlock Classes="hero-empty-description" Text="{Binding EmptyHelpText}" TextWrapping="Wrap" />
+                <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center" Margin="0,4,0,0">
+                  <Button Classes="hero-button hero-primary" Content="{Binding OpenOptionsText}" Click="OnOpenSettingsClick" />
+                  <Button Classes="hero-button" Content="{Binding MenuRefreshText}" Click="OnRefreshClick" />
+                </StackPanel>
+              </StackPanel>
+            </Border>
+
+            <Border Classes="hero-empty-state"
+                    Margin="24"
+                    IsVisible="{Binding ShowNoMatches}">
+              <StackPanel Spacing="12" HorizontalAlignment="Center" MaxWidth="460">
+                <Border Classes="hero-empty-icon">
+                  <ui:FASymbolIcon Symbol="Find" FontSize="24" />
+                </Border>
+                <TextBlock Classes="hero-empty-title" Text="{Binding NoMatchTitleText}" />
+                <TextBlock Classes="hero-empty-description" Text="{Binding NoMatchHelpText}" TextWrapping="Wrap" />
+                <Button Classes="hero-button hero-primary"
+                        HorizontalAlignment="Center"
+                        Content="{Binding ClearFilterText}"
+                        Click="OnClearFilterClick" />
+              </StackPanel>
+            </Border>
+          </Grid>
         </ScrollViewer>
       </DockPanel>
 
-      <StackPanel IsVisible="{Binding ShowSplash}"
-                  HorizontalAlignment="Center"
-                  VerticalAlignment="Center"
-                  Spacing="{StaticResource Spacing.Medium}">
-        <Image Width="64" Height="64"
-               Source="avares://TanMenu.Wpf/wwwroot/app-tile.png" />
-        <ui:FAProgressRing Width="32" Height="32"
-                           IsActive="{Binding ShowSplash}"
-                           IsIndeterminate="True"
-                           HorizontalAlignment="Center" />
-        <TextBlock Text="{Binding VersionText}" HorizontalAlignment="Center" />
-      </StackPanel>
-
-      <StackPanel IsVisible="{Binding ShowEmpty}"
-                  HorizontalAlignment="Center"
-                  VerticalAlignment="Center"
-                  Spacing="{StaticResource Spacing.Small}">
-        <TextBlock Text="{Binding EmptyTitleText}"
-                   FontSize="28"
-                   FontWeight="SemiBold"
-                   FontFamily="{Binding TitleFontFamily}" />
-        <TextBlock Text="{Binding EmptyHelpText}" MaxWidth="420" TextWrapping="Wrap" />
-        <StackPanel Orientation="Horizontal"
-                    Spacing="{StaticResource Spacing.Small}"
-                    HorizontalAlignment="Center">
-          <Button Classes="accent" Content="{Binding OpenOptionsText}" Click="OnOpenSettingsClick" />
-          <Button Content="{Binding MenuRefreshText}" Click="OnRefreshClick" />
-        </StackPanel>
-      </StackPanel>
-
-      <StackPanel IsVisible="{Binding ShowNoMatches}"
-                  HorizontalAlignment="Center"
-                  VerticalAlignment="Center"
-                  Spacing="{StaticResource Spacing.Small}">
-        <TextBlock Text="{Binding NoMatchTitleText}"
-                   FontSize="28"
-                   FontWeight="SemiBold"
-                   FontFamily="{Binding TitleFontFamily}" />
-        <TextBlock Text="{Binding NoMatchHelpText}" MaxWidth="420" TextWrapping="Wrap" />
-        <Button Content="{Binding ClearFilterText}"
-                Click="OnClearFilterClick"
-                HorizontalAlignment="Center" />
-      </StackPanel>
-
-      <ui:FAInfoBar IsOpen="{Binding HasToast}"
-                    IsClosable="False"
-                    Message="{Binding ToastText}"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Bottom"
-                    Margin="{StaticResource Toast.Margin}"
-                    PointerPressed="OnToastPressed" />
+      <Border Classes="hero-toast"
+              Margin="24"
+              IsVisible="{Binding HasToast}"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Bottom"
+              PointerPressed="OnToastPressed">
+        <TextBlock Text="{Binding ToastText}" />
+      </Border>
     </ctl:OverlayPanel>
   </Panel>
 </UserControl>

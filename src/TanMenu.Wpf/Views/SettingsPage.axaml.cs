@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using TanMenu.Core.Services;
@@ -19,6 +20,7 @@ public partial class SettingsPage : UserControl, IDisposable
     private readonly IAutoStartService _autoStart;
     private readonly IWindowHost _host;
     private readonly DispatcherTimer _saveTimer;
+    private int _selectedSection;
     private bool _isCommitting;
     private bool _disposed;
 
@@ -61,12 +63,20 @@ public partial class SettingsPage : UserControl, IDisposable
     private void ApplyText()
     {
         var lang = _config.Config.General.Language;
-        AppearanceHeading.Text = AppLanguage.Text("Appearance", lang);
-        BehaviorHeading.Text = AppLanguage.Text("Behavior", lang);
-        FoldersHeading.Text = AppLanguage.Text("Folders", lang);
-        ToolsHeading.Text = AppLanguage.Text("CommonTools", lang);
-        UpdatesHeading.Text = AppLanguage.Text("Updates", lang);
-        AboutHeading.Text = AppLanguage.Text("About", lang);
+        SettingsTitle.Text = AppLanguage.Text("NavSettings", lang);
+        SettingsSubtitle.Text = AppLanguage.Text("SettingsSubtitle", lang);
+        AppearanceNavLabel.Text = AppLanguage.Text("Appearance", lang);
+        BehaviorNavLabel.Text = AppLanguage.Text("Behavior", lang);
+        FoldersNavLabel.Text = AppLanguage.Text("Folders", lang);
+        ToolsNavLabel.Text = AppLanguage.Text("CommonTools", lang);
+        UpdatesNavLabel.Text = AppLanguage.Text("Updates", lang);
+        AboutNavLabel.Text = AppLanguage.Text("About", lang);
+        AppearanceSectionHeading.Text = AppearanceNavLabel.Text;
+        BehaviorSectionHeading.Text = BehaviorNavLabel.Text;
+        FoldersSectionHeading.Text = FoldersNavLabel.Text;
+        ToolsSectionHeading.Text = ToolsNavLabel.Text;
+        UpdatesSectionHeading.Text = UpdatesNavLabel.Text;
+        AboutSectionHeading.Text = AboutNavLabel.Text;
 
         AppearanceSettings.ReloadFromConfig();
         BehaviorSettings.ReloadFromConfig();
@@ -74,6 +84,35 @@ public partial class SettingsPage : UserControl, IDisposable
         ToolSettings.ReloadFromConfig();
         UpdateSettings.ReloadFromConfig();
         AboutSettings.ReloadFromConfig();
+        SelectSection(_selectedSection, scrollToSection: false);
+    }
+
+    private void OnSectionClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: string tag } && int.TryParse(tag, out var section))
+            SelectSection(section, scrollToSection: true);
+    }
+
+    private void SelectSection(int section, bool scrollToSection)
+    {
+        _selectedSection = Math.Clamp(section, 0, 5);
+
+        var buttons = new[]
+        {
+            AppearanceNavButton, BehaviorNavButton, FoldersNavButton,
+            ToolsNavButton, UpdatesNavButton, AboutNavButton
+        };
+        var sections = new Control[]
+        {
+            AppearanceSection, BehaviorSection, FoldersSection,
+            ToolsSection, UpdatesSection, AboutSection
+        };
+
+        for (var index = 0; index < buttons.Length; index++)
+            buttons[index].Classes.Set("is-active", index == _selectedSection);
+
+        if (scrollToSection)
+            Dispatcher.UIThread.Post(sections[_selectedSection].BringIntoView, DispatcherPriority.Loaded);
     }
 
     private void OnDraftChanged()
