@@ -38,18 +38,26 @@ public class MenuBarTests
         Assert.Equal("48", (string?)navigation.Attribute("CompactPaneLength"));
         Assert.Equal("220", (string?)navigation.Attribute("OpenPaneLength"));
         Assert.Equal("False", (string?)navigation.Attribute("IsPaneOpen"));
+        Assert.Equal("False", (string?)navigation.Attribute("IsPaneToggleButtonVisible"));
+        Assert.DoesNotContain(navigation.Descendants(), e =>
+            e.Name.LocalName == "Style" &&
+            ((string?)e.Attribute("Selector"))?.Contains("TogglePaneButton", StringComparison.Ordinal) == true);
         Assert.DoesNotContain(doc.Descendants(), e => e.Name.LocalName == "FACommandBar");
         Assert.DoesNotContain(doc.Descendants(), e => e.Name.LocalName is "Menu" or "MenuItem");
 
         var search = doc.Descendants().Single(e => (string?)e.Attribute(XamlName) == "SearchBox");
         Assert.Equal("{Binding Filter, Mode=TwoWay}", (string?)search.Attribute("Text"));
-        Assert.Equal("Left", (string?)search.Attribute("HorizontalAlignment"));
+        Assert.Equal("Center", (string?)search.Attribute("HorizontalAlignment"));
         Assert.Equal("clearButton", (string?)search.Attribute("Classes"));
         Assert.Equal("320", (string?)search.Attribute("Width"));
-        Assert.Equal("32", (string?)search.Attribute("MinHeight"));
+        Assert.Equal("32", (string?)search.Attribute("Height"));
+        Assert.Equal("0", (string?)search.Attribute("MinHeight"));
+        Assert.Equal("0,8", (string?)search.Attribute("Margin"));
         Assert.Null(search.Attribute("Padding"));
         Assert.Null(search.Attribute("MaxWidth"));
         Assert.Null(search.Attribute("MinWidth"));
+        Assert.Equal("User", (string?)search.Attribute("WindowDecorationProperties.ElementRole"));
+        Assert.Equal("TitleBarHost", (string?)search.Parent!.Attribute(XamlName));
         var findIcon = Assert.Single(search.Descendants(), e =>
             e.Name.LocalName == "FASymbolIcon" && (string?)e.Attribute("Symbol") == "Find");
         Assert.Equal("8,0,0,0", (string?)findIcon.Attribute("Margin"));
@@ -79,38 +87,55 @@ public class MenuBarTests
     }
 
     [Fact]
-    public void PageActionsImmediatelyFollowTheSearchBox()
+    public void ToggleAndPageActionsShareTheNavigationItemLayout()
     {
         var doc = XDocument.Load(Source("MainWindow.axaml"));
-        var search = doc.Descendants().Single(e => (string?)e.Attribute(XamlName) == "SearchBox");
-        var toolbar = search.Parent!;
-        var actions = toolbar.Elements().Where(e => e.Name.LocalName == "Button").ToArray();
+        var menu = Assert.Single(doc.Descendants(), e => e.Name.LocalName == "FANavigationView.MenuItems");
+        var items = menu.Elements().ToArray();
+        Assert.Equal(new[] { "TogglePaneNavItem", "LauncherNavItem", "OpenRootNavItem", "RefreshNavItem" },
+            items.Select(e => (string?)e.Attribute(XamlName)).ToArray());
 
-        Assert.Equal(new[] { "MenuOpenRoot", "MenuRefresh" },
+        var actions = items.Where(e =>
+            (string?)e.Attribute(XamlName) is "TogglePaneNavItem" or "OpenRootNavItem" or "RefreshNavItem").ToArray();
+        Assert.Equal(new[] { "TogglePaneNavItem", "OpenRootNavItem", "RefreshNavItem" },
             actions.Select(e => (string?)e.Attribute(XamlName)).ToArray());
-        Assert.Equal(new[] { "1", "2" },
-            actions.Select(e => (string?)e.Attribute("Grid.Column")).ToArray());
+        Assert.All(actions, action => Assert.Equal("False", (string?)action.Attribute("SelectsOnInvoked")));
+        Assert.Equal(new[] { "toggle-pane", "open-root", "refresh" },
+            actions.Select(e => (string?)e.Attribute("Tag")).ToArray());
+
+        var toggle = actions[0];
+        Assert.Contains(toggle.Descendants(), e =>
+            e.Name.LocalName == "FASymbolIconSource" &&
+            (string?)e.Attribute("Symbol") == "GlobalNavigationButton");
+        var code = File.ReadAllText(Source("MainWindow.axaml.cs"));
+        Assert.Contains("AppNavigation.IsPaneOpen = !AppNavigation.IsPaneOpen", code);
+        Assert.Contains("TogglePaneNavItem.Content = AppLanguage.Text(\"NavTogglePane\", lang)", code);
     }
 
     [Fact]
     public void EveryPageCommandUsesTheLibraryIconAndLocalizedLabel()
     {
         var doc = XDocument.Load(Source("MainWindow.axaml"));
-        var buttons = doc.Descendants().Where(e =>
-            e.Name.LocalName == "Button" &&
-            (string?)e.Attribute(XamlName) is "MenuOpenRoot" or "MenuRefresh").ToList();
-        Assert.Equal(2, buttons.Count);
-        Assert.All(buttons, button =>
-        {
-            Assert.False(string.IsNullOrWhiteSpace((string?)button.Attribute(XamlName)));
-            Assert.False(string.IsNullOrWhiteSpace((string?)button.Attribute("Click")));
-            Assert.Contains(button.Descendants(), e => e.Name.LocalName == "FASymbolIcon");
-        });
+        var actions = doc.Descendants().Where(e =>
+            e.Name.LocalName == "FANavigationViewItem" &&
+            (string?)e.Attribute(XamlName) is "OpenRootNavItem" or "RefreshNavItem").ToList();
+        Assert.Equal(2, actions.Count);
+        Assert.All(actions, action => Assert.Contains(action.Descendants(), e =>
+            e.Name.LocalName == "FASymbolIconSource"));
 
         var code = File.ReadAllText(Source("MainWindow.axaml.cs"));
-        var keys = Regex.Matches(code, @"Menu(?:OpenRoot|Refresh)Text\.Text\s*=\s*AppLanguage\.Text\(""(?<k>[^""]+)"", lang\)")
+        var keys = Regex.Matches(code, @"(?:OpenRoot|Refresh)NavItem\.Content\s*=\s*AppLanguage\.Text\(""(?<k>[^""]+)"", lang\)")
             .Select(m => m.Groups["k"].Value).ToArray();
         Assert.Equal(new[] { "MenuOpenRoot", "MenuRefresh" }, keys);
         Assert.All(keys, key => Assert.False(string.IsNullOrWhiteSpace(AppLanguage.Text(key, AppLanguage.EnUs))));
+    }
+
+    [Fact]
+    public void TitleBarSearchIsVisibleOnlyOnTheLauncherPage()
+    {
+        var code = File.ReadAllText(Source("MainWindow.axaml.cs"));
+        Assert.Contains("SearchBox.IsVisible = false", code);
+        Assert.Contains("SearchBox.IsVisible = true", code);
+        Assert.Contains("SearchBox.DataContext = LauncherContent.ViewModel", code);
     }
 }

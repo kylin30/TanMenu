@@ -2,6 +2,22 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:sty="using:FluentAvalonia.Styling"
              x:Class="TanMenu.Wpf.App">
+  <Application.Resources>
+    <!-- Shared 4-DIP spacing scale. Pages use Large, ordinary control gaps use Small. -->
+    <x:Double x:Key="Spacing.XSmall">4</x:Double>
+    <x:Double x:Key="Spacing.Small">8</x:Double>
+    <x:Double x:Key="Spacing.Medium">12</x:Double>
+    <x:Double x:Key="Spacing.Large">16</x:Double>
+    <x:Double x:Key="Spacing.XLarge">24</x:Double>
+
+    <!-- Semantic insets keep every application-page surface on the same 16-DIP grid. -->
+    <Thickness x:Key="Page.ContentInset">16</Thickness>
+    <Thickness x:Key="Page.NoticeMargin">16,16,16,0</Thickness>
+    <Thickness x:Key="Card.HeaderPadding">16,8</Thickness>
+    <Thickness x:Key="Card.BodyMargin">16,16,16,0</Thickness>
+    <Thickness x:Key="Card.BottomPadding">0,0,0,16</Thickness>
+    <Thickness x:Key="Toast.Margin">24</Thickness>
+  </Application.Resources>
   <Application.Styles>
     <sty:FluentAvaloniaTheme />
   </Application.Styles>

@@ -63,7 +63,6 @@ public partial class AppPage : UserControl, IDisposable
         // hotkey, or second-instance activation) in addition to once here, since the state can change
         // behind our back (the user may pin from Explorer between reveals).
         _events.LauncherShown += OnLauncherShown;
-        _ = RefreshPinNoticeAsync();
 
         // MainWindow re-fits the window to content whenever either docked notice's visibility might
         // have changed (see NoticeVisibilityChanged's own remarks) — both PinNotice.IsOpen and
@@ -73,6 +72,7 @@ public partial class AppPage : UserControl, IDisposable
         PinNotice.PropertyChanged += OnPinNoticePropertyChanged;
         PinNotice.CloseButtonClick += OnPinNoticeDismissed;
         _viewModel.PropertyChanged += OnViewModelPropertyChangedForNotice;
+        _ = RefreshPinNoticeAsync();
     }
 
     /// <summary>The one <see cref="LauncherViewModel"/> instance for the launcher's whole life. Exposed
@@ -93,7 +93,13 @@ public partial class AppPage : UserControl, IDisposable
     private void OnPinNoticePropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
     {
         if (e.Property == FAInfoBar.IsOpenProperty)
+        {
+            // FAInfoBar collapses its visual content when closed, but its Margin still participates
+            // in DockPanel layout. Collapse the control itself so a closed notice cannot add a second
+            // page inset between the visible notice and the category cards.
+            PinNotice.IsVisible = PinNotice.IsOpen;
             NoticeVisibilityChanged?.Invoke();
+        }
     }
 
     private void OnViewModelPropertyChangedForNotice(object? sender, PropertyChangedEventArgs e)

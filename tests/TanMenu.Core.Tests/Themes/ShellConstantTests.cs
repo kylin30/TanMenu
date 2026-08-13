@@ -93,9 +93,17 @@ public class ShellConstantTests
         Assert.Equal((string?)main.Attribute("Height"), placeholderHeight);
         Assert.Contains(main.Descendants(), e => e.Name.LocalName == "FANavigationView");
         Assert.Contains(main.Descendants(), e =>
-            e.Name.LocalName == "Button" &&
-            (string?)e.Attribute(XamlName) == "MenuOpenRoot");
+            e.Name.LocalName == "FANavigationViewItem" &&
+            (string?)e.Attribute(XamlName) == "OpenRootNavItem");
         Assert.DoesNotContain(main.Descendants(), e => e.Name.LocalName is "Menu" or "MenuItem");
+    }
+
+    [Fact]
+    public void MainWindow_DoesNotAppearInTaskbar()
+    {
+        var main = XDocument.Load(Path.Combine(WpfRoot, "MainWindow.axaml")).Root!;
+
+        Assert.Equal("False", (string?)main.Attribute("ShowInTaskbar"));
     }
 
     [Fact]

@@ -79,7 +79,7 @@ public sealed partial class WindowHost : IWindowHost
     /// carries the departure, the measurement and the two alternatives that were rejected.
     /// </para>
     /// </remarks>
-    private const double TitleBarHeightDip = 32;
+    private const double TitleBarHeightDip = 48;
 
     /// <summary>The bottom edge of the managed Aero frame. The 8 DIP left/right pair is supplied by
     /// <c>MainWindow.ChromeWidthDip</c>; this is the matching vertical edge below the page.</summary>

@@ -9,8 +9,8 @@
                 Margin="24,8,24,24"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Top"
-                HorizontalScrollBarVisibility="Disabled"
-                VerticalScrollBarVisibility="Auto">
+                HorizontalScrollBarVisibility="Hidden"
+                VerticalScrollBarVisibility="Hidden">
     <Grid Width="{Binding #SettingsScroll.Viewport.Width}"
           ColumnDefinitions="*,16">
       <StackPanel Grid.Column="0"

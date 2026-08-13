@@ -45,11 +45,32 @@ public class Win11SettingsPageTests
 
         var titleBar = main.Descendants().Single(e =>
             (string?)e.Attribute(XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml")) == "TitleBarHost");
-        Assert.Equal("32", (string?)titleBar.Attribute("Height"));
+        Assert.Equal("48", (string?)titleBar.Attribute("Height"));
+
+        var shellGrid = Assert.Single(main.Root!.Elements(), e => e.Name.LocalName == "Grid");
+        Assert.Equal("48,*", (string?)shellGrid.Attribute("RowDefinitions"));
 
         var code = File.ReadAllText(Path.Combine(WpfRoot, "MainWindow.axaml.cs"));
         Assert.Contains("TitleBar.ExtendsContentIntoTitleBar = true", code);
         Assert.Contains("WindowTransparencyLevel.Mica", code);
+
+        var host = File.ReadAllText(Path.Combine(WpfRoot, "Services", "WindowHost.cs"));
+        Assert.Contains("TitleBarHeightDip = 48", host);
+    }
+
+    [Fact]
+    public void MainContentExposesTheMicaBackdrop()
+    {
+        var main = XDocument.Load(Path.Combine(WpfRoot, "MainWindow.axaml"));
+        var navigation = main.Descendants().Single(e => e.Name.LocalName == "FANavigationView");
+        var resources = Assert.Single(navigation.Elements(), e =>
+            e.Name.LocalName == "FANavigationView.Resources");
+        var contentBackground = Assert.Single(resources.Elements(), e =>
+            (string?)e.Attribute(XName.Get("Key", "http://schemas.microsoft.com/winfx/2006/xaml")) ==
+            "NavigationViewContentBackground");
+
+        Assert.Equal("SolidColorBrush", contentBackground.Name.LocalName);
+        Assert.Equal("Transparent", (string?)contentBackground.Attribute("Color"));
     }
 
     [Fact]
@@ -64,8 +85,8 @@ public class Win11SettingsPageTests
         Assert.Equal("680", (string?)scroll.Attribute("MinWidth"));
         Assert.Equal("820", (string?)scroll.Attribute("MaxWidth"));
         Assert.Equal("700", (string?)scroll.Attribute("MaxHeight"));
-        Assert.Equal("Disabled", (string?)scroll.Attribute("HorizontalScrollBarVisibility"));
-        Assert.Equal("Auto", (string?)scroll.Attribute("VerticalScrollBarVisibility"));
+        Assert.Equal("Hidden", (string?)scroll.Attribute("HorizontalScrollBarVisibility"));
+        Assert.Equal("Hidden", (string?)scroll.Attribute("VerticalScrollBarVisibility"));
 
         Assert.Equal("SettingsScroll", (string?)scroll.Attribute(
             XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml")));

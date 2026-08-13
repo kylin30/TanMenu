@@ -36,6 +36,7 @@ public partial class MainWindow : FAAppWindow
         _events = App.Services.GetRequiredService<AppEvents>();
 
         LauncherPage.DataContext = LauncherContent.ViewModel;
+        SearchBox.DataContext = LauncherContent.ViewModel;
         AppNavigation.SelectedItem = LauncherNavItem;
 
         _events.SettingsChanged += ApplyWindowFont;
@@ -115,6 +116,7 @@ public partial class MainWindow : FAAppWindow
     public void ShowSettingsPage()
     {
         AppNavigation.SelectedItem = SettingsNavItem;
+        SearchBox.IsVisible = false;
         LauncherPage.IsVisible = false;
         SettingsContent.IsVisible = true;
         QueuePageRefitToContent();
@@ -123,6 +125,7 @@ public partial class MainWindow : FAAppWindow
     public void ShowLauncherPage()
     {
         AppNavigation.SelectedItem = LauncherNavItem;
+        SearchBox.IsVisible = true;
         SettingsContent.IsVisible = false;
         LauncherPage.IsVisible = true;
         QueuePageRefitToContent();
@@ -134,14 +137,12 @@ public partial class MainWindow : FAAppWindow
     private void ApplyNavigationText()
     {
         var lang = CurrentLanguage;
+        TogglePaneNavItem.Content = AppLanguage.Text("NavTogglePane", lang);
         LauncherNavItem.Content = AppLanguage.Text("NavApps", lang);
+        OpenRootNavItem.Content = AppLanguage.Text("MenuOpenRoot", lang);
+        RefreshNavItem.Content = AppLanguage.Text("MenuRefresh", lang);
         SettingsNavItem.Content = AppLanguage.Text("NavSettings", lang);
         ExitNavItem.Content = AppLanguage.Text("NavExit", lang);
-
-        MenuOpenRootText.Text = AppLanguage.Text("MenuOpenRoot", lang);
-        MenuRefreshText.Text = AppLanguage.Text("MenuRefresh", lang);
-        AutomationProperties.SetName(MenuOpenRoot, MenuOpenRootText.Text);
-        AutomationProperties.SetName(MenuRefresh, MenuRefreshText.Text);
     }
 
     private void ApplyWindowFont()
@@ -193,6 +194,24 @@ public partial class MainWindow : FAAppWindow
         {
             Serilog.Log.Error(ex, "切换应用页面失败");
         }
+    }
+
+    private void OnNavigationItemInvoked(object? sender, FANavigationViewItemInvokedEventArgs e)
+    {
+        if (ReferenceEquals(e.InvokedItemContainer, TogglePaneNavItem))
+        {
+            AppNavigation.IsPaneOpen = !AppNavigation.IsPaneOpen;
+            return;
+        }
+
+        if (ReferenceEquals(e.InvokedItemContainer, OpenRootNavItem))
+        {
+            LauncherContent.ViewModel.OpenRoot();
+            return;
+        }
+
+        if (ReferenceEquals(e.InvokedItemContainer, RefreshNavItem))
+            _ = LauncherContent.ViewModel.RefreshAsync();
     }
 
     private void OnLauncherViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -268,10 +287,6 @@ public partial class MainWindow : FAAppWindow
                 break;
         }
     }
-
-    private void OnOpenRootClick(object? sender, RoutedEventArgs e) => LauncherContent.ViewModel.OpenRoot();
-
-    private void OnRefreshClick(object? sender, RoutedEventArgs e) => _ = LauncherContent.ViewModel.RefreshAsync();
 
     private async Task FlushAndHideAsync()
     {

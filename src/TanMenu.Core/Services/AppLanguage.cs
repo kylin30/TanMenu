@@ -363,6 +363,7 @@ public static class AppLanguage
             // a line in the About box is not the place for one, so it is localized here.
             ["About"] = ("关于", "About"),
             ["AboutPublisher"] = ("由 TanSoft 出品", "by TanSoft"),
+            ["NavTogglePane"] = ("展开或收起导航", "Expand or collapse navigation"),
             ["NavApps"] = ("应用", "Apps"),
             ["NavSettings"] = ("设置", "Settings"),
             ["NavExit"] = ("彻底退出", "Exit TanMenu"),

@@ -6,17 +6,33 @@
              x:Class="TanMenu.Wpf.Views.AppPage"
              x:DataType="vm:LauncherViewModel">
 
+  <UserControl.Styles>
+    <Style Selector="Button.launcher-tile">
+      <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+      <Setter Property="RenderTransform" Value="translate(0px, 0px)" />
+      <Setter Property="Transitions">
+        <Transitions>
+          <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.16" />
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="Button.launcher-tile:pointerover">
+      <Setter Property="RenderTransform" Value="translate(0px, -1px)" />
+    </Style>
+  </UserControl.Styles>
+
   <Panel x:Name="Root" Background="Transparent">
     <ctl:OverlayPanel>
       <DockPanel>
         <ui:FAInfoBar x:Name="PinNotice"
                       DockPanel.Dock="Top"
-                      Margin="24,8,24,0"
+                      Margin="{StaticResource Page.NoticeMargin}"
                       IsOpen="False"
+                      IsVisible="False"
                       IsClosable="True"
                       Severity="Informational">
           <ui:FAInfoBar.ActionButton>
-            <StackPanel Orientation="Horizontal" Spacing="8">
+            <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.Small}">
               <Button x:Name="PinNowButton" Classes="accent" Click="OnPinNowClick" />
               <Button x:Name="PinNeverButton" Click="OnPinNeverClick" />
             </StackPanel>
@@ -24,13 +40,14 @@
         </ui:FAInfoBar>
 
         <ui:FAInfoBar DockPanel.Dock="Top"
-                      Margin="24,8,24,0"
+                      Margin="{StaticResource Page.NoticeMargin}"
                       IsOpen="{Binding ShowUpdateNotice}"
+                      IsVisible="{Binding ShowUpdateNotice}"
                       IsClosable="False"
                       Severity="Informational"
                       Message="{Binding UpdateNoticeText}">
           <ui:FAInfoBar.ActionButton>
-            <StackPanel Orientation="Horizontal" Spacing="8">
+            <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.Small}">
               <ProgressBar IsVisible="{Binding IsUpdateDownloading}"
                            Width="96"
                            Minimum="0" Maximum="100"
@@ -43,20 +60,20 @@
         </ui:FAInfoBar>
 
         <ScrollViewer x:Name="Body"
-                      HorizontalScrollBarVisibility="Auto"
-                      VerticalScrollBarVisibility="Auto">
-          <ItemsControl Margin="24,8,24,32"
+                      HorizontalScrollBarVisibility="Hidden"
+                      VerticalScrollBarVisibility="Hidden">
+          <ItemsControl Margin="{StaticResource Page.ContentInset}"
                         IsVisible="{Binding HasVisibleItems}"
                         ItemsSource="{Binding Groups}">
             <ItemsControl.ItemsPanel>
               <ItemsPanelTemplate>
-                <StackPanel Orientation="Horizontal" Spacing="16" />
+                <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.Large}" />
               </ItemsPanelTemplate>
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:MenuGroupVm">
-                <Border Padding="0,0,0,12"
-                        VerticalAlignment="Top"
+                <Border Padding="{StaticResource Card.BottomPadding}"
+                        VerticalAlignment="Stretch"
                         IsVisible="{Binding HasVisibleItems}"
                         Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
                         BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
@@ -64,17 +81,18 @@
                         CornerRadius="12">
                   <Grid RowDefinitions="Auto,Auto">
                     <Border Grid.Row="0"
-                            Padding="16,12"
+                            Padding="{StaticResource Card.HeaderPadding}"
                             Background="{DynamicResource CardBackgroundFillColorSecondaryBrush}"
                             BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
                             BorderThickness="0,0,0,1"
                             CornerRadius="12,12,0,0">
-                      <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="10">
+                      <Grid ColumnDefinitions="Auto,*,Auto,Auto"
+                            ColumnSpacing="{StaticResource Spacing.Small}">
                         <Border Grid.Column="0"
-                                Width="32"
-                                Height="32"
+                                Width="28"
+                                Height="28"
                                 Background="{DynamicResource ControlFillColorSecondaryBrush}"
-                                CornerRadius="8">
+                                CornerRadius="7">
                           <Panel>
                             <ui:FASymbolIcon Symbol="Folder"
                                              IsVisible="{Binding IsDirectoryClickable}"
@@ -91,16 +109,16 @@
                                    Text="{Binding DirectoryName}"
                                    HorizontalAlignment="Left"
                                    VerticalAlignment="Center"
-                                   FontSize="16"
+                                   FontSize="14"
                                    FontWeight="SemiBold"
                                    MaxWidth="220"
                                    TextTrimming="CharacterEllipsis" />
 
                         <Border Grid.Column="2"
-                                Padding="8,2"
+                                Padding="6,1"
                                 VerticalAlignment="Center"
                                 Background="{DynamicResource ControlFillColorSecondaryBrush}"
-                                CornerRadius="10">
+                                CornerRadius="9">
                           <TextBlock Text="{Binding VisibleItemCount}"
                                      FontSize="12"
                                      Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
@@ -108,8 +126,8 @@
 
                         <Button Grid.Column="3"
                                 Theme="{DynamicResource TransparentButton}"
-                                Width="32"
-                                Height="32"
+                                Width="28"
+                                Height="28"
                                 Padding="0"
                                 HorizontalContentAlignment="Center"
                                 VerticalContentAlignment="Center"
@@ -123,11 +141,13 @@
                     </Border>
 
                     <ItemsControl Grid.Row="1"
-                                  Margin="12,12,12,0"
+                                  Margin="{StaticResource Card.BodyMargin}"
+                                  HorizontalAlignment="Left"
                                   ItemsSource="{Binding Columns}">
                       <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
-                          <StackPanel Orientation="Horizontal" Spacing="8" />
+                          <StackPanel Orientation="Horizontal"
+                                      Spacing="{StaticResource Spacing.Small}" />
                         </ItemsPanelTemplate>
                       </ItemsControl.ItemsPanel>
                       <ItemsControl.ItemTemplate>
@@ -135,14 +155,15 @@
                           <ItemsControl ItemsSource="{Binding Items}">
                             <ItemsControl.ItemsPanel>
                               <ItemsPanelTemplate>
-                                <StackPanel Orientation="Vertical" Spacing="6" />
+                                <StackPanel Orientation="Vertical" Spacing="{StaticResource Spacing.Small}" />
                               </ItemsPanelTemplate>
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                               <DataTemplate x:DataType="vm:MenuItemVm">
-                                <Button Theme="{DynamicResource TransparentButton}"
-                                        MinHeight="48"
-                                        Padding="8,6"
+                                <Button Classes="launcher-tile"
+                                        MinHeight="36"
+                                        Padding="4,2"
+                                        CornerRadius="5"
                                         HorizontalAlignment="Stretch"
                                         HorizontalContentAlignment="Left"
                                         ToolTip.Tip="{Binding Name}"
@@ -150,12 +171,13 @@
                                         IsEnabled="{Binding !IsDisabled}"
                                         Click="OnItemClick"
                                         PointerEntered="OnItemPointerEntered">
-                                  <Grid ColumnDefinitions="36,Auto" ColumnSpacing="10">
+                                  <Grid ColumnDefinitions="28,Auto"
+                                        ColumnSpacing="{StaticResource Spacing.Small}">
                                     <Border Grid.Column="0"
-                                            Width="36" Height="36"
+                                            Width="28" Height="28"
                                             Background="{DynamicResource ControlFillColorSecondaryBrush}"
-                                            CornerRadius="8">
-                                      <Image Width="28" Height="28"
+                                            CornerRadius="5">
+                                      <Image Width="22" Height="22"
                                              Source="{Binding Icon}"
                                              Stretch="Uniform"
                                              HorizontalAlignment="Center"
@@ -187,7 +209,7 @@
       <StackPanel IsVisible="{Binding ShowSplash}"
                   HorizontalAlignment="Center"
                   VerticalAlignment="Center"
-                  Spacing="12">
+                  Spacing="{StaticResource Spacing.Medium}">
         <Image Width="64" Height="64"
                Source="avares://TanMenu.Wpf/wwwroot/app-tile.png" />
         <ui:FAProgressRing Width="32" Height="32"
@@ -200,13 +222,15 @@
       <StackPanel IsVisible="{Binding ShowEmpty}"
                   HorizontalAlignment="Center"
                   VerticalAlignment="Center"
-                  Spacing="8">
+                  Spacing="{StaticResource Spacing.Small}">
         <TextBlock Text="{Binding EmptyTitleText}"
                    FontSize="28"
                    FontWeight="SemiBold"
                    FontFamily="{Binding TitleFontFamily}" />
         <TextBlock Text="{Binding EmptyHelpText}" MaxWidth="420" TextWrapping="Wrap" />
-        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+        <StackPanel Orientation="Horizontal"
+                    Spacing="{StaticResource Spacing.Small}"
+                    HorizontalAlignment="Center">
           <Button Classes="accent" Content="{Binding OpenOptionsText}" Click="OnOpenSettingsClick" />
           <Button Content="{Binding MenuRefreshText}" Click="OnRefreshClick" />
         </StackPanel>
@@ -215,7 +239,7 @@
       <StackPanel IsVisible="{Binding ShowNoMatches}"
                   HorizontalAlignment="Center"
                   VerticalAlignment="Center"
-                  Spacing="8">
+                  Spacing="{StaticResource Spacing.Small}">
         <TextBlock Text="{Binding NoMatchTitleText}"
                    FontSize="28"
                    FontWeight="SemiBold"
@@ -231,7 +255,7 @@
                     Message="{Binding ToastText}"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Bottom"
-                    Margin="24"
+                    Margin="{StaticResource Toast.Margin}"
                     PointerPressed="OnToastPressed" />
     </ctl:OverlayPanel>
   </Panel>

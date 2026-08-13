@@ -1,35 +1,28 @@
-## TanMenu 0.14.0
+## TanMenu 0.14.1
 
 ### 中文
 
-本版废弃此前尚未发布的 Windows 7 Aero 界面方案，重新按现代 Windows 应用的信息架构设计。
+本版继续完善 Windows 11 Fluent 主界面的观感与布局一致性。
 
-- 所有窗口和控件改用 FluentAvalonia 3 的 Fluent v2 主题与 WinUI 风格组件，不再包含 Aero 主题库、自绘标题栏或自定义控件模板。
-- 主窗口改为稳定、可调整大小的响应式窗口，并继续靠近任务栏启动。
-- 主窗口改为自适应 NavigationView；“应用”是主页面，“设置”固定在导航底部。搜索、主目录和刷新只属于应用页。
-- 应用分类改为横向排列的独立面板，分类内的应用按列自上而下排列；面板标题、数量标记和应用按钮获得更清晰的层级与交互反馈。
-- “每列个数”可在设置中调整，默认每列 10 个；窗口会根据导航状态和内容重新计算宽高，避免分类换行或切换页面后尺寸残留。
-- 独立的选项和关于窗口已删除。设置填满主窗口，使用单列可滚动卡片，修改后立即保存，不再有确定、取消、应用。
-- 阿里巴巴普惠体已随程序内置，不依赖客户机安装字体；应用按钮的悬停音效和点击音效可分别关闭。
-- 便携版与 MSIX 均由 .NET NativeAOT 编译，不携带托管运行时文件。
-- 修正便携版和 MSIX 打包脚本，移除已删除 Aero 库的许可证打包步骤。
+- 主窗口不再显示在任务栏，应用页和设置页隐藏可见滚动条；内容区域保持透明，让 Mica 材质贯穿主面板。
+- 搜索框移入标题栏且只在应用页显示；主目录和刷新改为导航按钮。
+- 应用分类面板统一高度、标题区尺寸、内外边距和右侧留白，提示条与内容面板遵循统一的 16 DIP 间距。
+- 应用按钮恢复 Fluent 默认样式并增加轻微悬停动效；按钮更加紧凑，同一列按该列最宽按钮统一宽度。
+- 展开/收起、应用、主目录、刷新使用同一个导航列表和模板，保证按钮、图标与交互区域严格对齐。
+- 修正关闭的提示条仍占用布局空间以及统一间距资源引起的启动异常。
 
 ### English
 
-This release retires the unreleased Windows 7 Aero design and rebuilds the interface around the
-modern Windows application model.
+This release further polishes the Windows 11 Fluent launcher and makes its layout consistently aligned.
 
-- Every window and control now uses FluentAvalonia 3's Fluent v2 theme and WinUI-style controls. The
-  Aero library, hand-drawn title bar, and custom control templates are gone.
-- The launcher is a stable, resizable responsive window that still opens close to the taskbar.
-- The main window now uses an adaptive NavigationView. Apps is the main page, Settings stays at the
-  bottom of the navigation pane, and search/Root/Refresh belong to the Apps page.
-- Launcher categories are distinct horizontal panels. Within each category, app commands fill each
-  column from top to bottom; clearer headers, item counts, and interaction feedback improve hierarchy.
-- Items per column is configurable and defaults to 10. The window recalculates its size for content
-  and navigation state so groups do not wrap and page switches do not leave stale dimensions.
-- The separate Options and About windows are removed. Settings fill the main window, use one
-  scrollable column of cards, and save immediately without OK, Cancel, or Apply.
-- Alibaba PuHuiTi is embedded in the app, and hover/click sounds can be controlled independently.
-- Portable and MSIX packages are compiled with .NET NativeAOT and contain no managed runtime payload.
-- Portable and MSIX packaging no longer reference the removed Aero library license.
+- The main window no longer appears on the taskbar, visible page scrollbars are hidden, and transparent
+  content surfaces allow the Mica backdrop to continue through the main panel.
+- Search now lives in the title bar and appears only on the Apps page; Root and Refresh are navigation actions.
+- Category cards now share consistent height, header sizing, inner/outer insets, and right padding. Notices
+  and content use a unified 16-DIP spacing rule.
+- App buttons keep the default Fluent style with a subtle hover animation, use a more compact size, and
+  match the widest button within each individual column.
+- Expand/collapse, Apps, Root, and Refresh now use one navigation list and one item template, keeping their
+  button surfaces, icons, and hit targets aligned.
+- Closed notices no longer reserve layout space, and a startup crash caused by a mistyped spacing resource
+  has been fixed.
