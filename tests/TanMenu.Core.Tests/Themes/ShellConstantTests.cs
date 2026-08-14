@@ -123,12 +123,13 @@ public class ShellConstantTests
     }
 
     [Fact]
-    public void MinWindowHeight_MatchesThePlacementFloor()
+    public void MinWindowHeight_IsEnforcedByPlacementWithoutNativeConstraint()
     {
         var main = XDocument.Load(Path.Combine(WpfRoot, "MainWindow.axaml")).Root!;
         var host = File.ReadAllText(Path.Combine(WpfRoot, "Services", "WindowHost.cs"));
         var fit = Regex.Match(host, @"MinWindowHeightDip\s*=\s*(?<v>[0-9.]+)\s*;")
             .Groups["v"].Value;
-        Assert.Equal((string?)main.Attribute("MinHeight"), fit);
+        Assert.Null(main.Attribute("MinHeight"));
+        Assert.Equal("600", fit);
     }
 }

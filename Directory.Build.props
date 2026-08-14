@@ -4,9 +4,8 @@
          each release so update-diffing / crash correlation / Store submissions have a real version
          instead of the default 1.0.0.0.
 
-         0.15.0 introduces the redesigned launcher and settings experience, with a persistent left
-         navigation rail, a compact one-click app surface, and continuous in-page settings navigation. -->
-    <Version>0.15.0</Version>
+         0.15.1 fixes cold-start visibility and window/layout regressions in the redesigned launcher. -->
+    <Version>0.15.1</Version>
     <!-- Keep the application SDK and vpk CLI on the same release. -->
     <VelopackVersion>1.2.0</VelopackVersion>
 

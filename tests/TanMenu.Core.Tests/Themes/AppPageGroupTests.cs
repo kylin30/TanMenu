@@ -135,6 +135,9 @@ public class AppPageGroupTests
 
         var groupPanel = styles.Single(e => (string?)e.Attribute("Selector") == "Border.hero-launcher-group-panel");
         Assert.Contains(groupPanel.Elements(), e =>
+            (string?)e.Attribute("Property") == "Margin" &&
+            (string?)e.Attribute("Value") == "0,0,0,4");
+        Assert.Contains(groupPanel.Elements(), e =>
             (string?)e.Attribute("Property") == "VerticalAlignment" &&
             (string?)e.Attribute("Value") == "Stretch");
         Assert.Contains(groupPanel.Elements(), e =>
@@ -183,12 +186,18 @@ public class AppPageGroupTests
         Assert.Null((string?)content.Attribute("Width"));
         var workspace = Assert.Single(content.Elements(), e =>
             e.Name.LocalName == "ItemsControl" && (string?)e.Attribute("ItemsSource") == "{Binding DisplayGroups}");
-        Assert.Equal("16", (string?)workspace.Attribute("Margin"));
+        Assert.Equal("16,4,16,16", (string?)workspace.Attribute("Margin"));
 
         var noticeHost = Assert.Single(doc.Descendants(), e =>
             e.Name.LocalName == "StackPanel" && (string?)e.Attribute("DockPanel.Dock") == "Top");
-        Assert.Equal("16,4,16,0", (string?)noticeHost.Attribute("Margin"));
+        Assert.Equal("NoticeHost", (string?)noticeHost.Attribute(XamlName));
+        Assert.Equal("16,4,16,12", (string?)noticeHost.Attribute("Margin"));
+        Assert.Equal("False", (string?)noticeHost.Attribute("IsVisible"));
         Assert.Equal(2, noticeHost.Elements().Count(e => e.Name.LocalName == "FAInfoBar"));
+
+        var codeBehind = File.ReadAllText(Path.Combine(WpfRoot, "Views", "AppPage.axaml.cs"));
+        Assert.Contains("UpdateNoticeHostVisibility()", codeBehind);
+        Assert.Contains("NoticeHost.IsVisible = PinNotice.IsOpen || _viewModel.ShowUpdateNotice", codeBehind);
     }
 
     [Fact]

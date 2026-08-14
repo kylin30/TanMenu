@@ -55,8 +55,21 @@ public class Win11SettingsPageTests
 
         var app = File.ReadAllText(Path.Combine(WpfRoot, "App.axaml.cs"));
         Assert.Contains("StartSingleInstanceActivationListener()", app);
-        Assert.True(app.IndexOf("RaiseLauncherPageRequested()", StringComparison.Ordinal) <
-                    app.IndexOf("ShowAndActivate()", StringComparison.Ordinal));
+        var secondInstance = app[(app.IndexOf("internal static void ActivateFromSecondInstance()", StringComparison.Ordinal))..];
+        secondInstance = secondInstance[..secondInstance.IndexOf("private void StopSingleInstanceActivationListener()", StringComparison.Ordinal)];
+        Assert.True(secondInstance.IndexOf("RaiseLauncherPageRequested()", StringComparison.Ordinal) <
+                    secondInstance.IndexOf("ShowAndActivate()", StringComparison.Ordinal));
+        var coldStart = app[(app.IndexOf("private void ShowLauncherWindow()", StringComparison.Ordinal))..];
+        coldStart = coldStart[..coldStart.IndexOf("private void StartSingleInstanceActivationListener()", StringComparison.Ordinal)];
+        Assert.Contains("window.Show()", coldStart);
+        Assert.Contains("host.ShowAndActivate()", coldStart);
+        Assert.Contains("host.SuppressHide(true)", coldStart);
+        Assert.Contains("ReleaseColdStartHideSuppressionAsync(host)", coldStart);
+        Assert.True(coldStart.IndexOf("window.Show()", StringComparison.Ordinal) <
+                    coldStart.IndexOf("host.ShowAndActivate()", StringComparison.Ordinal));
+        Assert.DoesNotContain("RaiseLauncherShown()", coldStart);
+        Assert.Contains("Task.Delay(TimeSpan.FromSeconds(1))", app);
+        Assert.Contains("host.SuppressHide(false)", app);
 
         var window = File.ReadAllText(Path.Combine(WpfRoot, "MainWindow.axaml.cs"));
         Assert.Contains("_events.LauncherPageRequested += ShowLauncherPage", window);
@@ -88,7 +101,7 @@ public class Win11SettingsPageTests
         Assert.Equal("1180", (string?)main.Attribute("Width"));
         Assert.Equal("760", (string?)main.Attribute("Height"));
         Assert.Equal("840", (string?)main.Attribute("MinWidth"));
-        Assert.Equal("600", (string?)main.Attribute("MinHeight"));
+        Assert.Null(main.Attribute("MinHeight"));
 
         var code = File.ReadAllText(Path.Combine(WpfRoot, "MainWindow.axaml.cs"));
         Assert.Contains("QueueLauncherFit", code);

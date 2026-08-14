@@ -437,6 +437,9 @@
   </Style>
   <!-- Equal-height category panels laid out side-by-side for an all-app, no-scroll launcher. -->
   <Style Selector="Border.hero-launcher-group-panel">
+    <!-- Reserve the four-DIP paint extent of Hero.SurfaceShadow inside the item container. Without
+         this, the panel bounds fit but the bottom shadow is clipped by the ItemsControl viewport. -->
+    <Setter Property="Margin" Value="0,0,0,4" />
     <Setter Property="Padding" Value="16" />
     <Setter Property="Background" Value="{DynamicResource Hero.SurfaceBrush}" />
     <Setter Property="BorderBrush" Value="Transparent" />

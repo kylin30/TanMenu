@@ -9,8 +9,10 @@
   <Panel x:Name="Root" Background="Transparent">
     <ctl:OverlayPanel>
       <DockPanel>
-        <StackPanel DockPanel.Dock="Top"
-                    Margin="16,4,16,0"
+        <StackPanel x:Name="NoticeHost"
+                    DockPanel.Dock="Top"
+                    Margin="16,4,16,12"
+                    IsVisible="False"
                     Spacing="12">
           <ui:FAInfoBar x:Name="PinNotice"
                         Classes="hero-alert"
@@ -26,7 +28,8 @@
             </ui:FAInfoBar.ActionButton>
           </ui:FAInfoBar>
 
-          <ui:FAInfoBar Classes="hero-alert"
+          <ui:FAInfoBar x:Name="UpdateNotice"
+                        Classes="hero-alert"
                         IsOpen="{Binding ShowUpdateNotice}"
                         IsVisible="{Binding ShowUpdateNotice}"
                         IsClosable="False"
@@ -53,7 +56,7 @@
                       HorizontalScrollBarVisibility="Disabled"
                       VerticalScrollBarVisibility="Disabled">
           <Grid>
-            <ItemsControl Margin="16"
+            <ItemsControl Margin="16,4,16,16"
                           ItemsSource="{Binding DisplayGroups}"
                           IsVisible="{Binding HasVisibleItems}">
                 <ItemsControl.ItemsPanel>

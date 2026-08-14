@@ -211,6 +211,14 @@ public partial class App : Application
         host.Attach(window);
         host.RestorePlacement();
 
+        // The portable stable launcher and Update.exe can remain foreground briefly while handing
+        // control to the real app. With auto-hide enabled that produces a genuine Deactivated during
+        // the first Show(), before the real window has had a stable chance to paint. Hold the existing
+        // hide-suppression gate across that short hand-off; the delayed release below is intentionally
+        // not conditioned on IsActive because Windows may deny a background foreground request, and
+        // invisibility is worse than leaving the requested launcher visible behind another window.
+        host.SuppressHide(true);
+
         // The HWND-dependent wiring (message hook, global hotkey, tray) needs a realized window, so it
         // runs from Opened — the Avalonia analogue of WPF's SourceInitialized.
         window.Opened += OnLauncherOpened;
@@ -222,18 +230,31 @@ public partial class App : Application
 
         StartSingleInstanceActivationListener();
 
-        // A cold start must produce the same LauncherShown a tray or hotkey summon does: the search
-        // box takes focus from it, and so does AppPage's taskbar-pin InfoBar refresh. Guarded like the
-        // tray wiring above — losing the pin notice or the initial focus is bad but survivable, and
-        // must not turn into StartupAsync's fatal-error-and-exit path.
+        // Use the same reveal path as a second-instance activation. A Velopack portable launch goes
+        // stable stub -> Update.exe -> current\TanMenu.Wpf.exe; when auto-hide-on-blur is enabled the
+        // hand-off can deactivate the window during Show() and Hide() it before the first frame is
+        // useful. ShowAndActivate deliberately re-shows an already-hidden window, restores placement,
+        // requests the foreground HWND, focuses it, and finally raises LauncherShown. Calling only
+        // RaiseLauncherShown here left the first process alive in the tray but invisible, which made a
+        // second launch appear to be required.
         try
         {
-            Services.GetRequiredService<AppEvents>().RaiseLauncherShown();
+            host.ShowAndActivate();
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "LauncherShown handlers faulted on cold start");
+            Log.Error(ex, "Failed to reveal launcher on cold start");
         }
+
+        _ = ReleaseColdStartHideSuppressionAsync(host);
+    }
+
+    private static async Task ReleaseColdStartHideSuppressionAsync(IWindowHost host)
+    {
+        // Long enough for stable launcher -> updater -> current executable process hand-off to end,
+        // but short enough that auto-hide behaves normally immediately after startup settles.
+        await Task.Delay(TimeSpan.FromSeconds(1)).ConfigureAwait(false);
+        Dispatcher.UIThread.Post(() => host.SuppressHide(false), DispatcherPriority.Background);
     }
 
     /// <summary>Wait for second-process activation independently of the main window's visibility.

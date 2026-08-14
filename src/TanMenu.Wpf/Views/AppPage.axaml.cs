@@ -72,6 +72,7 @@ public partial class AppPage : UserControl, IDisposable
         PinNotice.PropertyChanged += OnPinNoticePropertyChanged;
         PinNotice.CloseButtonClick += OnPinNoticeDismissed;
         _viewModel.PropertyChanged += OnViewModelPropertyChangedForNotice;
+        UpdateNoticeHostVisibility();
         _ = RefreshPinNoticeAsync();
     }
 
@@ -98,6 +99,7 @@ public partial class AppPage : UserControl, IDisposable
             // in DockPanel layout. Collapse the control itself so a closed notice cannot add a second
             // page inset between the visible notice and the category cards.
             PinNotice.IsVisible = PinNotice.IsOpen;
+            UpdateNoticeHostVisibility();
             NoticeVisibilityChanged?.Invoke();
         }
     }
@@ -105,8 +107,19 @@ public partial class AppPage : UserControl, IDisposable
     private void OnViewModelPropertyChangedForNotice(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(LauncherViewModel.ShowUpdateNotice))
+        {
+            UpdateNoticeHostVisibility();
             NoticeVisibilityChanged?.Invoke();
+        }
     }
+
+    /// <summary>
+    /// Remove the notice row from layout when neither banner is open. Keeping an empty docked
+    /// StackPanel visible leaves its vertical margin behind, which doubles the intended gap below the
+    /// title-bar search field and steals the same space from the category panels at the bottom.
+    /// </summary>
+    private void UpdateNoticeHostVisibility() =>
+        NoticeHost.IsVisible = PinNotice.IsOpen || _viewModel.ShowUpdateNotice;
 
     /// <summary>Kick off the menu build and return the SAME memoized Task every caller of
     /// <c>LauncherViewModel.InitializeAsync</c> shares. Deliberately NOT done in the constructor: this
