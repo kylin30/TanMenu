@@ -143,14 +143,14 @@ public static partial class Program
         var transparentClicks = ReadCount(clicksPath);
         var shot = ContextShot();
         SaveShot(outDir, "collapsed.png", shot.X, shot.Y, shot.Width, shot.Height, out var collapsedMean);
-        SaveFullDesktop(outDir, "desktop-collapsed.png");
+        SaveFullDesktop(outDir, "desktop-test-collapsed.png");
         if (!Move(solid.Item1, solid.Item2))
             return SendInputFailed;
         Thread.Sleep(500);
         var expandedWidth = Dispatcher.UIThread.Invoke(() => window.PreviewCapsuleWidth);
         var afterHover = SampleFocus("afterHover");
         SaveShot(outDir, "expanded.png", shot.X, shot.Y, shot.Width, shot.Height, out var expandedMean);
-        SaveFullDesktop(outDir, "desktop-expanded.png");
+        SaveFullDesktop(outDir, "desktop-test-expanded.png");
         var clicksBeforeSolid = ReadCount(clicksPath);
         if (!MoveAndClick(solid.Item1, solid.Item2))
             return SendInputFailed;
@@ -163,8 +163,8 @@ public static partial class Program
         var retractedWidth = Dispatcher.UIThread.Invoke(() => window.PreviewCapsuleWidth);
         var afterLeave = SampleFocus("afterLeave");
         var pointOwner = WindowFromPoint(new NativePoint { X = transparent.Item1, Y = transparent.Item2 });
-        var placement = Dispatcher.UIThread.Invoke(() => RunProductHost(outDir));
         var focus = new[] { ProbeRun.FocusBeforeShow, afterShow, afterHover, afterSolidClick, afterLeave };
+        var placement = CaptureHostAfterProbe(outDir, window, placed.Item3, placed.Item1, placed.Item2);
 
         var outcome = new
         {
@@ -192,6 +192,9 @@ public static partial class Program
             retractedWidth,
             collapsedMean,
             expandedMean,
+            focusScope = "Five samples cover only the test-position probe, from before its Show through leave. The later product host is not in this sequence.",
+            testCaptures = "desktop-test-collapsed.png and desktop-test-expanded.png show the manually placed probe, not the product host.",
+            hostCaptures = "desktop-host-collapsed.png and desktop-host-expanded.png are taken after that probe is gone and the product host has been presented.",
             focus,
             underlayHwnd = ProbeRun.UnderlayHwnd,
             underlayPid,
@@ -231,9 +234,16 @@ public static partial class Program
             return FocusFailed;
         }
 
-        if (placement is ProductPlacement { Shown: true, Closed: false })
+        if (placement is not ProductPlacement hostShot
+            || !hostShot.Shown
+            || !hostShot.WindowVisible
+            || hostShot.MatchesWorkArea != true
+            || !hostShot.CollapsedCapsuleDark
+            || hostShot.OldProbeStillVisible
+            || hostShot.ExpandedWidth < 200
+            || !hostShot.Closed)
         {
-            Console.Error.WriteLine("product host window remained after the preview switch was turned off");
+            Console.Error.WriteLine("product host was not presented at its work-area placement before close");
             return OverlayMissing;
         }
 
@@ -241,8 +251,12 @@ public static partial class Program
         return 0;
     }
 
-    private static ProductPlacement RunProductHost(string outDir)
+    private static ProductPlacement CaptureHostAfterProbe(string outDir, IslandPreviewWindow probe, IntPtr probeHwnd, int probeX, int probeY)
     {
+        PostUi(probe.Close);
+        var probeGone = WaitUntil(() => probeHwnd == IntPtr.Zero || !IsWindow(probeHwnd), TimeSpan.FromSeconds(2));
+        YieldUi(DispatcherPriority.Render);
+
         var root = Path.Combine(Path.GetTempPath(), "TanMenuProbeHost_" + Path.GetRandomFileName());
         var paths = new AppDataPaths(Path.Combine(root, "Local"), Path.Combine(root, "Cache"));
         var config = new ConfigService(paths, NullLogger<ConfigService>.Instance);
@@ -251,46 +265,177 @@ public static partial class Program
         var draft = SettingsDraft.From(config, new RecoveryAutoStart());
         draft.Working.General.ShowIslandPreview = true;
         var host = new IslandPreviewHost(config, events, draft);
-        host.Show();
-        var window = host.CurrentWindow;
-        if (window is null)
-        {
-            host.Dispose();
-            return new ProductPlacement { Shown = false, TaskbarStatus = "host-did-not-show" };
-        }
+        PostUi(host.Show);
+        YieldUi(DispatcherPriority.Loaded);
+        YieldUi(DispatcherPriority.Render);
+        Thread.Sleep(300);
 
-        var handle = window.TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
-        var x = window.Position.X;
-        var y = window.Position.Y;
+        var window = ReadHost(host);
+        var handle = window.Hwnd;
+        var rect = new RectNative();
+        var hasRect = handle != IntPtr.Zero && GetWindowRect(handle, ref rect);
         var style = handle == IntPtr.Zero ? 0 : GetWindowLongW(handle, -20);
         const int toolWindow = 0x00000080;
         const int appWindow = 0x00040000;
-        SaveFullDesktop(outDir, "desktop-placed.png");
+        var capsule = hasRect ? SampleMean(rect.Left + 160, rect.Bottom - 6, 8, 4) : (0, 0, 0);
+        var oldOnly = SampleMean(probeX + 312, probeY + 8, 8, 4);
         var tray = FindWindowW("Shell_TrayWnd", null);
         var result = new ProductPlacement
         {
-            Shown = true,
-            X = x,
-            Y = y,
+            Shown = window.Exists,
+            ProbeGone = probeGone,
+            AvaloniaVisible = window.Visible,
+            WindowVisible = handle != IntPtr.Zero && IsWindowVisible(handle),
+            Hwnd = handle.ToInt64(),
+            X = window.X,
+            Y = window.Y,
+            RectLeft = rect.Left,
+            RectTop = rect.Top,
+            RectRight = rect.Right,
+            RectBottom = rect.Bottom,
+            ProbeX = probeX,
+            ProbeY = probeY,
+            CollapsedWidth = window.CapsuleWidth,
+            CapsuleRed = capsule.Item1,
+            CapsuleGreen = capsule.Item2,
+            CapsuleBlue = capsule.Item3,
+            OldProbeRed = oldOnly.Item1,
+            OldProbeGreen = oldOnly.Item2,
+            OldProbeBlue = oldOnly.Item3,
             ExtendedStyle = style,
             ToolWindow = (style & toolWindow) != 0,
             AppWindow = (style & appWindow) != 0,
             TaskbarStatus = tray == IntPtr.Zero ? "no-shell-tray-window" : "tray-present",
+            CollapsedCapture = "desktop-host-collapsed.png",
+            ExpandedCapture = "desktop-host-expanded.png",
         };
+        result.CollapsedCapsuleDark = Mean(capsule) < 80;
+        result.OldProbeStillVisible = Mean(oldOnly) < 80;
         if (tray != IntPtr.Zero && TryReadWorkArea(out var area))
         {
             result.ExpectedX = area.Left + ((area.Right - area.Left) - 320) / 2;
             result.ExpectedY = area.Bottom - 12 - 72;
-            result.MatchesWorkArea = Math.Abs(x - result.ExpectedX) <= 8 && Math.Abs(y - result.ExpectedY) <= 8;
+            result.MatchesWorkArea = hasRect
+                && Math.Abs(rect.Left - result.ExpectedX) <= 8
+                && Math.Abs(rect.Top - result.ExpectedY) <= 8
+                && rect.Right - rect.Left == 320
+                && rect.Bottom - rect.Top == 72;
         }
 
-        draft.Working.General.ShowIslandPreview = false;
-        events.RaiseSettingsChanged();
-        var gone = handle == IntPtr.Zero || !IsWindow(handle);
-        host.Dispose();
-        result.Closed = gone && (handle == IntPtr.Zero || !IsWindow(handle));
+        if (result.WindowVisible)
+        {
+            SaveFullDesktop(outDir, result.CollapsedCapture);
+            if (Move(rect.Left + 160, rect.Bottom - 16))
+            {
+                Thread.Sleep(500);
+                YieldUi(DispatcherPriority.Render);
+                Thread.Sleep(100);
+                var expanded = ReadHost(host);
+                result.ExpandedWidth = expanded.CapsuleWidth;
+                SaveFullDesktop(outDir, result.ExpandedCapture);
+            }
+        }
+
+        PostUi(() =>
+        {
+            draft.Working.General.ShowIslandPreview = false;
+            events.RaiseSettingsChanged();
+            host.Dispose();
+        });
+        result.Closed = handle == IntPtr.Zero || !IsWindow(handle);
         return result;
     }
+
+    private readonly record struct HostRead(bool Exists, bool Visible, IntPtr Hwnd, int X, int Y, double CapsuleWidth);
+
+    private static HostRead ReadHost(IslandPreviewHost host)
+    {
+        HostRead read = default;
+        PostUi(() =>
+        {
+            var window = host.CurrentWindow;
+            if (window is null)
+                return;
+            read = new HostRead(
+                true,
+                window.IsVisible,
+                window.TryGetPlatformHandle()?.Handle ?? IntPtr.Zero,
+                window.Position.X,
+                window.Position.Y,
+                window.PreviewCapsuleWidth);
+        });
+        return read;
+    }
+
+    private static void PostUi(Action action)
+    {
+        var done = new TaskCompletionSource();
+        Dispatcher.UIThread.Post(() =>
+        {
+            try
+            {
+                action();
+                done.TrySetResult();
+            }
+            catch (Exception ex)
+            {
+                done.TrySetException(ex);
+            }
+        });
+        done.Task.GetAwaiter().GetResult();
+    }
+
+    private static void YieldUi(DispatcherPriority priority)
+    {
+        var done = new TaskCompletionSource();
+        Dispatcher.UIThread.Post(() => done.TrySetResult(), priority);
+        if (!done.Task.Wait(TimeSpan.FromSeconds(3)))
+            Console.Error.WriteLine("UI did not reach " + priority);
+    }
+
+    private static bool WaitUntil(Func<bool> condition, TimeSpan timeout)
+    {
+        var end = DateTime.UtcNow + timeout;
+        while (DateTime.UtcNow < end)
+        {
+            if (condition())
+                return true;
+            Thread.Sleep(30);
+        }
+
+        return condition();
+    }
+
+    private static (int R, int G, int B) SampleMean(int x, int y, int width, int height)
+    {
+        try
+        {
+        using var bitmap = new System.Drawing.Bitmap(width, height);
+        using (var graphics = System.Drawing.Graphics.FromImage(bitmap))
+            graphics.CopyFromScreen(x, y, 0, 0, new System.Drawing.Size(width, height));
+        long r = 0, g = 0, b = 0;
+        var count = width * height;
+        for (var py = 0; py < height; py++)
+        {
+            for (var px = 0; px < width; px++)
+            {
+                var color = bitmap.GetPixel(px, py);
+                r += color.R;
+                g += color.G;
+                b += color.B;
+            }
+        }
+
+        return ((int)(r / count), (int)(g / count), (int)(b / count));
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine("pixel sample failed: " + ex.Message);
+            return (0, 0, 0);
+        }
+    }
+
+    private static int Mean((int R, int G, int B) color) => (color.R + color.G + color.B) / 3;
 
     private static bool TryReadWorkArea(out RectNative area)
     {
@@ -583,11 +728,33 @@ public static partial class Program
     {
         public bool Shown { get; set; }
         public bool Closed { get; set; }
+        public bool ProbeGone { get; set; }
+        public bool AvaloniaVisible { get; set; }
+        public bool WindowVisible { get; set; }
+        public long Hwnd { get; set; }
         public int X { get; set; }
         public int Y { get; set; }
+        public int RectLeft { get; set; }
+        public int RectTop { get; set; }
+        public int RectRight { get; set; }
+        public int RectBottom { get; set; }
+        public int ProbeX { get; set; }
+        public int ProbeY { get; set; }
         public int ExpectedX { get; set; }
         public int ExpectedY { get; set; }
         public bool? MatchesWorkArea { get; set; }
+        public double CollapsedWidth { get; set; }
+        public double ExpandedWidth { get; set; }
+        public int CapsuleRed { get; set; }
+        public int CapsuleGreen { get; set; }
+        public int CapsuleBlue { get; set; }
+        public int OldProbeRed { get; set; }
+        public int OldProbeGreen { get; set; }
+        public int OldProbeBlue { get; set; }
+        public bool CollapsedCapsuleDark { get; set; }
+        public bool OldProbeStillVisible { get; set; }
+        public string CollapsedCapture { get; set; } = "";
+        public string ExpandedCapture { get; set; } = "";
         public string TaskbarStatus { get; set; } = "";
         public int ExtendedStyle { get; set; }
         public bool ToolWindow { get; set; }
@@ -772,6 +939,14 @@ public static partial class Program
     [LibraryImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static partial bool IsWindow(IntPtr hWnd);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool IsWindowVisible(IntPtr hWnd);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool GetWindowRect(IntPtr hWnd, ref RectNative lpRect);
 
     [LibraryImport("user32.dll")]
     private static partial uint GetWindowThreadProcessId(IntPtr hWnd, out int lpdwProcessId);
