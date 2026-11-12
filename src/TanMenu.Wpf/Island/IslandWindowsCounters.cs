@@ -22,8 +22,7 @@ internal static partial class IslandWindowsCounters
         }
 
         var networkOk = false;
-        ulong bytesIn = 0;
-        ulong bytesOut = 0;
+        var nics = new List<IslandNicSample>();
         try
         {
             foreach (var nic in NetworkInterface.GetAllNetworkInterfaces())
@@ -31,8 +30,7 @@ internal static partial class IslandWindowsCounters
                 if (nic.NetworkInterfaceType == NetworkInterfaceType.Loopback || nic.OperationalStatus != OperationalStatus.Up)
                     continue;
                 var stats = nic.GetIPStatistics();
-                bytesIn += (ulong)Math.Max(0, stats.BytesReceived);
-                bytesOut += (ulong)Math.Max(0, stats.BytesSent);
+                nics.Add(new IslandNicSample(nic.Id, (ulong)Math.Max(0, stats.BytesReceived), (ulong)Math.Max(0, stats.BytesSent)));
             }
 
             networkOk = true;
@@ -40,9 +38,10 @@ internal static partial class IslandWindowsCounters
         catch (Exception ex)
         {
             Serilog.Log.Debug(ex, "读取网卡计数失败");
+            nics.Clear();
         }
 
-        return new IslandRawSample(cpuOk, (ulong)idle, (ulong)kernel, (ulong)user, memoryOk, used, networkOk, bytesIn, bytesOut);
+        return new IslandRawSample(cpuOk, (ulong)idle, (ulong)kernel, (ulong)user, memoryOk, used, networkOk, nics.ToArray());
     }
 
     public static bool ReducedMotion()

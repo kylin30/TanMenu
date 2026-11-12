@@ -22,16 +22,20 @@ public partial class IslandPreviewWindow : Window
 
     private readonly DispatcherTimer _leaveTimer;
     private readonly IslandRegionCoordinator _regions = new();
-    private readonly IslandStatusClock _status = new();
+    private readonly IslandSamplingSession _sampling = new();
+    private readonly IslandEffectGate _effects = new();
+    private readonly List<IslandSampleRecord> _samples = [];
+    private readonly object _sampleLock = new();
     private DoubleTransition? _progressTransition;
     private Timer? _sampler;
-    private long _sampledAt;
+    private bool? _cpuKnown;
+    private bool? _memoryKnown;
+    private bool? _networkKnown;
     private bool _expanded;
     private bool _hooksAttached;
     private bool _regionQueued;
     private bool _overlayVisible;
     private bool _reducedMotion;
-    private bool _pulseRunning;
     private double _seenScale = double.NaN;
     private IslandOutline _outline;
     private Win32Properties.CustomWindowStylesCallback? _styles;
@@ -60,8 +64,20 @@ public partial class IslandPreviewWindow : Window
         PointerEntered += OnShapePointerEntered;
         PointerExited += OnShapePointerExited;
         _outline = IslandTrapezoidGeometry.Layout(0, Width, Height);
-        ShapeProgressProperty.Changed.AddClassHandler<IslandPreviewWindow>((window, _) => window.OnProgressChanged());
         DrawOutline();
+    }
+
+    static IslandPreviewWindow()
+    {
+        IslandProgressRegistration.Ensure();
+    }
+
+    internal int OutlineBuilds { get; private set; }
+
+    internal IslandSampleRecord[] CopySamples()
+    {
+        lock (_sampleLock)
+            return _samples.ToArray();
     }
 
     public void SetReducedMotion(bool reduced) => _reducedMotion = reduced;
@@ -95,8 +111,7 @@ public partial class IslandPreviewWindow : Window
     public void StartSampling()
     {
         StopSampling();
-        _status.Start();
-        _sampledAt = Environment.TickCount64;
+        _sampling.Start();
         _sampler = new Timer(_ => SampleOnce(), null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
     }
 
@@ -104,8 +119,8 @@ public partial class IslandPreviewWindow : Window
     {
         _sampler?.Dispose();
         _sampler = null;
-        _status.Stop();
-        _pulseRunning = false;
+        _sampling.Stop();
+        _effects.CancelAll();
     }
 
     public void StopIdleClock() => _leaveTimer.Stop();
@@ -180,8 +195,9 @@ public partial class IslandPreviewWindow : Window
 
     private bool HitTestDip(double x, double y) => IslandTrapezoidGeometry.Contains(_outline, x, y);
 
-    private void OnProgressChanged()
+    internal void OnProgressChanged()
     {
+        OutlineBuilds++;
         DrawOutline();
         QueueRegion();
     }
@@ -215,21 +231,33 @@ public partial class IslandPreviewWindow : Window
 
     private void SampleOnce()
     {
-        var now = Environment.TickCount64;
-        var elapsed = Math.Max(0, now - _sampledAt) / 1000d;
-        _sampledAt = now;
-        var frame = _status.Tick(IslandWindowsCounters.Read(), elapsed);
-        if (frame is not { } status)
-            return;
-        Dispatcher.UIThread.Post(() => ApplyStatus(status));
+        try
+        {
+            if (!_sampling.TrySample(IslandWindowsCounters.Read, out var generation, out var frame))
+                return;
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (!_sampling.IsCurrent(generation))
+                    return;
+                ApplyStatus(generation, frame);
+            });
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Debug(ex, "灵动岛采样失败");
+        }
     }
 
-    private void ApplyStatus(IslandStatusFrame frame)
+    private void ApplyStatus(int generation, IslandStatusFrame frame)
     {
-        ApplySlot(CpuIcon, CpuText, frame.Cpu, animatePulse: true);
-        ApplySlot(null, MemoryText, frame.Memory, animatePulse: false);
+        if (!_sampling.IsCurrent(generation))
+            return;
+        var started = _effects.Begin(frame, _reducedMotion);
+        ApplySlot(CpuIcon, CpuText, frame.Cpu, ref _cpuKnown);
+        ApplySlot(null, MemoryText, frame.Memory, ref _memoryKnown);
         var memoryHeight = 2 + 8 * frame.Memory.Level;
-        MemoryFill.Background = new SolidColorBrush(frame.Memory.Known ? Color.Parse("#F5F5F5") : Color.Parse("#6A6A6E"));
+        if (_memoryKnown != frame.Memory.Known)
+            MemoryFill.Background = new SolidColorBrush(frame.Memory.Known ? Color.Parse("#F5F5F5") : Color.Parse("#6A6A6E"));
         if (frame.Memory.Known && frame.Memory.Fill && !_reducedMotion)
         {
             MemoryFill.Transitions = [new DoubleTransition { Property = Avalonia.Layout.Layoutable.HeightProperty, Duration = TimeSpan.FromMilliseconds(160) }];
@@ -241,33 +269,52 @@ public partial class IslandPreviewWindow : Window
             MemoryFill.Height = frame.Memory.Known ? memoryHeight : 2;
         }
 
-        ApplySlot(ReceiveIcon, NetworkText, frame.Network, animatePulse: false);
-        SendIcon.Fill = ReceiveIcon.Fill;
-        SendIcon.Opacity = ReceiveIcon.Opacity;
-        if (!_reducedMotion && !_pulseRunning && frame.Network.Receive)
-            Nudge(ReceiveIcon, 3);
-        if (!_reducedMotion && frame.Network.Send)
-            Nudge(SendIcon, -3);
+        ApplySlot(ReceiveIcon, NetworkText, frame.Network, ref _networkKnown);
+        if (ReceiveIcon.Fill != SendIcon.Fill)
+            SendIcon.Fill = ReceiveIcon.Fill;
+        if (started.Plan.StartCpuPulse)
+            _ = Pulse(CpuIcon, frame.Cpu.Level, started.Generation);
+        if (started.Plan.StartReceive)
+            Nudge(ReceiveIcon, 3, started.Generation, receive: true);
+        if (started.Plan.StartSend)
+            Nudge(SendIcon, -3, started.Generation, send: true);
+        Remember(generation, frame);
     }
 
-    private void ApplySlot(ShapePath? icon, TextBlock text, IslandSlotState slot, bool animatePulse)
+    private void Remember(int generation, IslandStatusFrame frame)
     {
-        text.Text = slot.Text;
-        text.Foreground = new SolidColorBrush(slot.Known ? Color.Parse("#F5F5F5") : Color.Parse("#6A6A6E"));
-        var brush = new SolidColorBrush(slot.Known ? Color.Parse("#F5F5F5") : Color.Parse("#6A6A6E"));
-        if (icon is not null)
+        lock (_sampleLock)
         {
-            icon.Fill = brush;
-            icon.Opacity = 1;
+            _samples.Add(new IslandSampleRecord(
+                _samples.Count + 1,
+                generation,
+                DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                frame.Cpu.Known,
+                frame.Cpu.Text,
+                frame.Cpu.Level,
+                frame.Memory.Known,
+                frame.Memory.Text,
+                frame.Network.Known,
+                frame.Network.Text));
         }
-
-        if (animatePulse && slot.Pulse && !_reducedMotion && !_pulseRunning)
-            _ = Pulse(icon!, slot.Level);
     }
 
-    private async Task Pulse(ShapePath icon, double strength)
+    private static void ApplySlot(ShapePath? icon, TextBlock text, IslandSlotState slot, ref bool? seenKnown)
     {
-        _pulseRunning = true;
+        if (text.Text != slot.Text)
+            text.Text = slot.Text;
+        if (seenKnown == slot.Known)
+            return;
+        seenKnown = slot.Known;
+        var brush = new SolidColorBrush(slot.Known ? Color.Parse("#F5F5F5") : Color.Parse("#6A6A6E"));
+        text.Foreground = brush;
+        if (icon is not null)
+            icon.Fill = brush;
+    }
+
+    private async Task Pulse(ShapePath icon, double strength, int generation)
+    {
+        var token = _effects.Token;
         try
         {
             var animation = new Animation
@@ -280,7 +327,7 @@ public partial class IslandPreviewWindow : Window
                     new KeyFrame { Cue = new Cue(1), Setters = { new Setter(OpacityProperty, 1d) } },
                 },
             };
-            await animation.RunAsync(icon);
+            await animation.RunAsync(icon, token);
         }
         catch (Exception ex)
         {
@@ -288,12 +335,13 @@ public partial class IslandPreviewWindow : Window
         }
         finally
         {
-            _pulseRunning = false;
+            _effects.Finish(generation, cpu: true, receive: false, send: false);
         }
     }
 
-    private static void Nudge(ShapePath icon, double dy)
+    private void Nudge(ShapePath icon, double dy, int generation, bool receive = false, bool send = false)
     {
+        var token = _effects.Token;
         var transform = new TranslateTransform();
         icon.RenderTransform = transform;
         var animation = new Animation
@@ -306,7 +354,8 @@ public partial class IslandPreviewWindow : Window
                 new KeyFrame { Cue = new Cue(1), Setters = { new Setter(TranslateTransform.YProperty, 0d) } },
             },
         };
-        _ = animation.RunAsync(transform);
+        _ = animation.RunAsync(transform, token).ContinueWith(_ =>
+            _effects.Finish(generation, cpu: false, receive, send));
     }
 
     private void OnScalingChanged(object? sender, EventArgs e) => QueueRegion();
@@ -344,5 +393,19 @@ public partial class IslandPreviewWindow : Window
         IslandWndProc.RemoveHooks(this, _styles, _hook);
         _styles = null;
         _hook = null;
+    }
+}
+
+internal static class IslandProgressRegistration
+{
+    private static int _registered;
+
+    public static int Count => Volatile.Read(ref _registered);
+
+    public static void Ensure()
+    {
+        if (Interlocked.CompareExchange(ref _registered, 1, 0) != 0)
+            return;
+        IslandPreviewWindow.ShapeProgressProperty.Changed.AddClassHandler<IslandPreviewWindow>((window, _) => window.OnProgressChanged());
     }
 }

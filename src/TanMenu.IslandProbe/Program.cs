@@ -251,7 +251,9 @@ public static partial class Program
             || !hostShot.ProbeGone
             || hostShot.OldProbeStillVisible
             || hostShot.ExpandedWidth < 200
-            || !hostShot.Closed)
+            || !hostShot.Closed
+            || hostShot.SampleNote != "real-counter-delta"
+            || !hostShot.ResumeShowsFreshBaseline)
         {
             Console.Error.WriteLine("product host was not presented at its work-area placement before close");
             return OverlayMissing;
@@ -334,12 +336,16 @@ public static partial class Program
                 && rect.Bottom - rect.Top == 72;
         }
 
+        result.Samples = WaitForRealSample(host, TimeSpan.FromSeconds(8), requireKnown: true);
+        result.SampleNote = result.Samples.Any(sample => sample.CpuKnown && sample.NetworkKnown)
+            ? "real-counter-delta"
+            : "no-valid-cpu-and-network-delta";
         if (result.WindowVisible)
         {
             SaveFullDesktop(outDir, result.CollapsedCapture);
             if (Move(rect.Left + 160, rect.Bottom - 16))
             {
-                Thread.Sleep(500);
+                Thread.Sleep(700);
                 YieldUi(DispatcherPriority.Render);
                 Thread.Sleep(100);
                 var expanded = ReadHost(host);
@@ -353,9 +359,53 @@ public static partial class Program
             draft.Working.General.ShowIslandPreview = false;
             events.RaiseSettingsChanged();
         });
-        result.Closed = WaitUntil(() => handle == IntPtr.Zero || !IsWindow(handle), TimeSpan.FromSeconds(2));
+        var hidden = WaitUntil(() => handle == IntPtr.Zero || !IsWindow(handle), TimeSpan.FromSeconds(2));
+        PostUi(() =>
+        {
+            draft.Working.General.ShowIslandPreview = true;
+            events.RaiseSettingsChanged();
+        });
+        result.ResumeSamples = WaitForRealSample(host, TimeSpan.FromSeconds(8), requireKnown: false);
+        result.ResumeShowsFreshBaseline = result.ResumeSamples.Count > 0
+            && !result.ResumeSamples[0].CpuKnown
+            && !result.ResumeSamples[0].NetworkKnown
+            && result.ResumeSamples.Any(sample => sample.CpuKnown && sample.NetworkKnown);
+
+        var resumed = ReadHost(host);
+        PostUi(() =>
+        {
+            draft.Working.General.ShowIslandPreview = false;
+            events.RaiseSettingsChanged();
+        });
+        result.Closed = WaitUntil(() => resumed.Hwnd == IntPtr.Zero || !IsWindow(resumed.Hwnd), TimeSpan.FromSeconds(2));
         PostUi(host.Dispose);
         return result;
+    }
+
+    private static IslandSampleRecord[] WaitForRealSample(IslandPreviewHost host, TimeSpan budget, bool requireKnown)
+    {
+        var end = DateTime.UtcNow + budget;
+        var latest = Array.Empty<IslandSampleRecord>();
+        while (DateTime.UtcNow < end)
+        {
+            latest = CopySamples(host);
+            var known = latest.Any(sample => sample.CpuKnown && sample.NetworkKnown);
+            var fresh = latest.Length > 0 && !latest[0].CpuKnown && !latest[0].NetworkKnown && known;
+            if (requireKnown && known)
+                return latest;
+            if (!requireKnown && fresh)
+                return latest;
+            Thread.Sleep(100);
+        }
+
+        return latest;
+    }
+
+    private static IslandSampleRecord[] CopySamples(IslandPreviewHost host)
+    {
+        IslandSampleRecord[] copy = [];
+        PostUi(() => copy = host.CurrentWindow?.CopySamples() ?? []);
+        return copy;
     }
 
     private readonly record struct HostRead(bool Exists, bool Visible, IntPtr Hwnd, int X, int Y, double CapsuleWidth);
@@ -768,6 +818,10 @@ public static partial class Program
         public string OldProbeSample { get; set; } = "";
         public string CollapsedCapture { get; set; } = "";
         public string ExpandedCapture { get; set; } = "";
+        public IslandSampleRecord[] Samples { get; set; } = [];
+        public IslandSampleRecord[] ResumeSamples { get; set; } = [];
+        public string SampleNote { get; set; } = "";
+        public bool ResumeShowsFreshBaseline { get; set; }
         public string TaskbarStatus { get; set; } = "";
         public int ExtendedStyle { get; set; }
         public bool ToolWindow { get; set; }
