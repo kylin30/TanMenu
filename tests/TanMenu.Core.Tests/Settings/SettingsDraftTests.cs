@@ -169,7 +169,7 @@ public class SettingsDraftTests
         wg.ThemeName = "SomethingElse";
         draft.Working.Folders.Clear();
 
-        // …and move every NAMED one, so the test also proves the thirteen do land.
+        // …and move every NAMED one, so the test also proves the fourteen do land.
         wg.Language = AppLanguage.EnUs;
         wg.Appearance = AppAppearance.Dark;
         wg.FontFamily = "Consolas";
@@ -181,12 +181,13 @@ public class SettingsDraftTests
         wg.GlobalHotkeyEnabled = true;
         wg.GlobalHotkey = "Ctrl+Alt+T";
         wg.ShowDefaultTools = false;
+        wg.ShowIslandPreview = true;
         wg.DefaultTools[0].Show = false;
         draft.Working.RootFolder = @"C:\Draft\Root";
 
         draft.CopyOnto(live);
 
-        // The thirteen.
+        // The fourteen.
         Assert.Equal(AppLanguage.EnUs, live.General.Language);
         Assert.Equal(AppAppearance.Dark, live.General.Appearance);
         Assert.Equal("Consolas", live.General.FontFamily);
@@ -198,6 +199,7 @@ public class SettingsDraftTests
         Assert.True(live.General.GlobalHotkeyEnabled);
         Assert.Equal("Ctrl+Alt+T", live.General.GlobalHotkey);
         Assert.False(live.General.ShowDefaultTools);
+        Assert.True(live.General.ShowIslandPreview);
         Assert.False(live.General.DefaultTools[0].Show);
         Assert.Equal(@"C:\Draft\Root", live.RootFolder);
 
@@ -263,6 +265,7 @@ public class SettingsDraftTests
         live.General.GlobalHotkey = "Ctrl+Space";
         live.General.HoverSoundEnabled = true;
         live.General.ClickSoundEnabled = true;
+        live.General.ShowIslandPreview = false;
         live.General.DefaultTools[0].Show = true;
 
         var draft = SettingsDraft.From(config, new FakeAutoStart());
@@ -272,6 +275,7 @@ public class SettingsDraftTests
         draft.Working.General.GlobalHotkey = "";
         draft.Working.General.HoverSoundEnabled = false;
         draft.Working.General.ClickSoundEnabled = false;
+        draft.Working.General.ShowIslandPreview = true;
         draft.Working.General.DefaultTools[0].Show = false;
 
         var undo = draft.CopyOnto(live);
@@ -286,6 +290,7 @@ public class SettingsDraftTests
         Assert.Equal("Ctrl+Space", live.General.GlobalHotkey);
         Assert.True(live.General.HoverSoundEnabled);
         Assert.True(live.General.ClickSoundEnabled);
+        Assert.False(live.General.ShowIslandPreview);
         Assert.True(live.General.DefaultTools[0].Show);
 
         // The draft is untouched by the undo — 应用 stays enabled and the user can retry.

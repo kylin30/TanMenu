@@ -26,6 +26,17 @@
       </Grid>
     </Border>
 
+    <Border Classes="hero-setting-card">
+      <Grid ColumnDefinitions="36,*,Auto" ColumnSpacing="12">
+        <Border Classes="hero-setting-icon"><ui:FASymbolIcon Symbol="Highlight" FontSize="16" /></Border>
+        <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+          <TextBlock x:Name="IslandPreviewLabel" Classes="hero-setting-label" />
+          <TextBlock x:Name="IslandPreviewDescription" Classes="hero-setting-description" />
+        </StackPanel>
+        <ToggleSwitch x:Name="IslandPreviewToggle" Grid.Column="2" Classes="hero-switch" VerticalAlignment="Center" IsCheckedChanged="OnIslandPreviewChanged" />
+      </Grid>
+    </Border>
+
     <Border Classes="hero-setting-group">
       <StackPanel>
         <Grid Margin="16,12" ColumnDefinitions="36,*,Auto" ColumnSpacing="12">

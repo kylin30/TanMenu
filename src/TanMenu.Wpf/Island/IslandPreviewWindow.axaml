@@ -1,0 +1,44 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="TanMenu.Wpf.Island.IslandPreviewWindow"
+        Title=""
+        Width="320"
+        Height="72"
+        MinWidth="320"
+        MaxWidth="320"
+        MinHeight="72"
+        MaxHeight="72"
+        CanResize="False"
+        WindowStartupLocation="Manual"
+        SizeToContent="Manual"
+        WindowDecorations="None"
+        ShowInTaskbar="False"
+        ShowActivated="False"
+        Topmost="True"
+        Focusable="False"
+        Background="Transparent"
+        TransparencyLevelHint="Transparent"
+        TransparencyBackgroundFallback="Transparent">
+  <Panel Background="Transparent">
+    <Border x:Name="Capsule"
+            Width="120"
+            Height="32"
+            CornerRadius="16"
+            Background="#18181B"
+            BorderBrush="#28282C"
+            BorderThickness="1"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Bottom"
+            PointerEntered="OnCapsulePointerEntered"
+            PointerExited="OnCapsulePointerExited">
+      <StackPanel Orientation="Horizontal"
+                  HorizontalAlignment="Center"
+                  VerticalAlignment="Center"
+                  Spacing="6"
+                  IsHitTestVisible="False">
+        <Ellipse Width="6" Height="6" Fill="#A1A1AA" />
+        <Ellipse Width="6" Height="6" Fill="#A1A1AA" />
+      </StackPanel>
+    </Border>
+  </Panel>
+</Window>

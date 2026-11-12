@@ -50,6 +50,11 @@ public class GeneralConfig
     /// <see cref="AutoClose"/>: an ordinary app window does not float over everything.</summary>
     public bool TopMost { get; set; } = false;
 
+    /// <summary>Show the separate Dynamic Island preview. Default off, including when an older
+    /// config.json has no <c>showIslandPreview</c> key. Turning it off removes that overlay and does
+    /// not exit the launcher.</summary>
+    public bool ShowIslandPreview { get; set; } = false;
+
     /// <summary>Play the bundled hover sound when the pointer enters an enabled launcher button.
     /// Default ON to preserve the behaviour of existing installations whose config predates this
     /// setting.</summary>
