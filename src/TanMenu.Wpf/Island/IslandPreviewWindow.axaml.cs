@@ -205,9 +205,10 @@ public partial class IslandPreviewWindow : Window
         Slots.Width = _outline.BottomWidth;
         Slots.Height = _outline.Height;
         Slots.Margin = new Thickness(0, offsetY, 0, 0);
-        CpuText.Opacity = ShapeProgress;
-        MemoryText.Opacity = ShapeProgress;
-        NetworkText.Opacity = ShapeProgress;
+        var showValues = ShapeProgress >= 0.65;
+        CpuText.IsVisible = showValues;
+        MemoryText.IsVisible = showValues;
+        NetworkText.IsVisible = showValues;
     }
 
     private void SampleOnce()

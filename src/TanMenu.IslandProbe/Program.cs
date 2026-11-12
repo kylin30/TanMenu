@@ -131,7 +131,7 @@ public static partial class Program
         var collapsedShape = IslandTrapezoidGeometry.Layout(0, 320, 72);
         var expandedShape = IslandTrapezoidGeometry.Layout(1, 320, 72);
         var transparent = (placed.Item1 + (int)Math.Round(collapsedShape.ConcaveCutout.X), placed.Item2 + (int)Math.Round(collapsedShape.ConcaveCutout.Y));
-        var solid = (placed.Item1 + (int)Math.Round(collapsedShape.Solid.X), placed.Item2 + (int)Math.Round(collapsedShape.Solid.Y));
+        var solid = (placed.Item1 + 160, placed.Item2 + 56);
         var topCutout = (placed.Item1 + (int)Math.Round(expandedShape.TopCutout.X), placed.Item2 + (int)Math.Round(expandedShape.TopCutout.Y));
         var outside = (placed.Item1 - 40, placed.Item2 - 40);
         var initialWidth = Dispatcher.UIThread.Invoke(() => window.PreviewCapsuleWidth);
