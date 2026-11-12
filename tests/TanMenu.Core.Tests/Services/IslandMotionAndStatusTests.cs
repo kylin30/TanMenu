@@ -185,10 +185,9 @@ public class IslandMotionAndStatusTests
 
         Assert.True(entered.Wait(TimeSpan.FromSeconds(2)));
         var stopper = Task.Run(() => session.Stop());
-        Thread.Sleep(30);
+        Assert.True(stopper.Wait(TimeSpan.FromMilliseconds(300)));
         release.Set();
         applied = worker.Result;
-        stopper.Wait();
         Assert.Null(applied);
 
         session.Start();

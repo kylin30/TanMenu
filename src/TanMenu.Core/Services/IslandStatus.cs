@@ -219,7 +219,7 @@ public sealed class IslandSamplingSession
 
     public int Start()
     {
-        lock (_serial)
+        lock (_clockLock)
         {
             _lastTick = 0;
             _clock.Start();
@@ -230,7 +230,7 @@ public sealed class IslandSamplingSession
     public void Stop()
     {
         Interlocked.Increment(ref _generation);
-        lock (_serial)
+        lock (_clockLock)
             _clock.Stop();
     }
 
@@ -244,22 +244,29 @@ public sealed class IslandSamplingSession
 
         lock (_serial)
         {
-            if (Volatile.Read(ref _generation) != gen || !_clock.IsRunning)
+            if (Volatile.Read(ref _generation) != gen)
                 return false;
             var sample = read();
-            if (Volatile.Read(ref _generation) != gen || !_clock.IsRunning)
+            if (Volatile.Read(ref _generation) != gen)
                 return false;
-            var now = Environment.TickCount64;
-            var elapsed = _lastTick == 0 ? 0 : Math.Max(0, now - _lastTick) / 1000d;
-            var result = _clock.Tick(sample, elapsed);
-            if (result is null || Volatile.Read(ref _generation) != gen)
-                return false;
-            _lastTick = now;
-            frame = result.Value;
-            generation = gen;
-            return true;
+            lock (_clockLock)
+            {
+                if (Volatile.Read(ref _generation) != gen || !_clock.IsRunning)
+                    return false;
+                var now = Environment.TickCount64;
+                var elapsed = _lastTick == 0 ? 0 : Math.Max(0, now - _lastTick) / 1000d;
+                var result = _clock.Tick(sample, elapsed);
+                if (result is null || Volatile.Read(ref _generation) != gen)
+                    return false;
+                _lastTick = now;
+                frame = result.Value;
+                generation = gen;
+                return true;
+            }
         }
     }
+
+    private readonly object _clockLock = new();
 
     private long _lastTick;
 }

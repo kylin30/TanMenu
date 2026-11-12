@@ -111,6 +111,8 @@ public partial class IslandPreviewWindow : Window
     public void StartSampling()
     {
         StopSampling();
+        lock (_sampleLock)
+            _samples.Clear();
         _sampling.Start();
         _sampler = new Timer(_ => SampleOnce(), null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
     }
@@ -254,10 +256,9 @@ public partial class IslandPreviewWindow : Window
             return;
         var started = _effects.Begin(frame, _reducedMotion);
         ApplySlot(CpuIcon, CpuText, frame.Cpu, ref _cpuKnown);
-        ApplySlot(null, MemoryText, frame.Memory, ref _memoryKnown);
-        var memoryHeight = 2 + 8 * frame.Memory.Level;
-        if (_memoryKnown != frame.Memory.Known)
+        if (ApplySlot(null, MemoryText, frame.Memory, ref _memoryKnown))
             MemoryFill.Background = new SolidColorBrush(frame.Memory.Known ? Color.Parse("#F5F5F5") : Color.Parse("#6A6A6E"));
+        var memoryHeight = 2 + 8 * frame.Memory.Level;
         if (frame.Memory.Known && frame.Memory.Fill && !_reducedMotion)
         {
             MemoryFill.Transitions = [new DoubleTransition { Property = Avalonia.Layout.Layoutable.HeightProperty, Duration = TimeSpan.FromMilliseconds(160) }];
@@ -285,6 +286,8 @@ public partial class IslandPreviewWindow : Window
     {
         lock (_sampleLock)
         {
+            if (_samples.Count == 8)
+                _samples.RemoveAt(0);
             _samples.Add(new IslandSampleRecord(
                 _samples.Count + 1,
                 generation,
@@ -299,17 +302,18 @@ public partial class IslandPreviewWindow : Window
         }
     }
 
-    private static void ApplySlot(ShapePath? icon, TextBlock text, IslandSlotState slot, ref bool? seenKnown)
+    private static bool ApplySlot(ShapePath? icon, TextBlock text, IslandSlotState slot, ref bool? seenKnown)
     {
         if (text.Text != slot.Text)
             text.Text = slot.Text;
         if (seenKnown == slot.Known)
-            return;
+            return false;
         seenKnown = slot.Known;
         var brush = new SolidColorBrush(slot.Known ? Color.Parse("#F5F5F5") : Color.Parse("#6A6A6E"));
         text.Foreground = brush;
         if (icon is not null)
             icon.Fill = brush;
+        return true;
     }
 
     private async Task Pulse(ShapePath icon, double strength, int generation)
