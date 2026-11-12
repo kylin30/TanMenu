@@ -25,10 +25,10 @@ public class IslandPreviewDefaultsTests
     [Fact]
     public void TaskbarQuery_OffWindows_StaysUnknown()
     {
-        var (autoHide, thickness) = Win32TaskbarQuery.Query(1.5);
         if (OperatingSystem.IsWindows())
             return;
 
+        var (autoHide, thickness) = Win32TaskbarQuery.Query(1.5);
         Assert.Null(autoHide);
         Assert.Null(thickness);
     }
@@ -64,6 +64,8 @@ public class IslandPreviewDefaultsTests
         Assert.Contains("IsHitTestVisible=\"False\"", axaml);
         Assert.DoesNotContain("BoxShadow", axaml);
         Assert.Contains("IslandMetrics.LeaveDelayMs", code);
+        Assert.Contains("ScalingChanged += OnScalingChanged", code);
+        Assert.Contains("RequestHitRegion", File.ReadAllText(Source("Island", "IslandPreviewHost.cs")));
         Assert.Contains("_leaveTimer.Stop()", code);
         Assert.Contains("new CornerRadiusTransition", code);
         Assert.DoesNotContain("this.Width", code);
@@ -87,6 +89,7 @@ public class IslandPreviewDefaultsTests
         Assert.DoesNotContain("ShowAndActivate", combined, StringComparison.Ordinal);
         Assert.DoesNotContain("SetForegroundWindow", combined, StringComparison.Ordinal);
         Assert.Contains("HtTransparent", combined, StringComparison.Ordinal);
+        Assert.DoesNotContain("SetWindowRgn(hwnd, IntPtr.Zero", combined, StringComparison.Ordinal);
         Assert.Single(Regex.Matches(combined, "new DispatcherTimer"));
     }
 

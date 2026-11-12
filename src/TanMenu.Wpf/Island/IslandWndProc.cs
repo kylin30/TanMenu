@@ -35,61 +35,39 @@ internal static partial class IslandWndProc
             Win32Properties.RemoveWndProcHookCallback(window, hook);
     }
 
-    public static void SetCapsuleRegion(
-        IntPtr hwnd,
-        double hostWidth,
-        double hostHeight,
-        double capsuleWidth,
-        double capsuleHeight,
-        double radius,
-        double scale)
+    /// <summary>
+    /// Gives the round region to the window. On success the system owns the GDI object.
+    /// On failure the object is deleted here. This never installs a null region.
+    /// </summary>
+    public static bool TryApplyDeviceRegion(IntPtr hwnd, IslandDeviceRoundRegion region)
     {
-        if (!OperatingSystem.IsWindows() || hwnd == IntPtr.Zero)
-            return;
+        if (!OperatingSystem.IsWindows() || hwnd == IntPtr.Zero || region.Diameter < 2)
+            return false;
 
         try
         {
-            if (scale <= 0 || double.IsNaN(scale))
-                scale = 1;
-            if (capsuleWidth <= 0 || capsuleHeight <= 0 || double.IsNaN(capsuleWidth) || double.IsNaN(capsuleHeight))
-            {
-                SetWindowRgn(hwnd, IntPtr.Zero, true);
-                return;
-            }
-
-            var hostW = (int)Math.Round(hostWidth * scale);
-            var hostH = (int)Math.Round(hostHeight * scale);
-            var capsule = IslandCapsuleGeometry.Layout(hostWidth, hostHeight, capsuleWidth, capsuleHeight, radius);
-            var region = IslandCapsuleGeometry.ToExclusiveRoundRect(capsule, scale, hostW, hostH);
-            if (region.Right <= region.Left || region.Bottom <= region.Top)
-            {
-                SetWindowRgn(hwnd, IntPtr.Zero, true);
-                return;
-            }
-
-            var handle = CreateRoundRectRgn(region.Left, region.Top, region.Right, region.Bottom, region.Diameter, region.Diameter);
+            var handle = CreateRoundRectRgn(
+                region.Left, region.Top, region.Right, region.Bottom, region.Diameter, region.Diameter);
             if (handle == IntPtr.Zero)
-                return;
+            {
+                Serilog.Log.Error("CreateRoundRectRgn 失败，Win32 错误 {Error}", Marshal.GetLastWin32Error());
+                return false;
+            }
+
             if (SetWindowRgn(hwnd, handle, true) == 0)
+            {
+                var error = Marshal.GetLastWin32Error();
                 DeleteObject(handle);
+                Serilog.Log.Error("SetWindowRgn 失败，Win32 错误 {Error}", error);
+                return false;
+            }
+
+            return true;
         }
         catch (Exception ex)
         {
             Serilog.Log.Error(ex, "更新灵动岛命中区域失败");
-        }
-    }
-
-    public static void ClearRegion(IntPtr hwnd)
-    {
-        if (!OperatingSystem.IsWindows() || hwnd == IntPtr.Zero)
-            return;
-        try
-        {
-            SetWindowRgn(hwnd, IntPtr.Zero, true);
-        }
-        catch (Exception ex)
-        {
-            Serilog.Log.Error(ex, "清除灵动岛命中区域失败");
+            return false;
         }
     }
 
@@ -162,10 +140,10 @@ internal static partial class IslandWndProc
     [return: MarshalAs(UnmanagedType.Bool)]
     private static partial bool ScreenToClient(IntPtr hWnd, ref NativePoint lpPoint);
 
-    [LibraryImport("gdi32.dll")]
+    [LibraryImport("gdi32.dll", SetLastError = true)]
     private static partial IntPtr CreateRoundRectRgn(int x1, int y1, int x2, int y2, int w, int h);
 
-    [LibraryImport("user32.dll")]
+    [LibraryImport("user32.dll", SetLastError = true)]
     private static partial int SetWindowRgn(IntPtr hWnd, IntPtr hRgn, [MarshalAs(UnmanagedType.Bool)] bool bRedraw);
 
     [LibraryImport("gdi32.dll")]

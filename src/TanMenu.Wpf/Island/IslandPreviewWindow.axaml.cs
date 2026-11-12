@@ -16,12 +16,23 @@ namespace TanMenu.Wpf.Island;
 public partial class IslandPreviewWindow : Window
 {
     private readonly DispatcherTimer _leaveTimer;
+    private readonly IslandRegionCoordinator _regions = new();
+    private DoubleTransition? _widthTransition;
+    private DoubleTransition? _heightTransition;
+    private CornerRadiusTransition? _radiusTransition;
     private bool _expanded;
     private bool _hooksAttached;
+    private bool _regionQueued;
+    private bool _overlayVisible;
+    private double _seenScale = double.NaN;
     private Win32Properties.CustomWindowStylesCallback? _styles;
     private Win32Properties.CustomWndProcHookCallback? _hook;
 
     public event EventHandler? TransparencyUnavailable;
+    public event EventHandler? HitRegionFailed;
+
+    /// <summary>Current animated capsule width. The Win32 probe reads this after real pointer input.</summary>
+    public double PreviewCapsuleWidth => Capsule.Width;
 
     public IslandPreviewWindow()
     {
@@ -38,13 +49,36 @@ public partial class IslandPreviewWindow : Window
         _hooksAttached = true;
         IslandWndProc.AddHooks(this, HitTestDip, out _styles, out _hook);
         Capsule.PropertyChanged += OnCapsulePropertyChanged;
-        UpdateHitRegion();
+        ScalingChanged += OnScalingChanged;
+        LayoutUpdated += OnLayoutUpdated;
+    }
+
+    /// <summary>Queues one region rebuild after the current layout/scale change, without a timer.</summary>
+    public void RequestHitRegion() => QueueRegion();
+
+    /// <summary>Installs the capsule region before the window is shown. False means the rectangular host must stay hidden.</summary>
+    public bool TryApplyHitRegion()
+    {
+        var scale = RenderScaling;
+        var handle = TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
+        var kind = _regions.Apply(
+            Width, Height, Capsule.Width, Capsule.Height, Capsule.CornerRadius.TopLeft, scale,
+            region => IslandWndProc.TryApplyDeviceRegion(handle, region));
+        if (IslandRegionCoordinator.ShouldCloseOverlay(kind, _overlayVisible))
+        {
+            Serilog.Log.Error("灵动岛命中区域设置失败 ({Kind})，关闭预览", kind);
+            HitRegionFailed?.Invoke(this, EventArgs.Empty);
+            return false;
+        }
+
+        return kind is IslandRegionApplyKind.Applied or IslandRegionApplyKind.Unchanged;
     }
 
     public void StopIdleClock() => _leaveTimer.Stop();
 
     protected override void OnOpened(EventArgs e)
     {
+        _overlayVisible = true;
         base.OnOpened(e);
         Dispatcher.UIThread.Post(VerifyPlatform, DispatcherPriority.Background);
     }
@@ -58,7 +92,7 @@ public partial class IslandPreviewWindow : Window
 
     private void VerifyPlatform()
     {
-        UpdateHitRegion();
+        TryApplyHitRegion();
         if (ActualTransparencyLevel == WindowTransparencyLevel.Transparent)
             return;
 
@@ -92,28 +126,7 @@ public partial class IslandPreviewWindow : Window
 
         var duration = TimeSpan.FromMilliseconds(
             expanded ? IslandMetrics.ExpandDurationMs : IslandMetrics.CollapseDurationMs);
-        var easing = new CubicEaseOut();
-        Capsule.Transitions = new Transitions
-        {
-            new DoubleTransition
-            {
-                Property = Layoutable.WidthProperty,
-                Duration = duration,
-                Easing = easing,
-            },
-            new DoubleTransition
-            {
-                Property = Layoutable.HeightProperty,
-                Duration = duration,
-                Easing = easing,
-            },
-            new CornerRadiusTransition
-            {
-                Property = Border.CornerRadiusProperty,
-                Duration = duration,
-                Easing = easing,
-            },
-        };
+        EnsureCapsuleTransitions(duration);
         Capsule.Width = expanded ? IslandMetrics.ExpandedWidth : IslandMetrics.CollapsedWidth;
         Capsule.Height = expanded ? IslandMetrics.ExpandedHeight : IslandMetrics.CollapsedHeight;
         Capsule.CornerRadius = new CornerRadius(
@@ -127,26 +140,53 @@ public partial class IslandPreviewWindow : Window
         return IslandCapsuleGeometry.Contains(capsule, x, y);
     }
 
+    private void EnsureCapsuleTransitions(TimeSpan duration)
+    {
+        var easing = new CubicEaseOut();
+        if (_widthTransition is null || _heightTransition is null || _radiusTransition is null)
+        {
+            _widthTransition = new DoubleTransition { Property = Layoutable.WidthProperty, Easing = easing };
+            _heightTransition = new DoubleTransition { Property = Layoutable.HeightProperty, Easing = easing };
+            _radiusTransition = new CornerRadiusTransition { Property = Border.CornerRadiusProperty, Easing = easing };
+            Capsule.Transitions = new Transitions { _widthTransition, _heightTransition, _radiusTransition };
+        }
+
+        _widthTransition.Duration = duration;
+        _heightTransition.Duration = duration;
+        _radiusTransition.Duration = duration;
+    }
+
+    private void OnScalingChanged(object? sender, EventArgs e) => QueueRegion();
+
+    private void OnLayoutUpdated(object? sender, EventArgs e)
+    {
+        var scale = RenderScaling;
+        if (!double.IsNaN(_seenScale) && Math.Abs(scale - _seenScale) <= 0.0001)
+            return;
+        _seenScale = scale;
+        QueueRegion();
+    }
+
     private void OnCapsulePropertyChanged(object? sender, Avalonia.AvaloniaPropertyChangedEventArgs e)
     {
         if (e.Property != Layoutable.WidthProperty &&
             e.Property != Layoutable.HeightProperty &&
             e.Property != Border.CornerRadiusProperty)
             return;
-        UpdateHitRegion();
+        QueueRegion();
     }
 
-    private void UpdateHitRegion()
+    private void QueueRegion()
     {
-        var handle = TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
-        IslandWndProc.SetCapsuleRegion(
-            handle,
-            Width,
-            Height,
-            Capsule.Width,
-            Capsule.Height,
-            Capsule.CornerRadius.TopLeft,
-            RenderScaling);
+        if (_regionQueued || !_hooksAttached)
+            return;
+        _regionQueued = true;
+        Dispatcher.UIThread.Post(() =>
+        {
+            _regionQueued = false;
+            if (_hooksAttached)
+                TryApplyHitRegion();
+        }, DispatcherPriority.Render);
     }
 
     private void DetachPlatformHooks()
@@ -154,10 +194,12 @@ public partial class IslandPreviewWindow : Window
         if (!_hooksAttached)
             return;
         _hooksAttached = false;
+        _overlayVisible = false;
         Capsule.PropertyChanged -= OnCapsulePropertyChanged;
+        ScalingChanged -= OnScalingChanged;
+        LayoutUpdated -= OnLayoutUpdated;
         IslandWndProc.RemoveHooks(this, _styles, _hook);
         _styles = null;
         _hook = null;
-        IslandWndProc.ClearRegion(TryGetPlatformHandle()?.Handle ?? IntPtr.Zero);
     }
 }
