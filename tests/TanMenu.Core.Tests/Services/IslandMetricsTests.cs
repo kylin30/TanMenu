@@ -15,10 +15,11 @@ public class IslandMetricsTests
         Assert.Equal(32, IslandMetrics.CollapsedHeight);
         Assert.Equal(320, IslandMetrics.ExpandedWidth);
         Assert.Equal(72, IslandMetrics.ExpandedHeight);
-        Assert.Equal(16, IslandMetrics.CollapsedRadius);
-        Assert.Equal(36, IslandMetrics.ExpandedRadius);
-        Assert.Equal(12, IslandMetrics.GapDip);
-        Assert.Equal(48, IslandMetrics.AutoHideReserveFallbackDip);
+        Assert.Equal(11, IslandMetrics.CollapsedTopRadius);
+        Assert.Equal(20, IslandMetrics.ExpandedTopRadius);
+        Assert.Equal(12, IslandMetrics.CollapsedFilletRadius);
+        Assert.Equal(22, IslandMetrics.ExpandedFilletRadius);
+        Assert.Equal(0, IslandMetrics.GapDip);
         Assert.Equal(300, IslandMetrics.ExpandDurationMs);
         Assert.Equal(250, IslandMetrics.CollapseDurationMs);
         Assert.Equal(80, IslandMetrics.LeaveDelayMs);

@@ -128,8 +128,11 @@ public static partial class Program
             return OverlayMissing;
         }
 
-        var transparent = (placed.Item1 + 24, placed.Item2 + 8);
-        var solid = (placed.Item1 + 160, placed.Item2 + 56);
+        var collapsedShape = IslandTrapezoidGeometry.Layout(0, 320, 72);
+        var expandedShape = IslandTrapezoidGeometry.Layout(1, 320, 72);
+        var transparent = (placed.Item1 + (int)Math.Round(collapsedShape.ConcaveCutout.X), placed.Item2 + (int)Math.Round(collapsedShape.ConcaveCutout.Y));
+        var solid = (placed.Item1 + (int)Math.Round(collapsedShape.Solid.X), placed.Item2 + (int)Math.Round(collapsedShape.Solid.Y));
+        var topCutout = (placed.Item1 + (int)Math.Round(expandedShape.TopCutout.X), placed.Item2 + (int)Math.Round(expandedShape.TopCutout.Y));
         var outside = (placed.Item1 - 40, placed.Item2 - 40);
         var initialWidth = Dispatcher.UIThread.Invoke(() => window.PreviewCapsuleWidth);
         var afterShow = SampleFocus("afterShow");
@@ -151,6 +154,11 @@ public static partial class Program
         var afterHover = SampleFocus("afterHover");
         SaveShot(outDir, "expanded.png", shot.X, shot.Y, shot.Width, shot.Height, out var expandedMean);
         SaveFullDesktop(outDir, "desktop-test-expanded.png");
+        var clicksBeforeTop = ReadCount(clicksPath);
+        if (!MoveAndClick(topCutout.Item1, topCutout.Item2))
+            return SendInputFailed;
+        Thread.Sleep(200);
+        var topClicks = ReadCount(clicksPath) - clicksBeforeTop;
         var clicksBeforeSolid = ReadCount(clicksPath);
         if (!MoveAndClick(solid.Item1, solid.Item2))
             return SendInputFailed;
@@ -186,6 +194,7 @@ public static partial class Program
             solidX = solid.Item1,
             solidY = solid.Item2,
             transparentClicks,
+            topCornerClicks = topClicks,
             solidClicksAdded = solidClicks - clicksBeforeSolid,
             initialWidth,
             expandedWidth,
@@ -210,9 +219,9 @@ public static partial class Program
             return BlackScreenshot;
         }
 
-        if (transparentClicks < 1)
+        if (transparentClicks < 1 || topClicks < 1)
         {
-            Console.Error.WriteLine("transparent pixel did not reach the underlying process");
+            Console.Error.WriteLine("concave or top cutout did not reach the underlying process");
             return HitTestFailed;
         }
 
@@ -258,7 +267,7 @@ public static partial class Program
         var probeGone = WaitUntil(() => probeHwnd == IntPtr.Zero || !IsWindow(probeHwnd), TimeSpan.FromSeconds(2));
         YieldUi(DispatcherPriority.Render);
         Thread.Sleep(150);
-        var oldCapsule = SampleMean(probeX + 108, probeY + 62, 8, 4);
+        var oldCapsule = SampleMean(probeX + 156, probeY + 66, 8, 4);
 
         var root = Path.Combine(Path.GetTempPath(), "TanMenuProbeHost_" + Path.GetRandomFileName());
         var paths = new AppDataPaths(Path.Combine(root, "Local"), Path.Combine(root, "Cache"));
@@ -280,7 +289,7 @@ public static partial class Program
         var style = handle == IntPtr.Zero ? 0 : GetWindowLongW(handle, -20);
         const int toolWindow = 0x00000080;
         const int appWindow = 0x00040000;
-        var capsule = hasRect ? SampleMean(rect.Left + 108, rect.Bottom - 10, 8, 4) : (0, 0, 0);
+        var capsule = hasRect ? SampleMean(rect.Left + 156, rect.Bottom - 6, 8, 4) : (0, 0, 0);
         var tray = FindWindowW("Shell_TrayWnd", null);
         var result = new ProductPlacement
         {
@@ -304,7 +313,7 @@ public static partial class Program
             OldProbeRed = oldCapsule.Item1,
             OldProbeGreen = oldCapsule.Item2,
             OldProbeBlue = oldCapsule.Item3,
-            OldProbeSample = "manual probe collapsed capsule, after its HWND is gone and before the host is shown",
+            OldProbeSample = "manual probe solid body, after its HWND is gone and before the host is shown",
             ExtendedStyle = style,
             ToolWindow = (style & toolWindow) != 0,
             AppWindow = (style & appWindow) != 0,
@@ -317,7 +326,7 @@ public static partial class Program
         if (tray != IntPtr.Zero && TryReadWorkArea(out var area))
         {
             result.ExpectedX = area.Left + ((area.Right - area.Left) - 320) / 2;
-            result.ExpectedY = area.Bottom - 12 - 72;
+            result.ExpectedY = area.Bottom - 72;
             result.MatchesWorkArea = hasRect
                 && Math.Abs(rect.Left - result.ExpectedX) <= 8
                 && Math.Abs(rect.Top - result.ExpectedY) <= 8

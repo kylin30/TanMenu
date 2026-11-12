@@ -59,15 +59,15 @@ public class IslandPreviewDefaultsTests
             code.Contains("WindowTransparencyLevel.Transparent", StringComparison.Ordinal));
         Assert.Contains("HorizontalAlignment=\"Center\"", axaml);
         Assert.Contains("VerticalAlignment=\"Bottom\"", axaml);
-        Assert.Contains("Background=\"#18181B\"", axaml);
-        Assert.Contains("BorderBrush=\"#28282C\"", axaml);
+        Assert.Contains("Fill=\"#18181B\"", axaml);
+        Assert.Contains("Stroke=\"#28282C\"", axaml);
         Assert.Contains("IsHitTestVisible=\"False\"", axaml);
         Assert.DoesNotContain("BoxShadow", axaml);
         Assert.Contains("IslandMetrics.LeaveDelayMs", code);
         Assert.Contains("ScalingChanged += OnScalingChanged", code);
         Assert.Contains("RequestHitRegion", File.ReadAllText(Source("Island", "IslandPreviewHost.cs")));
         Assert.Contains("_leaveTimer.Stop()", code);
-        Assert.Contains("new CornerRadiusTransition", code);
+        Assert.Contains("ShapeProgressProperty", code);
         Assert.DoesNotContain("this.Width", code);
         Assert.DoesNotContain("this.Height", code);
     }

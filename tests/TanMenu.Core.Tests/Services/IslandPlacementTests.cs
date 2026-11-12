@@ -21,10 +21,10 @@ public class IslandPlacementTests
 
         Assert.NotNull(placed);
         Assert.Equal(800, placed.Value.Left);
-        Assert.Equal(948, placed.Value.Top);
+        Assert.Equal(960, placed.Value.Top);
         Assert.Equal(320, placed.Value.Width);
         Assert.Equal(72, placed.Value.Height);
-        Assert.Equal(1020, placed.Value.Bottom);
+        Assert.Equal(1032, placed.Value.Bottom);
     }
 
     [Fact]
@@ -39,7 +39,7 @@ public class IslandPlacementTests
 
         Assert.NotNull(placed);
         Assert.Equal(3360, placed.Value.Left);
-        Assert.Equal(948, placed.Value.Top);
+        Assert.Equal(960, placed.Value.Top);
         Assert.Equal(320, placed.Value.Width);
         Assert.Equal(72, placed.Value.Height);
     }
@@ -56,7 +56,7 @@ public class IslandPlacementTests
 
         Assert.NotNull(placed);
         Assert.Equal(-1120, placed.Value.Left);
-        Assert.Equal(948, placed.Value.Top);
+        Assert.Equal(960, placed.Value.Top);
     }
 
     [Fact]
@@ -88,12 +88,12 @@ public class IslandPlacementTests
 
         Assert.NotNull(placed);
         Assert.Equal(800, placed.Value.Left);
-        Assert.Equal(956, placed.Value.Top);
-        Assert.Equal(1028, placed.Value.Bottom);
+        Assert.Equal(968, placed.Value.Top);
+        Assert.Equal(1040, placed.Value.Bottom);
     }
 
     [Fact]
-    public void AutoHide_WithoutAMeasuredThickness_ReservesTheFallbackPlusGap()
+    public void AutoHide_WithoutAMeasuredThickness_StaysHidden()
     {
         var placed = IslandPlacement.ResolveWindow(new IslandScreenMetrics
         {
@@ -103,13 +103,11 @@ public class IslandPlacementTests
             TaskbarThicknessDip = null,
         });
 
-        Assert.NotNull(placed);
-        Assert.Equal(948, placed.Value.Top);
-        Assert.Equal(1080 - 48 - 12, placed.Value.Bottom);
+        Assert.Null(placed);
     }
 
     [Fact]
-    public void UnknownAutoHide_WithNoBottomInset_StillReservesTheFallback()
+    public void UnknownAutoHide_WithNoBottomInset_StaysHidden()
     {
         var placed = IslandPlacement.ResolveWindow(new IslandScreenMetrics
         {
@@ -118,12 +116,11 @@ public class IslandPlacementTests
             AutoHide = null,
         });
 
-        Assert.NotNull(placed);
-        Assert.Equal(1080 - 48 - 12 - 72, placed.Value.Top);
+        Assert.Null(placed);
     }
 
     [Fact]
-    public void UnknownAutoHide_UsesTheLargerOfInsetAndFallback()
+    public void UnknownAutoHide_WithAnObservedInset_SitsFlushOnThatWorkBottom()
     {
         var placed = IslandPlacement.ResolveWindow(new IslandScreenMetrics
         {
@@ -133,8 +130,8 @@ public class IslandPlacementTests
         });
 
         Assert.NotNull(placed);
-        Assert.Equal(50, 1080 - 1030);
-        Assert.Equal(1080 - 50 - 12 - 72, placed.Value.Top);
+        Assert.Equal(1030, placed.Value.Bottom);
+        Assert.Equal(1030 - 72, placed.Value.Top);
     }
 
     [Fact]
@@ -149,7 +146,7 @@ public class IslandPlacementTests
 
         Assert.NotNull(placed);
         Assert.Equal(80 + (1840 - 320) / 2d, placed.Value.Left);
-        Assert.Equal(1080 - 12 - 72, placed.Value.Top);
+        Assert.Equal(1080 - 72, placed.Value.Top);
         Assert.True(placed.Value.Left > 80);
     }
 
@@ -165,12 +162,12 @@ public class IslandPlacementTests
 
         Assert.NotNull(placed);
         Assert.Equal(800, placed.Value.Left);
-        Assert.Equal(1032 + 48 - 12 - 72, placed.Value.Top);
+        Assert.Equal(1080 - 72, placed.Value.Top);
         Assert.True(placed.Value.Top > 48);
     }
 
     [Fact]
-    public void MissingWorkArea_FallsBackToTheUnknownReserveFromTheScreenBottom()
+    public void MissingWorkArea_StaysHidden()
     {
         var placed = IslandPlacement.ResolveWindow(new IslandScreenMetrics
         {
@@ -180,9 +177,7 @@ public class IslandPlacementTests
             TaskbarThicknessDip = 10,
         });
 
-        Assert.NotNull(placed);
-        Assert.Equal(800, placed.Value.Left);
-        Assert.Equal(1080 - 48 - 12 - 72, placed.Value.Top);
+        Assert.Null(placed);
     }
 
     [Fact]

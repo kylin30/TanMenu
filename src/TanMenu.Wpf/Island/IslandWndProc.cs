@@ -36,21 +36,27 @@ internal static partial class IslandWndProc
     }
 
     /// <summary>
-    /// Gives the round region to the window. On success the system owns the GDI object.
+    /// Installs the concave polygon. On success the system owns the GDI object.
     /// On failure the object is deleted here. This never installs a null region.
     /// </summary>
-    public static bool TryApplyDeviceRegion(IntPtr hwnd, IslandDeviceRoundRegion region)
+    public static bool TryApplyDeviceRegion(IntPtr hwnd, IslandDevicePoint[] region)
     {
-        if (!OperatingSystem.IsWindows() || hwnd == IntPtr.Zero || region.Diameter < 2)
+        if (!OperatingSystem.IsWindows() || hwnd == IntPtr.Zero || region.Length < 3)
             return false;
 
+        var bytes = region.Length * Marshal.SizeOf<NativePoint>();
+        var buffer = Marshal.AllocHGlobal(bytes);
         try
         {
-            var handle = CreateRoundRectRgn(
-                region.Left, region.Top, region.Right, region.Bottom, region.Diameter, region.Diameter);
+            for (var i = 0; i < region.Length; i++)
+            {
+                Marshal.StructureToPtr(new NativePoint { X = region[i].X, Y = region[i].Y }, buffer + i * Marshal.SizeOf<NativePoint>(), false);
+            }
+
+            var handle = CreatePolygonRgn(buffer, region.Length, 2);
             if (handle == IntPtr.Zero)
             {
-                Serilog.Log.Error("CreateRoundRectRgn 失败，Win32 错误 {Error}", Marshal.GetLastWin32Error());
+                Serilog.Log.Error("CreatePolygonRgn 失败，Win32 错误 {Error}", Marshal.GetLastWin32Error());
                 return false;
             }
 
@@ -68,6 +74,10 @@ internal static partial class IslandWndProc
         {
             Serilog.Log.Error(ex, "更新灵动岛命中区域失败");
             return false;
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(buffer);
         }
     }
 
@@ -97,7 +107,7 @@ internal static partial class IslandWndProc
             return IslandWin32Styles.HtTransparent;
         }
 
-        var (screenX, screenY) = IslandCapsuleGeometry.UnpackNcHitTestLParam(lParam);
+        var (screenX, screenY) = UnpackNcHitTest(lParam);
         var point = new NativePoint { X = screenX, Y = screenY };
         if (!ScreenToClient(hWnd, ref point))
         {
@@ -140,8 +150,14 @@ internal static partial class IslandWndProc
     [return: MarshalAs(UnmanagedType.Bool)]
     private static partial bool ScreenToClient(IntPtr hWnd, ref NativePoint lpPoint);
 
+    private static (int X, int Y) UnpackNcHitTest(nint lParam)
+    {
+        var value = (long)lParam;
+        return (unchecked((short)(value & 0xFFFF)), unchecked((short)((value >> 16) & 0xFFFF)));
+    }
+
     [LibraryImport("gdi32.dll", SetLastError = true)]
-    private static partial IntPtr CreateRoundRectRgn(int x1, int y1, int x2, int y2, int w, int h);
+    private static partial IntPtr CreatePolygonRgn(IntPtr points, int count, int mode);
 
     [LibraryImport("user32.dll", SetLastError = true)]
     private static partial int SetWindowRgn(IntPtr hWnd, IntPtr hRgn, [MarshalAs(UnmanagedType.Bool)] bool bRedraw);

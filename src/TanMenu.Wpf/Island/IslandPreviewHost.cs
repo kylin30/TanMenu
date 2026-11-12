@@ -59,14 +59,16 @@ public sealed class IslandPreviewHost : IIslandPreviewController
             window.AttachPlatformHooks();
             if (!window.TryApplyHitRegion())
             {
-                Serilog.Log.Error("灵动岛命中区域未能按胶囊设置，不显示预览");
+                Serilog.Log.Error("灵动岛命中区域未能按轮廓设置，不显示预览");
                 SafeClose(window);
                 return;
             }
 
+            window.SetReducedMotion(IslandWindowsCounters.ReducedMotion());
             _window = window;
             window = null;
             _window.Show();
+            _window.StartSampling();
         }
         catch (Exception ex)
         {
@@ -132,6 +134,7 @@ public sealed class IslandPreviewHost : IIslandPreviewController
         if (!TryPlace(_window))
         {
             Serilog.Log.Error("主屏暂时不可用，隐藏灵动岛预览并等待下一次显示变化");
+            _window.StopSampling();
             if (DestroyOverlayOnScreenPlaceFailure)
                 Hide();
             else
@@ -140,7 +143,10 @@ public sealed class IslandPreviewHost : IIslandPreviewController
         }
 
         if (!_window.IsVisible)
+        {
             _window.Show();
+            _window.StartSampling();
+        }
         _window.RequestHitRegion();
     }
 
@@ -185,6 +191,7 @@ public sealed class IslandPreviewHost : IIslandPreviewController
     {
         try
         {
+            window.StopSampling();
             window.StopIdleClock();
             window.Close();
         }

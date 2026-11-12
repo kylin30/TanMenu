@@ -101,7 +101,7 @@ public static class AppLanguage
             ["TopMost"] = ("窗口置顶", "Always on top"),
             ["TopMostCardSub"] = ("让 TanMenu 保持在其他窗口上方。", "Keep TanMenu above other windows."),
             ["IslandPreview"] = ("显示灵动岛预览", "Show Dynamic Island preview"),
-            ["IslandPreviewCardSub"] = ("在主屏底部任务栏上方显示独立深色胶囊。打开后置顶，可能盖住全屏内容。", "Shows a separate dark capsule above the primary taskbar. While on, it stays above other windows and may cover full-screen content."),
+            ["IslandPreviewCardSub"] = ("在主屏任务栏上沿显示独立深色状态岛。打开后置顶，可能盖住全屏内容。", "Shows a separate dark status island on the primary taskbar. While on, it stays above other windows and may cover full-screen content."),
             ["ButtonSounds"] = ("按钮音效", "Button sounds"),
             ["ButtonSoundsCardSub"] = ("分别控制应用按钮的悬停和点击提示音。", "Control hover and click sounds for app buttons separately."),
             ["HoverSound"] = ("按钮悬停音效", "Button hover sound"),

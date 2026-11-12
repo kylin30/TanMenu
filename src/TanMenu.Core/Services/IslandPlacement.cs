@@ -41,18 +41,20 @@ public static class IslandPlacement
         double anchorBottom;
         if (autoHide == false)
         {
-            anchorBottom = work.Bottom - IslandMetrics.GapDip;
+            anchorBottom = work.Bottom;
         }
         else if (autoHide == true)
         {
-            var reserve = thickness is > 0 ? thickness.Value : IslandMetrics.AutoHideReserveFallbackDip;
-            anchorBottom = bounds.Bottom - reserve - IslandMetrics.GapDip;
+            if (thickness is not > 0)
+                return null;
+            anchorBottom = bounds.Bottom - thickness.Value;
         }
         else
         {
-            var inset = Math.Max(0, bounds.Bottom - work.Bottom);
-            var reserve = Math.Max(inset, IslandMetrics.AutoHideReserveFallbackDip);
-            anchorBottom = bounds.Bottom - reserve - IslandMetrics.GapDip;
+            var inset = bounds.Bottom - work.Bottom;
+            if (inset <= 0)
+                return null;
+            anchorBottom = work.Bottom;
         }
 
         var left = work.Left + (work.Width - width) / 2;
