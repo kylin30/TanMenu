@@ -366,7 +366,7 @@ public static partial class Program
             events.RaiseSettingsChanged();
         });
         result.ResumeSamples = WaitForRealSample(host, TimeSpan.FromSeconds(8), requireKnown: false);
-        result.ResumeShowsFreshBaseline = result.ResumeSamples.Count > 0
+        result.ResumeShowsFreshBaseline = result.ResumeSamples.Length > 0
             && !result.ResumeSamples[0].CpuKnown
             && !result.ResumeSamples[0].NetworkKnown
             && result.ResumeSamples.Any(sample => sample.CpuKnown && sample.NetworkKnown);
