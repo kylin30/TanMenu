@@ -25,7 +25,8 @@ public static partial class Program
     private const int OverlayMissing = 4;
     private const int HitTestFailed = 5;
     private const int BlackScreenshot = 6;
-    private const int HoverFailed = 7;
+        private const int HoverFailed = 7;
+        private const int FocusFailed = 9;
 
     [STAThread]
     public static int Main(string[] args)
@@ -89,6 +90,10 @@ public static partial class Program
             ProbeRun.UnderlayHeight = height;
             ProbeRun.ClicksPath = clicks;
             ProbeRun.UnderlayPid = underlay.Id;
+            ProbeRun.UnderlayHwnd = long.Parse(File.ReadAllText(ready).Trim());
+            SetForegroundWindow((IntPtr)ProbeRun.UnderlayHwnd);
+            Thread.Sleep(200);
+            ProbeRun.FocusBeforeShow = SampleFocus("beforeShow");
             code = BuildApp().StartWithClassicDesktopLifetime([], ShutdownMode.OnExplicitShutdown);
         }
         finally
@@ -127,7 +132,7 @@ public static partial class Program
         var solid = (placed.Item1 + 160, placed.Item2 + 56);
         var outside = (placed.Item1 - 40, placed.Item2 - 40);
         var initialWidth = Dispatcher.UIThread.Invoke(() => window.PreviewCapsuleWidth);
-        var beforeForeground = GetForegroundWindow();
+        var afterShow = SampleFocus("afterShow");
         if (!MoveAndClick(transparent.Item1, transparent.Item2))
         {
             Console.Error.WriteLine("SendInput failed on the transparent pixel");
@@ -138,24 +143,28 @@ public static partial class Program
         var transparentClicks = ReadCount(clicksPath);
         var shot = ContextShot();
         SaveShot(outDir, "collapsed.png", shot.X, shot.Y, shot.Width, shot.Height, out var collapsedMean);
+        SaveFullDesktop(outDir, "desktop-collapsed.png");
         if (!Move(solid.Item1, solid.Item2))
             return SendInputFailed;
         Thread.Sleep(500);
         var expandedWidth = Dispatcher.UIThread.Invoke(() => window.PreviewCapsuleWidth);
+        var afterHover = SampleFocus("afterHover");
         SaveShot(outDir, "expanded.png", shot.X, shot.Y, shot.Width, shot.Height, out var expandedMean);
+        SaveFullDesktop(outDir, "desktop-expanded.png");
         var clicksBeforeSolid = ReadCount(clicksPath);
         if (!MoveAndClick(solid.Item1, solid.Item2))
             return SendInputFailed;
         Thread.Sleep(200);
         var solidClicks = ReadCount(clicksPath);
+        var afterSolidClick = SampleFocus("afterSolidClick");
         if (!Move(outside.Item1, outside.Item2))
             return SendInputFailed;
         Thread.Sleep(450);
         var retractedWidth = Dispatcher.UIThread.Invoke(() => window.PreviewCapsuleWidth);
-        var afterForeground = GetForegroundWindow();
-        var foregroundPid = 0;
-        _ = GetWindowThreadProcessId(afterForeground, out foregroundPid);
+        var afterLeave = SampleFocus("afterLeave");
         var pointOwner = WindowFromPoint(new NativePoint { X = transparent.Item1, Y = transparent.Item2 });
+        var placement = Dispatcher.UIThread.Invoke(() => RunProductHost(outDir));
+        var focus = new[] { ProbeRun.FocusBeforeShow, afterShow, afterHover, afterSolidClick, afterLeave };
 
         var outcome = new
         {
@@ -183,11 +192,11 @@ public static partial class Program
             retractedWidth,
             collapsedMean,
             expandedMean,
-            beforeForeground = beforeForeground.ToInt64(),
-            afterForeground = afterForeground.ToInt64(),
-            foregroundPid,
+            focus,
+            underlayHwnd = ProbeRun.UnderlayHwnd,
             underlayPid,
             pointOwner = pointOwner.ToInt64(),
+            placement,
             os = ReadProductName(),
         };
         File.WriteAllText(Path.Combine(outDir, "input.json"), JsonSerializer.Serialize(outcome, JsonOptions()));
@@ -216,14 +225,82 @@ public static partial class Program
             return HoverFailed;
         }
 
-        if (foregroundPid == 0 || foregroundPid == Environment.ProcessId)
+        if (focus.Any(snap => snap.Hwnd != ProbeRun.UnderlayHwnd || snap.Pid != underlayPid))
         {
-            Console.Error.WriteLine("foreground did not stay with the underlying process");
-            return HitTestFailed;
+            Console.Error.WriteLine("foreground left the underlay during show, hover, click, or leave");
+            return FocusFailed;
+        }
+
+        if (placement is ProductPlacement { Shown: true, Closed: false })
+        {
+            Console.Error.WriteLine("product host window remained after the preview switch was turned off");
+            return OverlayMissing;
         }
 
         Console.WriteLine("overlay probe passed on this Windows session");
         return 0;
+    }
+
+    private static ProductPlacement RunProductHost(string outDir)
+    {
+        var root = Path.Combine(Path.GetTempPath(), "TanMenuProbeHost_" + Path.GetRandomFileName());
+        var paths = new AppDataPaths(Path.Combine(root, "Local"), Path.Combine(root, "Cache"));
+        var config = new ConfigService(paths, NullLogger<ConfigService>.Instance);
+        config.Config.General.ShowIslandPreview = true;
+        var events = new AppEvents();
+        var draft = SettingsDraft.From(config, new RecoveryAutoStart());
+        draft.Working.General.ShowIslandPreview = true;
+        var host = new IslandPreviewHost(config, events, draft);
+        host.Show();
+        var window = host.CurrentWindow;
+        if (window is null)
+        {
+            host.Dispose();
+            return new ProductPlacement { Shown = false, TaskbarStatus = "host-did-not-show" };
+        }
+
+        var handle = window.TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
+        var x = window.Position.X;
+        var y = window.Position.Y;
+        var style = handle == IntPtr.Zero ? 0 : GetWindowLongW(handle, -20);
+        const int toolWindow = 0x00000080;
+        const int appWindow = 0x00040000;
+        SaveFullDesktop(outDir, "desktop-placed.png");
+        var tray = FindWindowW("Shell_TrayWnd", null);
+        var result = new ProductPlacement
+        {
+            Shown = true,
+            X = x,
+            Y = y,
+            ExtendedStyle = style,
+            ToolWindow = (style & toolWindow) != 0,
+            AppWindow = (style & appWindow) != 0,
+            TaskbarStatus = tray == IntPtr.Zero ? "no-shell-tray-window" : "tray-present",
+        };
+        if (tray != IntPtr.Zero && TryReadWorkArea(out var area))
+        {
+            result.ExpectedX = area.Left + ((area.Right - area.Left) - 320) / 2;
+            result.ExpectedY = area.Bottom - 12 - 72;
+            result.MatchesWorkArea = Math.Abs(x - result.ExpectedX) <= 8 && Math.Abs(y - result.ExpectedY) <= 8;
+        }
+
+        draft.Working.General.ShowIslandPreview = false;
+        events.RaiseSettingsChanged();
+        var gone = handle == IntPtr.Zero || !IsWindow(handle);
+        host.Dispose();
+        result.Closed = gone && (handle == IntPtr.Zero || !IsWindow(handle));
+        return result;
+    }
+
+    private static bool TryReadWorkArea(out RectNative area)
+    {
+        area = new RectNative();
+        return SystemParametersInfoW(0x0030, 0, ref area, 0);
+    }
+
+    private static void SaveFullDesktop(string outDir, string name)
+    {
+        SaveShot(outDir, name, 0, 0, Math.Max(1, GetSystemMetrics(0)), Math.Max(1, GetSystemMetrics(1)), out _);
     }
 
     private static (int X, int Y, int Width, int Height) ContextShot()
@@ -489,6 +566,32 @@ public static partial class Program
         public static int UnderlayHeight;
         public static string ClicksPath = "";
         public static int UnderlayPid;
+        public static long UnderlayHwnd;
+        public static FocusSnap FocusBeforeShow = new("beforeShow", 0, 0);
+    }
+
+    private sealed record FocusSnap(string Stage, long Hwnd, int Pid);
+
+    private static FocusSnap SampleFocus(string stage)
+    {
+        var hwnd = GetForegroundWindow();
+        GetWindowThreadProcessId(hwnd, out var pid);
+        return new FocusSnap(stage, hwnd.ToInt64(), pid);
+    }
+
+    private sealed class ProductPlacement
+    {
+        public bool Shown { get; set; }
+        public bool Closed { get; set; }
+        public int X { get; set; }
+        public int Y { get; set; }
+        public int ExpectedX { get; set; }
+        public int ExpectedY { get; set; }
+        public bool? MatchesWorkArea { get; set; }
+        public string TaskbarStatus { get; set; } = "";
+        public int ExtendedStyle { get; set; }
+        public bool ToolWindow { get; set; }
+        public bool AppWindow { get; set; }
     }
 
     private sealed class ProbeApplication : Application
@@ -662,6 +765,13 @@ public static partial class Program
 
     [LibraryImport("user32.dll")]
     private static partial IntPtr GetForegroundWindow();
+
+    [LibraryImport("user32.dll", EntryPoint = "GetWindowLongW")]
+    private static partial int GetWindowLongW(IntPtr hWnd, int nIndex);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool IsWindow(IntPtr hWnd);
 
     [LibraryImport("user32.dll")]
     private static partial uint GetWindowThreadProcessId(IntPtr hWnd, out int lpdwProcessId);

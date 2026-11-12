@@ -22,6 +22,8 @@ public sealed class IslandPreviewHost : IIslandPreviewController
     /// change can place it again. Destroying it would drop the saved preview for the rest of the session.</summary>
     internal static bool DestroyOverlayOnScreenPlaceFailure => false;
 
+    internal IslandPreviewWindow? CurrentWindow => _window;
+
     internal IslandPreviewHost(ConfigService config, AppEvents events, SettingsDraft draft)
         : this(config, events, static () => new IslandPreviewWindow(), draft)
     {
