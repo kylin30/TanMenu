@@ -124,7 +124,10 @@ public partial class App : Application
             TaskbarPinService.ResolveLauncherPath));
         services.AddSingleton<GlobalHotkeyService>();
         services.AddSingleton<AppEvents>();
-        services.AddSingleton<IIslandPreviewController, IslandPreviewHost>();
+        services.AddSingleton<IIslandPreviewController>(sp => new IslandPreviewHost(
+            sp.GetRequiredService<ConfigService>(),
+            sp.GetRequiredService<AppEvents>(),
+            sp.GetRequiredService<SettingsDraft>()));
         // ROUND 8, TASK 2 REMOVED TWO REGISTRATIONS HERE — ShellNavigator and IShellNavigator, the
         // shell's page router. The launcher has exactly one page now: 设置 became a modal dialog
         // (Dialogs/OptionsWindow), so there is nothing to navigate BETWEEN, and Services/IShellNavigator.cs

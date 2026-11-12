@@ -1,6 +1,7 @@
 using Avalonia;
 using TanMenu.Core.Services;
 using TanMenu.Wpf.Services;
+using TanMenu.Wpf.Views.Settings;
 
 namespace TanMenu.Wpf.Island;
 
@@ -12,19 +13,25 @@ public sealed class IslandPreviewHost : IIslandPreviewController
 {
     private readonly ConfigService _config;
     private readonly AppEvents _events;
+    private readonly SettingsDraft? _draft;
     private readonly Func<IslandPreviewWindow> _create;
     private IslandPreviewWindow? _window;
     private int _disposed;
 
-    public IslandPreviewHost(ConfigService config, AppEvents events)
-        : this(config, events, static () => new IslandPreviewWindow())
+    /// <summary>A missing primary screen hides the overlay and keeps the window so the next display
+    /// change can place it again. Destroying it would drop the saved preview for the rest of the session.</summary>
+    internal static bool DestroyOverlayOnScreenPlaceFailure => false;
+
+    internal IslandPreviewHost(ConfigService config, AppEvents events, SettingsDraft draft)
+        : this(config, events, static () => new IslandPreviewWindow(), draft)
     {
     }
 
-    internal IslandPreviewHost(ConfigService config, AppEvents events, Func<IslandPreviewWindow> create)
+    internal IslandPreviewHost(ConfigService config, AppEvents events, Func<IslandPreviewWindow> create, SettingsDraft? draft = null)
     {
         _config = config;
         _events = events;
+        _draft = draft;
         _create = create;
         _events.SettingsChanged += OnSettingsChanged;
     }
@@ -97,11 +104,18 @@ public sealed class IslandPreviewHost : IIslandPreviewController
             return;
         }
 
-        if (_config.Config.General.ShowIslandPreview)
+        if (PreviewEnabled())
             Show();
         else
             Hide();
     }
+
+    /// <summary>A pending settings edit wins over the last saved value, so a settings event during the
+    /// save debounce cannot put the overlay back to the old switch.</summary>
+    private bool PreviewEnabled() =>
+        _draft is null
+            ? _config.Config.General.ShowIslandPreview
+            : _draft.Working.General.ShowIslandPreview;
 
     private void OnTransparencyUnavailable(object? sender, EventArgs e)
     {
@@ -114,9 +128,18 @@ public sealed class IslandPreviewHost : IIslandPreviewController
         if (_window is null || Volatile.Read(ref _disposed) != 0)
             return;
         if (!TryPlace(_window))
-            Hide();
-        else
-            _window.RequestHitRegion();
+        {
+            Serilog.Log.Error("主屏暂时不可用，隐藏灵动岛预览并等待下一次显示变化");
+            if (DestroyOverlayOnScreenPlaceFailure)
+                Hide();
+            else
+                _window.Hide();
+            return;
+        }
+
+        if (!_window.IsVisible)
+            _window.Show();
+        _window.RequestHitRegion();
     }
 
     private void OnHitRegionFailed(object? sender, EventArgs e)

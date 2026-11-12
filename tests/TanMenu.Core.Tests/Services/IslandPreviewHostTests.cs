@@ -4,6 +4,7 @@ using TanMenu.Core.Infrastructure;
 using TanMenu.Core.Services;
 using TanMenu.Wpf.Island;
 using TanMenu.Wpf.Services;
+using TanMenu.Wpf.Views.Settings;
 using Xunit;
 
 namespace TanMenu.Core.Tests.Services;
@@ -41,13 +42,15 @@ public class IslandPreviewHostTests
         {
             attempts++;
             throw new InvalidOperationException("no window in this test");
-        });
+        }, out var draft);
 
         config.Config.General.ShowIslandPreview = false;
+        draft.Working.General.ShowIslandPreview = false;
         events.RaiseSettingsChanged();
         Assert.Equal(0, attempts);
 
         config.Config.General.ShowIslandPreview = true;
+        draft.Working.General.ShowIslandPreview = true;
         events.RaiseSettingsChanged();
         Assert.Equal(1, attempts);
 
@@ -57,15 +60,52 @@ public class IslandPreviewHostTests
         Assert.Equal(1, attempts);
     }
 
+    [Fact]
+    public void SettingsChanged_PendingDraft_IsNotReplacedByTheSavedValue()
+    {
+        var attempts = 0;
+        var host = NewHost(out var config, out var events, () =>
+        {
+            attempts++;
+            throw new InvalidOperationException("no window in this test");
+        }, out var draft);
+
+        config.Config.General.ShowIslandPreview = false;
+        draft.Working.General.ShowIslandPreview = true;
+        events.RaiseSettingsChanged();
+
+        Assert.Equal(1, attempts);
+    }
+
+    [Fact]
+    public void MissingPrimaryScreen_DoesNotDestroyTheOverlayForTheSession()
+    {
+        Assert.False(IslandPreviewHost.DestroyOverlayOnScreenPlaceFailure);
+    }
+
     private static IslandPreviewHost NewHost(
         out ConfigService config,
         out AppEvents events,
-        Func<IslandPreviewWindow> create)
+        Func<IslandPreviewWindow> create) =>
+        NewHost(out config, out events, create, out _);
+
+    private static IslandPreviewHost NewHost(
+        out ConfigService config,
+        out AppEvents events,
+        Func<IslandPreviewWindow> create,
+        out SettingsDraft draft)
     {
         var root = Path.Combine(Path.GetTempPath(), "TanMenuIsland_" + Path.GetRandomFileName());
         var paths = new AppDataPaths(Path.Combine(root, "Local"), Path.Combine(root, "Cache"));
         config = new ConfigService(paths, NullLogger<ConfigService>.Instance);
         events = new AppEvents();
-        return new IslandPreviewHost(config, events, create);
+        draft = SettingsDraft.From(config, new FakeAutoStart());
+        return new IslandPreviewHost(config, events, create, draft);
+    }
+
+    private sealed class FakeAutoStart : IAutoStartService
+    {
+        public bool IsEnabled() => false;
+        public void SetEnabled(bool enabled) { }
     }
 }
