@@ -117,6 +117,8 @@ public static partial class Program
 
         var transparent = (placed.Item1 + 24, placed.Item2 + 8);
         var solid = (placed.Item1 + 160, placed.Item2 + 56);
+        var outside = (placed.Item1 - 40, placed.Item2 - 40);
+        var initialWidth = Dispatcher.UIThread.Invoke(() => window.PreviewCapsuleWidth);
         var beforeForeground = GetForegroundWindow();
         if (!MoveAndClick(transparent.Item1, transparent.Item2))
         {
@@ -137,7 +139,7 @@ public static partial class Program
             return SendInputFailed;
         Thread.Sleep(200);
         var solidClicks = ReadCount(clicksPath);
-        if (!Move(transparent.Item1, transparent.Item2))
+        if (!Move(outside.Item1, outside.Item2))
             return SendInputFailed;
         Thread.Sleep(450);
         var retractedWidth = Dispatcher.UIThread.Invoke(() => window.PreviewCapsuleWidth);
@@ -153,6 +155,7 @@ public static partial class Program
             solid,
             transparentClicks,
             solidClicksAdded = solidClicks - clicksBeforeSolid,
+            initialWidth,
             expandedWidth,
             retractedWidth,
             collapsedMean,
