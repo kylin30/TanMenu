@@ -123,7 +123,10 @@ public partial class IslandPreviewWindow : Window
         _sampler = null;
         _sampling.Stop();
         _effects.CancelAll();
+        RemoveHeightMotion(MemoryFill);
     }
+
+    internal static void RemoveHeightMotion(Animatable target) => target.Transitions = null;
 
     public void StopIdleClock() => _leaveTimer.Stop();
 
@@ -359,7 +362,8 @@ public partial class IslandPreviewWindow : Window
             },
         };
         _ = animation.RunAsync(transform, token).ContinueWith(_ =>
-            _effects.Finish(generation, cpu: false, receive, send));
+            Dispatcher.UIThread.Post(() =>
+                _effects.Finish(generation, cpu: false, receive, send)));
     }
 
     private void OnScalingChanged(object? sender, EventArgs e) => QueueRegion();

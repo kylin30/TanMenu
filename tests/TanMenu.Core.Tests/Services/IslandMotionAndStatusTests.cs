@@ -169,6 +169,56 @@ public class IslandMotionAndStatusTests
     }
 
     [Fact]
+    public void RemoveHeightMotion_ClearsARunningFillTransition()
+    {
+        var fill = new Avalonia.Controls.Border
+        {
+            Transitions = new Avalonia.Animation.Transitions
+            {
+                new Avalonia.Animation.DoubleTransition
+                {
+                    Property = Avalonia.Layout.Layoutable.HeightProperty,
+                    Duration = TimeSpan.FromMilliseconds(160),
+                },
+            },
+        };
+
+        IslandPreviewWindow.RemoveHeightMotion(fill);
+
+        Assert.Null(fill.Transitions);
+    }
+
+    [Fact]
+    public void FinishWaitsUntilTheGateIsReleased()
+    {
+        var gate = new IslandEffectGate();
+        var frame = new IslandStatusFrame(
+            new IslandSlotState(true, "1%", 0.01, false, false, false, false),
+            new IslandSlotState(true, "1%", 0.01, false, false, false, false),
+            new IslandSlotState(true, "x", 0, false, false, true, false));
+        var first = gate.Begin(frame, false);
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var holder = Task.Run(() => gate.HoldGate(() =>
+        {
+            entered.SetResult();
+            release.Task.GetAwaiter().GetResult();
+        }));
+        entered.Task.GetAwaiter().GetResult();
+        var before = gate.FinishArrivals;
+        var finishing = Task.Run(() => gate.Finish(first.Generation, cpu: false, receive: true, send: false));
+        while (gate.FinishArrivals == before)
+            Thread.SpinWait(1);
+        Assert.False(finishing.IsCompleted);
+        release.SetResult();
+        finishing.GetAwaiter().GetResult();
+        holder.GetAwaiter().GetResult();
+        gate.CancelAll();
+        var restarted = gate.Begin(frame, false);
+        Assert.True(restarted.Plan.StartReceive);
+    }
+
+    [Fact]
     public void SlowRead_DiscardedWhenStopped_AndRestartBeginsUnknown()
     {
         var session = new IslandSamplingSession();

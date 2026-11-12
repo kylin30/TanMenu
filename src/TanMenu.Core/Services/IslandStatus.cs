@@ -153,51 +153,77 @@ public readonly record struct IslandEffectPlan(bool StartCpuPulse, bool StartRec
 /// <summary>Each finite icon effect has its own latch. A CPU pulse does not block receive or send.</summary>
 public sealed class IslandEffectGate
 {
+    private readonly object _gate = new();
     private int _generation = 1;
     private CancellationTokenSource _cancel = new();
+    private int _finishArrivals;
 
-    public int Generation => _generation;
+    public int Generation
+    {
+        get { lock (_gate) return _generation; }
+    }
 
-    public CancellationToken Token => _cancel.Token;
+    public CancellationToken Token
+    {
+        get { lock (_gate) return _cancel.Token; }
+    }
+
+    internal int FinishArrivals => Volatile.Read(ref _finishArrivals);
 
     public (IslandEffectPlan Plan, int Generation) Begin(IslandStatusFrame frame, bool reducedMotion)
     {
-        var plan = reducedMotion
-            ? default
-            : new IslandEffectPlan(
-                frame.Cpu.Pulse && !CpuBusy,
-                frame.Network.Receive && !ReceiveBusy,
-                frame.Network.Send && !SendBusy);
-        if (plan.StartCpuPulse)
-            CpuBusy = true;
-        if (plan.StartReceive)
-            ReceiveBusy = true;
-        if (plan.StartSend)
-            SendBusy = true;
-        return (plan, _generation);
+        lock (_gate)
+        {
+            var plan = reducedMotion
+                ? default
+                : new IslandEffectPlan(
+                    frame.Cpu.Pulse && !CpuBusy,
+                    frame.Network.Receive && !ReceiveBusy,
+                    frame.Network.Send && !SendBusy);
+            if (plan.StartCpuPulse)
+                CpuBusy = true;
+            if (plan.StartReceive)
+                ReceiveBusy = true;
+            if (plan.StartSend)
+                SendBusy = true;
+            return (plan, _generation);
+        }
     }
 
     public void Finish(int generation, bool cpu, bool receive, bool send)
     {
-        if (generation != _generation)
-            return;
-        if (cpu)
-            CpuBusy = false;
-        if (receive)
-            ReceiveBusy = false;
-        if (send)
-            SendBusy = false;
+        Interlocked.Increment(ref _finishArrivals);
+        lock (_gate)
+        {
+            if (generation != _generation)
+                return;
+            if (cpu)
+                CpuBusy = false;
+            if (receive)
+                ReceiveBusy = false;
+            if (send)
+                SendBusy = false;
+        }
     }
 
     public void CancelAll()
     {
-        _generation++;
-        CpuBusy = false;
-        ReceiveBusy = false;
-        SendBusy = false;
-        _cancel.Cancel();
-        _cancel.Dispose();
-        _cancel = new CancellationTokenSource();
+        lock (_gate)
+        {
+            _generation++;
+            CpuBusy = false;
+            ReceiveBusy = false;
+            SendBusy = false;
+            _cancel.Cancel();
+            _cancel.Dispose();
+            _cancel = new CancellationTokenSource();
+        }
+    }
+
+    internal void HoldGate(Action whileHeld)
+    {
+        lock (_gate)
+            whileHeld();
     }
 
     private bool CpuBusy { get; set; }
