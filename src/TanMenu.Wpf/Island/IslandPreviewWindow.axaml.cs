@@ -57,6 +57,8 @@ public partial class IslandPreviewWindow : Window
         TransparencyLevelHint = [WindowTransparencyLevel.Transparent];
         _leaveTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(IslandMetrics.LeaveDelayMs) };
         _leaveTimer.Tick += OnLeaveDelayElapsed;
+        PointerEntered += OnShapePointerEntered;
+        PointerExited += OnShapePointerExited;
         _outline = IslandTrapezoidGeometry.Layout(0, Width, Height);
         ShapeProgressProperty.Changed.AddClassHandler<IslandPreviewWindow>((window, _) => window.OnProgressChanged());
         DrawOutline();

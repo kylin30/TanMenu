@@ -24,9 +24,7 @@
           Fill="#18181B"
           Stroke="#28282C"
           StrokeThickness="1"
-          StrokeJoin="Round"
-          PointerEntered="OnShapePointerEntered"
-          PointerExited="OnShapePointerExited"/>
+          StrokeJoin="Round"/>
     <Grid x:Name="Slots"
           HorizontalAlignment="Center"
           VerticalAlignment="Bottom"
