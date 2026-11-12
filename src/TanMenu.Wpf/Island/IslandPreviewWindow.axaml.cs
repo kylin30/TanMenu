@@ -229,6 +229,7 @@ public partial class IslandPreviewWindow : Window
         ApplySlot(CpuIcon, CpuText, frame.Cpu, animatePulse: true);
         ApplySlot(null, MemoryText, frame.Memory, animatePulse: false);
         var memoryHeight = 2 + 8 * frame.Memory.Level;
+        MemoryFill.Background = new SolidColorBrush(frame.Memory.Known ? Color.Parse("#F5F5F5") : Color.Parse("#6A6A6E"));
         if (frame.Memory.Known && frame.Memory.Fill && !_reducedMotion)
         {
             MemoryFill.Transitions = [new DoubleTransition { Property = Avalonia.Layout.Layoutable.HeightProperty, Duration = TimeSpan.FromMilliseconds(160) }];
@@ -241,7 +242,8 @@ public partial class IslandPreviewWindow : Window
         }
 
         ApplySlot(ReceiveIcon, NetworkText, frame.Network, animatePulse: false);
-        SendIcon.Opacity = frame.Network.Known ? 1 : 0.45;
+        SendIcon.Fill = ReceiveIcon.Fill;
+        SendIcon.Opacity = ReceiveIcon.Opacity;
         if (!_reducedMotion && !_pulseRunning && frame.Network.Receive)
             Nudge(ReceiveIcon, 3);
         if (!_reducedMotion && frame.Network.Send)
@@ -251,11 +253,12 @@ public partial class IslandPreviewWindow : Window
     private void ApplySlot(ShapePath? icon, TextBlock text, IslandSlotState slot, bool animatePulse)
     {
         text.Text = slot.Text;
-        var brush = new SolidColorBrush(slot.Known ? Color.Parse("#5EEAD4") : Color.Parse("#8E8E93"));
+        text.Foreground = new SolidColorBrush(slot.Known ? Color.Parse("#F5F5F5") : Color.Parse("#6A6A6E"));
+        var brush = new SolidColorBrush(slot.Known ? Color.Parse("#F5F5F5") : Color.Parse("#6A6A6E"));
         if (icon is not null)
         {
             icon.Fill = brush;
-            icon.Opacity = slot.Known ? 1 : 0.45;
+            icon.Opacity = 1;
         }
 
         if (animatePulse && slot.Pulse && !_reducedMotion && !_pulseRunning)
