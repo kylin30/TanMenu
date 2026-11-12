@@ -10,6 +10,7 @@ using Serilog;
 using TanMenu.Core.Infrastructure;
 using TanMenu.Core.Services;
 using TanMenu.Wpf.Dialogs;
+using TanMenu.Wpf.Island;
 using TanMenu.Wpf.Services;
 using TanMenu.Wpf.Views.Settings;
 using Velopack.Locators;
@@ -123,6 +124,10 @@ public partial class App : Application
             TaskbarPinService.ResolveLauncherPath));
         services.AddSingleton<GlobalHotkeyService>();
         services.AddSingleton<AppEvents>();
+        services.AddSingleton<IIslandPreviewController>(sp => new IslandPreviewHost(
+            sp.GetRequiredService<ConfigService>(),
+            sp.GetRequiredService<AppEvents>(),
+            sp.GetRequiredService<SettingsDraft>()));
         // ROUND 8, TASK 2 REMOVED TWO REGISTRATIONS HERE — ShellNavigator and IShellNavigator, the
         // shell's page router. The launcher has exactly one page now: 设置 became a modal dialog
         // (Dialogs/OptionsWindow), so there is nothing to navigate BETWEEN, and Services/IShellNavigator.cs
@@ -173,6 +178,7 @@ public partial class App : Application
             Dispatcher.UIThread.Post(() => _ = WarnHotkeyRegistrationFailedAsync(combo));
 
         ShowLauncherWindow();
+        TryShowIslandPreviewFromConfig();
         _ = CheckForUpdatesAfterStartupAsync();
     }
 
@@ -437,6 +443,38 @@ public partial class App : Application
         }
     }
 
+    /// <summary>Show the preview only when the saved switch is on. The default is off, so a normal
+    /// start does not create the overlay.</summary>
+    private static void TryShowIslandPreviewFromConfig()
+    {
+        try
+        {
+            if (!Services.GetRequiredService<ConfigService>().Config.General.ShowIslandPreview)
+                return;
+            Services.GetRequiredService<IIslandPreviewController>().Show();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "灵动岛预览未能启动");
+        }
+    }
+
+    /// <summary>Destroy the preview before the rest of shutdown. Safe when startup failed first.</summary>
+    private static void TryDisposeIslandPreview()
+    {
+        try
+        {
+            if (Services is not IServiceProvider services)
+                return;
+            if (services.GetService(typeof(IIslandPreviewController)) is IDisposable preview)
+                preview.Dispose();
+        }
+        catch (Exception ex)
+        {
+            TryLogFatal(ex, "关闭灵动岛预览失败");
+        }
+    }
+
     /// <summary>Log an exception without ever throwing (used from the global handlers, where logging
     /// may not be configured yet — Serilog's default sink is a safe no-op).</summary>
     internal static void TryLogFatal(Exception? ex, string message)
@@ -452,6 +490,7 @@ public partial class App : Application
         // Set BEFORE the lifetime is shut down: Shutdown() below synchronously closes MainWindow,
         // whose OnClosing checks this flag to tell a real exit from the close button (which hides).
         IsExiting = true;
+        TryDisposeIslandPreview();
 
         // 退出 must WAIT for the placement write, not merely start it: desktop.Shutdown() below ends
         // the dispatcher loop, so a fire-and-forget save's continuation would never run — losing any

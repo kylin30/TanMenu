@@ -6,6 +6,7 @@
   <Folder Name="/src/">
     <Project Path="src/TanMenu.Core/TanMenu.Core.csproj" />
     <Project Path="src/TanMenu.Wpf/TanMenu.Wpf.csproj" />
+    <Project Path="src/TanMenu.IslandProbe/TanMenu.IslandProbe.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/TanMenu.Core.Tests/TanMenu.Core.Tests.csproj" />

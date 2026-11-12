@@ -158,8 +158,8 @@ public partial class BehaviorCard : UserControl, ISettingsCard
 
             foreach (var toggle in new[]
                      {
-                         AutoCloseToggle, TopMostToggle, HoverSoundToggle, ClickSoundToggle,
-                         AutoStartToggle, HotkeyEnabledToggle
+                         AutoCloseToggle, TopMostToggle, IslandPreviewToggle, HoverSoundToggle,
+                         ClickSoundToggle, AutoStartToggle, HotkeyEnabledToggle
                      })
             {
                 toggle.OnContent = AppLanguage.Text("StateOn", lang);
@@ -173,6 +173,10 @@ public partial class BehaviorCard : UserControl, ISettingsCard
             TopMostLabel.Text = AppLanguage.Text("TopMost", lang);
             TopMostDescription.Text = AppLanguage.Text("TopMostCardSub", lang);
             TopMostToggle.IsChecked = g.TopMost;
+
+            IslandPreviewLabel.Text = AppLanguage.Text("IslandPreview", lang);
+            IslandPreviewDescription.Text = AppLanguage.Text("IslandPreviewCardSub", lang);
+            IslandPreviewToggle.IsChecked = g.ShowIslandPreview;
 
             ButtonSoundsLabel.Text = AppLanguage.Text("ButtonSounds", lang);
             ButtonSoundsDescription.Text = AppLanguage.Text("ButtonSoundsCardSub", lang);
@@ -236,6 +240,36 @@ public partial class BehaviorCard : UserControl, ISettingsCard
 
         _draft.Working.General.TopMost = TopMostToggle.IsChecked == true;
         _draft.Revalidate();
+    }
+
+    /// <summary>The preview is shown or removed as soon as the switch moves. The draft still saves
+    /// through the page's existing delayed commit, and the host follows the saved value on
+    /// <see cref="AppEvents.SettingsChanged"/>.</summary>
+    private void OnIslandPreviewChanged(object? sender, RoutedEventArgs e)
+    {
+        if (_loading)
+            return;
+
+        var enabled = IslandPreviewToggle.IsChecked == true;
+        _draft.Working.General.ShowIslandPreview = enabled;
+        _draft.Revalidate();
+        try
+        {
+            if (App.Services.GetService(typeof(IIslandPreviewController)) is not IIslandPreviewController island)
+            {
+                Serilog.Log.Error("灵动岛预览控制器未注册");
+                return;
+            }
+
+            if (enabled)
+                island.Show();
+            else
+                island.Hide();
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Error(ex, "切换灵动岛预览失败");
+        }
     }
 
     private void OnHoverSoundChanged(object? sender, RoutedEventArgs e)

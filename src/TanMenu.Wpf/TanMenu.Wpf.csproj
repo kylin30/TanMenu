@@ -69,6 +69,7 @@
        under tests/…/Themes; this lets SettingsDraftTests exercise the real types instead of a copy. -->
   <ItemGroup>
     <InternalsVisibleTo Include="TanMenu.Core.Tests" />
+    <InternalsVisibleTo Include="TanMenu.IslandProbe" />
   </ItemGroup>
 
   <!-- Alibaba PuHuiTi Regular, Medium, SemiBold and Bold are embedded inside the executable so the UI does not depend

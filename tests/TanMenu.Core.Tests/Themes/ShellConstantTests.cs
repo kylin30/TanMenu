@@ -69,6 +69,11 @@ public class ShellConstantTests
     {
         foreach (var file in Directory.GetFiles(WpfRoot, "*Window.axaml", SearchOption.AllDirectories))
         {
+            // The preview host is a transparent overlay with its own chrome. Its attributes are
+            // pinned by IslandPreviewDefaultsTests; themed windows still inherit the application theme.
+            if (string.Equals(Path.GetFileName(file), "IslandPreviewWindow.axaml", StringComparison.Ordinal))
+                continue;
+
             var root = XDocument.Load(file).Root!;
             foreach (var property in new[]
                      {

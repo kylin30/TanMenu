@@ -13,7 +13,7 @@ namespace TanMenu.Wpf.Views.Settings;
 /// <remarks>
 /// <para>
 /// <b>The config write is atomic; the OS effects are not.</b> <c>ConfigService.SaveAsync</c> is one
-/// serialize plus one <c>File.Replace</c> swap, so all thirteen properties land together or none of them
+/// serialize plus one <c>File.Replace</c> swap, so all fourteen properties land together or none of them
 /// do. Nothing downstream has that property: the autostart write, the global-hotkey registration and the
 /// theme repaint are separate calls that can each fail on their own. <b>The config is the record and the
 /// OS effects are consequences of it</b> — once <see cref="ConfigService.SaveAsync"/> returns, the commit
@@ -33,7 +33,7 @@ namespace TanMenu.Wpf.Views.Settings;
 internal static class SettingsCommit
 {
     /// <summary>
-    /// Commit the draft: copy the thirteen named properties onto the live config, save once, apply the
+    /// Commit the draft: copy the fourteen named properties onto the live config, save once, apply the
     /// OS-side effects, re-seed the draft onto what landed, then re-verify the whole surface against it.
     /// </summary>
     /// <returns>true if the config write succeeded (the OS effects may still have failed, and did not
@@ -46,7 +46,7 @@ internal static class SettingsCommit
         IWindowHost host,
         Visual owner)
     {
-        // 1. The thirteen named properties, with the pre-copy values in hand.
+        // 1. The fourteen named properties, with the pre-copy values in hand.
         var undo = draft.CopyOnto(config.Config);
 
         // 2. One save for the whole surface, instead of one per control.

@@ -23,7 +23,7 @@ namespace TanMenu.Wpf.Views.Settings;
 /// </para>
 /// <para>
 /// <b><see cref="IsDirty"/> is COMPUTED, never flagged.</b> <see cref="Revalidate"/> walks the same
-/// thirteen named properties <see cref="CopyOnto"/> writes and compares <see cref="Working"/> against the
+/// fourteen named properties <see cref="CopyOnto"/> writes and compares <see cref="Working"/> against the
 /// live config, then ORs in the one non-config desire (<see cref="AutoStartDesired"/>). That is why the
 /// cards call <see cref="Revalidate"/> rather than a <c>MarkDirty()</c>: flipping a check box and
 /// flipping it back re-disables 应用, and there is no second source of truth to get out of step.
@@ -135,7 +135,7 @@ internal sealed class SettingsDraft
     }
 
     /// <summary>
-    /// Copy the thirteen named properties onto <paramref name="live"/> and return the undo actions that
+    /// Copy the fourteen named properties onto <paramref name="live"/> and return the undo actions that
     /// put the previous values back, in case the save that follows throws.
     /// </summary>
     /// <remarks>
@@ -165,6 +165,7 @@ internal sealed class SettingsDraft
         Capture(undo, lg.GlobalHotkeyEnabled, wg.GlobalHotkeyEnabled, v => lg.GlobalHotkeyEnabled = v);
         Capture(undo, lg.GlobalHotkey, wg.GlobalHotkey, v => lg.GlobalHotkey = v);
         Capture(undo, lg.ShowDefaultTools, wg.ShowDefaultTools, v => lg.ShowDefaultTools = v);
+        Capture(undo, lg.ShowIslandPreview, wg.ShowIslandPreview, v => lg.ShowIslandPreview = v);
         Capture(undo, live.RootFolder, Working.RootFolder, v => live.RootFolder = v);
 
         foreach (var (workingTool, liveTool) in PairTools(lg.DefaultTools))
@@ -185,7 +186,7 @@ internal sealed class SettingsDraft
         undo.Add(() => assign(previous));
     }
 
-    /// <summary>The thirteen-property comparison <see cref="Revalidate"/> runs, in the same order and over
+    /// <summary>The fourteen-property comparison <see cref="Revalidate"/> runs, in the same order and over
     /// the same properties <see cref="CopyOnto"/> writes.</summary>
     private bool DiffersFrom(AppConfig live)
     {
@@ -203,6 +204,7 @@ internal sealed class SettingsDraft
             lg.GlobalHotkeyEnabled != wg.GlobalHotkeyEnabled ||
             !string.Equals(lg.GlobalHotkey, wg.GlobalHotkey, StringComparison.Ordinal) ||
             lg.ShowDefaultTools != wg.ShowDefaultTools ||
+            lg.ShowIslandPreview != wg.ShowIslandPreview ||
             !string.Equals(live.RootFolder, Working.RootFolder, StringComparison.Ordinal))
             return true;
 
