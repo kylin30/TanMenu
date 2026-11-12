@@ -239,6 +239,7 @@ public static partial class Program
             || !hostShot.WindowVisible
             || hostShot.MatchesWorkArea != true
             || !hostShot.CollapsedCapsuleDark
+            || !hostShot.ProbeGone
             || hostShot.OldProbeStillVisible
             || hostShot.ExpandedWidth < 200
             || !hostShot.Closed)
@@ -256,6 +257,8 @@ public static partial class Program
         PostUi(probe.Close);
         var probeGone = WaitUntil(() => probeHwnd == IntPtr.Zero || !IsWindow(probeHwnd), TimeSpan.FromSeconds(2));
         YieldUi(DispatcherPriority.Render);
+        Thread.Sleep(150);
+        var oldCapsule = SampleMean(probeX + 108, probeY + 62, 8, 4);
 
         var root = Path.Combine(Path.GetTempPath(), "TanMenuProbeHost_" + Path.GetRandomFileName());
         var paths = new AppDataPaths(Path.Combine(root, "Local"), Path.Combine(root, "Cache"));
@@ -277,8 +280,7 @@ public static partial class Program
         var style = handle == IntPtr.Zero ? 0 : GetWindowLongW(handle, -20);
         const int toolWindow = 0x00000080;
         const int appWindow = 0x00040000;
-        var capsule = hasRect ? SampleMean(rect.Left + 160, rect.Bottom - 6, 8, 4) : (0, 0, 0);
-        var oldOnly = SampleMean(probeX + 312, probeY + 8, 8, 4);
+        var capsule = hasRect ? SampleMean(rect.Left + 108, rect.Bottom - 10, 8, 4) : (0, 0, 0);
         var tray = FindWindowW("Shell_TrayWnd", null);
         var result = new ProductPlacement
         {
@@ -299,9 +301,10 @@ public static partial class Program
             CapsuleRed = capsule.Item1,
             CapsuleGreen = capsule.Item2,
             CapsuleBlue = capsule.Item3,
-            OldProbeRed = oldOnly.Item1,
-            OldProbeGreen = oldOnly.Item2,
-            OldProbeBlue = oldOnly.Item3,
+            OldProbeRed = oldCapsule.Item1,
+            OldProbeGreen = oldCapsule.Item2,
+            OldProbeBlue = oldCapsule.Item3,
+            OldProbeSample = "manual probe collapsed capsule, after its HWND is gone and before the host is shown",
             ExtendedStyle = style,
             ToolWindow = (style & toolWindow) != 0,
             AppWindow = (style & appWindow) != 0,
@@ -310,7 +313,7 @@ public static partial class Program
             ExpandedCapture = "desktop-host-expanded.png",
         };
         result.CollapsedCapsuleDark = Mean(capsule) < 80;
-        result.OldProbeStillVisible = Mean(oldOnly) < 80;
+        result.OldProbeStillVisible = Mean(oldCapsule) < 80;
         if (tray != IntPtr.Zero && TryReadWorkArea(out var area))
         {
             result.ExpectedX = area.Left + ((area.Right - area.Left) - 320) / 2;
@@ -340,9 +343,9 @@ public static partial class Program
         {
             draft.Working.General.ShowIslandPreview = false;
             events.RaiseSettingsChanged();
-            host.Dispose();
         });
-        result.Closed = handle == IntPtr.Zero || !IsWindow(handle);
+        result.Closed = WaitUntil(() => handle == IntPtr.Zero || !IsWindow(handle), TimeSpan.FromSeconds(2));
+        PostUi(host.Dispose);
         return result;
     }
 
@@ -753,6 +756,7 @@ public static partial class Program
         public int OldProbeBlue { get; set; }
         public bool CollapsedCapsuleDark { get; set; }
         public bool OldProbeStillVisible { get; set; }
+        public string OldProbeSample { get; set; } = "";
         public string CollapsedCapture { get; set; } = "";
         public string ExpandedCapture { get; set; } = "";
         public string TaskbarStatus { get; set; } = "";
