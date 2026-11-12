@@ -4,7 +4,12 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
+using Microsoft.Extensions.Logging.Abstractions;
+using TanMenu.Core.Infrastructure;
+using TanMenu.Core.Services;
 using TanMenu.Wpf.Island;
+using TanMenu.Wpf.Services;
+using TanMenu.Wpf.Views.Settings;
 
 namespace TanMenu.IslandProbe;
 
@@ -31,7 +36,10 @@ public static partial class Program
         var outDir = ValueAfter(args, "--out") ?? Path.Combine(AppContext.BaseDirectory, "probe-out");
         Directory.CreateDirectory(outDir);
         var report = Discover();
+        var recoveryCode = WriteRecoveryEvidence(outDir);
         File.WriteAllText(Path.Combine(outDir, "session.json"), JsonSerializer.Serialize(report, JsonOptions()));
+        if (recoveryCode != 0)
+            return recoveryCode;
         if (report.Blocked)
         {
             Console.Error.WriteLine("overlay probe blocked: " + report.BlockReason);
@@ -128,12 +136,13 @@ public static partial class Program
 
         Thread.Sleep(250);
         var transparentClicks = ReadCount(clicksPath);
-        SaveShot(outDir, "collapsed.png", placed.Item1, placed.Item2, 320, 72, out var collapsedMean);
+        var shot = ContextShot();
+        SaveShot(outDir, "collapsed.png", shot.X, shot.Y, shot.Width, shot.Height, out var collapsedMean);
         if (!Move(solid.Item1, solid.Item2))
             return SendInputFailed;
         Thread.Sleep(500);
         var expandedWidth = Dispatcher.UIThread.Invoke(() => window.PreviewCapsuleWidth);
-        SaveShot(outDir, "expanded.png", placed.Item1, placed.Item2, 320, 72, out var expandedMean);
+        SaveShot(outDir, "expanded.png", shot.X, shot.Y, shot.Width, shot.Height, out var expandedMean);
         var clicksBeforeSolid = ReadCount(clicksPath);
         if (!MoveAndClick(solid.Item1, solid.Item2))
             return SendInputFailed;
@@ -151,8 +160,22 @@ public static partial class Program
         var outcome = new
         {
             hwnd = placed.Item3.ToInt64(),
-            transparent,
-            solid,
+            islandX = placed.Item1,
+            islandY = placed.Item2,
+            islandWidth = 320,
+            islandHeight = 72,
+            underlayX = ProbeRun.UnderlayX,
+            underlayY = ProbeRun.UnderlayY,
+            underlayWidth = ProbeRun.UnderlayWidth,
+            underlayHeight = ProbeRun.UnderlayHeight,
+            shotX = ContextShot().X,
+            shotY = ContextShot().Y,
+            shotWidth = ContextShot().Width,
+            shotHeight = ContextShot().Height,
+            transparentX = transparent.Item1,
+            transparentY = transparent.Item2,
+            solidX = solid.Item1,
+            solidY = solid.Item2,
             transparentClicks,
             solidClicksAdded = solidClicks - clicksBeforeSolid,
             initialWidth,
@@ -201,6 +224,55 @@ public static partial class Program
 
         Console.WriteLine("overlay probe passed on this Windows session");
         return 0;
+    }
+
+    private static (int X, int Y, int Width, int Height) ContextShot()
+    {
+        var x = Math.Max(0, ProbeRun.UnderlayX - 16);
+        var y = Math.Max(0, ProbeRun.UnderlayY - 16);
+        var screenW = Math.Max(1, GetSystemMetrics(0));
+        var screenH = Math.Max(1, GetSystemMetrics(1));
+        var width = Math.Min(ProbeRun.UnderlayWidth + 32, screenW - x);
+        var height = Math.Min(ProbeRun.UnderlayHeight + 32, screenH - y);
+        return (x, y, Math.Max(1, width), Math.Max(1, height));
+    }
+
+    private static int WriteRecoveryEvidence(string outDir)
+    {
+        var destroyOnMissingPrimary = IslandPreviewHost.DestroyOverlayOnScreenPlaceFailure;
+        var attempts = 0;
+        var root = Path.Combine(Path.GetTempPath(), "TanMenuProbeRecovery_" + Path.GetRandomFileName());
+        var paths = new AppDataPaths(Path.Combine(root, "Local"), Path.Combine(root, "Cache"));
+        var config = new ConfigService(paths, NullLogger<ConfigService>.Instance);
+        var events = new AppEvents();
+        var draft = SettingsDraft.From(config, new RecoveryAutoStart());
+        config.Config.General.ShowIslandPreview = false;
+        draft.Working.General.ShowIslandPreview = true;
+        var host = new IslandPreviewHost(config, events, () =>
+        {
+            attempts++;
+            throw new InvalidOperationException("recovery check does not open a window");
+        }, draft);
+        events.RaiseSettingsChanged();
+        host.Dispose();
+        var ok = !destroyOnMissingPrimary && attempts == 1;
+        File.WriteAllText(Path.Combine(outDir, "recovery.json"), JsonSerializer.Serialize(new
+        {
+            destroyOverlayOnScreenPlaceFailure = destroyOnMissingPrimary,
+            pendingDraftAttemptedShow = attempts,
+            savedShowIslandPreview = false,
+            pendingShowIslandPreview = true,
+            passed = ok,
+        }, JsonOptions()));
+        if (!ok)
+            Console.Error.WriteLine("draft/display recovery check failed");
+        return ok ? 0 : 8;
+    }
+
+    private sealed class RecoveryAutoStart : IAutoStartService
+    {
+        public bool IsEnabled() => false;
+        public void SetEnabled(bool enabled) { }
     }
 
     private static void SaveShot(string outDir, string name, int x, int y, int width, int height, out double mean)
